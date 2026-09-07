@@ -117,6 +117,7 @@ Singleton {
     // --- Shape -------------------------------------------------------
     readonly property string radiusBase: "2px"
     readonly property string radiusPill: "9999px"
+    readonly property string borderWidth: "1px"
 
     // --- Layering -------------------------------------------------------
     readonly property string zBase: "0"

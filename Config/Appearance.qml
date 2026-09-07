@@ -75,6 +75,7 @@ Singleton {
     // --- Shape ------------------------------------------------------
     readonly property real radiusBase: _px(Tokens.radiusBase)
     readonly property real radiusPill: _px(Tokens.radiusPill)
+    readonly property real borderWidth: _px(Tokens.borderWidth)
 
     // --- Layering ------------------------------------------------------
     readonly property int zBase: parseInt(Tokens.zBase)
@@ -85,14 +86,19 @@ Singleton {
     readonly property int zNotification: parseInt(Tokens.zNotification)
 
     // --- Motion (master plan §6.5) ------------------------------------------
-    // Easing stays a string: mapping "linear"/"ease-out" onto a QML
-    // Easing.Type enum needs the animation type it applies to in scope,
-    // which belongs to the widget that animates (S-21) or the motion step
-    // itself (S-52), not to this singleton.
+    // Easing stays a string for categories A/C/D: mapping "linear"/"ease-out"
+    // onto a QML Easing.Type enum needs the animation type it applies to in
+    // scope, which belongs to the widget that animates, not to this
+    // singleton. Category B is the exception, resolved here rather than in
+    // every widget: S-21's whole widget library animates state transitions
+    // on this one category, always as a ColorAnimation/NumberAnimation
+    // Behavior, so there is exactly one place this string-to-curve mapping
+    // happens instead of one copy per widget.
     readonly property int motionAPeriod: _ms(Tokens.motionAPeriod)
     readonly property string motionAEasing: Tokens.motionAEasing
     readonly property int motionBDuration: _ms(Tokens.motionBDuration)
     readonly property string motionBEasing: Tokens.motionBEasing
+    readonly property int motionBEasingType: motionBEasing === "linear" ? Easing.Linear : Easing.OutQuad
     readonly property int motionCTypeStep: _ms(Tokens.motionCTypeStep)
     readonly property int motionCScramble: _ms(Tokens.motionCScramble)
     readonly property string motionCEasing: Tokens.motionCEasing
