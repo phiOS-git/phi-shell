@@ -1,0 +1,5 @@
+[
+    { "type": "workspaces", "island": "left", "position": 0, "source": "internal:hyprland", "capability": "" },
+    { "type": "activeWindow", "island": "center", "position": 0, "source": "internal:hyprland", "capability": "" },
+    { "type": "clock", "island": "right", "position": 100, "source": "internal:clock", "capability": "" }
+]
