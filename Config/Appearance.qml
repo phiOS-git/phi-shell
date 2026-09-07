@@ -1,4 +1,5 @@
 pragma Singleton
+import QtQuick
 import Quickshell
 
 // phiOS — semantic roles over the raw design tokens (master plan §6.2, §6.7,
