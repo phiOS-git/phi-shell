@@ -21,7 +21,7 @@ import qs.Config as Config
 //
 // The onCompleted log line exists to give this step something concrete to
 // verify. It touches Config.Appearance, which touches Config.Tokens, which
-// only exists once `phi theme set` has rendered it (see Config/Tokens.example.qml
+// only exists once `phi theme set` has rendered it (see docs/tokens-example.md
 // and this repository's README) — so a clean log line here is proof the
 // whole Config/ chain resolved. It also reads Config.Capabilities.gpuVendor:
 // QML singletons instantiate lazily on first use, so without this the

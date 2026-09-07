@@ -29,5 +29,5 @@ qs -p ~/.config/quickshell/phi
 Quickshell hot-reloads on save; a broken `Config/Tokens.qml` shows the same
 way as any other QML file — as a QML error in this terminal, not a crash.
 
-See `Config/Tokens.example.qml` for the shape of the generated file without
+See `docs/tokens-example.md` for the shape of the generated file without
 running `phi theme set` first.
