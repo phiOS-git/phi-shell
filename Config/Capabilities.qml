@@ -43,6 +43,16 @@ Singleton {
 
     Component.onCompleted: refresh()
 
+    // Spawning `probe` and reading its stdout is asynchronous: a caller
+    // that reads capRaw (or the roles above) in the same tick as
+    // Component.onCompleted — shell.qml's startup log line does exactly
+    // this, deliberately, to prove this file loads — always sees the
+    // still-unpopulated default above, never the real probe result. This
+    // is the one place that logs the real, arrived values, once they
+    // exist, so that proof is actually meaningful instead of always true
+    // by construction.
+    onCapRawChanged: console.log("phi-shell: capabilities refreshed, gpu=" + gpuVendor)
+
     Process {
         id: probe
         command: ["sh", "-c",
