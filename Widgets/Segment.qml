@@ -70,13 +70,13 @@ Item {
         // horizontally to each other (icon left-edge, text left-of-icon.right).
         id: layout
         anchors.centerIn: parent
-        implicitWidth: (icon.visible ? icon.implicitWidth : 0)
-            + (icon.visible && text.visible ? root.gap : 0)
-            + (text.visible ? text.implicitWidth : 0)
-        implicitHeight: Math.max(icon.visible ? icon.implicitHeight : 0, text.visible ? text.implicitHeight : 0)
+        implicitWidth: (iconGlyph.visible ? iconGlyph.implicitWidth : 0)
+            + (iconGlyph.visible && labelText.visible ? root.gap : 0)
+            + (labelText.visible ? labelText.implicitWidth : 0)
+        implicitHeight: Math.max(iconGlyph.visible ? iconGlyph.implicitHeight : 0, labelText.visible ? labelText.implicitHeight : 0)
 
         StyledIcon {
-            id: icon
+            id: iconGlyph
             visible: root.glyph.length > 0
             glyph: root.glyph
             tone: root.tone
@@ -86,13 +86,13 @@ Item {
         }
 
         StyledText {
-            id: text
+            id: labelText
             visible: root.label.length > 0
             text: root.label
             tone: root.tone
             invalid: root.invalid
-            anchors.left: icon.visible ? icon.right : parent.left
-            anchors.leftMargin: icon.visible ? root.gap : 0
+            anchors.left: iconGlyph.visible ? iconGlyph.right : parent.left
+            anchors.leftMargin: iconGlyph.visible ? root.gap : 0
             anchors.verticalCenter: parent.verticalCenter
         }
     }
