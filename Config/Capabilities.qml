@@ -55,10 +55,23 @@ Singleton {
 
     Process {
         id: probe
+        // Diagnostic, not permanent plumbing: a real run on razer got a
+        // clean process exit and correct output when the user reproduced
+        // this exact `sh -c` string by hand, but empty output when
+        // Quickshell itself ran it — pointing at an environment
+        // difference (most likely $HOME) between an interactive shell and
+        // Quickshell's own process, not the command's own syntax. The
+        // `PHI_CAP_DEBUG_*` lines make that visible directly in the log
+        // instead of needing another round of manual reproduction; strip
+        // them once the real cause is confirmed and fixed.
         command: ["sh", "-c",
-            "\"${PHI_DOTFILES:-$HOME/phios-dotfiles}/bin/phios-capabilities\" 2>/dev/null || phios-capabilities 2>/dev/null"]
+            "DOTFILES=\"${PHI_DOTFILES:-$HOME/phios-dotfiles}\"; " +
+            "\"$DOTFILES/bin/phios-capabilities\" 2>/dev/null || " +
+            "phios-capabilities 2>/dev/null || " +
+            "{ echo \"PHI_CAP_DEBUG_HOME=$HOME\"; echo \"PHI_CAP_DEBUG_PATH=$PATH\"; echo \"PHI_CAP_DEBUG_DOTFILES=$DOTFILES\"; }"]
         stdout: StdioCollector {
             onStreamFinished: {
+                console.log("phi-shell: capabilities probe raw output (" + this.text.length + " bytes): " + JSON.stringify(this.text))
                 const next = {
                     battery: false, backlight: false, als: false, gpuVendor: "none",
                     chroma: false, touchscreen: false, touchpad: false, wifi: false,
