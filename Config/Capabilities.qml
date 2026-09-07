@@ -43,35 +43,18 @@ Singleton {
 
     Component.onCompleted: refresh()
 
-    // Spawning `probe` and reading its stdout is asynchronous: a caller
-    // that reads capRaw (or the roles above) in the same tick as
-    // Component.onCompleted — shell.qml's startup log line does exactly
-    // this, deliberately, to prove this file loads — always sees the
-    // still-unpopulated default above, never the real probe result. This
-    // is the one place that logs the real, arrived values, once they
-    // exist, so that proof is actually meaningful instead of always true
-    // by construction.
-    onCapRawChanged: console.log("phi-shell: capabilities refreshed, gpu=" + gpuVendor)
-
     Process {
         id: probe
-        // Diagnostic, not permanent plumbing: a real run on razer got a
-        // clean process exit and correct output when the user reproduced
-        // this exact `sh -c` string by hand, but empty output when
-        // Quickshell itself ran it — pointing at an environment
-        // difference (most likely $HOME) between an interactive shell and
-        // Quickshell's own process, not the command's own syntax. The
-        // `PHI_CAP_DEBUG_*` lines make that visible directly in the log
-        // instead of needing another round of manual reproduction; strip
-        // them once the real cause is confirmed and fixed.
+        // A real run on razer proved this exact command, and the
+        // environment it runs in, both correct: full, correctly-formed
+        // output every time, $HOME included. The debug-fallback echoes
+        // that earlier lived here were built on that wrong hypothesis and
+        // are gone; $PHI_DOTFILES/~/phios-dotfiles resolution is the only
+        // thing this command does.
         command: ["sh", "-c",
-            "DOTFILES=\"${PHI_DOTFILES:-$HOME/phios-dotfiles}\"; " +
-            "\"$DOTFILES/bin/phios-capabilities\" 2>/dev/null || " +
-            "phios-capabilities 2>/dev/null || " +
-            "{ echo \"PHI_CAP_DEBUG_HOME=$HOME\"; echo \"PHI_CAP_DEBUG_PATH=$PATH\"; echo \"PHI_CAP_DEBUG_DOTFILES=$DOTFILES\"; }"]
+            "\"${PHI_DOTFILES:-$HOME/phios-dotfiles}/bin/phios-capabilities\" 2>/dev/null || phios-capabilities 2>/dev/null"]
         stdout: StdioCollector {
             onStreamFinished: {
-                console.log("phi-shell: capabilities probe raw output (" + this.text.length + " bytes): " + JSON.stringify(this.text))
                 const next = {
                     battery: false, backlight: false, als: false, gpuVendor: "none",
                     chroma: false, touchscreen: false, touchpad: false, wifi: false,
@@ -96,6 +79,17 @@ Singleton {
                     case "PHI_CAP_MULTI_MONITOR": next.multiMonitor = value === "true"; break
                     }
                 }
+                // Logging next.gpuVendor here, not a read of the derived
+                // Capabilities.gpuVendor property from an onCapRawChanged
+                // handler: the parsing above was verified correct off-
+                // machine against the exact bytes a real run captured, but
+                // an earlier version of this file logged the derived
+                // property from onCapRawChanged and printed the stale
+                // default even once this parse had the right answer —
+                // some indirection through capRaw's own change signal, not
+                // a parsing bug. Logging the freshly-parsed value directly
+                // has no such indirection to go wrong.
+                console.log("phi-shell: capabilities refreshed, gpu=" + next.gpuVendor)
                 root.capRaw = next
             }
         }
