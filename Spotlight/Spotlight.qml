@@ -38,21 +38,24 @@ import qs.Services as Services
 // at all until the first real sample has actually arrived — the window
 // stays fully transparent for that brief gap instead of guessing.
 //
-// Own cursor marker (real-hardware feedback: "if the cursor is not
-// visible... it should show A cursor"): a small filled circle drawn at the
-// tracked position, inside the transparent hole, so the feature still
-// works when the OS pointer itself is hidden (touchscreen use, a pointer
-// that lost focus, etc.) — spotlight's whole job is "help find the
-// cursor", which an invisible OS cursor defeats entirely without this.
+// THIRD real-hardware round — STATUS: BROKEN, not fixed this round.
+// User's own report: "the area is slightly down from the actual cursor
+// position" (still, after the raw-coordinate revert above) and "the
+// desired behaviour [hold-to-show] was deliberately changed to a
+// non-desired method that has issues" (the press/bare-g-release pair,
+// master plan §9.10/§2.3's own closed "toggle" decision reopened this
+// session without confirming the replacement actually worked first).
+// Both marked broken in PROGRESS.md; no further guessing at either on
+// explicit instruction ("do not attempt further fixes or research").
 //
-// Hold-to-show: `shown` is driven by Services/Spotlight.qml, which
-// hyprland.lua's Super+G press bind and bare-`g` release bind (release
-// bound to the bare key, not the full SUPER+G combo — the first round's
-// combo-release bind left the overlay "permanently on" if G was released
-// before Super, matching the same class of quirk this repo's Alt+Tab
-// binds already document; bare-key release is the same fix shape
-// Alt+Tab's own ALT_L/ALT_R release binds already use) call show()/hide()
-// on directly — this file has no keybinding logic of its own.
+// The own-drawn cursor marker a previous round of this file added was
+// never requested and has been removed.
+//
+// `shown` is still driven by Services/Spotlight.qml, and hyprland.lua's
+// Super+G press bind / bare-`g` release bind still call show()/hide() on
+// it directly — this file has no keybinding logic of its own — but the
+// hold-to-show interaction itself is the thing marked broken above, not
+// this wiring specifically.
 
 PanelWindow {
     id: root
@@ -151,13 +154,6 @@ PanelWindow {
                 grad.addColorStop(1, Qt.rgba(scrim.r, scrim.g, scrim.b, scrim.a))
                 ctx.fillStyle = grad
                 ctx.fillRect(0, 0, width, height)
-
-                // Own cursor marker — see this file's own header.
-                const accent = Config.Appearance.accent
-                ctx.beginPath()
-                ctx.arc(root.cursorX, root.cursorY, root.radius * 0.08, 0, 2 * Math.PI)
-                ctx.fillStyle = Qt.rgba(accent.r, accent.g, accent.b, 1)
-                ctx.fill()
             }
         }
     }
