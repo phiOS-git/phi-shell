@@ -26,11 +26,11 @@ import qs.Widgets as Widgets
 // this step does not build; ADR 077 calls monitor config "stato runtime",
 // not "editable from here yet".
 //
-// Chroma and the volume/brightness fix readout are S-46's own deliverables
-// (razer hwdb rule + Chroma DBus service, not built at this step) —
-// rendered here as placeholders so the section's shape is already right
-// when S-46 fills them in, per S-40's own DONE WHEN ("every feature has a
-// home here, working or explicitly marked as awaiting a backend").
+// Chroma toggle + colour (S-46, Services/Chroma.qml — "on/off toggle plus
+// an optional static colour picker. NOTHING ELSE", that file's own quoted
+// AGENT bullet) and the fixed-keys readout are wired here as of S-46; no
+// hwdb rule exists (see profiles/razer-hw/system/README.md and
+// PROGRESS.md's S-46 row for why the card's own premise was wrong).
 
 Column {
     id: root
@@ -101,18 +101,56 @@ Column {
         kind: "label"; sizeStep: 3; text: "Chroma"
         visible: Config.Capabilities.chroma
     }
-    Widgets.ListRow {
-        width: parent.width
+    Row {
         visible: Config.Capabilities.chroma
-        label: "Chroma"
-        value: "not built yet (S-46)"
+        spacing: Config.Appearance.space2 * chWidth
+        Widgets.StyledText {
+            anchors.verticalCenter: parent.verticalCenter
+            kind: "label"
+            text: "Chroma"
+        }
+        Widgets.Pill {
+            anchors.verticalCenter: parent.verticalCenter
+            checked: Services.Chroma.enabled
+            onToggled: (v) => Services.Chroma.setEnabled(v)
+        }
+    }
+    Row {
+        visible: Config.Capabilities.chroma
+        spacing: Config.Appearance.space2 * chWidth
+        // Same "no native colour picker/text field" gap Theme.qml's own
+        // wallpaper path input already carries (S-40/S-44) — a hex text
+        // field, not a visual swatch picker.
+        Widgets.StyledText {
+            anchors.verticalCenter: parent.verticalCenter
+            kind: "label"
+            text: "Static colour (#rrggbb)"
+        }
+        TextInput {
+            id: chromaColorInput
+            anchors.verticalCenter: parent.verticalCenter
+            width: 10 * chWidth
+            color: Config.Appearance.textPrimary
+            font.family: Config.Appearance.fontMono
+            font.pixelSize: Config.Appearance.fontSize1
+            text: Services.Chroma.color
+        }
+        Widgets.StyledButton {
+            label: "Set"
+            onClicked: Services.Chroma.setColor(chromaColorInput.text)
+        }
+    }
+    Widgets.StyledText {
+        visible: Config.Capabilities.chroma
+        kind: "label"; sizeStep: 0
+        text: "Only a static colour, per S-46's own scope — nothing else is exposed here."
     }
 
     Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Fixed-input keys" }
     Widgets.ListRow {
         width: parent.width
         label: "Volume / brightness keys"
-        value: "not resolved yet (S-46)"
+        value: "resolved via Hyprland binds (S-46) — no hwdb rule was needed, see PROGRESS.md"
     }
 
     Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Pointer" }

@@ -38,6 +38,21 @@ Singleton {
         root.percent = clamped
     }
 
+    // S-46: the XF86MonBrightness{Up,Down} Hyprland binds call these
+    // (qs ipc call brightness up/down) instead of running brightnessctl
+    // directly, so this property (and therefore Osd/Osd.qml's own
+    // Connections on it) updates atomically with the real change — a bare
+    // Hyprland-side brightnessctl call would leave `percent` stale until
+    // the next unrelated refresh(). A Singleton, not a per-screen surface
+    // (unlike Services/Spotlight.qml's own split): only one Brightness
+    // instance ever exists, so there is no risk of two IpcHandlers
+    // registering the same "brightness" target.
+    IpcHandler {
+        target: "brightness"
+        function up(): void { root.set(root.percent + 10) }
+        function down(): void { root.set(root.percent - 10) }
+    }
+
     Component.onCompleted: refresh()
 
     Process {

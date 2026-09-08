@@ -182,5 +182,10 @@ ShellRoot {
         // hyprsunset at session start, not only whenever someone happens
         // to open the settings panel's Theme section first.
         Services.NightShift.enabled
+
+        // Same reasoning, S-46: Services.Chroma must apply its loaded
+        // toggle.chroma/chroma.color state at session start, not only
+        // once someone opens the settings panel's Devices section.
+        Services.Chroma.enabled
     }
 }

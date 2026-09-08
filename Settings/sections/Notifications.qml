@@ -58,7 +58,7 @@ Column {
     Widgets.ListRow {
         width: parent.width
         visible: Config.Capabilities.chroma
-        label: "Function-row blink on notification"
-        value: "not built yet (S-46)"
+        label: "Keyboard blink on notification"
+        value: "Services.Chroma.blink() exists, not wired to arrival yet (S-46)"
     }
 }
