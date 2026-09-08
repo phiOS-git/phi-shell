@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell.Io
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
