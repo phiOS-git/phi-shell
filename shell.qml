@@ -7,6 +7,7 @@ import qs.Panels as Panels
 import qs.Launcher as Launcher
 import qs.Lock as Lock
 import qs.Overview as Overview
+import qs.Screenshot as Screenshot
 
 // phiOS — phi-shell entry point (master plan §8.2).
 //
@@ -80,6 +81,12 @@ ShellRoot {
     // on-screen position is one output even though its content spans every
     // monitor's windows.
     Overview.Overview {
+        screen: Quickshell.screens[0]
+    }
+
+    // S-36: single instance, same reasoning as every other IPC-triggered
+    // overlay above.
+    Screenshot.Screenshot {
         screen: Quickshell.screens[0]
     }
 
