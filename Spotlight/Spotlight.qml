@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.Config as Config
+import qs.Services as Services
 
 // phiOS — Spotlight/Spotlight.qml (S-43, master plan §8.3 surface 17,
 // shell §2.14). Vignette overlay via QtQuick's Canvas 2D API
@@ -12,39 +13,57 @@ import qs.Config as Config
 // DEVIATION FROM THE CARD, FLAGGED: "updated on cursor movement via the
 // Hyprland event socket" is read here as polling `hyprctl cursorpos` on a
 // fast timer (60ms) instead of a raw socket subscription — hand-rolling a
-// persistent reader of Hyprland's IPC event socket2 (a line-oriented
-// stream over a Unix socket) via Quickshell.Io.Process is real, unproven
-// complexity this step's effort did not spend; polling is simpler, more
-// robust to a dropped connection, and master plan §9.10's own words allow
-// dropping this feature entirely if maintenance becomes unmanageable — a
-// polling substitution is a smaller compromise than that. Flagged for a
-// real socket implementation later if 60ms polling feels laggy on
-// hardware.
+// persistent reader of Hyprland's IPC event socket2 is real, unproven
+// complexity this step's effort did not spend. Master plan §9.10's own
+// words allow dropping this feature entirely if maintenance becomes
+// unmanageable — polling is a smaller compromise than that.
+//
+// REVISED after first real-hardware round (razer). Three bugs found and
+// fixed here:
+//  1. `hyprctl cursorpos` reports PHYSICAL compositor pixels (confirmed
+//     against real Hyprland source, src/ipc/s1/Commands.cpp's
+//     cursorPosRequest — Pointer::mgr()->untransformedPosition()), while
+//     this Canvas paints in LOGICAL pixels — the exact physical/logical
+//     mismatch Screenshot.qml already found and fixed at S-36 ("razer,
+//     scale 2"), using the same root.screen.devicePixelRatio conversion
+//     that file's own comment documents. Not dividing by scale here was
+//     why the vignette rendered "not correctly centered" on a HiDPI
+//     screen: the mismatch grows with distance from (0,0).
+//  2. No fade: `visible: root.shown` was a hard cut. Every other overlay
+//     surface in this repo (Sidebar, Cheatsheet, Settings, Osd) uses the
+//     same fadeRoot/opacity idiom; this file skipped it.
+//  3. "darkens the whole screen until the cursor moves": the polling
+//     Timer had no `triggeredOnStart`, so on a fresh show() the vignette
+//     painted at whatever cursorX/cursorY were left over from BEFORE —
+//     0,0 on the very first show ever, since nothing had polled yet.
+//     Fixed two ways: an immediate poll on show, and a safe default of
+//     the screen's own centre (not the origin corner) so an unpolled
+//     frame is at least plausible rather than maximally wrong.
+//
+// Hold-to-show, not toggle (real-hardware feedback): `shown` is driven by
+// Services/Spotlight.qml, which hyprland.lua's Super+G press/release binds
+// call show()/hide() on directly — this file has no keybinding logic of
+// its own, only Services/Spotlight.qml's shared state and this poller.
 
-// Per-screen instantiation (shell.qml's Variants, ADR 077 — same as Bar.Bar/
-// Notifications.Toast), not a single primary-monitor instance: the feature
-// exists specifically for "I lost my cursor", which on a second monitor a
-// primary-only overlay could never help with. Each instance polls
-// `hyprctl cursorpos` independently while shown — redundant on N screens,
-// accepted as the simpler cost given `shown` is normally false. `shown`
-// itself is an external binding onto Services/Spotlight.qml's shared flag
-// (see that file's own header for why the IpcHandler cannot live here).
 PanelWindow {
     id: root
 
-    property bool shown: false
-    property real cursorX: 0
-    property real cursorY: 0
+    required property ShellScreen screen
+
+    readonly property bool shown: Services.Spotlight.shown
+    property real cursorX: screen.width / 2
+    property real cursorY: screen.height / 2
 
     anchors { top: true; bottom: true; left: true; right: true }
     exclusiveZone: 0
     color: "transparent"
-    visible: root.shown
+    visible: fadeRoot.opacity > 0
 
     Timer {
         interval: 60
         running: root.shown
         repeat: true
+        triggeredOnStart: true
         onTriggered: cursorProbe.running = true
     }
 
@@ -54,21 +73,19 @@ PanelWindow {
         command: ["hyprctl", "cursorpos"]
         stdout: StdioCollector {
             onStreamFinished: {
-                // "x, y" — hyprctl's own documented plain-text format.
+                // "x, y" — confirmed against real Hyprland source
+                // (src/ipc/s1/Commands.cpp: std::format("{}, {}", x, y)).
                 const parts = this.text.trim().split(",")
                 if (parts.length === 2) {
                     const x = parseFloat(parts[0])
                     const y = parseFloat(parts[1])
                     if (!isNaN(x) && !isNaN(y)) {
-                        // hyprctl cursorpos reports GLOBAL compositor
-                        // coordinates; this canvas is per-screen, so the
-                        // screen's own top-left offset (root.screen.x/y,
-                        // ShellScreen's real geometry properties,
-                        // core/qmlscreen.hpp — same ones Settings/
-                        // Devices.qml already reads) has to come out
-                        // before painting locally.
-                        root.cursorX = x - root.screen.x
-                        root.cursorY = y - root.screen.y
+                        // Physical -> logical (see this file's own header,
+                        // bug 1) before subtracting this screen's own
+                        // logical-space offset.
+                        const scale = root.screen.devicePixelRatio || 1
+                        root.cursorX = (x / scale) - root.screen.x
+                        root.cursorY = (y / scale) - root.screen.y
                         canvas.requestPaint()
                     }
                 }
@@ -76,9 +93,7 @@ PanelWindow {
         }
     }
 
-    // small | medium | large radius, phi state's spotlight.size (S-40/S-43).
-    readonly property int radius: root._radiusFor(root._sizeSetting)
-    property string _sizeSetting: "medium"
+    readonly property int radius: root._radiusFor(Services.Spotlight.size)
     function _radiusFor(size) {
         switch (size) {
         case "small": return 80
@@ -86,27 +101,37 @@ PanelWindow {
         default: return 140
         }
     }
-    Component.onCompleted: {
-        Config.Settings.get("spotlight.size", (v, code) => {
-            if (v) root._sizeSetting = v
-            canvas.requestPaint()
-        })
-    }
+    // Live: Services.Spotlight.size changing (settings panel) repaints
+    // immediately, unlike the earlier draft's one-shot Component.onCompleted
+    // fetch that never updated after startup.
+    onRadiusChanged: canvas.requestPaint()
 
-    Canvas {
-        id: canvas
+    Item {
+        id: fadeRoot
         anchors.fill: parent
-        onPaint: {
-            const ctx = getContext("2d")
-            ctx.clearRect(0, 0, width, height)
-            const grad = ctx.createRadialGradient(
-                root.cursorX, root.cursorY, root.radius * 0.6,
-                root.cursorX, root.cursorY, root.radius * 1.4)
-            const scrim = Config.Appearance.overlayScrim
-            grad.addColorStop(0, Qt.rgba(scrim.r, scrim.g, scrim.b, 0))
-            grad.addColorStop(1, Qt.rgba(scrim.r, scrim.g, scrim.b, scrim.a))
-            ctx.fillStyle = grad
-            ctx.fillRect(0, 0, width, height)
+        opacity: root.shown ? 1 : 0
+
+        Behavior on opacity {
+            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+        }
+
+        Canvas {
+            id: canvas
+            anchors.fill: parent
+            onPaint: {
+                const ctx = getContext("2d")
+                ctx.clearRect(0, 0, width, height)
+                const grad = ctx.createRadialGradient(
+                    root.cursorX, root.cursorY, root.radius * 0.6,
+                    root.cursorX, root.cursorY, root.radius * 1.4)
+                const scrim = Config.Appearance.overlayScrim
+                grad.addColorStop(0, Qt.rgba(scrim.r, scrim.g, scrim.b, 0))
+                grad.addColorStop(1, Qt.rgba(scrim.r, scrim.g, scrim.b, scrim.a))
+                ctx.fillStyle = grad
+                ctx.fillRect(0, 0, width, height)
+            }
         }
     }
+
+    onShownChanged: canvas.requestPaint()
 }

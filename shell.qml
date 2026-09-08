@@ -99,24 +99,29 @@ ShellRoot {
     }
 
     // S-43: per-screen (Services/Spotlight.qml's own header on why a
-    // primary-only instance would defeat the feature). The one IpcHandler
-    // for "spotlight" lives here, not inside the repeated component, since
-    // Quickshell would otherwise register the same target N times.
+    // primary-only instance would defeat the feature). `shown` is read
+    // directly from Services.Spotlight inside that file now (revised after
+    // the first real-hardware round to fix the settings-panel toggle never
+    // reaching the overlay) — no external binding needed here any more.
+    // The one IpcHandler for "spotlight" still lives here, not inside the
+    // repeated component, since Quickshell would otherwise register the
+    // same target N times. `press`/`release` are hyprland.lua's hold-to-
+    // show binds; `toggle` stays for the settings panel's Pill, which has
+    // no natural "hold" gesture of its own.
     Variants {
         model: Quickshell.screens
 
         SpotlightSurface.Spotlight {
             required property ShellScreen modelData
             screen: modelData
-            shown: Services.Spotlight.shown
         }
     }
 
     IpcHandler {
         target: "spotlight"
-        function toggle(): void { Services.Spotlight.shown = !Services.Spotlight.shown }
-        function open(): void { Services.Spotlight.shown = true }
-        function close(): void { Services.Spotlight.shown = false }
+        function press(): void { Services.Spotlight.show() }
+        function release(): void { Services.Spotlight.hide() }
+        function toggle(): void { Services.Spotlight.toggle() }
     }
 
     // S-33: single instance, same reasoning as Panels.Sidebar above — a

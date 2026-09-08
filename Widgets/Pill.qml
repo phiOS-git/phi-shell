@@ -10,16 +10,22 @@ import "WidgetStates.js" as WidgetStates
 //
 // Controlled component, not self-mutating: a tap emits toggled(!checked)
 // and leaves `checked` itself untouched. Fixed at S-40, this widget's
-// first real consumer (Settings/sections/Notifications.qml,
-// Settings/StateToggleRow.qml) — every prior caller bound `checked` to an
-// external source of truth (a phi state key, Services.Notifications.dnd),
-// and the original onTapped did `root.checked = !root.checked` BEFORE
-// emitting, which is a plain imperative assignment: QML drops a property's
-// declarative binding the instant something assigns to it directly, so the
-// first tap would have silently detached `checked` from whatever it was
-// bound to. No consumer existed before this step to surface it — the seven
-// widgets S-21 built were never exercised end-to-end, only reviewed for
-// their own state-model completeness.
+// first real consumer (Settings/sections/Notifications.qml) — every real
+// caller since binds `checked` to an external source of truth (a
+// Services/*.qml singleton's own reactive property: NightShift, Chroma,
+// Spotlight), and the original onTapped did `root.checked = !root.checked`
+// BEFORE emitting, which is a plain imperative assignment: QML drops a
+// property's declarative binding the instant something assigns to it
+// directly, so the first tap would have silently detached `checked` from
+// whatever it was bound to. No consumer existed before S-40 to surface it —
+// the seven widgets S-21 built were never exercised end-to-end, only
+// reviewed for their own state-model completeness. (Settings/
+// StateToggleRow.qml, an earlier intermediate helper built at S-40 for
+// this same purpose, was deleted once every one of its real callers had
+// migrated to owning their own Services/*.qml singleton instead — S-42's
+// Night shift/True Tone did this first, S-43's spotlight last, after the
+// first real-hardware round found its state never reached the surface it
+// was meant to control.)
 
 Item {
     id: root

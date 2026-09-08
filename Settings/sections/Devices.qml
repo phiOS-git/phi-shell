@@ -45,6 +45,8 @@ Column {
     }
     readonly property real chWidth: chMetricsLocal.width
 
+    function _hexValid(s) { return /^#[0-9a-fA-F]{6}$/.test(s || "") }
+
     Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Audio" }
     Widgets.ListRow {
         width: parent.width
@@ -101,26 +103,24 @@ Column {
         kind: "label"; sizeStep: 3; text: "Chroma"
         visible: Config.Capabilities.chroma
     }
-    Row {
+    Widgets.ToggleRow {
+        width: parent.width
         visible: Config.Capabilities.chroma
-        spacing: Config.Appearance.space2 * chWidth
-        Widgets.StyledText {
-            anchors.verticalCenter: parent.verticalCenter
-            kind: "label"
-            text: "Chroma"
-        }
-        Widgets.Pill {
-            anchors.verticalCenter: parent.verticalCenter
-            checked: Services.Chroma.enabled
-            onToggled: (v) => Services.Chroma.setEnabled(v)
-        }
+        label: "Chroma"
+        checked: Services.Chroma.enabled
+        onToggled: (v) => Services.Chroma.setEnabled(v)
     }
     Row {
         visible: Config.Capabilities.chroma
         spacing: Config.Appearance.space2 * chWidth
         // Same "no native colour picker/text field" gap Theme.qml's own
         // wallpaper path input already carries (S-40/S-44) — a hex text
-        // field, not a visual swatch picker.
+        // field, not a visual swatch picker. Validated here (S-46
+        // real-hardware feedback: "accepts invalid inputs") — Set is
+        // disabled and the field tints to the error tone unless the text
+        // is a real #rrggbb; Services.Chroma.setColor itself still trusts
+        // its caller (Config.Settings has no schema to validate against),
+        // so the check belongs at the one place a human types free text.
         Widgets.StyledText {
             anchors.verticalCenter: parent.verticalCenter
             kind: "label"
@@ -130,13 +130,14 @@ Column {
             id: chromaColorInput
             anchors.verticalCenter: parent.verticalCenter
             width: 10 * chWidth
-            color: Config.Appearance.textPrimary
+            color: root._hexValid(text) ? Config.Appearance.textPrimary : Config.Appearance.error
             font.family: Config.Appearance.fontMono
             font.pixelSize: Config.Appearance.fontSize1
             text: Services.Chroma.color
         }
         Widgets.StyledButton {
             label: "Set"
+            enabled: root._hexValid(chromaColorInput.text)
             onClicked: Services.Chroma.setColor(chromaColorInput.text)
         }
     }

@@ -48,12 +48,25 @@ Singleton {
     // here is already fast and local (no network, no privileged call), so
     // there is nothing latency-sensitive about batching them the same way
     // Capabilities.qml does.
+    //
+    // RAM found broken on real hardware (razer, first General-section run):
+    // the original line wrapped `awk '...\"...\"...'` (a single-quoted awk
+    // script containing escaped double quotes) inside `"$(...)"` (an outer
+    // double-quoted command substitution) — POSIX sh resolves `\"` during
+    // the OUTER double-quote scan, before the nested single quotes get any
+    // say, so the awk script that actually ran was missing its quotes
+    // entirely and failed with a syntax error, silently, into an empty
+    // RAM value. Reproduced and confirmed off-machine with a fake
+    // /proc/meminfo before writing this fix. Rewritten to awk printing the
+    // whole KEY=VALUE line directly — no $(...) wrapper at all — the exact
+    // shape the DISK_FREE/DISK_TOTAL line below already used successfully,
+    // which is why disk space was never affected by this bug.
     readonly property string _script: [
         "printf 'HOSTNAME=%s\\n' \"$(hostname)\"",
         "printf 'KERNEL=%s\\n' \"$(uname -r)\"",
         "printf 'OS=%s\\n' \"$(. /etc/os-release 2>/dev/null; echo \\\"$PRETTY_NAME\\\")\"",
         "printf 'CPU=%s\\n' \"$(awk -F': ' '/^model name/{print $2; exit}' /proc/cpuinfo)\"",
-        "printf 'RAM=%s\\n' \"$(awk '/MemTotal/{printf \\\"%.1f GiB\\\", $2/1024/1024}' /proc/meminfo)\"",
+        "awk '/MemTotal/{printf \"RAM=%.1f GiB\\n\", $2/1024/1024}' /proc/meminfo",
         "df -P / | awk 'NR==2{printf \"DISK_FREE=%.1f GiB\\nDISK_TOTAL=%.1f GiB\\n\", $4/1024/1024, $2/1024/1024}'",
         "printf 'UPTIME=%s\\n' \"$(uptime -p 2>/dev/null || cut -d. -f1 /proc/uptime)\"",
     ].join("; ")

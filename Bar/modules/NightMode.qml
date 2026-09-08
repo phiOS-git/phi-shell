@@ -12,6 +12,11 @@ import qs.Widgets as Widgets
 // coverage has never been exercised by any step so far (Volume.qml's own
 // note, the established reason no module in this bar sets `glyph`).
 //
+// Real-hardware feedback (razer, first bar round): "●"/"off" toggled the
+// feature correctly but read as visually indistinguishable at a glance —
+// swapped for two full, unambiguous words. Still text, not a glyph, same
+// font-symbol-coverage reasoning as before.
+//
 // No capability requirement here (modules.json row: "capability": ""),
 // unlike every other razer-only module in this bar (battery/wifi/bluetooth
 // all gate on a REAL hardware capability that happens to be laptop-only).
@@ -29,7 +34,7 @@ Widgets.Segment {
 
     required property ShellScreen screen
 
-    label: Services.NightShift.enabled ? "●" : "off"
+    label: Services.NightShift.enabled ? "Night" : "Day"
     tone: Services.NightShift.enabled ? "info" : ""
 
     onActivated: Services.NightShift.setEnabled(!Services.NightShift.enabled)

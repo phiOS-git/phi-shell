@@ -3,7 +3,6 @@ import Quickshell.Io
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import ".." as SettingsRoot
 
 // phiOS — Settings/sections/Theme (S-40, master plan §9.12): "toggle
 // chiaro/scuro live con anteprima doppia · night shift · True Tone se
@@ -13,13 +12,12 @@ import ".." as SettingsRoot
 // record) — this section is a thin trigger over it, not a second
 // implementation of theme application.
 //
-// Night shift / True Tone: S-42 wires these to Services/NightShift.qml,
-// which owns toggle.night-mode/toggle.true-tone/nightmode.temp itself and
-// drives hyprsunset — this section reads and calls that service directly
-// (Pill bound to its reactive properties), not Config.Settings, so there is
-// one place that state lives, not two racing copies. Spotlight size /
-// wallpaper: still only wired to their phi state keys (S-40's own
-// perimeter) — S-43/S-44's own work, flagged inline.
+// Night shift / True Tone (S-42) and Spotlight (S-43, revised after real-
+// hardware verification) all follow the same shape: a Services/*.qml file
+// owns the state and does the work, this section only reads it and calls
+// its setters — not Config.Settings directly, so there is one place each
+// value lives, not two racing copies. Wallpaper is still only wired to its
+// phi state key (S-40's own perimeter) — S-44's own work, flagged inline.
 //
 // "Anteprima doppia" (§9.12) is read here as both options presented
 // together with an immediate live switch, not a simultaneous side-by-side
@@ -44,11 +42,9 @@ Column {
     readonly property real chWidth: chMetricsLocal.width
 
     property string pendingVariant: Config.Appearance.variant
-    property string spotlightSize: "…"
     property string wallpaperPath: "…"
 
     Component.onCompleted: {
-        Config.Settings.get("spotlight.size", (v, code) => root.spotlightSize = v || "medium")
         Config.Settings.get("wallpaper.path", (v, code) => root.wallpaperPath = v || "(unset)")
     }
 
@@ -89,36 +85,22 @@ Column {
 
     // --- Night shift / True Tone (S-42) -----------------------------------
     Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Night shift" }
-    Row {
-        spacing: Config.Appearance.space2 * chWidth
-        Widgets.StyledText {
-            anchors.verticalCenter: parent.verticalCenter
-            kind: "label"
-            text: "Night shift (warms the display in the evening)"
-        }
-        Widgets.Pill {
-            anchors.verticalCenter: parent.verticalCenter
-            checked: Services.NightShift.enabled
-            onToggled: (v) => Services.NightShift.setEnabled(v)
-        }
+    Widgets.ToggleRow {
+        width: parent.width
+        label: "Night shift (warms the display in the evening)"
+        checked: Services.NightShift.enabled
+        onToggled: (v) => Services.NightShift.setEnabled(v)
     }
-    Row {
-        spacing: Config.Appearance.space2 * chWidth
-        // Only meaningful once an ALS was confirmed (S-06: razer's
-        // iio:device0, name "als"). Rendered regardless of host so the
-        // control is not silently absent on a machine where a sensor
-        // might later exist — but flagged, since zotac/mini are known to
-        // have none right now (Config.Capabilities.ambientLight false).
-        Widgets.StyledText {
-            anchors.verticalCenter: parent.verticalCenter
-            kind: "label"
-            text: "True Tone (drive from ambient light instead of a fixed temperature)"
-        }
-        Widgets.Pill {
-            anchors.verticalCenter: parent.verticalCenter
-            checked: Services.NightShift.trueTone
-            onToggled: (v) => Services.NightShift.setTrueTone(v)
-        }
+    // Only meaningful once an ALS was confirmed (S-06: razer's
+    // iio:device0, name "als"). Rendered regardless of host so the
+    // control is not silently absent on a machine where a sensor might
+    // later exist — but flagged, since zotac/mini are known to have none
+    // right now (Config.Capabilities.ambientLight false).
+    Widgets.ToggleRow {
+        width: parent.width
+        label: "True Tone (drive from ambient light instead of a fixed temperature)"
+        checked: Services.NightShift.trueTone
+        onToggled: (v) => Services.NightShift.setTrueTone(v)
     }
     Widgets.StyledText {
         visible: !Config.Capabilities.ambientLight
@@ -144,12 +126,21 @@ Column {
         Widgets.StyledButton { label: "+500"; onClicked: Services.NightShift.setTemp(Math.min(6500, Services.NightShift.targetTemp + 500)) }
     }
 
-    // --- Spotlight ---------------------------------------------------
+    // --- Spotlight (S-43, revised after real-hardware round: both the
+    // toggle and the size buttons here now call Services/Spotlight.qml
+    // directly instead of writing an inert phi state key nothing read
+    // live — same fix shape as Night shift/True Tone got at S-42, applied
+    // here because the first round found it was never actually done for
+    // spotlight). Daily use is Super+G HELD (hyprland.lua), not a click —
+    // this button stays a plain click-to-show/hide for mouse-driven
+    // testing, since StyledButton has no press/release distinction to
+    // give it the same hold gesture the keybind has. ---------------------
     Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Cursor spotlight" }
-    SettingsRoot.StateToggleRow {
-        label: "Cursor spotlight"
-        stateKey: "toggle.spotlight"
-        backendPending: true
+    Widgets.ToggleRow {
+        width: parent.width
+        label: "Cursor spotlight (hold Super+G elsewhere; click toggles here)"
+        checked: Services.Spotlight.shown
+        onToggled: (v) => (v ? Services.Spotlight.show() : Services.Spotlight.hide())
     }
     Row {
         spacing: Config.Appearance.space2 * chWidth
@@ -163,11 +154,8 @@ Column {
             Widgets.StyledButton {
                 required property string modelData
                 label: modelData
-                active: root.spotlightSize === modelData
-                onClicked: {
-                    root.spotlightSize = modelData
-                    Config.Settings.set("spotlight.size", modelData)
-                }
+                active: Services.Spotlight.size === modelData
+                onClicked: Services.Spotlight.setSize(modelData)
             }
         }
     }
@@ -238,8 +226,7 @@ Column {
                 const dest = this.text.trim()
                 if (dest.length === 0) return
                 root.wallpaperPath = dest
-                Config.Settings.set("wallpaper.path", dest)
-                Services.Background.refresh()
+                Services.Background.setPath(dest)
             }
         }
     }
