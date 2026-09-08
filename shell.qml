@@ -2,6 +2,7 @@ import QtQml
 import Quickshell
 import qs.Config as Config
 import qs.Bar as Bar
+import qs.Notifications as Notifications
 
 // phiOS — phi-shell entry point (master plan §8.2).
 //
@@ -31,6 +32,18 @@ ShellRoot {
         model: Quickshell.screens
 
         Bar.Bar {
+            required property ShellScreen modelData
+            screen: modelData
+        }
+    }
+
+    // S-30: one toast surface per screen, same per-monitor instantiation
+    // as Bar.Bar above (ADR 077) — see Notifications/Toast.qml for why
+    // every monitor shows the same toast rather than picking a "primary" one.
+    Variants {
+        model: Quickshell.screens
+
+        Notifications.Toast {
             required property ShellScreen modelData
             screen: modelData
         }
