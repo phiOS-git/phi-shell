@@ -72,6 +72,12 @@ Widgets.Segment {
         id: poll
         command: ["nvidia-smi", "--query-gpu=utilization.gpu,temperature.gpu",
             "--format=csv,noheader,nounits"]
+        // running=false in onExited: the same class of bug found during
+        // S-36's audit and fixed the same way in Services/Tailscale.qml —
+        // without this, the 5-second Timer above was never actually
+        // pacing nvidia-smi at all; the first poll respawned itself
+        // immediately on exit and kept doing so in a tight loop.
+        onExited: poll.running = false
         stdout: StdioCollector {
             onStreamFinished: {
                 const parts = this.text.trim().split(",")

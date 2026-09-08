@@ -39,6 +39,15 @@ Singleton {
     Process {
         id: probe
         command: ["tailscale", "status", "--json"]
+        // running=false in onExited: found during S-36 while auditing
+        // every Process in this repo for a class of bug this file also
+        // had, uncorrected, since S-23 — Process.onFinished()
+        // (io/process.cpp) calls startProcessIfReady() unconditionally on
+        // exit, so refresh()'s "probe.running = true" was never actually a
+        // 30-second poll: once the first run completed, this process
+        // respawned itself immediately and kept doing so in a tight loop,
+        // completely decoupled from the Timer above.
+        onExited: probe.running = false
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
