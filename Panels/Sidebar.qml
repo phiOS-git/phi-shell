@@ -60,12 +60,14 @@ PanelWindow {
     readonly property real sidebarWidth: chWidth * 48
 
     implicitWidth: root.sidebarWidth
-    visible: opacity > 0
-    opacity: root.shown ? 1 : 0
-
-    Behavior on opacity {
-        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
-    }
+    // PanelWindow has no `opacity` property (confirmed against the real
+    // source, src/window/windowinterface.hpp — no `opacity` in its
+    // Q_PROPERTY list at all) — found on real hardware, not by reading the
+    // source first; see Notifications/Toast.qml's own note on this, the
+    // first file in this repo where it surfaced. The fade lives on
+    // `fadeRoot` below instead, a plain Item with a real, animatable
+    // opacity; `visible` stays true until that fade-out finishes.
+    visible: root.shown || fadeRoot.opacity > 0
 
     IpcHandler {
         target: "sidebar"
@@ -106,41 +108,51 @@ PanelWindow {
     Component { id: calendarComponent; Tabs.Calendar {} }
     Component { id: aiChatComponent; Tabs.AiChat {} }
 
-    Widgets.Panel {
+    Item {
+        id: fadeRoot
         anchors.fill: parent
+        opacity: root.shown ? 1 : 0
 
-        Column {
+        Behavior on opacity {
+            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+        }
+
+        Widgets.Panel {
             anchors.fill: parent
-            spacing: 0
 
-            Row {
-                id: tabStrip
-                width: parent.width
-                height: implicitHeight
+            Column {
+                anchors.fill: parent
+                spacing: 0
 
-                Repeater {
-                    model: root.registryRows
+                Row {
+                    id: tabStrip
+                    width: parent.width
+                    height: implicitHeight
 
-                    Widgets.Segment {
-                        required property var modelData
-                        required property int index
-                        label: modelData.title
-                        active: index === root.activeIndex
-                        onActivated: root.activeIndex = index
+                    Repeater {
+                        model: root.registryRows
+
+                        Widgets.Segment {
+                            required property var modelData
+                            required property int index
+                            label: modelData.title
+                            active: index === root.activeIndex
+                            onActivated: root.activeIndex = index
+                        }
                     }
                 }
-            }
 
-            Widgets.Separator { id: tabSeparator; width: parent.width }
+                Widgets.Separator { id: tabSeparator; width: parent.width }
 
-            Item {
-                width: parent.width
-                height: parent.height - tabStrip.height - tabSeparator.height
+                Item {
+                    width: parent.width
+                    height: parent.height - tabStrip.height - tabSeparator.height
 
-                Loader {
-                    anchors.fill: parent
-                    sourceComponent: root.registryRows.length > root.activeIndex
-                        ? root.componentFor(root.registryRows[root.activeIndex].type) : null
+                    Loader {
+                        anchors.fill: parent
+                        sourceComponent: root.registryRows.length > root.activeIndex
+                            ? root.componentFor(root.registryRows[root.activeIndex].type) : null
+                    }
                 }
             }
         }

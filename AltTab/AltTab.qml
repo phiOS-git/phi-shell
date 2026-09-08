@@ -40,12 +40,14 @@ PanelWindow {
     anchors { bottom: true }
     exclusiveZone: 0
     color: "transparent"
-    visible: opacity > 0
-    opacity: root.shown ? 1 : 0
-
-    Behavior on opacity {
-        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
-    }
+    // PanelWindow has no `opacity` property (confirmed against the real
+    // source, src/window/windowinterface.hpp — no `opacity` in its
+    // Q_PROPERTY list at all) — found on real hardware, not by reading the
+    // source first; see Notifications/Toast.qml's own note on this, the
+    // first file in this repo where it surfaced. The fade lives on
+    // `fadeRoot` below instead, a plain Item with a real, animatable
+    // opacity; `visible` stays true until that fade-out finishes.
+    visible: root.shown || fadeRoot.opacity > 0
 
     IpcHandler {
         target: "alttab"
@@ -98,6 +100,15 @@ PanelWindow {
     implicitWidth: Math.min(row.implicitWidth + panel.padding * 2, chWidth * 90)
     implicitHeight: row.implicitHeight + panel.padding * 2
 
+    Item {
+        id: fadeRoot
+        anchors.fill: parent
+        opacity: root.shown ? 1 : 0
+
+        Behavior on opacity {
+            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+        }
+
     Widgets.Panel {
         id: panel
         anchors.fill: parent
@@ -146,5 +157,6 @@ PanelWindow {
                 visible: Services.ToplevelBridge.toplevels.values.length === 0
             }
         }
+    }
     }
 }

@@ -39,12 +39,16 @@ PanelWindow {
     anchors { top: true; bottom: true; left: true; right: true }
     exclusiveZone: 0
     color: "transparent"
-    visible: opacity > 0
-    opacity: root.shown ? 1 : 0
-
-    Behavior on opacity {
-        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
-    }
+    // PanelWindow has no `opacity` property (confirmed against the real
+    // source, src/window/windowinterface.hpp — no `opacity` in its
+    // Q_PROPERTY list at all) — found on real hardware, not by reading the
+    // source first; see Notifications/Toast.qml's own note on this, the
+    // first file in this repo where it surfaced. Widgets.Scrim below
+    // already fades its own opacity correctly (it's a plain Item); the
+    // panel content gets the same treatment via `fadeRoot`, on the same
+    // duration/easing tokens, so both finish together. `visible` stays
+    // true until fadeRoot's own fade-out finishes.
+    visible: root.shown || fadeRoot.opacity > 0
 
     IpcHandler {
         target: "cheatsheet"
@@ -100,6 +104,15 @@ PanelWindow {
         shown: root.shown
     }
 
+    Item {
+        id: fadeRoot
+        anchors.fill: parent
+        opacity: root.shown ? 1 : 0
+
+        Behavior on opacity {
+            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+        }
+
     Widgets.Panel {
         anchors.centerIn: parent
         width: parent.width * 0.6
@@ -140,5 +153,6 @@ PanelWindow {
                 }
             }
         }
+    }
     }
 }

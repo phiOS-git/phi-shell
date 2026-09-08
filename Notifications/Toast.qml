@@ -71,61 +71,77 @@ PanelWindow {
 
     implicitWidth: root.toastWidth
     implicitHeight: layout.implicitHeight + panel.padding * 2
-    visible: opacity > 0
-    opacity: root.shown ? 1 : 0
+    // PanelWindow has no `opacity` property (confirmed against the real
+    // source, src/window/windowinterface.hpp: `visible`/`color`/`width`/
+    // `height`/`screen`/`mask`/`data`/`contentItem`, no `opacity` anywhere)
+    // — found on real hardware (razer), not by reading the source first,
+    // since a `PanelWindow { opacity: ... }` binding still compiles as a
+    // dynamic property rather than failing until something animates it.
+    // The fade lives on `fadeRoot` below instead — a plain Item, which
+    // does have a real, animatable opacity — and `visible` stays true
+    // until that fade-out actually finishes, so the window doesn't vanish
+    // mid-animation the way it would if `visible` just followed
+    // `root.shown` directly.
+    visible: root.shown || fadeRoot.opacity > 0
 
-    Behavior on opacity {
-        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
-    }
-
-    Widgets.Panel {
-        id: panel
+    Item {
+        id: fadeRoot
         anchors.fill: parent
+        opacity: root.shown ? 1 : 0
 
-        Row {
-            id: layout
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: root.chWidth * Config.Appearance.space2
+        Behavior on opacity {
+            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+        }
 
-            Image {
-                id: appIconImage
-                visible: root.appIconPath.length > 0
-                source: root.appIconPath
-                width: root.chWidth * Config.Appearance.space4
-                height: width
+        Widgets.Panel {
+            id: panel
+            anchors.fill: parent
+
+            Row {
+                id: layout
+                anchors.left: parent.left
+                anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                fillMode: Image.PreserveAspectFit
-            }
+                spacing: root.chWidth * Config.Appearance.space2
 
-            Item {
-                id: textClip
-                clip: true
-                width: root.toastWidth - (root.chWidth * Config.Appearance.space3 * 2)
-                    - (appIconImage.visible ? appIconImage.width + layout.spacing : 0)
-                height: body.implicitHeight
-                anchors.verticalCenter: parent.verticalCenter
+                Image {
+                    id: appIconImage
+                    visible: root.appIconPath.length > 0
+                    source: root.appIconPath
+                    width: root.chWidth * Config.Appearance.space4
+                    height: width
+                    anchors.verticalCenter: parent.verticalCenter
+                    fillMode: Image.PreserveAspectFit
+                }
 
-                Widgets.StyledText {
-                    id: body
-                    text: root.excerptText
-                    sizeStep: 1
+                Item {
+                    id: textClip
+                    clip: true
+                    width: root.toastWidth - (root.chWidth * Config.Appearance.space3 * 2)
+                        - (appIconImage.visible ? appIconImage.width + layout.spacing : 0)
+                    height: body.implicitHeight
+                    anchors.verticalCenter: parent.verticalCenter
 
-                    SequentialAnimation on x {
-                        running: body.implicitWidth > textClip.width && root.shown
-                        loops: Animation.Infinite
-                        PauseAnimation { duration: 800 }
-                        NumberAnimation {
-                            to: -(body.implicitWidth - textClip.width)
-                            duration: Config.Appearance.motionAPeriod
-                            easing.type: Easing.Linear
-                        }
-                        PauseAnimation { duration: 800 }
-                        NumberAnimation {
-                            to: 0
-                            duration: Config.Appearance.motionAPeriod
-                            easing.type: Easing.Linear
+                    Widgets.StyledText {
+                        id: body
+                        text: root.excerptText
+                        sizeStep: 1
+
+                        SequentialAnimation on x {
+                            running: body.implicitWidth > textClip.width && root.shown
+                            loops: Animation.Infinite
+                            PauseAnimation { duration: 800 }
+                            NumberAnimation {
+                                to: -(body.implicitWidth - textClip.width)
+                                duration: Config.Appearance.motionAPeriod
+                                easing.type: Easing.Linear
+                            }
+                            PauseAnimation { duration: 800 }
+                            NumberAnimation {
+                                to: 0
+                                duration: Config.Appearance.motionAPeriod
+                                easing.type: Easing.Linear
+                            }
                         }
                     }
                 }
