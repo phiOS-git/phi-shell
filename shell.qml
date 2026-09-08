@@ -126,5 +126,11 @@ ShellRoot {
         // `wl-paste --watch` capture process never started, and anything
         // copied before that tab was ever opened was silently missed.
         Services.Clipboard.entries
+
+        // Same reasoning, S-42: Services.NightShift must apply its loaded
+        // toggle.night-mode/toggle.true-tone/nightmode.temp state to
+        // hyprsunset at session start, not only whenever someone happens
+        // to open the settings panel's Theme section first.
+        Services.NightShift.enabled
     }
 }

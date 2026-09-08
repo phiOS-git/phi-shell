@@ -7,6 +7,7 @@
     { "type": "wifi", "island": "right", "position": 40, "source": "internal:networkmanager", "capability": "wifi" },
     { "type": "bluetooth", "island": "right", "position": 50, "source": "internal:bluez", "capability": "bluetooth" },
     { "type": "gpu", "island": "right", "position": 60, "source": "internal:nvidia-smi", "capability": "nvidiaGpu" },
+    { "type": "nightMode", "island": "right", "position": 70, "source": "internal:hyprsunset", "capability": "" },
     { "type": "phiAgent", "island": "right", "position": 90, "source": "internal:phi-agent", "capability": "" },
     { "type": "clock", "island": "right", "position": 100, "source": "internal:clock", "capability": "" }
 ]

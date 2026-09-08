@@ -13,12 +13,22 @@ import ".." as SettingsRoot
 // record) — this section is a thin trigger over it, not a second
 // implementation of theme application.
 //
-// Night shift / True Tone / spotlight size / wallpaper: this step only
-// wires the CONTROLS to their phi state keys (S-40's own perimeter). The
-// processes that actually act on those keys — hyprsunset, the spotlight
-// overlay, the wallpaper copy-and-set flow — are S-42/S-43/S-44's own
-// work, flagged inline via StateToggleRow's backendPending and the plain-
-// text notes below.
+// Night shift / True Tone: S-42 wires these to Services/NightShift.qml,
+// which owns toggle.night-mode/toggle.true-tone/nightmode.temp itself and
+// drives hyprsunset — this section reads and calls that service directly
+// (Pill bound to its reactive properties), not Config.Settings, so there is
+// one place that state lives, not two racing copies. Spotlight size /
+// wallpaper: still only wired to their phi state keys (S-40's own
+// perimeter) — S-43/S-44's own work, flagged inline.
+//
+// "Anteprima doppia" (§9.12) is read here as both options presented
+// together with an immediate live switch, not a simultaneous side-by-side
+// swatch render of the INACTIVE variant's palette: Config.Appearance only
+// ever exposes the currently active variant (Config/Tokens.qml is
+// generated for one variant at a time, S-20's own contract), so a true
+// dual-swatch preview would need a second, parallel token load this step
+// does not build. Flagged as a deliberate scope narrowing, not a silent
+// one.
 
 Column {
     id: root
@@ -34,12 +44,10 @@ Column {
     readonly property real chWidth: chMetricsLocal.width
 
     property string pendingVariant: Config.Appearance.variant
-    property string nightTemp: "…"
     property string spotlightSize: "…"
     property string wallpaperPath: "…"
 
     Component.onCompleted: {
-        Config.Settings.get("nightmode.temp", (v, code) => root.nightTemp = v || "4500")
         Config.Settings.get("spotlight.size", (v, code) => root.spotlightSize = v || "medium")
         Config.Settings.get("wallpaper.path", (v, code) => root.wallpaperPath = v || "(unset)")
     }
@@ -79,23 +87,43 @@ Column {
         text: "The accent colour is fixed by the design system — no control here (§9.12)."
     }
 
-    // --- Night shift / True Tone -----------------------------------------
+    // --- Night shift / True Tone (S-42) -----------------------------------
     Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Night shift" }
-    SettingsRoot.StateToggleRow {
-        label: "Night shift"
-        stateKey: "toggle.night-mode"
-        backendPending: true
-        helpText: "Warms the display in the evening (hyprsunset)."
+    Row {
+        spacing: Config.Appearance.space2 * chWidth
+        Widgets.StyledText {
+            anchors.verticalCenter: parent.verticalCenter
+            kind: "label"
+            text: "Night shift (warms the display in the evening)"
+        }
+        Widgets.Pill {
+            anchors.verticalCenter: parent.verticalCenter
+            checked: Services.NightShift.enabled
+            onToggled: (v) => Services.NightShift.setEnabled(v)
+        }
     }
-    SettingsRoot.StateToggleRow {
+    Row {
+        spacing: Config.Appearance.space2 * chWidth
         // Only meaningful once an ALS was confirmed (S-06: razer's
         // iio:device0, name "als"). Rendered regardless of host so the
         // control is not silently absent on a machine where a sensor
         // might later exist — but flagged, since zotac/mini are known to
-        // have none right now.
-        label: "True Tone (drive from ambient light instead of a fixed schedule)"
-        stateKey: "toggle.true-tone"
-        backendPending: true
+        // have none right now (Config.Capabilities.ambientLight false).
+        Widgets.StyledText {
+            anchors.verticalCenter: parent.verticalCenter
+            kind: "label"
+            text: "True Tone (drive from ambient light instead of a fixed temperature)"
+        }
+        Widgets.Pill {
+            anchors.verticalCenter: parent.verticalCenter
+            checked: Services.NightShift.trueTone
+            onToggled: (v) => Services.NightShift.setTrueTone(v)
+        }
+    }
+    Widgets.StyledText {
+        visible: !Config.Capabilities.ambientLight
+        kind: "label"; sizeStep: 0
+        text: "No ambient light sensor detected on this host — True Tone will have nothing to read."
     }
     Row {
         spacing: Config.Appearance.space2 * chWidth
@@ -103,22 +131,17 @@ Column {
         // inventory has none) — stepping by a fixed amount is the only
         // input this step can offer without inventing one. AWAITING a real
         // numeric field.
-        function step(delta) {
-            const next = String(Math.max(2500, Math.min(6500, parseInt(root.nightTemp || "4500") + delta)))
-            root.nightTemp = next
-            Config.Settings.set("nightmode.temp", next)
-        }
         Widgets.StyledText {
             anchors.verticalCenter: parent.verticalCenter
             kind: "label"
             text: "Target temperature (K), used when True Tone is off"
         }
-        Widgets.StyledButton { label: "−500"; onClicked: parent.step(-500) }
+        Widgets.StyledButton { label: "−500"; onClicked: Services.NightShift.setTemp(Math.max(2500, Services.NightShift.targetTemp - 500)) }
         Widgets.StyledText {
             anchors.verticalCenter: parent.verticalCenter
-            text: root.nightTemp + "K"
+            text: Services.NightShift.targetTemp + "K"
         }
-        Widgets.StyledButton { label: "+500"; onClicked: parent.step(500) }
+        Widgets.StyledButton { label: "+500"; onClicked: Services.NightShift.setTemp(Math.min(6500, Services.NightShift.targetTemp + 500)) }
     }
 
     // --- Spotlight ---------------------------------------------------
