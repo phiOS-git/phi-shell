@@ -40,4 +40,16 @@ Singleton {
     readonly property string clipboardEntriesDir: root.clipboardDir + "/entries"
     readonly property string clipboardLatestFile: root.clipboardDir + "/latest"
     readonly property string clipboardPinsFile: root.clipboardDir + "/pins.json"
+
+    // S-44 (master plan §5.6: "le immagini di sfondo sono COPIATE... mai
+    // referenziate al percorso originale"). $XDG_DATA_HOME, not
+    // stateDir/$XDG_STATE_HOME — a chosen wallpaper is a real asset the
+    // user picked, not disposable runtime state a crash should be free to
+    // lose (§5.6's own distinction between the two directories).
+    readonly property string dataDir: {
+        const xdg = Quickshell.env("XDG_DATA_HOME")
+        const base = (xdg && xdg.length > 0) ? xdg : (Quickshell.env("HOME") + "/.local/share")
+        return base + "/phi"
+    }
+    readonly property string wallpaperDir: root.dataDir + "/wallpapers"
 }

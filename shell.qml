@@ -2,6 +2,7 @@ import QtQml
 import Quickshell
 import qs.Config as Config
 import qs.Services as Services
+import qs.Background as Background
 import qs.Bar as Bar
 import qs.Notifications as Notifications
 import qs.Panels as Panels
@@ -39,6 +40,19 @@ import qs.Cheatsheet as Cheatsheet
 
 ShellRoot {
     id: root
+
+    // S-44: per-screen, same reasoning as Bar.Bar/Notifications.Toast
+    // below (ADR 077). Its own WlrLayer.Background placement (set inside
+    // that file) is what keeps it beneath every other surface regardless
+    // of declaration order here.
+    Variants {
+        model: Quickshell.screens
+
+        Background.Background {
+            required property ShellScreen modelData
+            screen: modelData
+        }
+    }
 
     Variants {
         model: Quickshell.screens

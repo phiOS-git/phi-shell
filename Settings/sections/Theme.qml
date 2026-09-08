@@ -173,14 +173,74 @@ Column {
     }
 
     // --- Wallpaper (S-44) ---------------------------------------------
+    // No native file-browser dialog is confirmed available in this
+    // Quickshell/layer-shell stack from here — a "selezione" (§9.12) that
+    // asks for a typed/pasted path, not a visual browser. "Set" copies the
+    // file into $XDG_DATA_HOME/phi/wallpapers/ (never referencing the
+    // original) and only then writes wallpaper.path — the copy-before-set
+    // ordering is what stops Background/Background.qml from ever briefly
+    // pointing at a path outside that directory.
     Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Wallpaper" }
     Widgets.ListRow {
         width: parent.width
         label: "Current wallpaper"
         value: root.wallpaperPath
     }
+    Column {
+        width: parent.width
+        spacing: 0
+        Item {
+            width: parent.width
+            height: wallpaperInput.implicitHeight
+            Widgets.StyledText {
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                visible: wallpaperInput.text.length === 0
+                kind: "label"
+                text: "Path to an image…"
+            }
+            TextInput {
+                id: wallpaperInput
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                color: Config.Appearance.textPrimary
+                font.family: Config.Appearance.fontUi
+                font.pixelSize: Config.Appearance.fontSize1
+            }
+        }
+        Widgets.Separator { width: parent.width }
+    }
+    Widgets.StyledButton {
+        label: "Set"
+        onClicked: root._setWallpaper(wallpaperInput.text)
+    }
     Widgets.StyledText {
         kind: "label"; sizeStep: 0
-        text: "A picker is not built yet (S-44) — set with: phi state set wallpaper.path <path>"
+        text: "No native file browser — paste a path. Wireframe/technical grid or flat gradient only (style plan), never photographic (not enforced here, a human judgement call)."
+        wrapMode: Text.WordWrap
+        width: parent.width
+    }
+
+    function _setWallpaper(srcPath) {
+        if (!srcPath || srcPath.trim().length === 0) return
+        wallpaperCopyProc.command = ["sh", "-c",
+            'mkdir -p "$1" && cp -- "$2" "$1/$(basename -- "$2")" && printf "%s" "$1/$(basename -- "$2")"',
+            "copy", Config.Paths.wallpaperDir, srcPath.trim()]
+        wallpaperCopyProc.running = true
+    }
+
+    Process {
+        id: wallpaperCopyProc
+        onExited: wallpaperCopyProc.running = false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const dest = this.text.trim()
+                if (dest.length === 0) return
+                root.wallpaperPath = dest
+                Config.Settings.set("wallpaper.path", dest)
+                Services.Background.refresh()
+            }
+        }
     }
 }
