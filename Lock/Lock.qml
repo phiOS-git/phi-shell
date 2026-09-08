@@ -95,13 +95,48 @@ WlSessionLock {
             root.errorText = PamResult.toString(result)
             if (root.locked) root.retryTimer.restart()
         })
+        // Found the hard way on real hardware: with no retry here, a
+        // start-time failure (StartFailed -- e.g. the required /etc/pam.d
+        // file this project's own installer only shows and never applies,
+        // profiles/desktop/system/etc/pam.d/phi-shell-lock, had not
+        // actually been installed) was TERMINAL for the whole locked
+        // session. PamContext never got far enough to fire `completed`
+        // at all, so `retryTimer` -- restarted only from that handler --
+        // never restarted: no amount of waiting or typing would ever
+        // have recovered it, only killing `qs` from outside the locked
+        // session did (and even that needed a real Hyprland recovery
+        // function, `hl.clear_crashed_lockscreen()` -- `loginctl
+        // unlock-session` does not work against this WlSessionLock setup
+        // at all, confirmed against every session `loginctl
+        // list-sessions` listed, including the real seat0 session).
+        // Retrying here too means a fix applied from outside (installing
+        // the missing file) is picked up automatically without ever
+        // needing to kill the lock client again.
+        //
+        // A SEPARATE, slower timer, not `retryTimer`: that one is meant
+        // for "wrong password, let the human at the keyboard try again
+        // quickly" (600ms). Reusing it here would mean an unattended
+        // config problem calls `pam.start()` roughly every 600ms
+        // indefinitely -- real risk on a real `system-auth` stack, since
+        // `pam_faillock`-style modules count start attempts and could
+        // lock the account itself while the screen is locked, turning a
+        // config mistake into a second, worse incident. `errorRetryTimer`
+        // below is deliberately slow instead.
         root.pam.error.connect((err) => {
             root.errorText = PamError.toString(err)
+            if (root.locked) root.errorRetryTimer.restart()
         })
     }
 
     property Timer retryTimer: Timer {
         interval: 600
+        onTriggered: if (root.locked) root.pam.start()
+    }
+
+    // See the `error.connect` comment above for why this is separate
+    // from, and much slower than, `retryTimer`.
+    property Timer errorRetryTimer: Timer {
+        interval: 5000
         onTriggered: if (root.locked) root.pam.start()
     }
 
@@ -122,6 +157,15 @@ WlSessionLock {
         id: surface
 
         color: Config.Appearance.background
+
+        // passwordField is always enabled now (see its own comment), so
+        // it can reliably take focus as soon as this surface exists,
+        // rather than reacting to an `enabled` transition that no longer
+        // happens. One per screen — WlSessionLock instantiates this
+        // component once per output, so each screen's own surface grabs
+        // focus for its own field; only one is ever the input-focused
+        // window at a time regardless.
+        Component.onCompleted: passwordField.forceActiveFocus()
 
         TextMetrics {
             id: chMetrics
@@ -195,8 +239,22 @@ WlSessionLock {
                     // hardware; the explicit form removes the ambiguity
                     // rather than trusting it.
                     echoMode: root.pam.responseVisible ? TextInput.Normal : TextInput.Password
-                    enabled: root.pam.responseRequired
-                    focus: true
+                    // Deliberately NOT `enabled: root.pam.responseRequired`
+                    // (what this was before the real-hardware incident
+                    // this file's header now documents): gating the
+                    // field's usability on PAM's own conversation state
+                    // means a PAM problem this file cannot control (a
+                    // missing config file, a broken system-auth stack)
+                    // makes the field look identically dead whether the
+                    // real cause is "PAM hasn't asked yet" or "PAM will
+                    // never ask because it cannot start" — indistinguishable
+                    // to whoever is looking at a locked screen. The field
+                    // now always accepts typing; Keys.onReturnPressed
+                    // below already guards the one thing that actually
+                    // matters — never forwarding a response PAM did not
+                    // ask for — so nothing is weakened, only the failure
+                    // mode where the field is invisible-broken instead of
+                    // just inert.
 
                     Keys.onReturnPressed: {
                         if (root.pam.responseRequired) root.pam.respond(text)
