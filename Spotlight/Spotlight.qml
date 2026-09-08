@@ -18,32 +18,41 @@ import qs.Services as Services
 // words allow dropping this feature entirely if maintenance becomes
 // unmanageable — polling is a smaller compromise than that.
 //
-// REVISED after first real-hardware round (razer). Three bugs found and
-// fixed here:
-//  1. `hyprctl cursorpos` reports PHYSICAL compositor pixels (confirmed
-//     against real Hyprland source, src/ipc/s1/Commands.cpp's
-//     cursorPosRequest — Pointer::mgr()->untransformedPosition()), while
-//     this Canvas paints in LOGICAL pixels — the exact physical/logical
-//     mismatch Screenshot.qml already found and fixed at S-36 ("razer,
-//     scale 2"), using the same root.screen.devicePixelRatio conversion
-//     that file's own comment documents. Not dividing by scale here was
-//     why the vignette rendered "not correctly centered" on a HiDPI
-//     screen: the mismatch grows with distance from (0,0).
-//  2. No fade: `visible: root.shown` was a hard cut. Every other overlay
-//     surface in this repo (Sidebar, Cheatsheet, Settings, Osd) uses the
-//     same fadeRoot/opacity idiom; this file skipped it.
-//  3. "darkens the whole screen until the cursor moves": the polling
-//     Timer had no `triggeredOnStart`, so on a fresh show() the vignette
-//     painted at whatever cursorX/cursorY were left over from BEFORE —
-//     0,0 on the very first show ever, since nothing had polled yet.
-//     Fixed two ways: an immediate poll on show, and a safe default of
-//     the screen's own centre (not the origin corner) so an unpolled
-//     frame is at least plausible rather than maximally wrong.
+// SECOND real-hardware round. The first round's own "physical -> logical"
+// devicePixelRatio conversion (justified by analogy with Screenshot.qml's
+// real, confirmed S-36 fix) made the offset WORSE ("corner on cursor"
+// instead of the milder original "not correctly centered") — meaning
+// `hyprctl cursorpos`, unlike `activewindow -j`'s at/size or grim's own -g
+// geometry, is NOT in the same physical-pixel space after all; reverted to
+// the raw value. console.log below prints every raw sample plus this
+// screen's own geometry/scale so a genuinely wrong remaining offset can be
+// fixed from real numbers next round instead of guessed a third time.
 //
-// Hold-to-show, not toggle (real-hardware feedback): `shown` is driven by
-// Services/Spotlight.qml, which hyprland.lua's Super+G press/release binds
-// call show()/hide() on directly — this file has no keybinding logic of
-// its own, only Services/Spotlight.qml's shared state and this poller.
+// "Whole screen black until the cursor moves": the first round's own fix
+// (triggeredOnStart + a screen-centre default) was not enough — reasoned
+// through harder this round: fadeRoot's opacity Behavior means `shown`
+// flipping true starts a fade IMMEDIATELY, racing the async hyprctl
+// subprocess for the real position, and any default (even a plausible one)
+// can still paint visibly wrong for that window. Fixed properly this time:
+// fadeRoot's opacity now gates on `hasPosition` too, so nothing fades in
+// at all until the first real sample has actually arrived — the window
+// stays fully transparent for that brief gap instead of guessing.
+//
+// Own cursor marker (real-hardware feedback: "if the cursor is not
+// visible... it should show A cursor"): a small filled circle drawn at the
+// tracked position, inside the transparent hole, so the feature still
+// works when the OS pointer itself is hidden (touchscreen use, a pointer
+// that lost focus, etc.) — spotlight's whole job is "help find the
+// cursor", which an invisible OS cursor defeats entirely without this.
+//
+// Hold-to-show: `shown` is driven by Services/Spotlight.qml, which
+// hyprland.lua's Super+G press bind and bare-`g` release bind (release
+// bound to the bare key, not the full SUPER+G combo — the first round's
+// combo-release bind left the overlay "permanently on" if G was released
+// before Super, matching the same class of quirk this repo's Alt+Tab
+// binds already document; bare-key release is the same fix shape
+// Alt+Tab's own ALT_L/ALT_R release binds already use) call show()/hide()
+// on directly — this file has no keybinding logic of its own.
 
 PanelWindow {
     id: root
@@ -53,11 +62,16 @@ PanelWindow {
     readonly property bool shown: Services.Spotlight.shown
     property real cursorX: screen.width / 2
     property real cursorY: screen.height / 2
+    property bool hasPosition: false
 
     anchors { top: true; bottom: true; left: true; right: true }
     exclusiveZone: 0
     color: "transparent"
     visible: fadeRoot.opacity > 0
+
+    onShownChanged: {
+        if (!root.shown) root.hasPosition = false
+    }
 
     Timer {
         interval: 60
@@ -80,12 +94,18 @@ PanelWindow {
                     const x = parseFloat(parts[0])
                     const y = parseFloat(parts[1])
                     if (!isNaN(x) && !isNaN(y)) {
-                        // Physical -> logical (see this file's own header,
-                        // bug 1) before subtracting this screen's own
-                        // logical-space offset.
-                        const scale = root.screen.devicePixelRatio || 1
-                        root.cursorX = (x / scale) - root.screen.x
-                        root.cursorY = (y / scale) - root.screen.y
+                        // Raw, no scale conversion (see this file's own
+                        // header — the first round's conversion made
+                        // things worse, reverted). Logged so a real
+                        // remaining offset can be diagnosed from actual
+                        // numbers rather than guessed again.
+                        console.log("phi-shell: spotlight raw=(" + x + "," + y
+                            + ") screen=" + root.screen.name + " at (" + root.screen.x + "," + root.screen.y
+                            + ") " + root.screen.width + "x" + root.screen.height
+                            + " scale=" + root.screen.devicePixelRatio)
+                        root.cursorX = x - root.screen.x
+                        root.cursorY = y - root.screen.y
+                        root.hasPosition = true
                         canvas.requestPaint()
                     }
                 }
@@ -109,7 +129,9 @@ PanelWindow {
     Item {
         id: fadeRoot
         anchors.fill: parent
-        opacity: root.shown ? 1 : 0
+        // Gated on hasPosition too (see this file's own header) — nothing
+        // fades in until the first real sample has actually arrived.
+        opacity: (root.shown && root.hasPosition) ? 1 : 0
 
         Behavior on opacity {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
@@ -129,9 +151,14 @@ PanelWindow {
                 grad.addColorStop(1, Qt.rgba(scrim.r, scrim.g, scrim.b, scrim.a))
                 ctx.fillStyle = grad
                 ctx.fillRect(0, 0, width, height)
+
+                // Own cursor marker — see this file's own header.
+                const accent = Config.Appearance.accent
+                ctx.beginPath()
+                ctx.arc(root.cursorX, root.cursorY, root.radius * 0.08, 0, 2 * Math.PI)
+                ctx.fillStyle = Qt.rgba(accent.r, accent.g, accent.b, 1)
+                ctx.fill()
             }
         }
     }
-
-    onShownChanged: canvas.requestPaint()
 }

@@ -45,7 +45,16 @@ Column {
     }
     readonly property real chWidth: chMetricsLocal.width
 
-    function _hexValid(s) { return /^#[0-9a-fA-F]{6}$/.test(s || "") }
+    // #rgb shorthand accepted too (real-hardware feedback: "#f00 does not
+    // work but #ff0000 works") — normalized to the canonical 6-digit form
+    // before it ever reaches Services.Chroma, so _hexToRgbBytes there
+    // stays simple and only handles one shape.
+    function _hexValid(s) { return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(s || "") }
+    function _hexNormalize(s) {
+        const h = (s || "").replace("#", "")
+        if (h.length === 3) return "#" + h[0] + h[0] + h[1] + h[1] + h[2] + h[2]
+        return "#" + h
+    }
 
     Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Audio" }
     Widgets.ListRow {
@@ -138,7 +147,7 @@ Column {
         Widgets.StyledButton {
             label: "Set"
             enabled: root._hexValid(chromaColorInput.text)
-            onClicked: Services.Chroma.setColor(chromaColorInput.text)
+            onClicked: Services.Chroma.setColor(root._hexNormalize(chromaColorInput.text))
         }
     }
     Widgets.StyledText {

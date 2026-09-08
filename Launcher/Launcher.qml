@@ -112,6 +112,23 @@ PanelWindow {
         onTriggered: root._runQuery()
     }
 
+    // Retries once a slow provider's own ActionLoading result has had a
+    // real chance to resolve (CurrencyProvider's detached refresh child,
+    // phi/internal/query/currency.go, typically finishes well under this).
+    // Generic — any future ActionLoading-returning provider gets this for
+    // free, no per-provider retry logic needed here.
+    Timer {
+        id: loadingRetryTimer
+        interval: 600
+        onTriggered: {
+            // Only if the query is still the same one that was loading —
+            // if the user kept typing, queryDebounce's own re-query
+            // already superseded this, and firing again here would just
+            // re-run a stale query a beat after a fresher one.
+            if (root.queryText.length > 0) root._runQuery()
+        }
+    }
+
     onQueryTextChanged: queryDebounce.restart()
 
     function _runQuery() {
@@ -134,8 +151,19 @@ PanelWindow {
                     try {
                         const parsed = JSON.parse(this.text)
                         if (Array.isArray(parsed)) {
-                            root.results = parsed
-                            root.highlightedIndex = 0
+                            // Stale response guard: this Process was
+                            // spawned for queryProc.queryArg, but the user
+                            // may have kept typing since — root.queryText
+                            // is the CURRENT text. Applying an old
+                            // response over a newer query's own (possibly
+                            // already-arrived) results would flash stale
+                            // data.
+                            if (queryProc.queryArg === root.queryText) {
+                                root.results = parsed
+                                root.highlightedIndex = 0
+                                const stillLoading = parsed.some((r) => r.action && r.action.kind === "loading")
+                                if (stillLoading) loadingRetryTimer.restart()
+                            }
                         }
                     } catch (e) {
                         console.warn("phi-shell: phi query output failed to parse: " + e)
@@ -150,6 +178,10 @@ PanelWindow {
 
     function activate(result) {
         if (!result) return
+        // ActionLoading is not a real result yet — selecting one records
+        // nothing and closes nothing, it just sits there until the retry
+        // timer above replaces it (or the user keeps typing).
+        if (result.action && result.action.kind === "loading") return
         recordComponent.createObject(root, { resultId: result.id })
         root._performAction(result.action)
         root.setShown(false)
@@ -327,6 +359,14 @@ PanelWindow {
                         label: modelData.title
                         value: modelData.subtitle
                         active: index === root.highlightedIndex
+                        // ActionLoading (phi/internal/query, added for
+                        // CurrencyProvider — see that file's own header):
+                        // a transient, not-yet-answerable result. ListRow's
+                        // own `loading` state (S-21's seven-state model)
+                        // already has a defined look for exactly this;
+                        // root.activate() itself also refuses to act on
+                        // one, so this is presentation, not the only guard.
+                        loading: modelData.action && modelData.action.kind === "loading"
                         onActivated: root.activate(modelData)
                     }
                 }

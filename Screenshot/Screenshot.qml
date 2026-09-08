@@ -139,26 +139,34 @@ PanelWindow {
                 root.mode = "idle"
                 return
             }
-            // Found on real hardware (razer, scale 2): the captured region
-            // was offset toward the top-left of what was actually
-            // dragged. root.screen.x/y/width/height and mouse.x/y are all
-            // DEVICE-INDEPENDENT (logical) pixels — confirmed against the
-            // real source, src/core/qmlscreen.hpp: ShellScreen wraps a
-            // plain QScreen and reads its geometry directly, and Qt's own
-            // QScreen/QML mouse-event coordinates are logical by
-            // long-established platform convention, not something this
-            // repo invented. grim -g wants physical compositor pixels
-            // (the same space hyprctl monitors -j reports width/height
-            // in) — window and fullscreen capture never hit this bug
-            // because neither derives its geometry from QML coordinates
-            // at all (fullscreen passes -o <output name>, window capture
-            // uses hyprctl's own already-physical w.at/w.size verbatim).
-            // root.screen.devicePixelRatio (same header, confirmed
-            // property) converts logical to physical.
-            const scale = root.screen.devicePixelRatio
-            const geometry = Math.round((root.screen.x + selectionRect.x) * scale) + ","
-                + Math.round((root.screen.y + selectionRect.y) * scale) + " "
-                + Math.round(selectionRect.width * scale) + "x" + Math.round(selectionRect.height * scale)
+            // CORRECTED on the second real-hardware round: the previous
+            // version of this comment claimed "grim -g wants physical
+            // compositor pixels" and multiplied by root.screen.
+            // devicePixelRatio — confirmed WRONG by reading grim's own
+            // source directly (github.com/emersion/grim, render.c):
+            // `render()` computes `output_x = output->logical_geometry.x
+            // - geometry->x` — the `-g` box is subtracted straight
+            // against each output's LOGICAL geometry, and separately
+            // multiplies `geometry->width`/`height` by `scale` ITSELF to
+            // size the output buffer — meaning grim wants the `-g` box
+            // entirely in LOGICAL coordinates and applies scale on its
+            // own, never something the caller should pre-multiply in.
+            // main.c's own use of `output->logical_geometry` (compared
+            // directly against the user's `-g` value) says the same
+            // thing. This is also why the previous version broke
+            // proportionally to a monitor's own x/y offset in a multi-
+            // monitor layout (real-hardware feedback: "seem to change
+            // offset based on the position of the screen") — scaling
+            // `root.screen.x` (already the correct logical offset) was
+            // never correct on any monitor, single or multi.
+            //
+            // root.screen.x/y/width/height and mouse.x/y are logical
+            // (Qt/QML's own long-established convention, confirmed
+            // against src/core/qmlscreen.hpp in the prior round) — exactly
+            // what grim now gets, unmultiplied.
+            const geometry = Math.round(root.screen.x + selectionRect.x) + ","
+                + Math.round(root.screen.y + selectionRect.y) + " "
+                + Math.round(selectionRect.width) + "x" + Math.round(selectionRect.height)
             root._captureGeometry(geometry, root.mode)
             selectionRect.width = 0
             selectionRect.height = 0

@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import Quickshell.Io
 import qs.Config as Config
 import qs.Services as Services
@@ -211,10 +212,23 @@ Column {
     }
 
     function _setWallpaper(srcPath) {
-        if (!srcPath || srcPath.trim().length === 0) return
+        let p = (srcPath || "").trim()
+        if (p.length === 0) return
+        // "~/Downloads/x.jpg" didn't work, "Downloads/x.jpg" did (real-
+        // hardware feedback) — because `$2` is a positional PARAMETER
+        // value, not source text the shell tokenizes, and tilde expansion
+        // only happens for an unquoted token written directly in shell
+        // syntax. Expanded here instead, in QML, before the path ever
+        // reaches the shell — a relative path (the "did work" case) is
+        // untouched, cp already resolves that against the process's own
+        // cwd correctly.
+        if (p === "~" || p.startsWith("~/")) {
+            const home = Quickshell.env("HOME") || ""
+            p = home + p.slice(1)
+        }
         wallpaperCopyProc.command = ["sh", "-c",
             'mkdir -p "$1" && cp -- "$2" "$1/$(basename -- "$2")" && printf "%s" "$1/$(basename -- "$2")"',
-            "copy", Config.Paths.wallpaperDir, srcPath.trim()]
+            "copy", Config.Paths.wallpaperDir, p]
         wallpaperCopyProc.running = true
     }
 

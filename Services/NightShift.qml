@@ -81,19 +81,26 @@ Singleton {
         _run(["hyprctl", "hyprsunset", "temperature", String(k)])
     }
 
+    // A single reusable Process (command reassigned, then running set true
+    // again), not a dynamically Component.created one per call — the exact
+    // shape every OTHER Process-reuse in this repo already uses
+    // (Settings/sections/Theme.qml's own setProc for `phi theme set`,
+    // called repeatedly the same way). Simplified here, after the first
+    // real-hardware round found hyprsunset's own colour shift not visibly
+    // happening at all: the createObject(parent, {command: ...}) + inline
+    // `running: true` shape was unproven in this codebase (no working
+    // precedent used it) and is one plausible source of the failure,
+    // removed rather than left as an open question alongside the real
+    // hyprsunset-autostart timing issue this same round also surfaced
+    // (see PROGRESS.md).
     function _run(command) {
-        runComponent.createObject(root, { command: command })
+        proc.command = command
+        proc.running = true
     }
 
-    property Component runComponent: Component {
-        Process {
-            id: proc
-            running: true
-            onExited: proc.running = false
-            stdout: StdioCollector {
-                onStreamFinished: proc.destroy()
-            }
-        }
+    Process {
+        id: proc
+        onExited: proc.running = false
     }
 
     Timer {
