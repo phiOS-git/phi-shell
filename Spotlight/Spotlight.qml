@@ -38,24 +38,39 @@ import qs.Services as Services
 // at all until the first real sample has actually arrived — the window
 // stays fully transparent for that brief gap instead of guessing.
 //
-// THIRD real-hardware round — STATUS: BROKEN, not fixed this round.
-// User's own report: "the area is slightly down from the actual cursor
-// position" (still, after the raw-coordinate revert above) and "the
-// desired behaviour [hold-to-show] was deliberately changed to a
-// non-desired method that has issues" (the press/bare-g-release pair,
-// master plan §9.10/§2.3's own closed "toggle" decision reopened this
-// session without confirming the replacement actually worked first).
-// Both marked broken in PROGRESS.md; no further guessing at either on
-// explicit instruction ("do not attempt further fixes or research").
+// THIRD real-hardware round left this BROKEN and marked "no further
+// guessing" on explicit instruction, pending the user's own decision on
+// the toggle-vs-hold question. Two things changed since:
+//
+// FOURTH round — offset root cause found, not guessed a third time: this
+// PanelWindow left `exclusionMode` at its default (`Auto`), and Auto only
+// defines a shrink-to-content behaviour for a window anchored on exactly
+// three edges (Quickshell docs, ExclusionMode) — this one is anchored on
+// all four, so it fell back to respecting OTHER layers' exclusive zones
+// like `Normal` would. `Bar/Bar.qml` reserves `bar.height` at the top
+// whenever it is not auto-hidden, so this window's actual on-screen
+// top-left sat `bar.height` below `screen.y` while the cursor math below
+// still subtracted bare `screen.y` — every local Y came out `bar.height`
+// too large, i.e. the vignette drawn too far DOWN. Exactly the reported
+// "slightly down" symptom, and exactly why round 1's blanket scale
+// conversion and round 2's plain revert both missed it: neither round
+// touched window placement, only the cursor sample. Fixed by setting
+// `exclusionMode: ExclusionMode.Ignore` (Quickshell docs: "Ignore
+// exclusion zones of other shell layers"), so this window's local (0,0)
+// is always the true `screen.x`/`screen.y`, matching what the cursor math
+// already assumed. Unverified end to end — no compositor here.
+//
+// The double-click-and-hold gesture question is answered (round 4, by
+// the user): Services/Spotlight.qml now owns the double-click timing,
+// and hyprland.lua binds the bare SUPER_L keysym instead of SUPER+G.
+// This file's own wiring is unchanged either way — see below.
 //
 // The own-drawn cursor marker a previous round of this file added was
 // never requested and has been removed.
 //
 // `shown` is still driven by Services/Spotlight.qml, and hyprland.lua's
-// Super+G press bind / bare-`g` release bind still call show()/hide() on
-// it directly — this file has no keybinding logic of its own — but the
-// hold-to-show interaction itself is the thing marked broken above, not
-// this wiring specifically.
+// bare-SUPER_L press/release binds call press()/release() on it — this
+// file has no keybinding logic of its own.
 
 PanelWindow {
     id: root
@@ -68,7 +83,17 @@ PanelWindow {
     property bool hasPosition: false
 
     anchors { top: true; bottom: true; left: true; right: true }
-    exclusiveZone: 0
+    // See this file's own header, round 4: without this, the window is
+    // inset by the bar's own exclusiveZone whenever it is not
+    // auto-hidden, and the cursor math below (which assumes local (0,0)
+    // == screen.x/screen.y) draws the vignette too far down by exactly
+    // the bar's height. NOT paired with an `exclusiveZone` assignment —
+    // Quickshell's own docs state that setting `exclusiveZone` sets
+    // `exclusionMode` back to `Normal` as a side effect, which would
+    // silently undo this. This window never reserves space of its own
+    // (it is a transparent overlay), so it needs nothing from
+    // `exclusiveZone` anyway.
+    exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     visible: fadeRoot.opacity > 0
 

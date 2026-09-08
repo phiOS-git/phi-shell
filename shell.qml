@@ -105,9 +105,13 @@ ShellRoot {
     // reaching the overlay) — no external binding needed here any more.
     // The one IpcHandler for "spotlight" still lives here, not inside the
     // repeated component, since Quickshell would otherwise register the
-    // same target N times. `press`/`release` are hyprland.lua's hold-to-
-    // show binds; `toggle` stays for the settings panel's Pill, which has
-    // no natural "hold" gesture of its own.
+    // same target N times. `press`/`release` forward to Services.Spotlight's
+    // own double-click-and-hold state machine (round 4) — hyprland.lua's
+    // bare-SUPER_L binds call these on every plain Super tap, so the
+    // gesture logic has to live behind them, not a raw show()/hide(); the
+    // singleton is the one owner, per this file's own comment above.
+    // `toggle` stays for the settings panel's Pill, which has no natural
+    // "hold" gesture of its own.
     Variants {
         model: Quickshell.screens
 
@@ -119,8 +123,8 @@ ShellRoot {
 
     IpcHandler {
         target: "spotlight"
-        function press(): void { Services.Spotlight.show() }
-        function release(): void { Services.Spotlight.hide() }
+        function press(): void { Services.Spotlight.press() }
+        function release(): void { Services.Spotlight.release() }
         function toggle(): void { Services.Spotlight.toggle() }
     }
 
