@@ -88,6 +88,13 @@ PanelWindow {
         case "workspaces": return workspacesComponent
         case "activeWindow": return activeWindowComponent
         case "clock": return clockComponent
+        case "volume": return volumeComponent
+        case "network": return networkComponent
+        case "bluetooth": return bluetoothComponent
+        case "battery": return batteryComponent
+        case "wifi": return wifiComponent
+        case "gpu": return gpuComponent
+        case "phiAgent": return phiAgentComponent
         default:
             console.warn("phi-shell: Bar module type not recognized: " + type)
             return null
@@ -97,6 +104,18 @@ PanelWindow {
     Component { id: workspacesComponent; Modules.Workspaces { screen: bar.screen } }
     Component { id: activeWindowComponent; Modules.ActiveWindow { screen: bar.screen } }
     Component { id: clockComponent; Modules.Clock { screen: bar.screen } }
+    // S-23 (master plan §8.4's per-host inventory, ADR 074's capability
+    // gating in capabilityMet() above): each of these is loaded on every
+    // host and simply never appears where its own `capability` row in
+    // modules.json does not resolve true — no per-host branching belongs
+    // here, that would defeat the point of a single shared registry.
+    Component { id: volumeComponent; Modules.Volume { screen: bar.screen } }
+    Component { id: networkComponent; Modules.Network { screen: bar.screen } }
+    Component { id: bluetoothComponent; Modules.Bluetooth { screen: bar.screen } }
+    Component { id: batteryComponent; Modules.Battery { screen: bar.screen } }
+    Component { id: wifiComponent; Modules.Wifi { screen: bar.screen } }
+    Component { id: gpuComponent; Modules.Gpu { screen: bar.screen } }
+    Component { id: phiAgentComponent; Modules.PhiAgent { screen: bar.screen } }
 
     FileView {
         id: registryFile

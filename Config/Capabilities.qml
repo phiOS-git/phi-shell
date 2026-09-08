@@ -31,6 +31,16 @@ Singleton {
     readonly property bool bluetooth: capRaw.bluetooth
     readonly property bool multiMonitor: capRaw.multiMonitor
 
+    // Derived, not a raw probe field (S-23): PHI_CAP_GPU_VENDOR is a
+    // comma-separated list (bin/phios-capabilities' own doc comment — a
+    // hybrid-graphics host could report "nvidia,intel"), so this checks
+    // membership, not equality. Named for the vendor, not "discreteGpu":
+    // the bar's GPU anomaly-carrier module (S-23) monitors via nvidia-smi
+    // specifically, so the real capability question is "can this host run
+    // nvidia-smi", not "does a discrete GPU exist in general" — an AMD
+    // card would need its own tool and its own capability name later.
+    readonly property bool nvidiaGpu: capRaw.gpuVendor.split(",").includes("nvidia")
+
     property var capRaw: ({
         battery: false, backlight: false, als: false, gpuVendor: "none",
         chroma: false, touchscreen: false, touchpad: false, wifi: false,

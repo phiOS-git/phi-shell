@@ -1,5 +1,12 @@
 [
     { "type": "workspaces", "island": "left", "position": 0, "source": "internal:hyprland", "capability": "" },
     { "type": "activeWindow", "island": "center", "position": 0, "source": "internal:hyprland", "capability": "" },
+    { "type": "volume", "island": "right", "position": 10, "source": "internal:pipewire", "capability": "" },
+    { "type": "network", "island": "right", "position": 20, "source": "internal:tailscale", "capability": "" },
+    { "type": "battery", "island": "right", "position": 30, "source": "internal:upower", "capability": "battery" },
+    { "type": "wifi", "island": "right", "position": 40, "source": "internal:networkmanager", "capability": "wifi" },
+    { "type": "bluetooth", "island": "right", "position": 50, "source": "internal:bluez", "capability": "bluetooth" },
+    { "type": "gpu", "island": "right", "position": 60, "source": "internal:nvidia-smi", "capability": "nvidiaGpu" },
+    { "type": "phiAgent", "island": "right", "position": 90, "source": "internal:phi-agent", "capability": "" },
     { "type": "clock", "island": "right", "position": 100, "source": "internal:clock", "capability": "" }
 ]
