@@ -9,5 +9,6 @@
     { "type": "gpu", "island": "right", "position": 60, "source": "internal:nvidia-smi", "capability": "nvidiaGpu" },
     { "type": "nightMode", "island": "right", "position": 70, "source": "internal:hyprsunset", "capability": "" },
     { "type": "phiAgent", "island": "right", "position": 90, "source": "internal:phi-agent", "capability": "" },
+    { "type": "timer", "island": "right", "position": 95, "source": "internal:shell", "capability": "" },
     { "type": "clock", "island": "right", "position": 100, "source": "internal:clock", "capability": "" }
 ]

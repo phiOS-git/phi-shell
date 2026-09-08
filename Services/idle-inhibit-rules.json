@@ -1,0 +1,5 @@
+[
+    { "appId": "^steam_app_", "fullscreen": false },
+    { "appId": "^mpv$", "fullscreen": false },
+    { "appId": "^librewolf$", "fullscreen": true }
+]

@@ -1,7 +1,9 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import qs.Config as Config
+import qs.Services as Services
 import "modules" as Modules
 
 // phiOS — Bar/Bar.qml (S-22, master plan §8.2/§8.4, ADR 078): one instance
@@ -20,6 +22,19 @@ import "modules" as Modules
 // literal naming and Quickshell's mechanism, resolved by using the import
 // form with no such constraint rather than renaming a directory the
 // master plan itself already named.
+//
+// `Quickshell.Wayland` import (S-43): a narrow, flagged exception to
+// phi-shell/CLAUDE.md's "Services/ is where the service surface lives"
+// rule, the same shape Lock/Lock.qml's own WlSessionLock import already
+// is — IdleInhibitor (Quickshell.Wayland, confirmed against real source,
+// wayland/idle_inhibit/inhibitor.hpp: `enabled: bool`, `window: QObject*`
+// resolved via `ProxyWindowBase::forObject`) needs a REAL, already-mapped
+// window to attach to, and this bar is the one guaranteed-visible surface
+// every host already has (unlike a purpose-built hidden window, whose
+// wl_surface lifecycle this step could not verify off-machine). All the
+// actual RULE LOGIC (which window classes inhibit idle, fullscreen-only
+// for browsers) lives in Services/Idle.qml, per its own header — this file
+// only hosts the protocol object and reads that one boolean.
 
 PanelWindow {
     id: bar
@@ -30,7 +45,8 @@ PanelWindow {
         right: true
     }
     color: Config.Appearance.background
-    exclusiveZone: height
+    // exclusiveZone is set further down (S-43: 0 while auto-hidden for
+    // fullscreen, bar.height otherwise) — not bound here twice.
 
     // design/tokens.common.sh stores space-N in `ch`, not px — see
     // Widgets/Panel.qml's identical comment.
@@ -96,10 +112,21 @@ PanelWindow {
         case "gpu": return gpuComponent
         case "nightMode": return nightModeComponent
         case "phiAgent": return phiAgentComponent
+        case "timer": return timerComponent
         default:
             console.warn("phi-shell: Bar module type not recognized: " + type)
             return null
         }
+    }
+
+    // S-43: one inhibitor per screen (one Bar instance per screen, S-20's
+    // own per-monitor design) is redundant but harmless — multiple
+    // inhibitors requesting the same idle-prevention do not compound
+    // negatively, the compositor just sees idle inhibited for as long as
+    // any one of them says so.
+    IdleInhibitor {
+        window: bar
+        enabled: Services.Idle.active
     }
 
     Component { id: workspacesComponent; Modules.Workspaces { screen: bar.screen } }
@@ -118,6 +145,7 @@ PanelWindow {
     Component { id: gpuComponent; Modules.Gpu { screen: bar.screen } }
     Component { id: nightModeComponent; Modules.NightMode { screen: bar.screen } }
     Component { id: phiAgentComponent; Modules.PhiAgent { screen: bar.screen } }
+    Component { id: timerComponent; Modules.Timer { screen: bar.screen } }
 
     FileView {
         id: registryFile
@@ -131,6 +159,48 @@ PanelWindow {
             }
         }
     }
+
+    // S-43 (master plan §8.3 surface 18, "barra a scomparsa in schermo
+    // intero"): auto-hidden while the active window on THIS screen is
+    // fullscreen (Toplevel.fullscreen + Toplevel.screens, both confirmed
+    // against real Quickshell source — wayland/toplevel/qml.hpp — not
+    // Quickshell.Hyprland, matching Services/ToplevelBridge.qml's own
+    // cross-compositor choice), edge-reveal on hover near the top. The
+    // WINDOW itself keeps its geometry always (never destroyed/moved) so
+    // hoverHandler below can still catch a pointer at the very top of the
+    // screen even while hidden; only exclusiveZone and the CONTENT's own y
+    // change, via barContent below.
+    readonly property var _activeToplevel: Services.ToplevelBridge.activeToplevel
+    // Manual loop, not `.includes()`: `screens` is a QList<QuickshellScreenInfo*>
+    // Q_PROPERTY (confirmed against real source), and this step has no
+    // confirmation every Array.prototype method is available on however Qt
+    // marshals that list into JS — an index/length loop works regardless.
+    function _onThisScreen(toplevel) {
+        if (toplevel === null || toplevel.screens === null) return false
+        for (let i = 0; i < toplevel.screens.length; i++) {
+            if (toplevel.screens[i] === bar.screen) return true
+        }
+        return false
+    }
+    readonly property bool activeIsFullscreenHere: bar._activeToplevel !== null
+        && bar._activeToplevel.fullscreen
+        && bar._onThisScreen(bar._activeToplevel)
+    readonly property bool autoHidden: bar.activeIsFullscreenHere && !hoverHandler.hovered
+
+    exclusiveZone: bar.autoHidden ? 0 : bar.height
+
+    HoverHandler {
+        id: hoverHandler
+    }
+
+    Item {
+        id: barContent
+        anchors.fill: parent
+        y: bar.autoHidden ? -bar.height : 0
+
+        Behavior on y {
+            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+        }
 
     Row {
         id: leftIsland
@@ -190,4 +260,5 @@ PanelWindow {
         height: parent.height
         sourceComponent: bar.centerModules.length > 0 ? bar.componentFor(bar.centerModules[0].type) : null
     }
+    } // barContent
 }

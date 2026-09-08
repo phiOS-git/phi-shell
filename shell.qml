@@ -6,7 +6,10 @@ import qs.Bar as Bar
 import qs.Notifications as Notifications
 import qs.Panels as Panels
 import qs.Settings as SettingsSurface
+import qs.Osd as Osd
+import qs.Spotlight as SpotlightSurface
 import qs.Launcher as Launcher
+import Quickshell.Io
 import qs.Lock as Lock
 import qs.Overview as Overview
 import qs.Screenshot as Screenshot
@@ -75,6 +78,33 @@ ShellRoot {
         screen: Quickshell.screens[0]
     }
 
+    // S-43: single instance, same reasoning — a transient surface with no
+    // per-monitor meaning (see Osd/Osd.qml's own header).
+    Osd.Osd {
+        screen: Quickshell.screens[0]
+    }
+
+    // S-43: per-screen (Services/Spotlight.qml's own header on why a
+    // primary-only instance would defeat the feature). The one IpcHandler
+    // for "spotlight" lives here, not inside the repeated component, since
+    // Quickshell would otherwise register the same target N times.
+    Variants {
+        model: Quickshell.screens
+
+        SpotlightSurface.Spotlight {
+            required property ShellScreen modelData
+            screen: modelData
+            shown: Services.Spotlight.shown
+        }
+    }
+
+    IpcHandler {
+        target: "spotlight"
+        function toggle(): void { Services.Spotlight.shown = !Services.Spotlight.shown }
+        function open(): void { Services.Spotlight.shown = true }
+        function close(): void { Services.Spotlight.shown = false }
+    }
+
     // S-33: single instance, same reasoning as Panels.Sidebar above — a
     // focused, toggled surface, not a per-monitor ambient one.
     Launcher.Launcher {
@@ -97,6 +127,12 @@ ShellRoot {
     // S-36: single instance, same reasoning as every other IPC-triggered
     // overlay above.
     Screenshot.Screenshot {
+        screen: Quickshell.screens[0]
+    }
+
+    // S-43: same single-instance simplification Screenshot.qml (S-36)
+    // already made for its own capture modes.
+    Screenshot.ColorPicker {
         screen: Quickshell.screens[0]
     }
 
