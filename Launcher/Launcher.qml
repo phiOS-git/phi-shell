@@ -202,12 +202,21 @@ PanelWindow {
     function _performSystemAction(action) {
         switch (action) {
         case "lock":
-            // `qs ipc call <target> <function>` — the real Quickshell
-            // documentation's own worked example (io/ipchandler.hpp) shows
-            // this exact form with no `-p <path>` flag, auto-targeting the
-            // one running instance; matched here literally rather than
-            // adding an unconfirmed flag on top of a confirmed example.
-            Quickshell.execDetached(["qs", "ipc", "call", "lock", "lock"])
+            // `qs ipc call` needs `-p <path>` here: confirmed by reading
+            // Quickshell's own src/launch/parsecommand.cpp — with no
+            // instance/config selector, `ipc call` targets the "default"
+            // config (`<xdg dir>/quickshell/shell.qml`), and phi-shell is
+            // NOT that config. hyprland.lua launches it as
+            // `qs -p ~/.config/quickshell/phi`, a named path, so every
+            // `ipc call` must repeat a `-p` that resolves to the same
+            // place. `Quickshell.configDir` (core/qmlglobal.hpp, "the full
+            // path to the root directory of your shell") gives that path
+            // at runtime instead of duplicating the literal here. An
+            // earlier version of this line dropped `-p` entirely on the
+            // strength of the docs' worked example, which only covers the
+            // default-config case; corrected once the real launch command
+            // was checked.
+            Quickshell.execDetached(["qs", "-p", Quickshell.configDir, "ipc", "call", "lock", "lock"])
             break
         case "suspend":
             Quickshell.execDetached(["systemctl", "suspend"])

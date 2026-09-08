@@ -16,10 +16,11 @@ import qs.Widgets as Widgets
 // surface either (S-22's own note: "no Hyprland keybinding is configured
 // yet on real machines... every step before S-38... must first ask
 // whether the bind already exists"). This file exposes exactly the
-// control points that binding needs to call
-// (next/prev/confirm/cancel, each callable via `qs ipc call alttab
-// <fn>`) so wiring it is a small, mechanical addition to hyprland.lua
-// once S-38 actually runs, not a second design pass.
+// control points that binding needs to call (next/prev/confirm/cancel,
+// each callable via `qs -p ~/.config/quickshell/phi ipc call alttab
+// <fn>` — the `-p` is required, see Panels/Sidebar.qml's own note on why)
+// so wiring it is a small, mechanical addition to hyprland.lua once S-38
+// actually runs, not a second design pass.
 //
 // next()/prev() auto-open if not already shown, so a single Alt+Tab bind
 // (calling `next`) is enough to enter the mode — no separate `open` call
