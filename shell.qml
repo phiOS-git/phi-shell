@@ -6,6 +6,7 @@ import qs.Notifications as Notifications
 import qs.Panels as Panels
 import qs.Launcher as Launcher
 import qs.Lock as Lock
+import qs.Overview as Overview
 
 // phiOS — phi-shell entry point (master plan §8.2).
 //
@@ -73,6 +74,14 @@ ShellRoot {
     // `surface` instance for every screen internally (its own real
     // header). One instance here, unlike Bar.Bar/Toast's Variants above.
     Lock.Lock {}
+
+    // S-35: single instance, same reasoning as Panels.Sidebar/Launcher.Launcher
+    // above — see Overview/Overview.qml's own header for why the overlay's
+    // on-screen position is one output even though its content spans every
+    // monitor's windows.
+    Overview.Overview {
+        screen: Quickshell.screens[0]
+    }
 
     Component.onCompleted: {
         console.log("phi-shell: " + Quickshell.screens.length
