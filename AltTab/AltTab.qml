@@ -53,7 +53,14 @@ PanelWindow {
         target: "alttab"
         function next(): void { root._step(1) }
         function prev(): void { root._step(-1) }
-        function confirm(): void { root._confirm() }
+        // Guarded on `root.shown`: the "ALT_L"/"ALT_R" release binds that
+        // call this are now registered globally in hyprland.lua (with
+        // `submap_universal = true`), not only inside the "alttab" submap,
+        // so this can be reached from an Alt release that has nothing to
+        // do with Alt+Tab (e.g. AltGr on some keyboard layouts is the
+        // physical right Alt key). Doing nothing when the overlay is not
+        // shown is what makes that safe.
+        function confirm(): void { if (root.shown) root._confirm() }
         function cancel(): void { root.shown = false }
     }
 
@@ -65,25 +72,111 @@ PanelWindow {
         const count = root._windowCount()
         if (count === 0) return
         if (!root.shown) {
-            // Entering the mode: land on the second-most-recent window
-            // (index 1) when one exists, matching the usual Alt+Tab
-            // convention of jumping straight to "the other" window rather
-            // than re-selecting the one already focused (index 0, if
-            // ToplevelManager orders active-first — unconfirmed, flagged
-            // below).
+            // Entering the mode: land on "the other" window, not the one
+            // already focused. This used to assume ToplevelManager orders
+            // its list active-first (`index 1`) — unconfirmed, and found
+            // on real hardware to be wrong: the overlay opened on an
+            // arbitrary window instead of the one after the active one.
+            // Fixed the same way _confirm() below fixes activation: ask
+            // Hyprland directly (`hyprctl activewindow -j`) which window is
+            // actually focused, since ToplevelManager's own ordering is not
+            // something this file can rely on. Set a provisional index
+            // immediately so the overlay never opens with nothing selected
+            // while that query is in flight, then correct it once the
+            // answer comes back.
             root.shown = true
             root.selectedIndex = count > 1 ? 1 : 0
+            activeQueryComponent.createObject(root)
             return
         }
         root.selectedIndex = (root.selectedIndex + delta + count) % count
     }
 
+    // See _step()'s comment above. hyprctl's `activewindow -j` returns the
+    // same Client JSON shape as `clients -j` (address/class/title) for a
+    // single object instead of a list — the shape used elsewhere in this
+    // file (_confirm()'s activateComponent) and already relied on for
+    // `class`/`title` there; not independently re-confirmed for
+    // `activewindow` specifically beyond that same shared convention.
+    property Component activeQueryComponent: Component {
+        Process {
+            id: activeProc
+            command: ["hyprctl", "activewindow", "-j"]
+            running: true
+            onExited: activeProc.running = false
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    try {
+                        const active = JSON.parse(this.text)
+                        const windows = Services.ToplevelBridge.toplevels.values
+                        const activeIndex = windows.findIndex((w) =>
+                            w.title === active.title && w.appId === active.class)
+                        if (activeIndex !== -1 && windows.length > 0 && root.shown)
+                            root.selectedIndex = (activeIndex + 1) % windows.length
+                    } catch (e) {
+                        console.warn("phi-shell: hyprctl activewindow -j parse failed during AltTab entry: " + e)
+                    }
+                    activeProc.destroy()
+                }
+            }
+        }
+    }
+
+    // Found on real hardware, shared with S-35's Overview.qml (same
+    // symptom there too): Toplevel.activate() does not actually focus
+    // the target window, even though the call itself does not error.
+    // Fixed here by falling back to the mechanism Launcher.qml's own
+    // activateWindow action already proves works on this compositor —
+    // `hyprctl dispatch focuswindow address:<addr>` — which needs a
+    // real Hyprland window address the cross-compositor Toplevel type
+    // this file otherwise uses does not expose (that lives on the
+    // separate, Hyprland-specific `hyprctl clients -j` shape instead,
+    // confirmed field names `address`/`class`/`title` against phi's own
+    // Go code, internal/query/windows.go, which already parses the same
+    // JSON). Matched by title (and class as a secondary check) against a
+    // fresh one-off query at the moment of confirming — not perfect (two
+    // windows can share a title), flagged for cheap veto, but this only
+    // ever runs once, right when the user has already committed to a
+    // choice, the same shape Screenshot.qml's own window-capture path
+    // already uses for a one-off Hyprland read. The cycling/highlighting
+    // above is untouched — still driven by the live, reactive
+    // ToplevelBridge, only the final activation step changed.
     function _confirm() {
         const windows = Services.ToplevelBridge.toplevels.values
         if (root.selectedIndex >= 0 && root.selectedIndex < windows.length) {
-            windows[root.selectedIndex].activate()
+            const target = windows[root.selectedIndex]
+            activateComponent.createObject(root, {
+                targetTitle: target.title, targetAppId: target.appId,
+            })
         }
         root.shown = false
+    }
+
+    property Component activateComponent: Component {
+        Process {
+            id: activateProc
+            property string targetTitle: ""
+            property string targetAppId: ""
+            command: ["hyprctl", "clients", "-j"]
+            running: true
+            onExited: activateProc.running = false
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    try {
+                        const clients = JSON.parse(this.text)
+                        const match = clients.find((c) =>
+                            c.title === activateProc.targetTitle && c.class === activateProc.targetAppId)
+                            || clients.find((c) => c.title === activateProc.targetTitle)
+                        if (match && match.address) {
+                            Quickshell.execDetached(["hyprctl", "dispatch", "focuswindow", "address:" + match.address])
+                        }
+                    } catch (e) {
+                        console.warn("phi-shell: hyprctl clients -j parse failed during AltTab confirm: " + e)
+                    }
+                    activateProc.destroy()
+                }
+            }
+        }
     }
 
     TextMetrics {
@@ -121,10 +214,11 @@ PanelWindow {
             Repeater {
                 // ToplevelManager's own ordering is unconfirmed (no
                 // document states whether it is creation order, activation
-                // order, or something else) — flagged for cheap veto if
-                // "the second most recent window" above does not read as
-                // expected on real hardware; the cycling mechanism itself
-                // does not depend on the order being any particular one.
+                // order, or something else) — the starting selection no
+                // longer depends on it (_step()'s own hyprctl query finds
+                // the active window directly), and the cycling mechanism
+                // itself does not depend on the order being any particular
+                // one either, only on it being stable while shown.
                 model: Services.ToplevelBridge.toplevels
 
                 Widgets.Panel {
