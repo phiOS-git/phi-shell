@@ -50,15 +50,6 @@ PanelWindow {
             + (root.notification.summary.length > 0 ? root.notification.summary : root.notification.body)
         : ""
 
-    // Default dismiss delay when the sender did not request one:
-    // NotificationServer reports "no expire timeout requested" as a
-    // negative value per the Desktop Notification Specification, not zero
-    // — zero itself means "never expire on its own", which this toast still
-    // bounds, since an un-glanced-at toast blocking the whole queue behind
-    // it would defeat the "reads as a sequence" goal above.
-    readonly property int dismissAfter: root.shown && root.notification.expireTimeout > 0
-        ? root.notification.expireTimeout : 5000
-
     anchors { bottom: true; right: true }
     exclusiveZone: 0
     color: "transparent"
@@ -142,14 +133,12 @@ PanelWindow {
         }
     }
 
-    Timer {
-        id: dismissTimer
-        interval: root.dismissAfter
-        onTriggered: Services.Notifications.dismissToast()
-    }
-
-    onNotificationChanged: {
-        if (root.notification !== null) dismissTimer.restart()
-        else dismissTimer.stop()
-    }
+    // No local dismiss timer: Services/Notifications.qml now bounds every
+    // tracked notification's lifetime centrally (expireTimerComponent) and
+    // calls the real Notification.expire(), which fires `closed` and
+    // advances this queue through the same handler regardless of whether a
+    // toast was ever showing it. An earlier draft of this file dismissed
+    // only the toast's own queue slot on a local timer, leaving the
+    // underlying notification tracked forever — the same bug Services/
+    // Notifications.qml's own header now documents fixing.
 }

@@ -19,8 +19,12 @@ import qs.Config as Config
 // storage shape to whichever step defines one, since they are collections,
 // not `phi state`'s flat scalar keys:
 //   - `active`: server.trackedNotifications itself, re-exported as-is. Live
-//     Notification objects with working action buttons, for as long as the
-//     server keeps them tracked.
+//     Notification objects with working action buttons — for as long as the
+//     server keeps them tracked, which this file bounds itself: every
+//     notification gets an expireTimerComponent-driven lifetime (below) and
+//     is explicitly untracked (`tracked = false`) once its `closed` signal
+//     fires, so this collection never accumulates closed notifications
+//     forever the way an earlier draft of this file did.
 //   - `history`: a flat JSON array persisted at Config.Paths.notificationsFile
 //     (id, appName, summary, body, urgency, image, timestamp, closeReason),
 //     capped at historyLimit, newest first. This is what survives a shell
@@ -147,6 +151,18 @@ Singleton {
                 root._advanceQueue()
             }
 
+            // Every tracked notification gets a bounded lifetime, DND or
+            // not — a DND-silenced notification never becomes a toast, so
+            // nothing else would ever call expire() on it, and it would
+            // stay tracked (duplicated forever in the sidebar's "Active"
+            // section, alongside its own already-recorded "History" row)
+            // for the rest of the session. This is the fix for a real bug
+            // caught in review before this row's own step was ever marked
+            // verified: notification.tracked was set true on arrival and
+            // never set back, so trackedNotifications only ever grew.
+            const timeoutMs = notification.expireTimeout > 0 ? notification.expireTimeout : 8000
+            expireTimerComponent.createObject(root, { targetNotification: notification, delay: timeoutMs })
+
             notification.closed.connect((reason) => {
                 const next = root.history.slice()
                 for (let i = 0; i < next.length; i++) {
@@ -158,12 +174,44 @@ Singleton {
                 root.history = next
                 root._persist()
 
+                // The actual fix: release the object back to the server
+                // once its closure is recorded, so trackedNotifications
+                // (re-exported as `active`) only ever holds notifications
+                // that are genuinely still open.
+                notification.tracked = false
+
                 if (root.activeToast === notification) {
                     root.dismissToast()
                 } else {
                     root.toastQueue = root.toastQueue.filter((n) => n !== notification)
                 }
             })
+        }
+    }
+
+    // One-shot: calls expire() once per notification, whether or not it
+    // was ever shown as a toast, then destroys itself. expire() (not
+    // dismiss()) matches the Notification API's own distinction — "dismiss
+    // with timeout hint" is exactly what a bounded lifetime is — and
+    // triggers the real `closed` signal above, which is what actually
+    // untracks the notification; nothing here touches root.history or
+    // root.activeToast directly; expire()ing an already-closed notification
+    // (e.g. the sender withdrew it first) is assumed to be a safe no-op,
+    // consistent with how every other close-idempotent D-Bus-style API in
+    // this stack behaves — unverified on real hardware, flagged for cheap
+    // veto if it is not.
+    property Component expireTimerComponent: Component {
+        Timer {
+            id: expireTimer
+            property var targetNotification: null
+            property int delay: 8000
+            interval: expireTimer.delay
+            running: true
+            repeat: false
+            onTriggered: {
+                if (expireTimer.targetNotification !== null) expireTimer.targetNotification.expire()
+                expireTimer.destroy()
+            }
         }
     }
 
