@@ -4,6 +4,7 @@ import qs.Config as Config
 import qs.Bar as Bar
 import qs.Notifications as Notifications
 import qs.Panels as Panels
+import qs.Launcher as Launcher
 
 // phiOS — phi-shell entry point (master plan §8.2).
 //
@@ -58,6 +59,12 @@ ShellRoot {
     // would need Hyprland-specific IPC this step's card does not ask for.
     // Flagged for cheap veto.
     Panels.Sidebar {
+        screen: Quickshell.screens[0]
+    }
+
+    // S-33: single instance, same reasoning as Panels.Sidebar above — a
+    // focused, toggled surface, not a per-monitor ambient one.
+    Launcher.Launcher {
         screen: Quickshell.screens[0]
     }
 
