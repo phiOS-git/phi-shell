@@ -28,6 +28,16 @@ Singleton {
     }
 
     readonly property string notificationsFile: root.stateDir + "/notifications.json"
+
+    // S-32: no manifest file — the capture script (Services/Clipboard.qml)
+    // is plain POSIX sh with no JSON writer available, so structure lives
+    // in the filesystem instead: one <id>.data + <id>.mime pair per entry,
+    // "latest" holds the newest id so a single watched file can signal a
+    // new arrival without polling, and pins.json is the one piece of
+    // structure Quickshell itself writes (pin state is a UI action, not a
+    // capture-time decision).
     readonly property string clipboardDir: root.stateDir + "/clipboard"
-    readonly property string clipboardManifest: root.clipboardDir + "/manifest.json"
+    readonly property string clipboardEntriesDir: root.clipboardDir + "/entries"
+    readonly property string clipboardLatestFile: root.clipboardDir + "/latest"
+    readonly property string clipboardPinsFile: root.clipboardDir + "/pins.json"
 }
