@@ -8,6 +8,8 @@ import qs.Launcher as Launcher
 import qs.Lock as Lock
 import qs.Overview as Overview
 import qs.Screenshot as Screenshot
+import qs.AltTab as AltTab
+import qs.Cheatsheet as Cheatsheet
 
 // phiOS — phi-shell entry point (master plan §8.2).
 //
@@ -87,6 +89,17 @@ ShellRoot {
     // S-36: single instance, same reasoning as every other IPC-triggered
     // overlay above.
     Screenshot.Screenshot {
+        screen: Quickshell.screens[0]
+    }
+
+    // S-37: single instances, same reasoning as every other IPC-triggered
+    // overlay above. Widgets/ContextMenu.qml and Tooltip/Tooltip.qml are
+    // reusable widget types, not top-level surfaces — they have no
+    // instance here, by design (see their own file headers).
+    AltTab.AltTab {
+        screen: Quickshell.screens[0]
+    }
+    Cheatsheet.Cheatsheet {
         screen: Quickshell.screens[0]
     }
 
