@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.Config as Config
+import qs.Services as Services
 import qs.Widgets as Widgets
 
 // phiOS — Launcher/Launcher.qml (S-33, master plan §8.3 surface 6, ADR 018:
@@ -69,6 +70,11 @@ PanelWindow {
     // `fadeRoot` below instead, a plain Item with a real, animatable
     // opacity; `visible` stays true until that fade-out finishes.
     visible: root.shown || fadeRoot.opacity > 0
+
+    // Needed for keyboard input to reach searchField/commandField at all —
+    // see Services/LayerFocus.qml's own header for why (found on real
+    // hardware: typing went to whatever window was underneath instead).
+    Services.LayerFocus { target: root }
 
     IpcHandler {
         target: "launcher"

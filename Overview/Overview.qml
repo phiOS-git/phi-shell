@@ -65,6 +65,16 @@ PanelWindow {
     // stays true until fadeRoot's own fade-out finishes.
     visible: root.shown || fadeRoot.opacity > 0
 
+    // Needed for GridView's arrow-key navigation and Escape/Return to
+    // reach this surface at all — see Services/LayerFocus.qml's own
+    // header for why. Unrelated to the separate real-hardware finding
+    // that clicking a different cell closes the overlay (activate() was
+    // called, setShown(false) ran) without actually focusing that
+    // window — pointer/click events are not gated by keyboard focus mode,
+    // so this fix should not be assumed to resolve that on its own;
+    // needs a retest.
+    Services.LayerFocus { target: root }
+
     IpcHandler {
         target: "overview"
         function toggle(): void { root.setShown(!root.shown) }

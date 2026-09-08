@@ -1,6 +1,7 @@
 import QtQml
 import Quickshell
 import qs.Config as Config
+import qs.Services as Services
 import qs.Bar as Bar
 import qs.Notifications as Notifications
 import qs.Panels as Panels
@@ -107,5 +108,16 @@ ShellRoot {
         console.log("phi-shell: " + Quickshell.screens.length
             + " screen(s), variant=" + Config.Appearance.variant
             + ", gpu=" + Config.Capabilities.gpuVendor)
+
+        // Forces Services.Clipboard to instantiate now, same reason and
+        // same mechanism as the Config.Appearance/Capabilities reads
+        // above (QML singletons are lazy on first use). Found on real
+        // hardware: unlike Services.Notifications (always touched early by
+        // Notifications/Toast.qml, instantiated unconditionally above),
+        // nothing referenced Services.Clipboard until the sidebar's
+        // Clipboard tab was opened for the first time — so its
+        // `wl-paste --watch` capture process never started, and anything
+        // copied before that tab was ever opened was silently missed.
+        Services.Clipboard.entries
     }
 }

@@ -370,22 +370,22 @@ PanelWindow {
     // Process.running = false sends SIGTERM (confirmed against the real
     // source, io/process.cpp: setRunning(false) calls
     // QProcess::terminate(), which is SIGTERM on Unix), so stopping here
-    // sends SIGINT explicitly via its own pid instead of relying on that.
+    // sends SIGINT explicitly instead of relying on that.
+    //
+    // Found on real hardware: an earlier version of this function spawned
+    // a separate `kill -INT <pid>` Process using recordProc.processId,
+    // instead of the real, confirmed-real Process.signal(qint32) INVOKABLE
+    // method (io/process.hpp: "Sends a signal to the process if running is
+    // true, otherwise does nothing") — the recorded file could not be
+    // opened afterward ("moov atom not found", the standard symptom of a
+    // video file whose trailer/moov atom was never written because the
+    // encoder did not exit cleanly). Whether that specific indirection was
+    // the cause is not confirmed (a stale processId at the moment the kill
+    // Process spawned is one plausible failure among others), but
+    // Process.signal() removes the indirection and its failure surface
+    // entirely rather than debugging it further off-machine.
     function _stopRecording() {
         if (!root.recording) return
-        const pid = recordProc.processId
-        if (pid) {
-            killComponent.createObject(root, { targetPid: pid })
-        }
-    }
-
-    property Component killComponent: Component {
-        Process {
-            id: killProc
-            property var targetPid: null
-            command: ["kill", "-INT", String(targetPid)]
-            running: true
-            onExited: { killProc.running = false; killProc.destroy() }
-        }
+        recordProc.signal(2) // SIGINT
     }
 }

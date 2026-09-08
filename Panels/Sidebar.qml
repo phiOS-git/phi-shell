@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.Config as Config
+import qs.Services as Services
 import qs.Widgets as Widgets
 import "tabs" as Tabs
 
@@ -68,6 +69,10 @@ PanelWindow {
     // `fadeRoot` below instead, a plain Item with a real, animatable
     // opacity; `visible` stays true until that fade-out finishes.
     visible: root.shown || fadeRoot.opacity > 0
+
+    // Needed for the AiChat tab's text input to receive keystrokes at
+    // all — see Services/LayerFocus.qml's own header for why.
+    Services.LayerFocus { target: root }
 
     IpcHandler {
         target: "sidebar"
