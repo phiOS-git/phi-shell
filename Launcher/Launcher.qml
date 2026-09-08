@@ -192,18 +192,22 @@ PanelWindow {
         }
     }
 
-    // "lock" calls the standard systemd-logind Lock signal
-    // (loginctl lock-session) rather than anything phi-shell-specific:
-    // this is the correct integration point for S-34's own lock screen to
-    // listen on once it exists, not built yet at this point in the
-    // sequence — until then, selecting Lock here is a harmless no-op with
-    // no listener, not a broken call to a component that doesn't exist.
+    // "lock" was originally written against loginctl lock-session, before
+    // Lock/Lock.qml existed (S-34). Updated in that same step to call its
+    // IpcHandler directly instead: unlocking must never have an IPC path
+    // (Lock.qml's own header explains why), but locking is safe from any
+    // same-user process, which is exactly what that handler exposes.
     // "logout" mirrors hyprland.lua's own Super+M binding exactly, so the
     // two paths to the same action never disagree.
     function _performSystemAction(action) {
         switch (action) {
         case "lock":
-            Quickshell.execDetached(["loginctl", "lock-session"])
+            // `qs ipc call <target> <function>` — the real Quickshell
+            // documentation's own worked example (io/ipchandler.hpp) shows
+            // this exact form with no `-p <path>` flag, auto-targeting the
+            // one running instance; matched here literally rather than
+            // adding an unconfirmed flag on top of a confirmed example.
+            Quickshell.execDetached(["qs", "ipc", "call", "lock", "lock"])
             break
         case "suspend":
             Quickshell.execDetached(["systemctl", "suspend"])

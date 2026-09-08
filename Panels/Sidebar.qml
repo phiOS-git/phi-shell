@@ -26,9 +26,11 @@ import "tabs" as Tabs
 // system-wide for one surface, this exposes an IpcHandler
 // (Quickshell.Io.IpcHandler, verified against the real source —
 // io/ipchandler.hpp — the first use of this mechanism in this repo) so the
-// user can open/close/toggle it today with `qs -p ~/.config/quickshell/phi
-// ipc call sidebar <toggle|open|close>`, and S-38 gets a one-line `exec_cmd`
-// bind onto the same command for free instead of a second mechanism.
+// user can open/close/toggle it today with `qs ipc call sidebar
+// <toggle|open|close>` (no `-p <path>` needed — the real Quickshell
+// documentation's own worked example auto-targets the one running
+// instance), and S-38 gets a one-line `exec_cmd` bind onto the same
+// command for free instead of a second mechanism.
 
 PanelWindow {
     id: root

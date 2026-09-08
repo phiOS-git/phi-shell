@@ -5,6 +5,7 @@ import qs.Bar as Bar
 import qs.Notifications as Notifications
 import qs.Panels as Panels
 import qs.Launcher as Launcher
+import qs.Lock as Lock
 
 // phiOS — phi-shell entry point (master plan §8.2).
 //
@@ -67,6 +68,11 @@ ShellRoot {
     Launcher.Launcher {
         screen: Quickshell.screens[0]
     }
+
+    // S-34: WlSessionLock is not per-screen at this level — it manages a
+    // `surface` instance for every screen internally (its own real
+    // header). One instance here, unlike Bar.Bar/Toast's Variants above.
+    Lock.Lock {}
 
     Component.onCompleted: {
         console.log("phi-shell: " + Quickshell.screens.length
