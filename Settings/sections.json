@@ -1,0 +1,11 @@
+[
+    { "type": "general", "title": "General" },
+    { "type": "theme", "title": "Theme" },
+    { "type": "connectivity", "title": "Connectivity" },
+    { "type": "devices", "title": "Devices" },
+    { "type": "keybindings", "title": "Keybindings" },
+    { "type": "notifications", "title": "Notifications" },
+    { "type": "security", "title": "Security" },
+    { "type": "aiAgent", "title": "AI Agent" },
+    { "type": "updates", "title": "Updates" }
+]

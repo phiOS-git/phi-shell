@@ -5,6 +5,7 @@ import qs.Services as Services
 import qs.Bar as Bar
 import qs.Notifications as Notifications
 import qs.Panels as Panels
+import qs.Settings as SettingsSurface
 import qs.Launcher as Launcher
 import qs.Lock as Lock
 import qs.Overview as Overview
@@ -65,6 +66,12 @@ ShellRoot {
     // would need Hyprland-specific IPC this step's card does not ask for.
     // Flagged for cheap veto.
     Panels.Sidebar {
+        screen: Quickshell.screens[0]
+    }
+
+    // S-40: single instance, same reasoning as Panels.Sidebar above — a
+    // focused, toggled surface, not a per-monitor ambient one.
+    SettingsSurface.Settings {
         screen: Quickshell.screens[0]
     }
 

@@ -7,6 +7,19 @@ import "WidgetStates.js" as WidgetStates
 // switch, pill-shaped, whose on-state is full accent per the same
 // "inversione piena" rule every other active/pressed control uses. `active`
 // in the shared state model is `checked`: an on Pill is an active Pill.
+//
+// Controlled component, not self-mutating: a tap emits toggled(!checked)
+// and leaves `checked` itself untouched. Fixed at S-40, this widget's
+// first real consumer (Settings/sections/Notifications.qml,
+// Settings/StateToggleRow.qml) — every prior caller bound `checked` to an
+// external source of truth (a phi state key, Services.Notifications.dnd),
+// and the original onTapped did `root.checked = !root.checked` BEFORE
+// emitting, which is a plain imperative assignment: QML drops a property's
+// declarative binding the instant something assigns to it directly, so the
+// first tap would have silently detached `checked` from whatever it was
+// bound to. No consumer existed before this step to surface it — the seven
+// widgets S-21 built were never exercised end-to-end, only reviewed for
+// their own state-model completeness.
 
 Item {
     id: root
@@ -66,10 +79,7 @@ Item {
     TapHandler {
         id: tapHandler
         enabled: root.enabled && !root.loading
-        onTapped: {
-            root.checked = !root.checked
-            root.toggled(root.checked)
-        }
+        onTapped: root.toggled(!root.checked)
     }
 
     Behavior on opacity {

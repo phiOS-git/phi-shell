@@ -30,6 +30,43 @@ Singleton {
     readonly property real percentage: root.present ? root.device.percentage : 0
     readonly property bool discharging: root.present && root.device.state === UPowerDeviceState.Discharging
     readonly property real timeToEmpty: root.present ? root.device.timeToEmpty : 0
+    readonly property real timeToFull: root.present ? root.device.timeToFull : 0
+
+    // Added at S-40 for the settings panel's General section (§9.12: "su
+    // razer: statistiche batteria — autonomia, cicli, salute"). healthPercentage/
+    // healthSupported are real UPowerDevice properties (confirmed against
+    // real Quickshell source, services/upower/device.hpp, the same practice
+    // every Services/ file in this repo follows) — healthSupported is false
+    // on hardware/firmware that never reports a capacity baseline, in which
+    // case the settings panel shows "not reported", never a fabricated number.
+    readonly property real healthPercentage: root.present ? root.device.healthPercentage : 0
+    readonly property bool healthSupported: root.present && root.device.healthSupported
+
+    // Cycle count has no UPowerDevice property at all (device.hpp has none
+    // — confirmed the same way, not guessed): upstream UPower's own D-Bus
+    // ChargeCycles is exposed on some hardware/drivers and not others, and
+    // Quickshell does not wrap it. Read directly via `upower -i`, the same
+    // Quickshell.Io.Process pattern every CLI-probe Service in this repo
+    // already uses (Tailscale, Config/Settings) — best-effort, "unknown"
+    // when the line is absent (most laptops) rather than assuming -1 means
+    // one specific thing.
+    property string chargeCycles: "unknown"
+
+    function refreshCycles() { cyclesProbe.running = true }
+    Component.onCompleted: refreshCycles()
+
+    Process {
+        id: cyclesProbe
+        onExited: cyclesProbe.running = false
+        command: ["sh", "-c",
+            "dev=$(upower -e 2>/dev/null | grep -m1 battery); [ -n \"$dev\" ] && upower -i \"$dev\" 2>/dev/null | awk -F': *' '/charge-cycles/{print $2; exit}'"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const v = this.text.trim()
+                root.chargeCycles = (v.length > 0 && v !== "N/A") ? v : "unknown"
+            }
+        }
+    }
 
     // %/hour, from the last ~10 minutes of samples while discharging.
     // Configurable, per the AGENT card's own instruction that these
