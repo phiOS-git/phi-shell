@@ -3,6 +3,7 @@ import Quickshell
 import qs.Config as Config
 import qs.Bar as Bar
 import qs.Notifications as Notifications
+import qs.Panels as Panels
 
 // phiOS — phi-shell entry point (master plan §8.2).
 //
@@ -47,6 +48,17 @@ ShellRoot {
             required property ShellScreen modelData
             screen: modelData
         }
+    }
+
+    // S-31: a single sidebar instance, not one per screen like Bar.Bar and
+    // Toast above — it is a focused, toggled-open-or-closed surface, not an
+    // ambient per-monitor indicator, so showing N copies simultaneously
+    // when the IpcHandler fires would be wrong. Pinned to the first screen
+    // Quickshell reports; "open on whichever monitor currently has focus"
+    // would need Hyprland-specific IPC this step's card does not ask for.
+    // Flagged for cheap veto.
+    Panels.Sidebar {
+        screen: Quickshell.screens[0]
     }
 
     Component.onCompleted: {

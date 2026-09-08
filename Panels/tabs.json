@@ -1,0 +1,6 @@
+[
+    { "type": "notifications", "title": "Notifications", "source": "internal:notifications" },
+    { "type": "clipboard", "title": "Clipboard", "source": "internal:clipboard" },
+    { "type": "calendar", "title": "Calendar", "source": "unassigned" },
+    { "type": "aiChat", "title": "Agent", "source": "internal:agent" }
+]
