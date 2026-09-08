@@ -46,7 +46,20 @@ Singleton {
             stdout: StdioCollector {
                 onStreamFinished: proc.output = this.text
             }
+            // running=false before destroy(), not just destroy() alone:
+            // Process.onFinished() (io/process.cpp) calls
+            // startProcessIfReady() unconditionally as its LAST step,
+            // after this exited handler has already run — destroy() only
+            // schedules deferred deletion, so the still-alive object would
+            // otherwise respawn itself once more before actually being
+            // freed. Found during S-36 while auditing every Process in
+            // this repo for the same class of bug (a one-shot Process left
+            // with running still true after it completes never really
+            // stops), also present, uncorrected, in this exact bridge
+            // since S-13 — every `phi state get/set/list` call in this
+            // shell has gone through this path since then.
             onExited: {
+                proc.running = false
                 if (proc.callback) {
                     proc.callback(exitCode === 0 ? proc.output.trim() : null, exitCode)
                 }
