@@ -1,5 +1,6 @@
 pragma Singleton
 import QtQml
+import Quickshell
 import qs.Config as Config
 
 // phiOS — Services/Background (S-44). Just the shared `path`, same shape

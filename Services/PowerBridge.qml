@@ -1,6 +1,7 @@
 pragma Singleton
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Services.UPower
 
 // phiOS — thin wrapper over Quickshell.Services.UPower (S-23, master plan
