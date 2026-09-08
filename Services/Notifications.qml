@@ -220,9 +220,18 @@ Singleton {
     // yet on a machine where the shell starts before `phi` is ever
     // invoked, and FileView.setText's real header does not document
     // creating missing parent directories. Cheap insurance, run once.
+    //
+    // running=false in onExited even though nothing ever re-triggers this
+    // one: found during S-36's audit of every Process in this repo —
+    // Process.onFinished() (io/process.cpp) calls startProcessIfReady()
+    // unconditionally on exit, so this mkdir, left with running still
+    // true, was respawning itself forever in a tight loop from the moment
+    // the shell started.
     Process {
+        id: ensureStateDirProc
         command: ["mkdir", "-p", Config.Paths.stateDir]
         running: true
+        onExited: ensureStateDirProc.running = false
     }
 
     FileView {
