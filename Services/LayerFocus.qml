@@ -1,4 +1,4 @@
-import QtQuick
+import QtQml
 import Quickshell.Wayland
 
 // phiOS — Services/LayerFocus. A single-purpose shim so `Quickshell.Wayland`
@@ -43,10 +43,15 @@ QtObject {
     // (`WindowInterface`), which does NOT extend `Item` — `contentItem` is
     // its own separate `QQuickItem*` (src/window/windowinterface.hpp) — so
     // a `property Item target` would reject every real caller outright.
-    required property var target
+    // Not `required` either: whether `required` on a plain (non-Item)
+    // QtObject property is even valid QML is not confirmed anywhere in
+    // this repo, and every consumer already passes `target` at
+    // construction regardless — defaulting to `null` and guarding for it
+    // below costs one extra condition and removes an untested risk.
+    property var target: null
     property int mode: WlrKeyboardFocus.OnDemand
 
     Component.onCompleted: {
-        if (root.target.WlrLayershell) root.target.WlrLayershell.keyboardFocus = root.mode
+        if (root.target && root.target.WlrLayershell) root.target.WlrLayershell.keyboardFocus = root.mode
     }
 }
