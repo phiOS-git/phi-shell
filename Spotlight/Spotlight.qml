@@ -60,10 +60,13 @@ import qs.Services as Services
 // is always the true `screen.x`/`screen.y`, matching what the cursor math
 // already assumed. Unverified end to end — no compositor here.
 //
-// The double-click-and-hold gesture question is answered (round 4, by
-// the user): Services/Spotlight.qml now owns the double-click timing,
-// and hyprland.lua binds the bare SUPER_L keysym instead of SUPER+G.
-// This file's own wiring is unchanged either way — see below.
+// The interaction-model question is answered (round 4, by the user):
+// Services/Spotlight.qml now owns the multi-tap-and-hold timing (round 5:
+// triple-click, generalised to a tap count), and hyprland.lua binds the
+// bare SUPER_L keysym instead of SUPER+G. Confirmed on real hardware,
+// position round: correctly centred. Confirmed BROKEN, gesture round: the
+// bind did not fire at all — see PROGRESS.md round 5. This file's own
+// wiring is unaffected either way — see below.
 //
 // The own-drawn cursor marker a previous round of this file added was
 // never requested and has been removed.
