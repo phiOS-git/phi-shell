@@ -61,6 +61,17 @@ Singleton {
         // that earlier lived here were built on that wrong hypothesis and
         // are gone; $PHI_DOTFILES/~/phios-dotfiles resolution is the only
         // thing this command does.
+        //
+        // running=false in onExited: the most severe instance of a bug
+        // found and fixed across this whole repo during S-36's audit —
+        // Process.onFinished() (io/process.cpp) calls
+        // startProcessIfReady() unconditionally on exit, so without this,
+        // `probe`, left with running still true after its first
+        // completion, has been respawning itself in a tight, uninterrupted
+        // loop from the moment the shell starts, on every session since
+        // this file was written at S-20 — the most foundational and
+        // longest-running instance of this class of bug in the codebase.
+        onExited: probe.running = false
         command: ["sh", "-c",
             "\"${PHI_DOTFILES:-$HOME/phios-dotfiles}/bin/phios-capabilities\" 2>/dev/null || phios-capabilities 2>/dev/null"]
         stdout: StdioCollector {
