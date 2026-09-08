@@ -132,14 +132,17 @@ Column {
     // directly instead of writing an inert phi state key nothing read
     // live — same fix shape as Night shift/True Tone got at S-42, applied
     // here because the first round found it was never actually done for
-    // spotlight). Daily use is triple-click-and-hold Super (hyprland.lua,
-    // round 5), not a click — this button stays a plain click-to-show/hide
-    // for mouse-driven testing, since StyledButton has no press/release
-    // distinction to give it the same hold gesture the keybind has. ------
+    // spotlight). Daily use is Super+G HELD (hyprland.lua) — a bare-Super
+    // tap-count gesture was tried at rounds 4/5 and reverted at round 6
+    // (confirmed Hyprland compositor bug, release never fires for a bare
+    // modifier bind) — not a click; this button stays a plain
+    // click-to-show/hide for mouse-driven testing, since StyledButton has
+    // no press/release distinction to give it the same hold gesture the
+    // keybind has. ------------------------------------------------------
     Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Cursor spotlight" }
     Widgets.ToggleRow {
         width: parent.width
-        label: "Cursor spotlight (triple-click and hold Super elsewhere; click toggles here)"
+        label: "Cursor spotlight (hold Super+G elsewhere; click toggles here)"
         checked: Services.Spotlight.shown
         onToggled: (v) => (v ? Services.Spotlight.show() : Services.Spotlight.hide())
     }

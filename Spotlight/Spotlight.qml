@@ -60,20 +60,21 @@ import qs.Services as Services
 // is always the true `screen.x`/`screen.y`, matching what the cursor math
 // already assumed. Unverified end to end — no compositor here.
 //
-// The interaction-model question is answered (round 4, by the user):
-// Services/Spotlight.qml now owns the multi-tap-and-hold timing (round 5:
-// triple-click, generalised to a tap count), and hyprland.lua binds the
-// bare SUPER_L keysym instead of SUPER+G. Confirmed on real hardware,
-// position round: correctly centred. Confirmed BROKEN, gesture round: the
-// bind did not fire at all — see PROGRESS.md round 5. This file's own
-// wiring is unaffected either way — see below.
+// The interaction-model question, reopened at round 4 (a bare-Super
+// double-/triple-tap-and-hold, replacing SUPER+G), is closed again at
+// round 6: confirmed a compositor-level Hyprland bug (release events
+// never fire for a bare modifier keysym bind, hyprwm/Hyprland#6946,
+// still reproducing as of a 2026-08-17 comment) — not fixable from this
+// repository. Reverted to plain SUPER+G hold by the user's own choice,
+// once given the real cause. Position: confirmed correctly centred on
+// real hardware at round 5, unaffected by any of this.
 //
 // The own-drawn cursor marker a previous round of this file added was
 // never requested and has been removed.
 //
 // `shown` is still driven by Services/Spotlight.qml, and hyprland.lua's
-// bare-SUPER_L press/release binds call press()/release() on it — this
-// file has no keybinding logic of its own.
+// SUPER+G press bind / bare-g release bind call show()/hide() on it
+// directly — this file has no keybinding logic of its own.
 
 PanelWindow {
     id: root
