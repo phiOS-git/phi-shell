@@ -45,6 +45,28 @@ import qs.Widgets as Widgets
 // surfaces as PamError.StartFailed, itself just another non-Success case
 // that keeps the screen locked. The fail-closed default holds even before
 // the user has done anything.
+//
+// Found on real hardware: `qs ipc call lock lock` returned "Target not
+// found" — `lock` was entirely missing from `qs ipc show`. Root cause,
+// confirmed against the real source (src/wayland/session_lock.hpp):
+// unlike PanelWindow (used by every other surface in this repo), whose
+// default property is a LIST (`data`, `QQmlListProperty<QObject>`),
+// WlSessionLock's default property (`Q_CLASSINFO("DefaultProperty",
+// "surface")`) is `surface`, typed as a SINGULAR `QQmlComponent*` — it can
+// hold exactly one value. The real header's own worked example only ever
+// shows ONE bare child (a WlSessionLockSurface); it never demonstrates
+// what happens with several, which is exactly the shape this file had:
+// PamContext, a Timer, and this IpcHandler were all declared as bare
+// positional children alongside WlSessionLockSurface, every one of them
+// implicitly competing for the same singular `surface` property. Given
+// only the IpcHandler was confirmed missing (nothing here tested whether
+// PamContext or the Timer were silently dropped the same way — plausible
+// given they occupy the identical position in the object tree), every one
+// of them is now assigned to an explicit, uniquely-named property instead
+// of a bare positional child, so nothing relies on implicit
+// default-property assignment resolving in any particular order. Only
+// `surface:` below still uses the documented implicit-Component-wrapping
+// form, now unambiguous since it is the only remaining unqualified child.
 
 WlSessionLock {
     id: root
@@ -52,44 +74,50 @@ WlSessionLock {
     property int attempts: 0
     property string errorText: ""
 
-    PamContext {
-        id: pam
+    // No `id:` on any of these three — a bare id identical to a property
+    // name declared on the same object (`root`) is the exact same
+    // ambiguity class S-21 already found and fixed once in this repo
+    // (Segment.qml's `id: text` colliding with its own `text` property);
+    // every reference below goes through `root.pam`/`root.retryTimer`
+    // explicitly instead, never a bare name that QML would have to
+    // resolve against both an id and a property in the same scope.
+    property PamContext pam: PamContext {
         config: "phi-shell-lock"
     }
 
     Component.onCompleted: {
-        pam.completed.connect((result) => {
+        root.pam.completed.connect((result) => {
             if (result === PamResult.Success) {
                 root.locked = false
                 return
             }
             root.attempts += 1
             root.errorText = PamResult.toString(result)
-            if (root.locked) retryTimer.restart()
+            if (root.locked) root.retryTimer.restart()
         })
-        pam.error.connect((err) => {
+        root.pam.error.connect((err) => {
             root.errorText = PamError.toString(err)
         })
     }
 
-    Timer {
-        id: retryTimer
+    property Timer retryTimer: Timer {
         interval: 600
-        onTriggered: if (root.locked) pam.start()
+        onTriggered: if (root.locked) root.pam.start()
     }
 
     // Locking only. See this file's own header for why unlocking has no
     // IPC counterpart.
-    IpcHandler {
+    property IpcHandler lockIpc: IpcHandler {
         target: "lock"
         function lock(): void {
             root.attempts = 0
             root.errorText = ""
             root.locked = true
-            pam.start()
+            root.pam.start()
         }
     }
 
+    surface: Component {
     WlSessionLockSurface {
         id: surface
 
@@ -156,12 +184,22 @@ WlSessionLock {
                     font.family: Config.Appearance.fontUi
                     font.pixelSize: Config.Appearance.fontSize2
                     color: Config.Appearance.textPrimary
-                    echoMode: pam.responseVisible ? TextInput.Normal : TextInput.Password
-                    enabled: pam.responseRequired
+                    // `root.pam.` explicitly, not a bare `pam.`: this
+                    // object lives inside `surface: Component { ... }`,
+                    // instantiated once per screen at lock time rather
+                    // than at file load — QML's normal scope-chaining
+                    // should resolve a bare `pam` back to root.pam either
+                    // way, but this crosses a Component boundary that
+                    // did not exist before this file's own IPC-registration
+                    // fix, and is not independently confirmed on real
+                    // hardware; the explicit form removes the ambiguity
+                    // rather than trusting it.
+                    echoMode: root.pam.responseVisible ? TextInput.Normal : TextInput.Password
+                    enabled: root.pam.responseRequired
                     focus: true
 
                     Keys.onReturnPressed: {
-                        if (pam.responseRequired) pam.respond(text)
+                        if (root.pam.responseRequired) root.pam.respond(text)
                         text = ""
                     }
                 }
@@ -171,7 +209,7 @@ WlSessionLock {
                 anchors.horizontalCenter: parent.horizontalCenter
                 tone: "error"
                 invalid: root.errorText.length > 0
-                text: root.errorText.length > 0 ? root.errorText : (pam.message.length > 0 ? pam.message : " ")
+                text: root.errorText.length > 0 ? root.errorText : (root.pam.message.length > 0 ? root.pam.message : " ")
             }
 
             Column {
@@ -206,5 +244,6 @@ WlSessionLock {
                 onTriggered: clockTick.now = new Date()
             }
         }
+    }
     }
 }

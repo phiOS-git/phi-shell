@@ -139,9 +139,26 @@ PanelWindow {
                 root.mode = "idle"
                 return
             }
-            const geometry = Math.round(root.screen.x + selectionRect.x) + ","
-                + Math.round(root.screen.y + selectionRect.y) + " "
-                + Math.round(selectionRect.width) + "x" + Math.round(selectionRect.height)
+            // Found on real hardware (razer, scale 2): the captured region
+            // was offset toward the top-left of what was actually
+            // dragged. root.screen.x/y/width/height and mouse.x/y are all
+            // DEVICE-INDEPENDENT (logical) pixels — confirmed against the
+            // real source, src/core/qmlscreen.hpp: ShellScreen wraps a
+            // plain QScreen and reads its geometry directly, and Qt's own
+            // QScreen/QML mouse-event coordinates are logical by
+            // long-established platform convention, not something this
+            // repo invented. grim -g wants physical compositor pixels
+            // (the same space hyprctl monitors -j reports width/height
+            // in) — window and fullscreen capture never hit this bug
+            // because neither derives its geometry from QML coordinates
+            // at all (fullscreen passes -o <output name>, window capture
+            // uses hyprctl's own already-physical w.at/w.size verbatim).
+            // root.screen.devicePixelRatio (same header, confirmed
+            // property) converts logical to physical.
+            const scale = root.screen.devicePixelRatio
+            const geometry = Math.round((root.screen.x + selectionRect.x) * scale) + ","
+                + Math.round((root.screen.y + selectionRect.y) * scale) + " "
+                + Math.round(selectionRect.width * scale) + "x" + Math.round(selectionRect.height * scale)
             root._captureGeometry(geometry, root.mode)
             selectionRect.width = 0
             selectionRect.height = 0
