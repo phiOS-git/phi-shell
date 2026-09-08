@@ -31,3 +31,29 @@ way as any other QML file — as a QML error in this terminal, not a crash.
 
 See `docs/tokens-example.md` for the shape of the generated file without
 running `phi theme set` first.
+
+## Iterating without restarting the session
+
+Since S-24, Hyprland starts `qs -p ~/.config/quickshell/phi` itself on
+login (`hl.on("hyprland.start", ...)` in phios-dotfiles'
+`profiles/desktop/home/.config/hypr/hyprland.lua`), so there is normally no
+manual `qs` process to watch output from.
+
+Editing any `.qml` file needs no restart at all: Quickshell watches every
+file it has loaded and hot-reloads on save (master plan §8.1). This covers
+everything under `Widgets/`, `Bar/`, `Services/`, and `Config/` except
+`Config/Tokens.qml` itself, which only changes when `phi theme set` renders
+it — running that command re-triggers the same hot reload, not a restart.
+
+A change that genuinely needs a fresh process (a bug that leaves the shell
+in a broken state, or wanting to watch its stdout/stderr directly) does not
+require a Hyprland session reload either — kill the session-managed
+instance and run your own in a terminal:
+
+```
+pkill -x qs
+qs -p ~/.config/quickshell/phi
+```
+
+The bar disappears the moment `qs` is killed and reappears as soon as it is
+run again; nothing about the Hyprland session itself needs to change.

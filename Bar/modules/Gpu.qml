@@ -20,16 +20,16 @@ import qs.Widgets as Widgets
 // buried literal.
 //
 // Level-3 deep-link: launches `btop` (already in `base/packages.txt`) in a
-// new terminal. Not routed through the special btop workspace ADR 122
-// describes (`docs/phios-master-plan.md` §17.1/§19, decided at S-22): the
-// Hyprland window rule that actually assigns btop's window to that
-// workspace is S-24's job (Session integration, "btop workspace" in its
-// own AGENT bullet), and a dedicated persistent bar toggle for it is
-// unassigned to any step yet (flagged in S-22's own PROGRESS row) — until
-// either exists, `togglespecialworkspace` would just show an empty
-// workspace. A direct launch works today and costs nothing to migrate
-// later: whichever step wires the workspace rule can replace this
-// Process's command with a Hyprland.dispatch() call.
+// new terminal, tagged `--class phios-btop` so the Hyprland window rule
+// added at S-24 (phios-dotfiles' hyprland.lua) can assign this specific
+// kitty instance to btop's dedicated special workspace (ADR 122, Q-N03,
+// decided at S-22) by Wayland app id — set once at launch, never rewritten
+// by btop's own TUI, unlike the window title. A dedicated persistent bar
+// toggle for that workspace is still unassigned to any step (flagged in
+// S-22's own PROGRESS row) — until one exists, `togglespecialworkspace`
+// shows the workspace but nothing switches to it automatically, so a
+// direct launch is what actually works today. Migratable to a
+// Hyprland.dispatch() call in one line once that toggle lands.
 
 Widgets.Segment {
     id: root
@@ -55,7 +55,7 @@ Widgets.Segment {
 
     Process {
         id: btopLauncher
-        command: ["kitty", "-e", "btop"]
+        command: ["kitty", "--class", "phios-btop", "-e", "btop"]
     }
 
     Timer {
