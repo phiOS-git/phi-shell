@@ -55,8 +55,6 @@ Singleton {
     property var toastQueue: []    // pending Notification objects awaiting a toast
     property var activeToast: null // the one currently shown, or null
 
-    signal historyChanged()
-
     function toggleDnd() {
         root.dnd = !root.dnd
         Config.Settings.set("toggle.dnd", root.dnd ? "true" : "false")
@@ -85,8 +83,12 @@ Singleton {
     }
 
     function _pushHistory(entry) {
+        // No manual `root.historyChanged()` call: QML already auto-generates
+        // a historyChanged signal for `property var history` above, fired
+        // by this assignment — an earlier draft also declared that signal
+        // explicitly, which QML rejects outright ("invalid override of
+        // property change signal") since the two would collide.
         root.history = [entry].concat(root.history).slice(0, root.historyLimit)
-        root.historyChanged()
         _persist()
     }
 
