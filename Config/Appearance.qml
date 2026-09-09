@@ -222,6 +222,53 @@ Singleton {
                        a.b + (b.b - a.b) * t, a.a + (b.a - a.a) * t)
     }
 
+    // OOP-08: the settings panel's editable Theme section reads and writes
+    // token overrides through Config/ThemeOverrides.qml, but it needs the
+    // generated DEFAULT for each key (to seed a field, and to restore on
+    // reset). Config/Tokens.qml is this file's to read, not the settings
+    // panel's (S-20 contract) — so the mapping lives here.
+    function tokenDefault(key) {
+        switch (key) {
+        case "accent": return Tokens.accent
+        case "accent-fg": return Tokens.accentFg
+        case "bg-0": return Tokens.bg0
+        case "bg-1": return Tokens.bg1
+        case "bg-2": return Tokens.bg2
+        case "bg-3": return Tokens.bg3
+        case "fg-0": return Tokens.fg0
+        case "fg-1": return Tokens.fg1
+        case "fg-2": return Tokens.fg2
+        case "fg-3": return Tokens.fg3
+        case "border": return Tokens.border
+        case "border-strong": return Tokens.borderStrong
+        case "error": return Tokens.error
+        case "warn": return Tokens.warn
+        case "success": return Tokens.success
+        case "info": return Tokens.info
+        case "font-mono": return Tokens.fontMono
+        case "font-reading": return Tokens.fontReading
+        case "font-ui": return Tokens.fontUi
+        case "font-scale": return root._scaleString(Tokens.fontScale)
+        case "space-scale": return root._scaleString(Tokens.spaceScale)
+        case "radius-base": return Tokens.radiusBase
+        case "radius-small": return root._numString(Tokens.radiusSmall, Tokens.radiusBase)
+        case "radius-large": return root._numString(Tokens.radiusLarge, Tokens.radiusBase)
+        }
+        return ""
+    }
+    function _scaleString(v) {
+        return (v === undefined || v === null || String(v).length === 0) ? "1" : String(v)
+    }
+    function _numString(v, fallback) {
+        return (v === undefined || v === null || String(v).length === 0) ? String(fallback) : String(v)
+    }
+
+    // The effective (override-aware) string for a token key — what the
+    // settings field shows, and what a reset restores to (tokenDefault).
+    function tokenValue(key) {
+        return String(root._tok(key, root.tokenDefault(key)) || "")
+    }
+
     // Pick main or opposite as the readable text colour over an arbitrary
     // (user-picked) accent — relative luminance, WCAG-style coefficients.
     function _bestText(c) {
