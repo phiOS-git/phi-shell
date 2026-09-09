@@ -1,5 +1,6 @@
 pragma Singleton
 import QtQml
+import QtQuick
 import Quickshell
 import Quickshell.Io
 
@@ -44,6 +45,22 @@ Singleton {
     // Host-side config/state roots, for the "path" hint the panel shows.
     readonly property string configRoot: Quickshell.env("HOME") + "/.config/phi-agent"
     readonly property string stateRoot: Quickshell.env("HOME") + "/.local/state/phi-agent"
+
+    // The A2 / folder-of-interest blocklist (phios-agente-delta.md §3.4).
+    // Unlike broker.json / opencode.json this IS runtime user config (a real
+    // file, not a repo symlink — same as the theme overrides in OOP-08), so
+    // it is editable here.
+    property string codeBlocklistText: ""
+    FileView {
+        id: blocklistFile
+        path: root.configRoot + "/code-blocklist"
+        onLoaded: root.codeBlocklistText = blocklistFile.text()
+        onLoadFailed: (error) => { root.codeBlocklistText = "" }
+    }
+    function saveCodeBlocklist(text) {
+        blocklistFile.setText(text)
+        root.codeBlocklistText = text
+    }
 
     function refresh() { if (!probe.running) probe.running = true }
 

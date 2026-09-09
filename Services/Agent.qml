@@ -467,4 +467,364 @@ Singleton {
         unitProc.command = ["systemctl", "--user", on ? "start" : "stop", "phi-agent-a1.service"]
         unitProc.running = true
     }
+
+    // =====================================================================
+    // phios-agente-delta.md — the four-section panel's data (OOP-27).
+    // Still the ONE client point (ADR 098): every `phi agent` call and every
+    // opencode call is here; product logic lives in the §8.2 files on disk.
+    // =====================================================================
+
+    // --- structured project metadata (delta D-04) -----------------------
+
+    property var projectMeta: ({})   // {title, description, instructions[], default_personality, folders[], pins[]}
+    signal projectMetaReady()
+
+    Process {
+        id: projMetaProc
+        property string name: ""
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try { root.projectMeta = JSON.parse(this.text) || {} }
+                catch (e) { root.projectMeta = {} }
+                root.projectMetaReady()
+            }
+        }
+        onExited: projMetaProc.running = false
+    }
+    function refreshProjectMeta(name) {
+        if (projMetaProc.running || !name) return
+        projMetaProc.name = name
+        projMetaProc.command = [root.phi, "agent", "project", "show", name]
+        projMetaProc.running = true
+    }
+
+    Process { id: projSetProc; property string name: ""; onExited: { projSetProc.running = false; root.refreshProjectMeta(projSetProc.name); root.refreshProject() } }
+    function projectSet(name, args) {
+        if (projSetProc.running || !name) return
+        projSetProc.name = name
+        projSetProc.command = [root.phi, "agent", "project", "set", name].concat(args)
+        projSetProc.running = true
+    }
+    function setProjectDescription(name, text) { projectSet(name, ["--description", text]) }
+    function setProjectPersonality(name, p) { projectSet(name, ["--personality", p]) }
+    function addProjectInstruction(name, text) { projectSet(name, ["--instruction-add", text]) }
+    function removeProjectInstruction(name, text) { projectSet(name, ["--instruction-remove", text]) }
+
+    Process { id: projFolderProc; property string name: ""; onExited: { projFolderProc.running = false; root.refreshProjectMeta(projFolderProc.name) } }
+    function projectFolder(op, name, path) {
+        if (projFolderProc.running || !name || !path) return
+        projFolderProc.name = name
+        projFolderProc.command = [root.phi, "agent", "project", "folder", op, name, path]
+        projFolderProc.running = true
+    }
+
+    // Context files: static copies into the project's materiali/ (§8.2 — the
+    // agent never sees the source). The client does the copy (ADR 098 §9.2:
+    // project file management is the client's job).
+    property var materials: []
+    function _projectDir(name) {
+        return Quickshell.env("HOME") + "/.local/share/phi-agent/a1/projects/" + name
+    }
+    Process {
+        id: matListProc
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var out = []
+                var lines = this.text.split("\n")
+                for (var i = 0; i < lines.length; i++) { var n = lines[i].trim(); if (n.length > 0) out.push(n) }
+                root.materials = out
+            }
+        }
+        onExited: matListProc.running = false
+    }
+    function refreshMaterials(name) {
+        if (matListProc.running || !name) return
+        matListProc.command = ["sh", "-c", "ls -1 " + JSON.stringify(root._projectDir(name) + "/materiali") + " 2>/dev/null"]
+        matListProc.running = true
+    }
+    Process { id: matCpProc; property string name: ""; onExited: { matCpProc.running = false; root.refreshMaterials(matCpProc.name) } }
+    function addMaterial(name, path) {
+        if (matCpProc.running || !name || !path) return
+        matCpProc.name = name
+        matCpProc.command = ["sh", "-c",
+            "d=" + JSON.stringify(root._projectDir(name) + "/materiali") + "; mkdir -p \"$d\" && cp -R -- \"$1\" \"$d/\"",
+            "sh", path]
+        matCpProc.running = true
+    }
+    function removeMaterial(name, fileName) {
+        if (matCpProc.running || !name || !fileName) return
+        matCpProc.name = name
+        matCpProc.command = ["sh", "-c",
+            "rm -rf -- " + JSON.stringify(root._projectDir(name) + "/materiali") + "/\"$1\"",
+            "sh", fileName]
+        matCpProc.running = true
+    }
+
+    Process { id: newProj2Proc; onExited: { newProj2Proc.running = false; root.refreshProject() } }
+    function createProject(name, description, personality) {
+        if (newProj2Proc.running || !name) return
+        var c = [root.phi, "agent", "project", "new", name]
+        if (description) c = c.concat(["--description", description])
+        if (personality) c = c.concat(["--personality", personality])
+        newProj2Proc.command = c
+        newProj2Proc.running = true
+    }
+
+    // --- personalities: create / edit / delete (delta D-08) ------------
+
+    signal personalityPromptReady(string name, string text)
+
+    Process {
+        id: persShowProc
+        property string name: ""
+        stdout: StdioCollector { onStreamFinished: root.personalityPromptReady(persShowProc.name, this.text) }
+        onExited: persShowProc.running = false
+    }
+    function personalityShow(name) {
+        if (persShowProc.running || !name) return
+        persShowProc.name = name
+        persShowProc.command = [root.phi, "agent", "personality", "show", name]
+        persShowProc.running = true
+    }
+
+    Process { id: persWriteProc; onExited: { persWriteProc.running = false; root.refreshProject() } }
+    function personalityWrite(name, text) {
+        if (persWriteProc.running || !name) return
+        // base64 through one argv slot — bounded, no quoting hazard, and the
+        // prompt is not a secret so argv exposure does not matter.
+        persWriteProc.command = ["sh", "-c",
+            'printf %s "$0" | base64 -d | ' + root.phi + ' agent personality write "$1" --from-file -',
+            Qt.btoa(text), name]
+        persWriteProc.running = true
+    }
+    Process { id: persMiscProc; onExited: { persMiscProc.running = false; root.refreshProject() } }
+    function personalityDelete(name) {
+        if (persMiscProc.running || !name) return
+        persMiscProc.command = [root.phi, "agent", "personality", "delete", name]
+        persMiscProc.running = true
+    }
+    function personalityRename(oldName, newName) {
+        if (persMiscProc.running || !oldName || !newName) return
+        persMiscProc.command = [root.phi, "agent", "personality", "rename", oldName, newName]
+        persMiscProc.running = true
+    }
+
+    // --- transcript mirror + chat list (delta D-05) -------------------
+
+    property var chats: []           // [{id,title,project,pinned,updated}]
+    property var pinnedChats: []
+    property bool chatsLoading: false
+
+    Process {
+        id: chatListProc
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    var arr = JSON.parse(this.text) || []
+                    root.chats = arr
+                    root.pinnedChats = arr.filter(function (c) { return c.Pinned || c.pinned })
+                } catch (e) { root.chats = []; root.pinnedChats = [] }
+                root.chatsLoading = false
+            }
+        }
+        onExited: chatListProc.running = false
+    }
+    function refreshChats() {
+        if (chatListProc.running) return
+        root.chatsLoading = true
+        chatListProc.command = [root.phi, "agent", "chat", "list"]
+        chatListProc.running = true
+    }
+
+    Process { id: chatPinProc; onExited: { chatPinProc.running = false; root.refreshChats() } }
+    function setChatPinned(id, pinned) {
+        if (chatPinProc.running || !id) return
+        chatPinProc.command = [root.phi, "agent", "chat", pinned ? "pin" : "unpin", id]
+        chatPinProc.running = true
+    }
+    Process { id: chatTitleProc; onExited: { chatTitleProc.running = false; root.refreshChats() } }
+    function setChatTitle(id, title) {
+        if (chatTitleProc.running || !id) return
+        chatTitleProc.command = [root.phi, "agent", "chat", "title", id, title]
+        chatTitleProc.running = true
+    }
+
+    // Mirror the current transcript into the project folder on each idle turn.
+    Process { id: chatSyncProc; onExited: chatSyncProc.running = false }
+    function syncCurrentTranscript() {
+        if (chatSyncProc.running || root.currentSessionId.length === 0) return
+        if (!root.messages || root.messages.length === 0) return
+        var title = ""
+        for (var i = 0; i < root.sessions.length; i++)
+            if (root.sessions[i].id === root.currentSessionId) title = root.sessions[i].title
+        var md = ""
+        for (var j = 0; j < root.messages.length; j++) {
+            var m = root.messages[j]
+            md += "## " + (m.role === "user" ? "you" : "agent") + "\n\n" + m.text + "\n\n"
+        }
+        var c = ["sh", "-c",
+            'printf %s "$0" | base64 -d | ' + root.phi + ' agent chat sync "$1" --title "$2" --from-file -',
+            Qt.btoa(md), root.currentSessionId, title || root.currentSessionId]
+        if (root.activeProject.length > 0) c = c.concat(["--project", root.activeProject])
+        chatSyncProc.command = c
+        chatSyncProc.running = true
+    }
+
+    // --- history search (delta D-06 / ADR 099) -----------------------
+
+    property var searchResults: ({ Groups: [] })
+    property bool searching: false
+
+    Process {
+        id: searchProc
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try { root.searchResults = JSON.parse(this.text) || { Groups: [] } }
+                catch (e) { root.searchResults = { Groups: [] } }
+                root.searching = false
+            }
+        }
+        onExited: searchProc.running = false
+    }
+    function search(query) {
+        if (query.trim().length === 0) { root.searchResults = { Groups: [] }; return }
+        if (searchProc.running) return
+        root.searching = true
+        searchProc.command = [root.phi, "agent", "search", query, "--json"]
+        searchProc.running = true
+    }
+
+    // --- A2 coding sessions, from phi-owned metadata (delta D-07) -----
+
+    property var codingSessions: []
+    property bool codingSessionsLoading: false
+
+    Process {
+        id: sessListProc
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try { root.codingSessions = JSON.parse(this.text) || [] }
+                catch (e) { root.codingSessions = [] }
+                root.codingSessionsLoading = false
+            }
+        }
+        onExited: sessListProc.running = false
+    }
+    function refreshCodingSessions() {
+        if (sessListProc.running) return
+        root.codingSessionsLoading = true
+        sessListProc.command = [root.phi, "agent", "session", "list", "--json"]
+        sessListProc.running = true
+    }
+
+    Process { id: focusWinProc; onExited: focusWinProc.running = false }
+    function focusCodingWindow(addr) {
+        if (focusWinProc.running || !addr) return
+        focusWinProc.command = ["hyprctl", "dispatch", "focuswindow", "address:" + addr]
+        focusWinProc.running = true
+    }
+    Process { id: openSessProc; onExited: { openSessProc.running = false; root.refreshCodingSessions() } }
+    function openCodingSessionInTerminal(dir) {
+        if (openSessProc.running || !dir) return
+        // A fresh terminal running `phi agent code DIR`. kitty is the shell's
+        // terminal (Bar/modules/Btop.qml uses it).
+        openSessProc.command = ["hyprctl", "dispatch", "exec",
+            "kitty --class phios-agent-code -e sh -c 'phi agent code " + JSON.stringify(dir) + "'"]
+        openSessProc.running = true
+    }
+
+    // Mirrored transcript of a coding session, for the read-only "open chat
+    // view" in the Coding-sessions section.
+    signal codingTranscriptReady(string id, string markdown)
+    Process {
+        id: codeTxProc
+        property string id: ""
+        stdout: StdioCollector { onStreamFinished: root.codingTranscriptReady(codeTxProc.id, this.text) }
+        onExited: codeTxProc.running = false
+    }
+    function loadCodingTranscript(rec) {
+        if (codeTxProc.running || !rec) return
+        codeTxProc.id = rec.id || rec.ID || ""
+        var p = rec.transcript_path || rec.TranscriptPath || ""
+        if (p.length === 0) { root.codingTranscriptReady(codeTxProc.id, "_(no transcript mirrored for this session yet)_"); return }
+        codeTxProc.command = ["sh", "-c", "cat " + JSON.stringify(p) + " 2>/dev/null || echo '(transcript unreadable)'"]
+        codeTxProc.running = true
+    }
+
+    // --- multi-level memory proposals (delta D-01) -------------------
+
+    property var proposalsByLevel: ({})   // {"system": [...], "personality:notes": [...], "project:x": [...]}
+
+    Process {
+        id: allPropProc
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try { root.proposalsByLevel = JSON.parse(this.text) || {} }
+                catch (e) { root.proposalsByLevel = {} }
+            }
+        }
+        onExited: allPropProc.running = false
+    }
+    function refreshAllProposals() {
+        if (allPropProc.running) return
+        // `phi agent memory list-all` prints {level: [names]} as JSON.
+        allPropProc.command = [root.phi, "agent", "memory", "list-all", "--level", "system"]
+        allPropProc.running = true
+    }
+
+    signal levelProposalTextReady(string level, string name, string currentMemory, string proposalText)
+    Process {
+        id: lvlShowProc
+        property string level: ""
+        property string name: ""
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var cur = [], add = []
+                var phase = ""
+                var lines = this.text.split("\n")
+                for (var i = 0; i < lines.length; i++) {
+                    var raw = lines[i]
+                    if (raw.indexOf("current memoria.md:") === 0) { phase = "cur"; continue }
+                    if (raw.indexOf("would append") === 0) { phase = "add"; continue }
+                    if (phase === "cur" && raw.indexOf("  ") === 0) cur.push(raw.slice(2))
+                    else if (phase === "add" && raw.indexOf("+ ") === 0) add.push(raw.slice(2))
+                }
+                root.levelProposalTextReady(lvlShowProc.level, lvlShowProc.name, cur.join("\n"), add.join("\n"))
+            }
+        }
+        onExited: lvlShowProc.running = false
+    }
+    function _levelArgs(level) {
+        // level is "system" | "personality:<name>" | "project:<name>"
+        var parts = level.split(":")
+        if (parts[0] === "system") return ["--level", "system"]
+        if (parts[0] === "personality") return ["--level", "personality", "--personality", parts[1]]
+        return ["--level", "project", "--project", parts[1]]
+    }
+    function requestLevelProposalText(level, name) {
+        if (lvlShowProc.running) return
+        lvlShowProc.level = level
+        lvlShowProc.name = name
+        lvlShowProc.command = [root.phi, "agent", "memory", "show", name].concat(_levelArgs(level))
+        lvlShowProc.running = true
+    }
+    Process { id: lvlActProc; onExited: { lvlActProc.running = false; root.refreshAllProposals(); root.refreshProposals() } }
+    function acceptLevelProposal(level, name) {
+        if (lvlActProc.running) return
+        lvlActProc.command = [root.phi, "agent", "memory", "accept", name].concat(_levelArgs(level))
+        lvlActProc.running = true
+    }
+    function rejectLevelProposal(level, name) {
+        if (lvlActProc.running) return
+        lvlActProc.command = [root.phi, "agent", "memory", "reject", name].concat(_levelArgs(level))
+        lvlActProc.running = true
+    }
+
+    // Total pending across every level — drives the section badge.
+    readonly property int totalPendingProposals: {
+        var n = 0
+        for (var k in root.proposalsByLevel)
+            if (root.proposalsByLevel[k]) n += root.proposalsByLevel[k].length
+        return n
+    }
 }

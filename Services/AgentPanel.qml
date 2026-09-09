@@ -14,12 +14,11 @@ import Quickshell
 // PanelWindow is declared in shell.qml and a bar module has no path to it,
 // so the shared value has to live in a singleton both sides read.
 //
-// phios-agente.md §10.1: the agent panel is summoned by a global shortcut
-// and is a resident surface on a persistent event connection. This file is
-// the toggle plumbing for that; the panel's content is still a placeholder
-// (Panels/AgentPanel.qml) — the working conversational surface is the
-// sidebar's Agent tab (Panels/tabs/AiChat.qml, S-75) until the resident
-// panel is built for real.
+// phios-agente.md §10.1 / phios-agente-delta.md D-06: the agent panel is
+// summoned by a global shortcut and is a resident surface on a persistent
+// event connection. This file is the toggle plumbing for that; the panel's
+// content is the four-section surface (Panels/AgentPanel.qml + Panels/tabs/
+// agent/*): Dashboard, Chat, Coding sessions, Memory proposals.
 
 Singleton {
     id: root

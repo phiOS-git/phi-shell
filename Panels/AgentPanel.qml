@@ -5,33 +5,22 @@ import Quickshell.Wayland
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "tabs" as Tabs
+import "tabs/agent" as Agent
 
-// phiOS — Panels/AgentPanel (out-of-plan, 2026-09-09). The shell-summoned
-// phi agent surface of phios-agente.md §10.1 ("evocazione da scorciatoia
-// globale, superficie residente, connessione persistente al flusso di
-// eventi").
+// phiOS — Panels/AgentPanel (OOP-27, phios-agente-delta.md D-06). The
+// shell-summoned phi agent surface: a left-edge dock that slides in, with
+// FOUR sections — Dashboard, Chat, Coding sessions, Memory proposals — on a
+// thin nav rail. The panel is a dedicated surface, not a tabs.json instance
+// (ADR 100 stays satisfied: the surface TYPE is code written once).
 //
-// OOP-06 (shell restyle): the body is now the real conversational surface
-// — Panels/tabs/AiChat.qml (S-75), embedded here. It used to be a sidebar
-// TAB; OOP-06 dropped the sidebar to two tabs (Notifications, Clipboard)
-// per the user's directive, and the user's own spec is that "the chat has
-// its own panel, it slides in from the left". So AiChat moved from the
-// sidebar into this dock rather than being orphaned. Milestone C already
-// reshaped this surface from a centred float into a left-edge dock that
-// slides in.
+// Every call goes through Services/Agent.qml, the one client point (ADR 098).
 //
-// Entry points, all through Services/AgentPanel.qml (the one owner):
-//   - the bar Φ segment  (Bar/modules/PhiAgent.qml, onActivated)
+// Entry points, all through Services/AgentPanel.qml:
+//   - the bar Φ segment  (Bar/modules/PhiAgent.qml)
 //   - Super+P            (hyprland.lua.tmpl → `ipc call agent toggle`)
-//   - Settings › AI Agent "Open agent panel" button
+//   - Settings › AI Agent "Open agent panel"
 //
-// Single instance (shell.qml, screens[0]) — a focused, toggled surface,
-// not a per-monitor ambient one, same reasoning as Panels/Sidebar and
-// Settings/Settings. The IpcHandler therefore lives here, not in shell.qml
-// (Quickshell would register the same target N times from a repeated
-// component — that is why Spotlight's handler is in shell.qml and this
-// one is not).
+// UNVERIFIED: no compositor here. Every visual result is a screenshot.
 
 PanelWindow {
     id: root
@@ -39,12 +28,11 @@ PanelWindow {
     readonly property bool shown: Services.AgentPanel.shown
     readonly property var agent: Services.Agent
 
-    // OOP-09: false until the first frame — the dock's slide Behavior stays
-    // off while the layer surface settles its geometry. Same as Sidebar.
+    // section: "dashboard" | "chat" | "code" | "memory"
+    property string section: "dashboard"
+
     property bool _animReady: false
     Component.onCompleted: {
-        // R3 #1: above the bar + spanning its reserved strip, so the
-        // scrim dims the bar too.
         if (root.WlrLayershell) root.WlrLayershell.layer = WlrLayer.Overlay
         Qt.callLater(function () { root._animReady = true })
     }
@@ -52,9 +40,6 @@ PanelWindow {
     anchors { top: true; bottom: true; left: true; right: true }
     exclusiveZone: -1
     color: "transparent"
-    // PanelWindow has no `opacity` property (see Panels/Sidebar.qml's note)
-    // — the fade lives on fadeRoot, a plain Item, and `visible` stays true
-    // until that fade-out finishes.
     visible: root.shown || fadeRoot.opacity > 0
 
     IpcHandler {
@@ -62,12 +47,22 @@ PanelWindow {
         function toggle(): void { Services.AgentPanel.toggle() }
         function open(): void { Services.AgentPanel.show() }
         function close(): void { Services.AgentPanel.hide() }
+        function memory(): void { root.section = "memory"; Services.AgentPanel.show() }
+        function code(): void { root.section = "code"; Services.AgentPanel.show() }
     }
+
+    // Keyboard focus — the chat input and the search fields need it, and the
+    // placeholder-era panel never had it (the whole reason the old input was
+    // untypeable). Same as Panels/Sidebar / Settings.
+    Services.LayerFocus { target: root }
 
     onShownChanged: {
         if (root.shown) {
-            root.agent.refreshProject()
             root.agent.refreshHealth()
+            root.agent.refreshProject()
+            root.agent.refreshChats()
+            root.agent.refreshAllProposals()
+            if (root.section === "code") root.agent.refreshCodingSessions()
         }
     }
 
@@ -80,44 +75,37 @@ PanelWindow {
     readonly property real chWidth: chMetrics.width
     readonly property real gap: chWidth * Config.Appearance.space3
 
-    Widgets.Scrim {
-        anchors.fill: parent
-        shown: root.shown
-    }
+    // The dock widens for the Memory-proposals section so the literal diffs
+    // have room (delta §3.7), capped.
+    readonly property real baseWidth: Math.min(parent.width * 0.5, chWidth * 68)
+    readonly property real wideWidth: Math.min(parent.width * 0.62, chWidth * 92)
+    readonly property real targetWidth:
+        (root.section === "memory" && root.agent.totalPendingProposals > 0) ? wideWidth : baseWidth
 
-    // OOP-04: the chat panel is now a left-edge dock that slides in (user
-    // directive: "it slides in from the left (super+P or phi button)").
-    // Click-outside-to-dismiss is added here now that the blocker-MouseArea
-    // pattern (a MouseArea filling the panel, behind its content) makes it
-    // safe against the pointer-grab bug the earlier note warned about.
+    Widgets.Scrim { anchors.fill: parent; shown: root.shown }
 
     Item {
         id: fadeRoot
         anchors.fill: parent
         opacity: root.shown ? 1 : 0
-
         Behavior on opacity {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
         }
 
-        MouseArea {
-            anchors.fill: parent
-            onClicked: Services.AgentPanel.hide()
-        }
+        MouseArea { anchors.fill: parent; onClicked: Services.AgentPanel.hide() }
 
         Item {
             id: dock
             anchors.top: parent.top
-            // OOP-20 (item 2): the dock body starts below the bar. The
-            // scrim above still spans the whole output.
             anchors.topMargin: Services.BarMetrics.height
             anchors.bottom: parent.bottom
             anchors.left: parent.left
-            width: Math.min(parent.width * 0.5, root.chWidth * 68)
+            width: root.targetWidth
+            Behavior on width {
+                enabled: root._animReady
+                NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+            }
 
-            // OOP-09: self-relative Translate (0 shown, -width hidden off
-            // the left edge), Behavior gated on the first frame — same
-            // fix and reasoning as Panels/Sidebar.qml's dock.
             transform: Translate {
                 x: root.shown ? 0 : -dock.width
                 Behavior on x {
@@ -126,19 +114,87 @@ PanelWindow {
                 }
             }
 
-            // Swallow clicks on the dock (border included).
             MouseArea { anchors.fill: parent }
 
             Widgets.Panel {
-            anchors.fill: parent
-
-            // The real conversational surface (S-75), embedded (OOP-06).
-            // AiChat is layout-only and fills its container; Services/Agent
-            // is the one client point either way.
-            Tabs.AiChat {
                 anchors.fill: parent
+
+                Row {
+                    anchors.fill: parent
+                    spacing: 0
+
+                    // --- nav rail -------------------------------------
+                    Column {
+                        id: rail
+                        width: root.chWidth * 3.4
+                        height: parent.height
+                        spacing: root.chWidth * Config.Appearance.space1
+
+                        Repeater {
+                            model: [
+                                { key: "dashboard", glyph: "▤", label: "Dashboard" },
+                                { key: "chat", glyph: "▷", label: "Chat" },
+                                { key: "code", glyph: "⌘", label: "Coding sessions" },
+                                { key: "memory", glyph: "✎", label: "Memory proposals" }
+                            ]
+                            delegate: Item {
+                                required property var modelData
+                                width: rail.width
+                                height: rail.width
+                                Widgets.StyledText {
+                                    anchors.centerIn: parent
+                                    text: modelData.glyph
+                                    kind: root.section === modelData.key ? "title" : "label"
+                                    sizeStep: 3
+                                }
+                                // badge on the memory rail item
+                                Widgets.StyledText {
+                                    visible: modelData.key === "memory" && root.agent.totalPendingProposals > 0
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.margins: root.chWidth
+                                    text: String(root.agent.totalPendingProposals)
+                                    kind: "label"; sizeStep: 0; tone: "info"
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    onClicked: {
+                                        root.section = modelData.key
+                                        if (modelData.key === "code") root.agent.refreshCodingSessions()
+                                        if (modelData.key === "memory") root.agent.refreshAllProposals()
+                                        if (modelData.key === "dashboard") root.agent.refreshChats()
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Widgets.Separator { vertical: true; height: parent.height }
+
+                    // --- section body --------------------------------
+                    Item {
+                        width: parent.width - rail.width - 1
+                        height: parent.height
+                        clip: true
+
+                        Loader {
+                            anchors.fill: parent
+                            sourceComponent: {
+                                switch (root.section) {
+                                case "chat": return chatComp
+                                case "code": return codeComp
+                                case "memory": return memoryComp
+                                default: return dashComp
+                                }
+                            }
+                        }
+                        Component { id: dashComp;   Agent.Dashboard { onOpenChat: root.section = "chat" } }
+                        Component { id: chatComp;   Agent.Chat { onRequestSection: (s) => root.section = s } }
+                        Component { id: codeComp;   Agent.CodingSessions {} }
+                        Component { id: memoryComp; Agent.MemoryProposals {} }
+                    }
+                }
             }
-            } // Widgets.Panel
-        } // dock
+        }
     }
 }

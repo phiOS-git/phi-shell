@@ -92,117 +92,46 @@ Column {
     Widgets.StyledText {
         kind: "label"; sizeStep: 0
         width: parent.width; wrapMode: Text.WordWrap
-        text: "Conversations, tool approval and the literal memory-proposal diff are in the sidebar's Agent tab (Super+N → Agent). The Φ bar segment and Super+P toggle the agent panel."
-    }
-
-    // ---- project -------------------------------------------------------
-
-    Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Project" }
-
-    Widgets.ListRow {
-        width: parent.width
-        label: "Active project"
-        value: root.agent.activeProject.length > 0 ? root.agent.activeProject : "(none)"
-    }
-    Widgets.StyledText {
-        kind: "label"; sizeStep: 0
-        width: parent.width; wrapMode: Text.WordWrap
-        visible: root.agent.switching
-        text: "Rebuilding the containment for the new project… If this does not "
-            + "clear, phi-agent-a1.service failed to restart — check "
-            + "`systemctl --user status phi-agent-a1.service` (the broker's "
-            + "provider key must be set)."
-    }
-    Repeater {
-        model: root.agent.projects
-        Widgets.ListRow {
-            required property var modelData
-            width: root.width
-            label: modelData
-            active: modelData === root.agent.activeProject
-            value: modelData === root.agent.activeProject ? "active" : "switch"
-            onActivated: {
-                if (modelData !== root.agent.activeProject && !root.agent.switching)
-                    root.agent.useProject(modelData)
-            }
-        }
-    }
-    Widgets.StyledText {
-        kind: "label"; sizeStep: 0
-        visible: root.agent.projects.length === 0
-        text: "No projects yet — create one below, or with `phi agent project new NAME`."
+        text: "Projects, personalities, conversations, tool approval and the literal memory-proposal diffs live in the agent panel — the Φ bar segment or Super+P. This section keeps only runtime status and the A2 working-directory blocklist."
     }
     Row {
         spacing: Config.Appearance.space2 * root.chWidth
-        Widgets.StyledText {
-            anchors.verticalCenter: parent.verticalCenter
-            kind: "label"
-            text: "New project"
-        }
-        TextInput {
-            id: newProjectInput
-            anchors.verticalCenter: parent.verticalCenter
-            width: 24 * root.chWidth
-            font.family: Config.Appearance.fontMono
-            font.pixelSize: Config.Appearance.fontSize1
-            color: (text.length === 0 || root._projectNameValid(text))
-                ? Config.Appearance.textPrimary : Config.Appearance.error
-            clip: true
-        }
-        Widgets.StyledButton {
-            label: "Create"
-            enabled: root._projectNameValid(newProjectInput.text)
-            onClicked: {
-                root.agent.newProject(newProjectInput.text)
-                newProjectInput.text = ""
-            }
-        }
-    }
-    Widgets.StyledText {
-        kind: "label"; sizeStep: 0
-        text: "Name: lowercase letter or digit, then letters/digits/._- (max 64)."
-    }
-
-    // ---- personalities (read-only) ------------------------------------
-
-    Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Personalities" }
-
-    Repeater {
-        model: root.agent.personalities
         Widgets.ListRow {
-            required property var modelData
-            width: root.width
-            label: modelData
+            width: 40 * root.chWidth
+            label: "Active project"
+            value: root.agent.activeProject.length > 0 ? root.agent.activeProject : "(none)"
         }
     }
+
+    // ---- A2 working-directory blocklist (phios-agente-delta.md §3.4) -----
+
+    Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Coding-agent blocklist" }
     Widgets.StyledText {
         kind: "label"; sizeStep: 0
         width: parent.width; wrapMode: Text.WordWrap
-        text: root.agent.personalities.length === 0
-            ? "None — seed with `phi agent init`. Files: ~/.local/share/phi-agent/a1/personalita/*.md"
-            : "Read-only here. The default is `default_agent` in the versioned opencode.json; a conversation picks one in the Agent tab."
+        text: "Directories `phi agent code` and the folder-of-interest picker refuse. One glob per line; '#' comments; '~' expands. A guard-rail on the picker, not the security boundary. Saved to ~/.config/phi-agent/code-blocklist."
     }
-
-    // ---- outputs (active project) ------------------------------------
-
-    Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Outputs" }
-
-    Repeater {
-        model: root.agent.outputs
-        Widgets.ListRow {
-            required property var modelData
-            width: root.width
-            label: modelData
+    Widgets.Panel {
+        width: parent.width
+        height: Math.max(blocklistEdit.implicitHeight + padding * 2, root.chWidth * 10)
+        Flickable {
+            anchors.fill: parent
+            contentWidth: width
+            contentHeight: blocklistEdit.implicitHeight
+            clip: true
+            TextEdit {
+                id: blocklistEdit
+                width: parent.width
+                wrapMode: TextEdit.NoWrap
+                font.family: Config.Appearance.fontMono
+                font.pixelSize: Config.Appearance.fontSize1
+                color: Config.Appearance.textPrimary
+                selectByMouse: true
+                text: root.infra.codeBlocklistText
+            }
         }
     }
-    Widgets.StyledText {
-        kind: "label"; sizeStep: 0
-        text: root.agent.activeProject.length === 0
-            ? "No active project."
-            : (root.agent.outputs.length === 0
-                ? "Nothing in the active project's output/ directory yet."
-                : "Files the agent has written to the active project's output/ directory.")
-    }
+    Widgets.StyledButton { label: "Save blocklist"; onClicked: root.infra.saveCodeBlocklist(blocklistEdit.text) }
 
     // ---- services (runtime status, read-only) -----------------------
 
