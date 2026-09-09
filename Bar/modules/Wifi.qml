@@ -24,5 +24,5 @@ Widgets.Segment {
     tone: root.connected ? "" : "warn"
     active: Services.BarPopout.which === "wifi"
 
-    onActivated: Services.BarPopout.toggle("wifi")
+    onActivated: Services.BarPopout.toggle("wifi", root.centerX())
 }

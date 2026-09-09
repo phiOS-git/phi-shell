@@ -25,5 +25,5 @@ Widgets.Segment {
     tone: root.muted ? "warn" : ""
     active: Services.BarPopout.which === "volume"
 
-    onActivated: Services.BarPopout.toggle("volume")
+    onActivated: Services.BarPopout.toggle("volume", root.centerX())
 }

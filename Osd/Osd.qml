@@ -98,18 +98,11 @@ PanelWindow {
                         : "Brightness"
                 }
 
-                Rectangle {
+                Widgets.Meter {
                     width: parent.width
-                    height: chWidth
-                    radius: Config.Appearance.radiusBase
-                    color: Config.Appearance.surface2
-
-                    Rectangle {
-                        width: parent.width * Math.max(0, Math.min(1, root.value))
-                        height: parent.height
-                        radius: Config.Appearance.radiusBase
-                        color: (root.kind === "volume" && Services.AudioBridge.muted) ? Config.Appearance.textFaint : Config.Appearance.accent
-                    }
+                    value: root.value
+                    fillColor: (root.kind === "volume" && Services.AudioBridge.muted)
+                        ? Config.Appearance.textFaint : Config.Appearance.accent
                 }
 
                 Widgets.StyledText {

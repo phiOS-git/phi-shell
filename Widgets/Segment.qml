@@ -59,6 +59,17 @@ Item {
 
     signal activated()
 
+    // R3 #2: screen x of this button's centre, for a popout that points
+    // at it. Guarded — mapToItem(null) can throw before the item is in a
+    // scene; callers treat 0 as "fall back to a corner position".
+    function centerX() {
+        try {
+            return root.mapToItem(null, root.width / 2, 0).x
+        } catch (e) {
+            return 0
+        }
+    }
+
     readonly property string resolvedState: WidgetStates.resolve({
         enabled: root.enabled, hovered: root.hovered, pressed: root.pressed,
         active: root.active, keyboardFocus: root.keyboardFocus,
