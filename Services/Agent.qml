@@ -355,12 +355,14 @@ Singleton {
         command: [root.phi, "agent", "memory", "list"]
         stdout: StdioCollector {
             onStreamFinished: {
+                // Not a TTY, so `phi agent memory list` prints exactly one
+                // proposal file name per line and nothing else — take every
+                // non-empty line verbatim. A name the panel drops is a
+                // memory proposal that silently never gets reviewed (§8.6).
                 const out = []
                 for (const raw of this.text.split("\n")) {
                     const line = raw.trim()
-                    if (line.length > 0 && !line.includes(":") && !line.startsWith("(")
-                        && !line.startsWith("review") && line.indexOf(" ") < 0)
-                        out.push(line)
+                    if (line.length > 0) out.push(line)
                 }
                 root.pendingProposals = out
             }
