@@ -21,7 +21,7 @@ Widgets.Segment {
     label: Services.Brightness.percent + "%"
     active: Services.BarPopout.which === "brightness"
 
-    onActivated: Services.BarPopout.toggle("brightness", root.centerX())
+    onActivated: Services.BarPopout.toggle("brightness", root.rightX())
 
     Component.onCompleted: Services.Brightness.refresh()
 }

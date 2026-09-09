@@ -28,5 +28,5 @@ Widgets.Segment {
         : (root.powered ? "on" : "off")
     active: Services.BarPopout.which === "bluetooth"
 
-    onActivated: Services.BarPopout.toggle("bluetooth", root.centerX())
+    onActivated: Services.BarPopout.toggle("bluetooth", root.rightX())
 }

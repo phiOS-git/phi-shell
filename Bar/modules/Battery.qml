@@ -46,5 +46,5 @@ Widgets.Segment {
     tone: !root.anomaly ? "" : (root.lowPercent ? "error" : "warn")
     active: Services.BarPopout.which === "battery"
 
-    onActivated: Services.BarPopout.toggle("battery", root.centerX())
+    onActivated: Services.BarPopout.toggle("battery", root.rightX())
 }

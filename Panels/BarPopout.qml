@@ -5,10 +5,11 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../Bar/glyphs.js" as Glyphs
 
-// phiOS — Panels/BarPopout.qml (OOP-11; R3 #2/#9). The small panel that
-// drops below a right-isle button. It now (a) points at the button that
-// opened it (Services.BarPopout.anchorX) rather than always sitting in the
-// corner, and (b) carries minimal real content per key:
+// phiOS — Panels/BarPopout.qml (OOP-11; R3 #2/#9; OOP-22). The small panel
+// that drops below a right-isle button. It (a) aligns its right edge to
+// the button's right edge (Services.BarPopout.anchorRightX) rather than
+// sitting in the corner, sitting one rhythm unit below the bar, and
+// (b) carries minimal real content per key:
 //   - volume / brightness → an overlay-reference.png pill: glyph · a
 //     draggable Widgets.Meter · the percentage. No scrim (this window has
 //     none), no card chrome.
@@ -59,16 +60,20 @@ PanelWindow {
         Item {
             id: cardWrap
             anchors.top: parent.top
-            anchors.topMargin: root.barHeight
+            // OOP-22: a small gap below the bar (item 4: "positioned too
+            // low" — was an over-estimated bar height, now the real one
+            // plus one rhythm unit of breathing room).
+            anchors.topMargin: root.barHeight + root.chWidth * Config.Appearance.space1
             width: root.meter ? root.chWidth * 30 : root.chWidth * 34
             height: panel.height
 
-            // Point at the button that opened this, clamped to the screen;
-            // fall back to the right corner when there is no anchor x.
-            x: Services.BarPopout.anchorX > 0
+            // OOP-22 (item 4): align the card's RIGHT edge to the button's
+            // right edge, clamped to the screen; fall back to the right
+            // corner when there is no anchor.
+            x: Services.BarPopout.anchorRightX > 0
                 ? Math.max(root.chWidth,
                     Math.min(parent.width - width - root.chWidth,
-                        Services.BarPopout.anchorX - width / 2))
+                        Services.BarPopout.anchorRightX - width))
                 : parent.width - width - root.chWidth * Config.Appearance.space2
 
             MouseArea { anchors.fill: parent }

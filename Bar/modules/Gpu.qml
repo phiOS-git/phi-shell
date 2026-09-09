@@ -55,7 +55,7 @@ Widgets.Segment {
     tone: root.tempAnomaly ? "error" : (root.utilAnomaly ? "warn" : "")
     active: Services.BarPopout.which === "gpu"
 
-    onActivated: Services.BarPopout.toggle("gpu", root.centerX())
+    onActivated: Services.BarPopout.toggle("gpu", root.rightX())
 
     Timer {
         // A functional constant (how often to poll nvidia-smi), not a
