@@ -59,16 +59,23 @@ PanelWindow {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
-    // OOP-05: ~25% of the screen width (user directive), with a mono floor
-    // so it never collapses on a narrow display.
-    readonly property real launcherWidth: Math.max(chWidth * 34, (root.screen ? root.screen.width : 0) * 0.25)
-    readonly property real topMargin: chWidth * Config.Appearance.space6
+    // OOP-12: wider than OOP-05's 25% (user R2: "width should be larger"),
+    // with a mono floor so it never collapses on a narrow display.
+    readonly property real launcherWidth: Math.max(chWidth * 48, (root.screen ? root.screen.width : 0) * 0.34)
+    // OOP-12: the box is a fixed tall height from the moment it opens
+    // (user: "it should start at the highest height, eg. 20 entries") and
+    // is centred on screen, not top-anchored. rowH is one result line.
+    readonly property real rowH: chMetrics.height + chWidth * Config.Appearance.space1
+    readonly property int visibleRows: 20
+    readonly property real listBoxHeight: Math.min(root.rowH * root.visibleRows,
+        (root.screen ? root.screen.height : 1080) * 0.62)
 
-    // The input prefix ("Φ : ") and the pixel width it occupies — the
-    // result options are indented to start exactly where the typed text
-    // does (user directive). OOP-09: capital Φ (the identity mark's own
-    // codepoint, §6.6) — the lowercase was a typo.
-    readonly property string inputPrefix: "Φ : "
+    // The input prefix and the pixel width it occupies — the result
+    // options are indented to start exactly where the typed text does
+    // (user directive). OOP-09: capital Φ (the identity mark's own
+    // codepoint, §6.6). OOP-12: more air around the Φ (user R2: "the phi
+    // character should have more spacing on the sides").
+    readonly property string inputPrefix: "Φ   :   "
     TextMetrics {
         id: prefixMetrics
         font.family: Config.Appearance.fontMono
@@ -149,10 +156,41 @@ PanelWindow {
     function _runQuery() {
         if (root.queryText.length === 0) {
             root.results = []
+            root.highlightedIndex = 0
             return
         }
         queryComponent.createObject(root, { queryArg: root.queryText })
     }
+
+    // OOP-12: with nothing typed, browse the installed applications
+    // (Quickshell.DesktopEntries — the same freedesktop .desktop source
+    // phi's own ApplicationsProvider scans; `phi query ""` returns nothing
+    // by design and the packaged binary is frozen for M7, so the browse
+    // list is built shell-side). A typed query still goes to `phi query`
+    // for real ranking.
+    readonly property var browseResults: {
+        var apps = (DesktopEntries.applications && DesktopEntries.applications.values) || []
+        var out = []
+        for (var i = 0; i < apps.length; i++) {
+            var e = apps[i]
+            if (!e || e.noDisplay) continue
+            out.push({
+                id: "app:" + (e.id || e.name),
+                title: e.name || "",
+                subtitle: e.genericName || e.comment || "",
+                action: { kind: "desktopEntry", data: { entry: e } }
+            })
+        }
+        out.sort(function (a, b) {
+            return a.title.toLowerCase().localeCompare(b.title.toLowerCase())
+        })
+        return out
+    }
+
+    // What the list and the keyboard navigation actually read: the browse
+    // list when nothing is typed, the ranked `phi query` results otherwise.
+    readonly property var displayResults: root.queryText.trim().length === 0
+        ? root.browseResults : root.results
 
     property Component queryComponent: Component {
         Process {
@@ -223,6 +261,16 @@ PanelWindow {
         case "exec":
             Quickshell.execDetached(["sh", "-c", action.data.command])
             break
+        case "desktopEntry": {
+            // OOP-12: browse-mode result — prefer Quickshell's own
+            // DesktopEntry.execute() (handles Terminal=, field codes,
+            // DBusActivatable); fall back to its cleaned exec string.
+            var ent = action.data.entry
+            if (!ent) break
+            if (typeof ent.execute === "function") ent.execute()
+            else if (ent.execString) Quickshell.execDetached(["sh", "-c", ent.execString])
+            break
+        }
         case "execTerminal":
             Quickshell.execDetached(["kitty", "--hold", "-e", "sh", "-c", action.data.command])
             break
@@ -286,10 +334,11 @@ PanelWindow {
     // --- Keyboard -----------------------------------------------------
 
     function moveHighlight(delta) {
-        if (root.results.length === 0) return
+        const n = root.displayResults.length
+        if (n === 0) return
         let next = root.highlightedIndex + delta
         if (next < 0) next = 0
-        if (next >= root.results.length) next = root.results.length - 1
+        if (next >= n) next = n - 1
         root.highlightedIndex = next
     }
 
@@ -322,9 +371,11 @@ PanelWindow {
 
     Item {
         id: panelWrap
+        // OOP-12: centred on screen (user R2: "the runner should be
+        // centred"), biased a little above dead centre.
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: parent.top
-        anchors.topMargin: root.topMargin
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.verticalCenterOffset: -parent.height * 0.06
         width: root.launcherWidth
         height: panel.height
 
@@ -380,9 +431,9 @@ PanelWindow {
                     Keys.onDownPressed: root.moveHighlight(1)
                     Keys.onUpPressed: root.moveHighlight(-1)
                     Keys.onEscapePressed: root.setShown(false)
-                    Keys.onReturnPressed: root.activate(root.results[root.highlightedIndex])
+                    Keys.onReturnPressed: root.activate(root.displayResults[root.highlightedIndex])
                     Keys.onTabPressed: {
-                        const r = root.results[root.highlightedIndex]
+                        const r = root.displayResults[root.highlightedIndex]
                         if (r && r.action.kind === "command") {
                             root.pushCommandView(r.action.data.command)
                         }
@@ -392,76 +443,105 @@ PanelWindow {
 
             Widgets.Separator {
                 width: parent.width
-                visible: root.atRoot && root.results.length > 0
+                visible: root.atRoot
             }
 
-            Column {
-                id: resultList
+            // OOP-12: a fixed-height scroll area (~20 rows) so the box
+            // opens at full height and never grows/shrinks as results
+            // change (user directive).
+            Flickable {
+                id: resultFlick
                 width: parent.width
+                height: root.listBoxHeight
                 visible: root.atRoot
-                spacing: 0
+                clip: true
+                contentWidth: width
+                contentHeight: resultList.implicitHeight
+                boundsBehavior: Flickable.StopAtBounds
 
-                Repeater {
-                    model: root.results
+                function ensureVisible() {
+                    var y = root.highlightedIndex * root.rowH
+                    if (y < contentY) contentY = y
+                    else if (y + root.rowH > contentY + height)
+                        contentY = Math.min(y + root.rowH - height,
+                            Math.max(0, contentHeight - height))
+                }
 
-                    delegate: Item {
-                        id: opt
-                        required property var modelData
-                        required property int index
-                        readonly property bool selected: opt.index === root.highlightedIndex
-                        readonly property bool isLoading: opt.modelData.action
-                            && opt.modelData.action.kind === "loading"
-                        readonly property real hpad: Config.Appearance.borderWidth * 2
+                Connections {
+                    target: root
+                    function onHighlightedIndexChanged() { resultFlick.ensureVisible() }
+                }
 
-                        width: resultList.width
-                        height: nameText.implicitHeight + root.chWidth * Config.Appearance.space1
+                Column {
+                    id: resultList
+                    width: resultFlick.width
+                    spacing: 0
 
-                        // OOP-05: the selection highlight is on the NAME
-                        // text only, not the whole row — a block of the
-                        // opposite colour behind the text, text flipped to
-                        // main.
-                        Rectangle {
-                            visible: opt.selected
-                            x: root.inputPrefixWidth - opt.hpad
-                            width: nameText.implicitWidth + opt.hpad * 2
-                            height: parent.height
-                            radius: Config.Appearance.radiusSmall
-                            color: Config.Appearance.selectionBackground
+                    Repeater {
+                        model: root.displayResults
+
+                        delegate: Item {
+                            id: opt
+                            required property var modelData
+                            required property int index
+                            readonly property bool selected: opt.index === root.highlightedIndex
+                            readonly property bool isLoading: opt.modelData.action
+                                && opt.modelData.action.kind === "loading"
+                            readonly property real hpad: root.chWidth * 0.6
+
+                            width: resultList.width
+                            height: root.rowH
+
+                            // OOP-05: highlight is on the NAME text only.
+                            // OOP-12: a quick fade, not an instant snap.
+                            Rectangle {
+                                x: root.inputPrefixWidth - opt.hpad
+                                width: nameText.implicitWidth + opt.hpad * 2
+                                height: parent.height
+                                radius: Config.Appearance.radiusSmall
+                                color: Config.Appearance.selectionBackground
+                                opacity: opt.selected ? 1 : 0
+                                Behavior on opacity {
+                                    NumberAnimation { duration: 70; easing.type: Easing.OutQuad }
+                                }
+                            }
+
+                            Widgets.StyledText {
+                                id: nameText
+                                x: root.inputPrefixWidth
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: opt.modelData.title
+                                mono: true
+                                sizeStep: 2
+                                color: opt.selected
+                                    ? Config.Appearance.selectionText
+                                    : Config.Appearance.textPrimary
+                                opacity: opt.isLoading ? 0.45 : 1
+                            }
+
+                            Widgets.StyledText {
+                                id: dirText
+                                anchors.right: parent.right
+                                anchors.rightMargin: root.chWidth
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: opt.modelData.subtitle
+                                kind: "label"
+                                sizeStep: 0
+                                font.italic: true
+                                elide: Text.ElideLeft
+                                width: Math.max(0, parent.width - root.inputPrefixWidth
+                                    - nameText.implicitWidth - root.chWidth * 3)
+                            }
+
+                            TapHandler { onTapped: root.activate(opt.modelData) }
                         }
-
-                        Widgets.StyledText {
-                            id: nameText
-                            x: root.inputPrefixWidth
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: opt.modelData.title
-                            mono: true
-                            color: opt.selected
-                                ? Config.Appearance.selectionText
-                                : Config.Appearance.textPrimary
-                            opacity: opt.isLoading ? 0.45 : 1
-                        }
-
-                        Widgets.StyledText {
-                            id: dirText
-                            anchors.right: parent.right
-                            anchors.rightMargin: root.chWidth
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: opt.modelData.subtitle
-                            kind: "label"
-                            font.italic: true
-                            elide: Text.ElideLeft
-                            width: Math.max(0, parent.width - root.inputPrefixWidth
-                                - nameText.implicitWidth - root.chWidth * 3)
-                        }
-
-                        TapHandler { onTapped: root.activate(opt.modelData) }
                     }
                 }
 
                 Widgets.StyledText {
                     id: noResults
                     x: root.inputPrefixWidth
-                    topPadding: root.chWidth * Config.Appearance.space1
+                    y: root.chWidth * Config.Appearance.space1
                     kind: "label"
                     text: "no results"
                     visible: root.queryText.length > 0 && root.results.length === 0
