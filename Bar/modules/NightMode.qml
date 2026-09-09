@@ -34,6 +34,11 @@ Widgets.Segment {
 
     required property ShellScreen screen
 
+    // OOP-03: bar buttons sit on the opposite-coloured islands. (Not in
+    // modules.json after the restyle — the night-mode / true-tone toggles
+    // moved into the notification panel's display-toggles row, OOP-05.)
+    ambient: "isle"
+
     label: Services.NightShift.enabled ? "Night" : "Day"
     tone: Services.NightShift.enabled ? "info" : ""
 

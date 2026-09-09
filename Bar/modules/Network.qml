@@ -25,6 +25,9 @@ Widgets.Segment {
 
     required property ShellScreen screen
 
+    // OOP-03: bar buttons sit on the opposite-coloured islands.
+    ambient: "isle"
+
     property bool detailsShown: false
 
     readonly property bool connected: Services.Tailscale.connected

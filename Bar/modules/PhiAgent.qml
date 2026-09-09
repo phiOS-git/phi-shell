@@ -71,9 +71,11 @@ Item {
         // §6.6 Role B is a closed ADR: the agent's processing state is
         // Tier-1 accent, not the B&W inversion OOP-02 gave every other
         // selected control. This flag is the one exception to that rule.
-        // (`ambient` is left at its default here and set for the whole bar
-        // in OOP-03.)
         accentWhenActive: true
+        // OOP-03: the Φ mark moved to the LEFT isle (leftmost element,
+        // ahead of the workspace list) — a deviation from §8.4's own
+        // per-host inventory, which put it at the end of the right cluster.
+        ambient: "isle"
         onActivated: Services.AgentPanel.toggle()
     }
 

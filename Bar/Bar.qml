@@ -4,6 +4,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import qs.Config as Config
 import qs.Services as Services
+import qs.Widgets as Widgets
 import "modules" as Modules
 
 // phiOS — Bar/Bar.qml (S-22, master plan §8.2/§8.4, ADR 078): one instance
@@ -44,9 +45,11 @@ PanelWindow {
         left: true
         right: true
     }
-    color: Config.Appearance.background
-    // exclusiveZone is set further down (S-43: 0 while auto-hidden for
-    // fullscreen, bar.height otherwise) — not bound here twice.
+    // OOP-03: the bar window has no background of its own — the isles
+    // (Widgets/BarIsle) are the only chrome. exclusiveZone is set further
+    // down (S-43: 0 while auto-hidden for fullscreen, bar.height otherwise)
+    // — not bound here twice.
+    color: "transparent"
 
     // design/tokens.common.sh stores space-N in `ch`, not px — see
     // Widgets/Panel.qml's identical comment.
@@ -57,7 +60,9 @@ PanelWindow {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
-    readonly property real islandGap: chWidth * Config.Appearance.space2
+    // OOP-03: gap BETWEEN buttons inside an isle (tight) vs. gap from an
+    // isle to the screen edge / the reserved centre zone.
+    readonly property real islandGap: chWidth * Config.Appearance.space1
     readonly property real islandMargin: chWidth * Config.Appearance.space2
 
     // No §6.3 token covers bar height — it was never part of the token
@@ -105,6 +110,7 @@ PanelWindow {
         case "activeWindow": return activeWindowComponent
         case "clock": return clockComponent
         case "volume": return volumeComponent
+        case "brightness": return brightnessComponent
         case "network": return networkComponent
         case "bluetooth": return bluetoothComponent
         case "battery": return batteryComponent
@@ -112,6 +118,8 @@ PanelWindow {
         case "gpu": return gpuComponent
         case "nightMode": return nightModeComponent
         case "phiAgent": return phiAgentComponent
+        case "btop": return btopComponent
+        case "notifications": return notificationsComponent
         case "timer": return timerComponent
         default:
             console.warn("phi-shell: Bar module type not recognized: " + type)
@@ -138,6 +146,7 @@ PanelWindow {
     // modules.json does not resolve true — no per-host branching belongs
     // here, that would defeat the point of a single shared registry.
     Component { id: volumeComponent; Modules.Volume { screen: bar.screen } }
+    Component { id: brightnessComponent; Modules.Brightness { screen: bar.screen } }
     Component { id: networkComponent; Modules.Network { screen: bar.screen } }
     Component { id: bluetoothComponent; Modules.Bluetooth { screen: bar.screen } }
     Component { id: batteryComponent; Modules.Battery { screen: bar.screen } }
@@ -145,6 +154,8 @@ PanelWindow {
     Component { id: gpuComponent; Modules.Gpu { screen: bar.screen } }
     Component { id: nightModeComponent; Modules.NightMode { screen: bar.screen } }
     Component { id: phiAgentComponent; Modules.PhiAgent { screen: bar.screen } }
+    Component { id: btopComponent; Modules.Btop { screen: bar.screen } }
+    Component { id: notificationsComponent; Modules.Notifications { screen: bar.screen } }
     Component { id: timerComponent; Modules.Timer { screen: bar.screen } }
 
     FileView {
@@ -202,8 +213,8 @@ PanelWindow {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
         }
 
-    Row {
-        id: leftIsland
+    Widgets.BarIsle {
+        id: leftIsle
         anchors.left: parent.left
         anchors.leftMargin: bar.islandMargin
         anchors.verticalCenter: parent.verticalCenter
@@ -218,8 +229,8 @@ PanelWindow {
         }
     }
 
-    Row {
-        id: rightIsland
+    Widgets.BarIsle {
+        id: rightIsle
         anchors.right: parent.right
         anchors.rightMargin: bar.islandMargin
         anchors.verticalCenter: parent.verticalCenter
@@ -234,31 +245,30 @@ PanelWindow {
         }
     }
 
-    // The centre slot is a single Loader, not a Row+Repeater: master plan
-    // §8.4 describes it as one fixed role ("centro = titolo finestra
-    // attiva"), not an extensible list the way the left/right islands
-    // are. Spans the space between the two side islands so the title can
-    // never overlap either — anchoring it to the bar's true horizontal
-    // centre instead risks exactly that overlap once a real title and
-    // real workspace count are both on screen, flagged here for cheap
-    // veto if a screenshot says otherwise.
-    //
-    // Known, not yet bounded: leftIsland/rightIsland size to their own
-    // natural content width (Row's default), so a long workspace name (or
-    // a long clock format, later) shrinks the space left for the title
-    // rather than truncating itself — ActiveWindow is the only module
-    // with an elide, since it is the only one whose text length this step
-    // cannot predict. Left as-is rather than adding an untested width cap
-    // ahead of seeing whether real workspace names ever get that long.
-    Loader {
-        id: centerLoader
-        anchors.left: leftIsland.right
-        anchors.right: rightIsland.left
-        anchors.leftMargin: bar.islandGap
-        anchors.rightMargin: bar.islandGap
+    // OOP-03: the centre isle is pinned to the TRUE horizontal centre of
+    // the screen (user directive — it is no longer evenly spaced between
+    // the two side isles). It is a single Loader, not a Row+Repeater:
+    // master plan §8.4 describes the centre as one fixed role ("centro =
+    // titolo finestra attiva"). `maxContentWidth` reserves the WIDER of
+    // the two side isles on BOTH sides, so the title stays screen-centred
+    // and can never overlap either isle — ActiveWindow elides within it.
+    Widgets.BarIsle {
+        id: centerIsle
+        anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
-        height: parent.height
-        sourceComponent: bar.centerModules.length > 0 ? bar.componentFor(bar.centerModules[0].type) : null
+        visible: centerLoader.item !== null && centerLoader.width > 0
+
+        readonly property real maxContentWidth: Math.max(0,
+            bar.width - 2 * (bar.islandMargin
+                + Math.max(leftIsle.width, rightIsle.width) + bar.islandGap))
+
+        Loader {
+            id: centerLoader
+            sourceComponent: bar.centerModules.length > 0
+                ? bar.componentFor(bar.centerModules[0].type) : null
+            width: Math.max(0, Math.min(implicitWidth, centerIsle.maxContentWidth))
+            height: implicitHeight
+        }
     }
     } // barContent
 }

@@ -1,14 +1,13 @@
 [
-    { "type": "workspaces", "island": "left", "position": 0, "source": "internal:hyprland", "capability": "" },
+    { "type": "phiAgent", "island": "left", "position": 0, "source": "internal:phi-agent", "capability": "" },
+    { "type": "workspaces", "island": "left", "position": 10, "source": "internal:hyprland", "capability": "" },
+    { "type": "btop", "island": "left", "position": 20, "source": "internal:hyprland", "capability": "" },
     { "type": "activeWindow", "island": "center", "position": 0, "source": "internal:hyprland", "capability": "" },
     { "type": "volume", "island": "right", "position": 10, "source": "internal:pipewire", "capability": "" },
-    { "type": "network", "island": "right", "position": 20, "source": "internal:tailscale", "capability": "" },
-    { "type": "battery", "island": "right", "position": 30, "source": "internal:upower", "capability": "battery" },
+    { "type": "brightness", "island": "right", "position": 20, "source": "internal:brightnessctl", "capability": "backlight" },
+    { "type": "network", "island": "right", "position": 30, "source": "internal:tailscale", "capability": "" },
     { "type": "wifi", "island": "right", "position": 40, "source": "internal:networkmanager", "capability": "wifi" },
     { "type": "bluetooth", "island": "right", "position": 50, "source": "internal:bluez", "capability": "bluetooth" },
-    { "type": "gpu", "island": "right", "position": 60, "source": "internal:nvidia-smi", "capability": "nvidiaGpu" },
-    { "type": "nightMode", "island": "right", "position": 70, "source": "internal:hyprsunset", "capability": "" },
-    { "type": "phiAgent", "island": "right", "position": 90, "source": "internal:phi-agent", "capability": "" },
-    { "type": "timer", "island": "right", "position": 95, "source": "internal:shell", "capability": "" },
+    { "type": "notifications", "island": "right", "position": 60, "source": "internal:notifications", "capability": "" },
     { "type": "clock", "island": "right", "position": 100, "source": "internal:clock", "capability": "" }
 ]

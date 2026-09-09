@@ -17,6 +17,10 @@ Widgets.Segment {
 
     required property ShellScreen screen
 
+    // OOP-03: bar buttons sit on the opposite-coloured islands. (Not in
+    // modules.json after the restyle — re-addable as a data change.)
+    ambient: "isle"
+
     property int remainingMs: 0
     readonly property bool running: root.remainingMs > 0
 

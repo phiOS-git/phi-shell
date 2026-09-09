@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
@@ -34,6 +35,11 @@ Widgets.StyledText {
         && activeToplevel.monitor.name === root.screen.name
 
     text: onThisScreen ? activeToplevel.title : ""
+    // OOP-03: the centre isle sits on the opposite colour and uses the
+    // mono font like the rest of the bar; its Loader (Bar.qml) caps this
+    // width so the title can never overlap either side isle.
+    mono: true
+    color: Config.Appearance.barText
     width: parent ? parent.width : implicitWidth
     horizontalAlignment: Text.AlignHCenter
     elide: Text.ElideRight

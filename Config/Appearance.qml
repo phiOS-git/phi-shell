@@ -92,6 +92,9 @@ Singleton {
     // ambient surface with a 1px contrast border — see
     // Widgets/WidgetStates.js surfaceColors(), ambient "isle".
     readonly property color barIsleBackground: root.colorOpposite
+    // Text placed directly on an isle (the centre isle's active-window
+    // title) — main colour, i.e. the contrast against the isle.
+    readonly property color barText: root.colorMain
 
     // Selection / active item: a block of the opposite colour, text flips
     // to main.

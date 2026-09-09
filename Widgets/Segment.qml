@@ -10,6 +10,14 @@ import "WidgetStates.js" as WidgetStates
 // wired by whatever composes this into the bar (S-22, the "max 5 rows + 2
 // actions" cap belongs there too); this widget only renders itself and
 // signals `activated()` when clicked.
+//
+// OOP-02/OOP-03 (shell restyle): the button now carries a 1px contrast
+// border and its label/icon track the resolved state's fg (so an inverted
+// active segment reads as inverted, not as invisible same-on-same). Two
+// bar-specific knobs: `ambient: "isle"` puts it on the status bar's
+// opposite-coloured island grammar and switches its text to the mono
+// font; `squared` forces a roughly square footprint for the workspace and
+// btop buttons.
 
 Item {
     id: root
@@ -25,6 +33,14 @@ Item {
     // e.g. the sidebar tab strip) or "isle" (the status bar's opposite-
     // coloured islands). Passed straight through to surfaceColors().
     property string ambient: "panel"
+
+    // OOP-03: the status bar is mono (user directive). "isle" ambient
+    // implies it; a panel Segment stays on the UI font.
+    property bool mono: root.ambient === "isle"
+
+    // OOP-03: the workspace and btop buttons are square regardless of how
+    // wide their single glyph/digit is.
+    property bool squared: false
 
     // OOP-02: keep the §6.6 Role B rule for the Φ agent segment — its
     // active (processing) state is Tier-1 accent, not the B&W inversion
@@ -47,6 +63,15 @@ Item {
         ? ({ bg: Config.Appearance.accent, fg: Config.Appearance.accentText, border: Config.Appearance.accent })
         : WidgetStates.surfaceColors(Config.Appearance, root.resolvedState, root.ambient)
 
+    // The label/icon colour: a real threshold tone wins, then invalid, then
+    // the resolved state's own fg (so an inverted active segment inverts
+    // its text too).
+    readonly property color contentColor: root.invalid
+        ? Config.Appearance.error
+        : (root.tone.length > 0
+            ? WidgetStates.contentColor(Config.Appearance, "value", root.tone, false)
+            : root.stateColors.fg)
+
     // design/tokens.common.sh stores space-N in `ch`, not px — see
     // Panel.qml's identical comment.
     TextMetrics {
@@ -61,8 +86,13 @@ Item {
 
     readonly property real gap: WidgetStates.chToPixels(Config.Appearance.space1, chWidth)
 
-    implicitWidth: layout.implicitWidth + paddingH * 2
     implicitHeight: layout.implicitHeight + paddingV * 2
+    // A squared button uses symmetric (vertical) padding and then grows to
+    // at least its own height, so a single digit or glyph reads as a
+    // square tile rather than a wide pill.
+    implicitWidth: root.squared
+        ? Math.max(implicitHeight, layout.implicitWidth + paddingV * 2)
+        : layout.implicitWidth + paddingH * 2
     activeFocusOnTab: true
     opacity: WidgetStates.opacityFor(resolvedState)
 
@@ -97,8 +127,7 @@ Item {
             id: iconGlyph
             visible: root.glyph.length > 0
             glyph: root.glyph
-            tone: root.tone
-            invalid: root.invalid
+            color: root.contentColor
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
         }
@@ -107,8 +136,8 @@ Item {
             id: labelText
             visible: root.label.length > 0
             text: root.label
-            tone: root.tone
-            invalid: root.invalid
+            mono: root.mono
+            color: root.contentColor
             anchors.left: iconGlyph.visible ? iconGlyph.right : parent.left
             anchors.leftMargin: iconGlyph.visible ? root.gap : 0
             anchors.verticalCenter: parent.verticalCenter

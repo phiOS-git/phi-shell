@@ -36,6 +36,12 @@ Widgets.Segment {
 
     required property ShellScreen screen
 
+    // OOP-03: bar buttons sit on the opposite-coloured islands. (Not in
+    // modules.json after the restyle — the user's right-isle inventory
+    // omits the GPU anomaly-carrier — but re-addable as a data change,
+    // ADR 078.)
+    ambient: "isle"
+
     property real utilThreshold: 70
     property int sustainedMs: 60000
     property real tempThreshold: 75

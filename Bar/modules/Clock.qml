@@ -17,6 +17,9 @@ Widgets.Segment {
 
     required property ShellScreen screen
 
+    // OOP-03: bar buttons sit on the opposite-coloured islands.
+    ambient: "isle"
+
     label: Qt.formatDateTime(clockTimer.now, "hh:mm")
 
     Timer {

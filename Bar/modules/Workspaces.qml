@@ -48,6 +48,10 @@ Item {
 
             Widgets.Segment {
                 required property var modelData
+                // OOP-03: squared buttons on the opposite-coloured island,
+                // number inside, inverted when current (master plan §8.4).
+                ambient: "isle"
+                squared: true
                 visible: modelData.monitor !== null && modelData.monitor.name === root.screen.name
                 label: modelData.name.length > 0 ? modelData.name : String(modelData.id)
                 active: modelData.active

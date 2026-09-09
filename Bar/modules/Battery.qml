@@ -26,6 +26,12 @@ Widgets.Segment {
 
     required property ShellScreen screen
 
+    // OOP-03: bar buttons sit on the opposite-coloured islands. (This
+    // module is not in modules.json after the restyle — the user's right-
+    // isle inventory omits the battery anomaly-carrier — but it stays
+    // re-addable as a one-line data change, ADR 078.)
+    ambient: "isle"
+
     readonly property bool present: Services.PowerBridge.present
     readonly property int percent: Math.round(Services.PowerBridge.percentage * 100)
     readonly property bool lowPercent: Services.PowerBridge.percentage < Services.PowerBridge.lowPercentThreshold

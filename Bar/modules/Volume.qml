@@ -32,6 +32,9 @@ Widgets.Segment {
 
     required property ShellScreen screen
 
+    // OOP-03: bar buttons sit on the opposite-coloured islands.
+    ambient: "isle"
+
     readonly property bool muted: Services.AudioBridge.muted
     readonly property int percent: Math.round(Services.AudioBridge.volume * 100)
 
