@@ -25,7 +25,7 @@ Widgets.Segment {
     ambient: "isle"
     active: Services.NotificationPanel.shown
     glyph: Services.Notifications.dnd ? "" : ""
-    tone: (!Services.Notifications.dnd && Services.Notifications.active.values.length > 0) ? "info" : ""
+    tone: (!Services.Notifications.dnd && (Services.Notifications.active.values || []).length > 0) ? "info" : ""
 
     onActivated: Services.NotificationPanel.toggle()
 }

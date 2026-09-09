@@ -120,7 +120,8 @@ Flickable {
                 spacing: 0
 
                 Widgets.StyledText {
-                    kind: "title"
+                    kind: "label"
+                    mono: true
                     topPadding: root.gap
                     text: modelData.app
                 }
