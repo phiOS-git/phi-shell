@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
@@ -33,12 +34,17 @@ PanelWindow {
     // OOP-09: false until the first frame, so the dock's slide Behavior
     // does not fire while the layer surface is still settling its geometry.
     property bool _animReady: false
-    Component.onCompleted: Qt.callLater(function () { root._animReady = true })
+    Component.onCompleted: {
+        // R3 #1: above the bar + spanning its reserved strip, so the new
+        // scrim (added below) dims the bar too.
+        if (root.WlrLayershell) root.WlrLayershell.layer = WlrLayer.Overlay
+        Qt.callLater(function () { root._animReady = true })
+    }
 
     // OOP-06: full-screen + transparent so a click outside the dock closes
     // it; the dock is positioned right-edge inside fadeRoot.
     anchors { top: true; bottom: true; left: true; right: true }
-    exclusiveZone: 0
+    exclusiveZone: -1
     color: "transparent"
     visible: root.shown || fadeRoot.opacity > 0
 
@@ -100,6 +106,13 @@ PanelWindow {
 
     Component { id: notificationsComponent; Tabs.Notifications {} }
     Component { id: clipboardComponent; Tabs.Clipboard {} }
+
+    // R3 #1: the notification panel gets the same modal backdrop as
+    // Settings and the agent panel (it had none before).
+    Widgets.Scrim {
+        anchors.fill: parent
+        shown: root.shown
+    }
 
     Item {
         id: fadeRoot

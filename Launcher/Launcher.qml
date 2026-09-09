@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
@@ -48,9 +49,16 @@ PanelWindow {
     // OOP-05: full-screen transparent window so a click anywhere outside
     // the runner box can close it (same shape as Cheatsheet). The box
     // itself is positioned by `panelBox` inside fadeRoot.
+    // R3 #1: exclusiveZone -1 + Overlay so a click on the bar strip also
+    // dismisses the runner and the box sits above the bar. (No scrim on
+    // the runner — it stays a light overlay.)
     anchors { top: true; bottom: true; left: true; right: true }
-    exclusiveZone: 0
+    exclusiveZone: -1
     color: "transparent"
+
+    Component.onCompleted: {
+        if (root.WlrLayershell) root.WlrLayershell.layer = WlrLayer.Overlay
+    }
 
     TextMetrics {
         id: chMetrics

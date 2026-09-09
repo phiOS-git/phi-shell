@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
@@ -53,9 +54,17 @@ PanelWindow {
 
     // OOP-07: centred, large. Full-screen transparent window; the panel
     // box is centred inside fadeRoot and a click outside it closes.
+    // R3 #1: exclusiveZone -1 + the Overlay layer so the full-screen
+    // scrim actually dims the status bar too (with exclusiveZone 0 the
+    // compositor shrank this window out of the bar's reserved strip).
+    // Same guard form as Background/Background.qml.
     anchors { top: true; bottom: true; left: true; right: true }
-    exclusiveZone: 0
+    exclusiveZone: -1
     color: "transparent"
+
+    Component.onCompleted: {
+        if (root.WlrLayershell) root.WlrLayershell.layer = WlrLayer.Overlay
+    }
 
     TextMetrics {
         id: chMetrics

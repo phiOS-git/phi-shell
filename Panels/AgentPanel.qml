@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
@@ -41,10 +42,15 @@ PanelWindow {
     // OOP-09: false until the first frame — the dock's slide Behavior stays
     // off while the layer surface settles its geometry. Same as Sidebar.
     property bool _animReady: false
-    Component.onCompleted: Qt.callLater(function () { root._animReady = true })
+    Component.onCompleted: {
+        // R3 #1: above the bar + spanning its reserved strip, so the
+        // scrim dims the bar too.
+        if (root.WlrLayershell) root.WlrLayershell.layer = WlrLayer.Overlay
+        Qt.callLater(function () { root._animReady = true })
+    }
 
     anchors { top: true; bottom: true; left: true; right: true }
-    exclusiveZone: 0
+    exclusiveZone: -1
     color: "transparent"
     // PanelWindow has no `opacity` property (see Panels/Sidebar.qml's note)
     // — the fade lives on fadeRoot, a plain Item, and `visible` stays true

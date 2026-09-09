@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
@@ -27,10 +28,16 @@ PanelWindow {
     readonly property var binds: Services.Keybinds.binds
     property string query: ""
 
+    // R3 #1: span the bar's reserved strip and sit above the bar so the
+    // scrim dims it too (same as Settings / Sidebar / AgentPanel).
     anchors { top: true; bottom: true; left: true; right: true }
-    exclusiveZone: 0
+    exclusiveZone: -1
     color: "transparent"
     visible: root.shown || fadeRoot.opacity > 0
+
+    Component.onCompleted: {
+        if (root.WlrLayershell) root.WlrLayershell.layer = WlrLayer.Overlay
+    }
 
     Services.LayerFocus { target: root }
 
