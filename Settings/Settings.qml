@@ -37,6 +37,17 @@ PanelWindow {
 
     property bool shown: false
     property int activeIndex: 0
+
+    // OOP-13: when the search hides the active section, jump to the first
+    // section that still matches — so the content pane never shows a
+    // section the filtered nav no longer lists.
+    onQueryChanged: {
+        if (root.query.trim().length === 0) return
+        if (root.sectionMatches(root.registryRows[root.activeIndex])) return
+        for (var i = 0; i < root.registryRows.length; i++) {
+            if (root.sectionMatches(root.registryRows[i])) { root.activeIndex = i; break }
+        }
+    }
     property var registryRows: []
     property string query: ""
 
@@ -62,11 +73,16 @@ PanelWindow {
     // identical note; same fadeRoot treatment here.
     visible: root.shown || fadeRoot.opacity > 0
 
-    // Section titles matching the search, so the nav list can filter.
+    // OOP-13: the search matches a section's title AND its keyword list
+    // (Settings/sections.json) — the user's directive that the search
+    // "should look into the sections as well, not just the section title".
+    // A per-setting-row index is a bigger job (every section renders its
+    // own rows); this keyword approximation is flagged as such in PROGRESS.
     function sectionMatches(row) {
         const q = root.query.trim().toLowerCase()
         if (q.length === 0) return true
         return (row.title || "").toLowerCase().indexOf(q) !== -1
+            || (row.keywords || "").toLowerCase().indexOf(q) !== -1
     }
 
     Services.LayerFocus { target: root }

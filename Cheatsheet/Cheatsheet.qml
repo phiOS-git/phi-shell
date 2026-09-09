@@ -92,6 +92,11 @@ PanelWindow {
         }
         readonly property real chWidth: chMetrics.width
         readonly property real gap: fadeRoot.chWidth * Config.Appearance.space2
+        // OOP-13: width of the key column — the longest visible key
+        // string (one mono glyph == one cell, so no per-row measuring),
+        // plus a cell of breathing room, capped so a single very long
+        // binding cannot push the whole description column off to the
+        // right.
         readonly property real keyColW: {
             let m = 0
             const rows = root.filtered
@@ -99,7 +104,7 @@ PanelWindow {
                 const n = root.keyChips(rows[i]).length
                 if (n > m) m = n
             }
-            return m * fadeRoot.chWidth
+            return (Math.min(m, 34) + 1) * fadeRoot.chWidth
         }
 
         // Click anywhere outside the panel closes it.
@@ -186,7 +191,9 @@ PanelWindow {
                 Column {
                     id: column
                     width: parent.width
-                    spacing: fadeRoot.chWidth * Config.Appearance.space1
+                    // OOP-13: more air between rows (user: "spacing should
+                    // be better").
+                    spacing: fadeRoot.chWidth * Config.Appearance.space2
 
                     Repeater {
                         model: root.filtered
@@ -194,7 +201,7 @@ PanelWindow {
                         Row {
                             required property var modelData
                             width: column.width
-                            spacing: fadeRoot.gap
+                            spacing: fadeRoot.chWidth * Config.Appearance.space3
                             readonly property real descW: Math.max(0,
                                 width - fadeRoot.keyColW - arrowText.implicitWidth - spacing * 2)
 
