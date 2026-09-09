@@ -536,15 +536,15 @@ PanelWindow {
                             TapHandler { onTapped: root.activate(opt.modelData) }
                         }
                     }
-                }
 
-                Widgets.StyledText {
-                    id: noResults
-                    x: root.inputPrefixWidth
-                    y: root.chWidth * Config.Appearance.space1
-                    kind: "label"
-                    text: "no results"
-                    visible: root.queryText.length > 0 && root.results.length === 0
+                    Widgets.StyledText {
+                        id: noResults
+                        x: root.inputPrefixWidth
+                        topPadding: root.chWidth * Config.Appearance.space1
+                        kind: "label"
+                        text: "no results"
+                        visible: root.queryText.length > 0 && root.results.length === 0
+                    }
                 }
             }
 
