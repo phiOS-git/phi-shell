@@ -1,49 +1,203 @@
 import QtQuick
 import qs.Config as Config
+import qs.Services as Services
 import qs.Widgets as Widgets
 import "." as Local
 
-// phiOS — Panels/tabs/AiChat (S-31 AGENT: "renders the full conversational
-// layout with no backend... must look finished and do nothing", ADR 100:
-// the card TYPE — this file — is code written once; its instance is the
-// one `aiChat` row in Panels/tabs.json). phios-agente.md is a complete
-// specification of the eventual backend (M7); this file implements none of
-// it — no phi verb, no connection, no state — only the shape a finished
-// chat surface has, so the fifth-tab-is-a-data-change proof (S-31 DONE
-// WHEN) is not undermined by the one tab that looks the most like a real
-// feature.
+// phiOS — Panels/tabs/AiChat (S-75). The M3 placeholder (S-31) is now the
+// real surface: every call goes through Services/Agent.qml, the one client
+// point (ADR 098). This file is layout only — no HTTP, no engine
+// assumptions.
 //
-// The Φ mark is NOT used for the streaming indicator below, even though
-// master plan §6.6 Role B is literally "presenza dell'agente" — Role B's
-// own context list is closed to the bar segment specifically ("Segmento
-// dedicato in barra su zotac e razer"), and §6.6's use-list is exhaustive
-// ("Uso escluso: ..."), so extending it to this tab would be reopening a
-// closed decision, not applying it. A plain animated ellipsis carries the
-// same "processing" meaning without touching the mark's reserved contexts.
+// Panel scope of §10.1 wired here: conversation (transcript refreshed from
+// the engine while a turn runs), conversation list, new conversation,
+// personality + project switching, tool approval, non-blocking memory-
+// proposal notice with the LITERAL diff, output listing, loading state on
+// project switch, service-unavailable indication.
 //
-// Message rows use Panels/tabs/ChatBubble.qml, a same-directory sibling
-// file reached via `import "." as Local` — see that file's own header for
-// why this is a standalone file rather than a QML inline component.
+// NOT wired (PROGRESS.md S-75): per-conversation attachment, copy-into-
+// materials, the end-of-day review as its own surface (proposals show
+// inline instead), verified summary-on-close. History search is
+// deliberately absent (ADR 099).
+//
+// Layout is anchor-based (header pinned top, input pinned bottom,
+// transcript fills the middle) to avoid the circular height math a deep
+// Column would need. Unverified — no compositor here; expect screenshot
+// iteration.
 
 Item {
     id: root
 
+    readonly property var agent: Services.Agent
+    property string personality: ""
+
     TextMetrics {
-        id: chMetricsProbe
+        id: ch
         font.family: Config.Appearance.fontMono
         font.pixelSize: Config.Appearance.fontSize1
         text: "0"
     }
-    readonly property real chWidth: chMetricsProbe.width
+    readonly property real chWidth: ch.width
+    readonly property real gap: chWidth * Config.Appearance.space2
 
+    Component.onCompleted: {
+        agent.refreshSessions()
+        agent.refreshProposals()
+        agent.refreshOutputs()
+    }
+
+    // ---- service unavailable ----------------------------------------
     Column {
-        anchors.fill: parent
-        spacing: 0
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: root.gap
+        spacing: root.gap
+        visible: !root.agent.available
 
+        Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Agent" }
+        Widgets.Panel {
+            width: parent.width
+            height: unavailCol.implicitHeight + padding * 2
+            Column {
+                id: unavailCol
+                width: parent.width
+                spacing: root.chWidth * Config.Appearance.space1
+                Widgets.StyledText { text: "The A1 service is not running." }
+                Widgets.StyledText {
+                    kind: "label"; width: parent.width; wrapMode: Text.WordWrap
+                    text: "phi-agent-a1.service is down, or the containment failed to start. Nothing runs outside the containment (§4.7)."
+                }
+                Widgets.StyledButton { label: "Start service"; onClicked: root.agent.setActivated(true) }
+            }
+        }
+    }
+
+    // ---- main surface ---------------------------------------------
+    Item {
+        id: main
+        anchors.fill: parent
+        anchors.margins: root.gap
+        visible: root.agent.available
+
+        // header
+        Column {
+            id: header
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            spacing: root.gap
+
+            Row {
+                width: parent.width
+                spacing: root.gap
+                Widgets.StyledText {
+                    anchors.verticalCenter: parent.verticalCenter
+                    kind: "label"
+                    text: "project: " + (root.agent.activeProject.length > 0 ? root.agent.activeProject : "(none)")
+                }
+                Widgets.StyledButton {
+                    label: "New conversation"
+                    onClicked: root.agent.newSession()
+                }
+            }
+
+            Widgets.Panel {
+                width: parent.width
+                visible: root.agent.switching
+                height: visible ? switchRow.implicitHeight + padding * 2 : 0
+                Row {
+                    id: switchRow
+                    spacing: root.chWidth * Config.Appearance.space1
+                    Widgets.StyledText { kind: "label"; text: "Rebuilding the containment for the new project" }
+                    Local.Dots {}
+                }
+            }
+
+            Flickable {
+                width: parent.width
+                height: Math.min(contentHeight, root.height * 0.16)
+                contentHeight: sessionCol.implicitHeight
+                clip: true
+                visible: root.agent.sessions.length > 0 && !root.agent.switching
+                Column {
+                    id: sessionCol
+                    width: parent.width
+                    Repeater {
+                        model: root.agent.sessions
+                        Widgets.ListRow {
+                            required property var modelData
+                            width: sessionCol.width
+                            label: modelData.title
+                            active: modelData.id === root.agent.currentSessionId
+                            onActivated: root.agent.openSession(modelData.id)
+                        }
+                    }
+                }
+            }
+
+            Widgets.Separator { width: parent.width }
+        }
+
+        // input (pinned bottom)
+        Widgets.Panel {
+            id: inputArea
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: inputRow.implicitHeight + padding * 2
+            Row {
+                id: inputRow
+                width: parent.width
+                spacing: root.chWidth * Config.Appearance.space2
+                TextInput {
+                    id: field
+                    width: parent.width - sendBtn.implicitWidth - personaBtn.implicitWidth - parent.spacing * 2
+                    anchors.verticalCenter: parent.verticalCenter
+                    font.family: Config.Appearance.fontUi
+                    font.pixelSize: Config.Appearance.fontSize1
+                    color: Config.Appearance.textPrimary
+                    clip: true
+                    onAccepted: root.doSend()
+                    Widgets.StyledText {
+                        anchors.fill: parent
+                        kind: "label"
+                        text: "Message the agent…"
+                        visible: field.text.length === 0
+                    }
+                }
+                Widgets.StyledButton {
+                    id: personaBtn
+                    label: root.personality.length > 0 ? root.personality : "default"
+                    onClicked: root.cyclePersonality()
+                }
+                Widgets.StyledButton {
+                    id: sendBtn
+                    label: "Send"
+                    onClicked: root.doSend()
+                }
+            }
+        }
+
+        // memory-proposal notice (above the input)
+        Local.MemoryNotice {
+            id: memoryNotice
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: inputArea.top
+            anchors.bottomMargin: root.gap
+            visible: root.agent.pendingProposals.length > 0
+        }
+
+        // transcript (fills the middle)
         Flickable {
             id: history
-            width: parent.width
-            height: parent.height - inputBar.height
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: header.bottom
+            anchors.bottom: memoryNotice.visible ? memoryNotice.top : inputArea.top
+            anchors.topMargin: root.gap
+            anchors.bottomMargin: root.gap
             contentWidth: width
             contentHeight: messages.implicitHeight
             clip: true
@@ -53,113 +207,64 @@ Item {
                 width: history.width
                 spacing: root.chWidth * Config.Appearance.space3
 
-                Local.ChatBubble { from: "you"; text: "phi doctor keeps reporting the same dotfiles drift on mini — can you tell me why?" }
-                Local.ChatBubble {
-                    from: "agent"
-                    text: "That drift is expected right now: five template renders are pending on every host because the mono font token is still a placeholder (Q-N01, closes at S-51). Nothing is broken."
-                }
-
-                // Tool-approval affordance (phios-agente.md's own contract:
-                // every tool call the agent proposes is approved or denied
-                // here, never run silently). Static mockup only — Allow/Deny
-                // do nothing, per this file's own header.
-                Widgets.Panel {
-                    width: parent.width
-                    height: toolLayout.implicitHeight + padding * 2
-
-                    Column {
-                        id: toolLayout
-                        width: parent.width
-                        spacing: root.chWidth * Config.Appearance.space1
-
-                        Widgets.StyledText { kind: "label"; text: "Agent wants to run" }
-                        Widgets.StyledText { text: "phi doctor --host mini"; mono: true }
-                        Row {
-                            spacing: root.chWidth * Config.Appearance.space2
-                            Widgets.StyledButton { label: "Allow"; onClicked: {} }
-                            Widgets.StyledButton { label: "Deny"; onClicked: {} }
-                        }
+                Repeater {
+                    model: root.agent.messages
+                    Local.ChatBubble {
+                        required property var modelData
+                        from: modelData.role === "user" ? "you" : "agent"
+                        text: modelData.text
                     }
                 }
 
-                // Streaming indicator: the agent's Category-A "is
-                // processing" cue, without borrowing the Φ mark (see file
-                // header). Continuous, linear-only — Category A's own rule.
                 Row {
+                    visible: root.agent.processing
                     spacing: root.chWidth * Config.Appearance.space1
-                    Widgets.StyledText { kind: "label"; text: "Agent is thinking" }
-                    Widgets.StyledText {
-                        id: dots
-                        kind: "label"
-                        property int step: 0
-                        text: ".".repeat(step + 1)
-                        Timer {
-                            interval: Config.Appearance.motionAPeriod / 3
-                            running: true
-                            repeat: true
-                            onTriggered: dots.step = (dots.step + 1) % 3
-                        }
-                    }
+                    Widgets.StyledText { kind: "label"; text: "Agent is working" }
+                    Local.Dots {}
                 }
 
-                // Memory-proposal notice (phios-agente.md: memory is
-                // client-writable only, and every proposal is surfaced for
-                // the user to accept or reject — never written silently).
                 Widgets.Panel {
                     width: parent.width
-                    height: memoryLayout.implicitHeight + padding * 2
-
+                    visible: root.agent.pendingPermission !== null
+                    height: visible ? toolCol.implicitHeight + padding * 2 : 0
                     Column {
-                        id: memoryLayout
+                        id: toolCol
                         width: parent.width
                         spacing: root.chWidth * Config.Appearance.space1
-
-                        Widgets.StyledText { kind: "label"; text: "Memory proposal" }
-                        Widgets.StyledText { text: "“Remember: prefers dark variant after sunset.”" }
+                        Widgets.StyledText {
+                            kind: "label"
+                            text: root.agent.pendingPermission ? root.agent.pendingPermission.title : ""
+                        }
+                        Widgets.StyledText {
+                            mono: true; width: parent.width; wrapMode: Text.Wrap
+                            visible: root.agent.pendingPermission && root.agent.pendingPermission.detail.length > 0
+                            text: root.agent.pendingPermission ? root.agent.pendingPermission.detail : ""
+                        }
                         Row {
                             spacing: root.chWidth * Config.Appearance.space2
-                            Widgets.StyledButton { label: "Save"; onClicked: {} }
-                            Widgets.StyledButton { label: "Dismiss"; onClicked: {} }
+                            Widgets.StyledButton { label: "Allow"; onClicked: root.agent.respondPermission(true) }
+                            Widgets.StyledButton { label: "Deny"; onClicked: root.agent.respondPermission(false) }
                         }
                     }
                 }
-            }
-        }
 
-        Widgets.Panel {
-            id: inputBar
-            width: parent.width
-            height: inputRow.implicitHeight + padding * 2
-
-            Row {
-                id: inputRow
-                width: parent.width
-                spacing: root.chWidth * Config.Appearance.space2
-
-                TextInput {
-                    id: inputField
-                    width: parent.width - sendButton.implicitWidth - parent.spacing
-                    font.family: Config.Appearance.fontUi
-                    font.pixelSize: Config.Appearance.fontSize1
-                    color: Config.Appearance.textPrimary
-                    clip: true
-
-                    Widgets.StyledText {
-                        anchors.fill: parent
-                        kind: "label"
-                        text: "Message the agent…"
-                        visible: inputField.text.length === 0
-                    }
-                }
-
-                Widgets.StyledButton {
-                    id: sendButton
-                    label: "Send"
-                    // No backend to send to (this file's own header). A
-                    // click is visually acknowledged and nothing else.
-                    onClicked: inputField.text = ""
+                Widgets.StyledText {
+                    width: parent.width; wrapMode: Text.WordWrap; invalid: true
+                    visible: root.agent.lastError.length > 0
+                    text: "error: " + root.agent.lastError
                 }
             }
         }
+    }
+
+    function cyclePersonality() {
+        const ps = [""].concat(root.agent.personalities)
+        const i = ps.indexOf(root.personality)
+        root.personality = ps[(i + 1) % ps.length]
+    }
+    function doSend() {
+        if (field.text.trim().length === 0) return
+        root.agent.send(field.text, root.personality)
+        field.text = ""
     }
 }

@@ -1,14 +1,17 @@
 import QtQuick
 import Quickshell
 import qs.Config as Config
+import qs.Services as Services
 import qs.Widgets as Widgets
 
 // phiOS — Bar/modules/PhiAgent.qml (S-23, master plan §6.6 Role B / §8.4:
-// "Segmento dedicato in barra su zotac e razer"). Placeholder, no backend
-// yet, exactly as the AGENT card names it: `processing` has nothing real
-// driving it until the agent surface lands (docs/phios-agente.md, M6+) —
-// this file is the honest, inert shape that surface will eventually set,
-// not a fake trigger invented to make the segment look alive now.
+// "Segmento dedicato in barra su zotac e razer").
+//
+// S-75: `processing` is now bound to Services/Agent.qml (the one client
+// point, ADR 098) — it is true while an A1 turn is in flight and false
+// otherwise. The S-23 text below describes the placeholder this replaced;
+// the motion and Role-B reasoning it works out are unchanged and still
+// apply, only the trigger is real now.
 //
 // §6.6 Role B: "Tier 1 (accento) solo durante l'elaborazione, altrimenti
 // neutro" is Segment's `active` state (full bg/fg inversion to accent,
@@ -41,7 +44,11 @@ Item {
     id: root
 
     required property ShellScreen screen
-    property bool processing: false
+    // S-75: wired to the real client. Role B (accent) + category-A breathe
+    // while a turn is in flight, neutral otherwise (§6.6). The placeholder
+    // `false` from S-23 is gone — this is now driven by Services/Agent.qml,
+    // the one client point.
+    property bool processing: Services.Agent.processing
 
     implicitWidth: segment.implicitWidth
     implicitHeight: segment.implicitHeight
