@@ -35,6 +35,13 @@ import qs.Widgets as Widgets
 // kitty's cursor_trail and the agent's processing indicator): linear only,
 // per A's own rule that an eased loop reads as a pulse, so no per-widget
 // easing mapping is needed the way Category B has one.
+//
+// S-52: the marquee's dwell at each end was a bare `duration: 800` — a
+// literal not sourced from design/tokens.*.sh (I-05). Reused motionAPeriod
+// for the dwell too rather than inventing a second constant: the same
+// period already governs how long this loop takes to cross the text, so
+// using it for the pause as well keeps the whole loop on one token instead
+// of a token plus a magic number next to it.
 
 PanelWindow {
     id: root
@@ -130,13 +137,13 @@ PanelWindow {
                         SequentialAnimation on x {
                             running: body.implicitWidth > textClip.width && root.shown
                             loops: Animation.Infinite
-                            PauseAnimation { duration: 800 }
+                            PauseAnimation { duration: Config.Appearance.motionAPeriod }
                             NumberAnimation {
                                 to: -(body.implicitWidth - textClip.width)
                                 duration: Config.Appearance.motionAPeriod
                                 easing.type: Easing.Linear
                             }
-                            PauseAnimation { duration: 800 }
+                            PauseAnimation { duration: Config.Appearance.motionAPeriod }
                             NumberAnimation {
                                 to: 0
                                 duration: Config.Appearance.motionAPeriod

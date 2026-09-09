@@ -180,11 +180,24 @@ WlSessionLock {
             spacing: surface.chWidth * Config.Appearance.space4
             width: surface.chWidth * 44
 
-            Widgets.StyledText {
+            Widgets.ScrambleText {
+                // Category C (S-52, §6.5): resolves once when the lock
+                // surface first appears — "sblocco" is one of §6.5's own
+                // named contexts for the random-letters effect, and this is
+                // the safe half of that moment to animate: it plays once on
+                // WlSessionLock creating this surface (a rare event, not a
+                // per-tick one), never on the PamContext.completed handler
+                // this file's own header flags as the only genuinely
+                // security-critical code here — that logic is untouched.
+                // Every subsequent per-second clock tick just updates the
+                // text plainly (ScrambleText's own onFinalTextChanged),
+                // never re-scrambling: a value that changes every second is
+                // exactly the "frequent event" §6.5 forbids a Category C
+                // effect from firing on.
                 anchors.horizontalCenter: parent.horizontalCenter
                 sizeStep: 6
                 mono: true
-                text: Qt.formatTime(clockTick.now, "hh:mm")
+                finalText: Qt.formatTime(clockTick.now, "hh:mm")
             }
             Widgets.StyledText {
                 anchors.horizontalCenter: parent.horizontalCenter
