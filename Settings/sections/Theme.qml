@@ -29,11 +29,14 @@ import qs.Widgets as Widgets
 // are also reachable from the notification panel now (OOP-06); both points
 // call the same Services/NightShift.
 
-Flickable {
+// OOP-09: a Column, not a Flickable. Every other Settings section is a
+// Column and the panel's own content pane (Settings/Settings.qml) is the
+// Flickable that scrolls them — a Flickable rooted here has implicitHeight
+// 0 inside that outer Loader, which is why this section rendered blank.
+Column {
     id: root
-    contentWidth: width
-    contentHeight: col.implicitHeight
-    clip: true
+    width: parent ? parent.width : 0
+    spacing: root.gap
 
     TextMetrics {
         id: ch
@@ -100,11 +103,6 @@ Flickable {
         { key: "radius-small", label: "Radius, small (bar)", kind: "text" },
         { key: "radius-large", label: "Radius, large (runner)", kind: "text" }
     ]
-
-    Column {
-        id: col
-        width: root.width
-        spacing: root.gap
 
         // --- Variant ----------------------------------------------------
         Widgets.StyledText { kind: "title"; sizeStep: 3; text: "Appearance" }
@@ -256,7 +254,6 @@ Flickable {
             kind: "label"; sizeStep: 0; wrapMode: Text.WordWrap; width: parent.width
             text: "No native file browser — paste a path. Wireframe/technical grid or flat gradient only (style plan), never photographic."
         }
-    }
 
     function _setWallpaper(srcPath) {
         let p = (srcPath || "").trim()
@@ -291,7 +288,7 @@ Flickable {
         Item {
             id: rowItem
             required property var modelData
-            width: col.width
+            width: root.width
             height: Math.max(field.implicitHeight, rowLabel.implicitHeight)
                 + root.chWidth * Config.Appearance.space1
 

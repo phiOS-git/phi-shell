@@ -64,10 +64,11 @@ PanelWindow {
     readonly property real launcherWidth: Math.max(chWidth * 34, (root.screen ? root.screen.width : 0) * 0.25)
     readonly property real topMargin: chWidth * Config.Appearance.space6
 
-    // The input prefix ("φ : ") and the pixel width it occupies — the
+    // The input prefix ("Φ : ") and the pixel width it occupies — the
     // result options are indented to start exactly where the typed text
-    // does (user directive).
-    readonly property string inputPrefix: "φ : "
+    // does (user directive). OOP-09: capital Φ (the identity mark's own
+    // codepoint, §6.6) — the lowercase was a typo.
+    readonly property string inputPrefix: "Φ : "
     TextMetrics {
         id: prefixMetrics
         font.family: Config.Appearance.fontMono

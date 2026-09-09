@@ -5,9 +5,11 @@
     { "type": "activeWindow", "island": "center", "position": 0, "source": "internal:hyprland", "capability": "" },
     { "type": "volume", "island": "right", "position": 10, "source": "internal:pipewire", "capability": "" },
     { "type": "brightness", "island": "right", "position": 20, "source": "internal:brightnessctl", "capability": "backlight" },
+    { "type": "gpu", "island": "right", "position": 25, "source": "internal:nvidia-smi", "capability": "nvidiaGpu" },
     { "type": "network", "island": "right", "position": 30, "source": "internal:tailscale", "capability": "" },
     { "type": "wifi", "island": "right", "position": 40, "source": "internal:networkmanager", "capability": "wifi" },
     { "type": "bluetooth", "island": "right", "position": 50, "source": "internal:bluez", "capability": "bluetooth" },
+    { "type": "battery", "island": "right", "position": 55, "source": "internal:upower", "capability": "battery" },
     { "type": "notifications", "island": "right", "position": 60, "source": "internal:notifications", "capability": "" },
     { "type": "clock", "island": "right", "position": 100, "source": "internal:clock", "capability": "" }
 ]

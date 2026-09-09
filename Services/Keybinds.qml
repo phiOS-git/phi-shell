@@ -55,10 +55,10 @@ Singleton {
     function modText(modmask) {
         if (!modmask) return ""
         const names = []
-        if (modmask & 64) names.push("SUPER")
-        if (modmask & 8) names.push("ALT")
-        if (modmask & 4) names.push("CTRL")
-        if (modmask & 1) names.push("SHIFT")
+        if (modmask & 64) names.push("Super")
+        if (modmask & 8) names.push("Alt")
+        if (modmask & 4) names.push("Ctrl")
+        if (modmask & 1) names.push("Shift")
         return names.join(" + ")
     }
 

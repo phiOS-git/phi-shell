@@ -38,6 +38,11 @@ PanelWindow {
     readonly property bool shown: Services.AgentPanel.shown
     readonly property var agent: Services.Agent
 
+    // OOP-09: false until the first frame — the dock's slide Behavior stays
+    // off while the layer surface settles its geometry. Same as Sidebar.
+    property bool _animReady: false
+    Component.onCompleted: Qt.callLater(function () { root._animReady = true })
+
     anchors { top: true; bottom: true; left: true; right: true }
     exclusiveZone: 0
     color: "transparent"
@@ -98,11 +103,18 @@ PanelWindow {
             id: dock
             anchors.top: parent.top
             anchors.bottom: parent.bottom
+            anchors.left: parent.left
             width: Math.min(parent.width * 0.5, root.chWidth * 68)
-            x: root.shown ? 0 : -width
 
-            Behavior on x {
-                NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+            // OOP-09: self-relative Translate (0 shown, -width hidden off
+            // the left edge), Behavior gated on the first frame — same
+            // fix and reasoning as Panels/Sidebar.qml's dock.
+            transform: Translate {
+                x: root.shown ? 0 : -dock.width
+                Behavior on x {
+                    enabled: root._animReady
+                    NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+                }
             }
 
             // Swallow clicks on the dock (border included).

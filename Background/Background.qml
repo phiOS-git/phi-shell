@@ -35,7 +35,14 @@ PanelWindow {
     id: root
 
     anchors { top: true; bottom: true; left: true; right: true }
-    exclusiveZone: 0
+    // OOP-09: -1, not 0. With 0 the compositor shrinks this surface out of
+    // every other layer's exclusive zone — so the strip under the bar's
+    // reserved height showed the compositor's own default background. It
+    // was hidden only as long as the bar had an opaque background of its
+    // own; the transparent-bar restyle (OOP-03) exposed it. -1 lets the
+    // wallpaper extend through the bar's exclusive zone and cover the
+    // whole output.
+    exclusiveZone: -1
     color: Config.Appearance.background
     // No explicit WlrLayershell.keyboardFocus: every PanelWindow in this
     // repo already defaults to WlrKeyboardFocus.None (LayerFocus.qml's own

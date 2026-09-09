@@ -30,6 +30,11 @@ PanelWindow {
     readonly property bool shown: Services.NotificationPanel.shown
     property var registryRows: []
 
+    // OOP-09: false until the first frame, so the dock's slide Behavior
+    // does not fire while the layer surface is still settling its geometry.
+    property bool _animReady: false
+    Component.onCompleted: Qt.callLater(function () { root._animReady = true })
+
     // OOP-06: full-screen + transparent so a click outside the dock closes
     // it; the dock is positioned right-edge inside fadeRoot.
     anchors { top: true; bottom: true; left: true; right: true }
@@ -115,13 +120,21 @@ PanelWindow {
             id: dock
             anchors.top: parent.top
             anchors.bottom: parent.bottom
+            anchors.right: parent.right
             width: root.dockWidth
-            // Slides in from the right edge: off-screen (x = full width) to
-            // flush-right (x = width - dockWidth).
-            x: root.shown ? (parent.width - width) : parent.width
 
-            Behavior on x {
-                NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+            // OOP-09: the slide is a self-relative Translate (0 shown,
+            // +width hidden off the right edge), never `x: parent.width …`
+            // — parent.width is 0 until the layer surface is first mapped,
+            // and the old binding animated the dock in from x≈0 (the LEFT
+            // edge) the first time it opened. `_animReady` keeps the
+            // initial settle instant.
+            transform: Translate {
+                x: root.shown ? 0 : dock.width
+                Behavior on x {
+                    enabled: root._animReady
+                    NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+                }
             }
 
             // Swallow clicks on the dock (border included).

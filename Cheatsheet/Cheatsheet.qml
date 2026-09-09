@@ -62,8 +62,12 @@ PanelWindow {
         })
     }
 
+    // OOP-09: spacing goes around the whole combination and its "+"
+    // separators, NOT between every character — the per-letter split made
+    // long combinations overflow the key column. keyLabel() already joins
+    // the parts with " + ".
     function keyChips(bind) {
-        return "[ " + Services.Keybinds.keyLabel(bind).split("").join(" ") + " ]"
+        return "[ " + Services.Keybinds.keyLabel(bind) + " ]"
     }
 
     Widgets.Scrim {

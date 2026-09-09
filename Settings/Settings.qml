@@ -167,7 +167,10 @@ PanelWindow {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: parent.top
-                height: searchField.implicitHeight + root.chWidth * Config.Appearance.space2
+                // OOP-09: tall enough to contain the close control (it was
+                // overflowing the old height).
+                height: Math.max(searchField.implicitHeight, closeBtn.implicitHeight)
+                    + root.chWidth * Config.Appearance.space2
 
                 Widgets.StyledText {
                     id: settingsTitle
@@ -208,12 +211,16 @@ PanelWindow {
                     Keys.onEscapePressed: root.shown = false
                 }
 
-                Widgets.StyledButton {
+                // OOP-09: a compact squared control (× glyph), not the
+                // full-width "close" button, which was oversized and spilled
+                // out of the top bar. Esc and click-outside still close too.
+                Widgets.Segment {
                     id: closeBtn
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    label: "close"
-                    onClicked: root.shown = false
+                    squared: true
+                    label: "×"
+                    onActivated: root.shown = false
                 }
             }
 
