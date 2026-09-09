@@ -1,183 +1,251 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — AltTab/AltTab.qml (S-37, master plan §8.3 surface 10,
-// architettura §8.2.2 S10). The overlay and its control surface only —
-// the Hyprland side (a submap entered on Alt+Tab, `next` bound to a
-// repeated Tab press inside it, `confirm` bound to releasing Alt, `cancel`
-// to Escape) is explicitly S-38's job, not this one's: S-38 is "the step
-// that assigns modifiers once," Alt is that step's own reserved modifier
-// for applications, and Alt+Tab's exact bind is tangled with the rest of
-// that scheme in a way no earlier M3 step has pre-empted for any other
-// surface either (S-22's own note: "no Hyprland keybinding is configured
-// yet on real machines... every step before S-38... must first ask
-// whether the bind already exists"). This file exposes exactly the
-// control points that binding needs to call (next/prev/confirm/cancel,
-// each callable via `qs -p ~/.config/quickshell/phi ipc call alttab
-// <fn>` — the `-p` is required, see Panels/Sidebar.qml's own note on why)
-// so wiring it is a small, mechanical addition to hyprland.lua once S-38
-// actually runs, not a second design pass.
+// phiOS — AltTab/AltTab.qml (S-35 + S-37 unified, OOP-24). One window
+// surface, replacing the two the user reported as "2 different behaviours,
+// both broken": the S-35 Overview grid (Super+Tab / three-finger swipe)
+// and the S-37 Alt+Tab strip. Now:
 //
-// next()/prev() auto-open if not already shown, so a single Alt+Tab bind
-// (calling `next`) is enough to enter the mode — no separate `open` call
-// is needed in the eventual binding.
+//   - Alt+Tab (and Alt+Shift+Tab) enters the "alttab" Hyprland submap and
+//     cycles; releasing Alt focuses the selection and closes; Escape
+//     cancels. That wiring lives in hyprland.lua.tmpl (OOP-25) — this file
+//     exposes next/prev/confirm/cancel for it.
+//   - the three-finger-up gesture opens the same surface persistently
+//     (no Alt to release); three-finger-down closes it. hyprland.lua
+//     points that gesture at `alttab open` / `alttab close` (OOP-25).
+//   - in either mode a click on a window box focuses that window and
+//     closes; a click on a workspace pill switches to that workspace and
+//     closes; a click on the dim closes with no focus change.
 //
-// Window data via Services/ToplevelBridge.qml (S-35's own wrapper over
-// Quickshell.Wayland's ToplevelManager) — the exact same source S-35's
-// Overview grid reads, so the two surfaces can never disagree about what
-// windows exist.
+// Layout (user's directive): window boxes, all the same size, icon over
+// name, grouped by workspace into horizontal rows — the top row is the
+// lowest-numbered workspace, the bottom row the highest. The full
+// workspace list runs along the bottom of the screen, centred, with the
+// workspace of the *selected* window highlighted (so cycling moves the
+// highlight coherently).
+//
+// Window data is a `hyprctl clients -j` snapshot taken on open — the
+// established shape in this repo (Screenshot.qml, the old AltTab confirm,
+// phi's internal/query/windows.go all parse the same JSON), and a
+// momentary surface wants a snapshot, not a live model. The workspace
+// strip reads Services.HyprlandBridge.workspaces (the live model already
+// proven by Bar/modules/Workspaces.qml).
+//
+// Item 8: raised to WlrLayer.Overlay + exclusiveZone -1 with a
+// Widgets.Scrim, the same treatment OOP-16 gave the modal panels, so the
+// dim covers the status bar too.
 
 PanelWindow {
     id: root
 
     property bool shown: false
-    property int selectedIndex: 0
+    // true when opened by Alt+Tab (Alt is held, its release confirms);
+    // false when opened by the gesture or a plain toggle (pointer-driven).
+    property bool heldOpen: false
+    // Selection tracked by window address, so it survives a re-snapshot.
+    property string selectedAddress: ""
 
-    anchors { bottom: true }
-    exclusiveZone: 0
+    anchors { top: true; bottom: true; left: true; right: true }
+    exclusiveZone: -1
     color: "transparent"
-    // PanelWindow has no `opacity` property (confirmed against the real
-    // source, src/window/windowinterface.hpp — no `opacity` in its
-    // Q_PROPERTY list at all) — found on real hardware, not by reading the
-    // source first; see Notifications/Toast.qml's own note on this, the
-    // first file in this repo where it surfaced. The fade lives on
-    // `fadeRoot` below instead, a plain Item with a real, animatable
-    // opacity; `visible` stays true until that fade-out finishes.
+
+    Component.onCompleted: {
+        if (root.WlrLayershell) root.WlrLayershell.layer = WlrLayer.Overlay
+    }
+
+    // PanelWindow has no `opacity` property (see Notifications/Toast.qml's
+    // note) — the fade lives on fadeRoot; `visible` holds until it settles.
     visible: root.shown || fadeRoot.opacity > 0
 
     IpcHandler {
         target: "alttab"
-        function next(): void { root._step(1) }
-        function prev(): void { root._step(-1) }
-        // Guarded on `root.shown`: the "ALT_L"/"ALT_R" release binds that
-        // call this are now registered globally in hyprland.lua (with
-        // `submap_universal = true`), not only inside the "alttab" submap,
-        // so this can be reached from an Alt release that has nothing to
-        // do with Alt+Tab (e.g. AltGr on some keyboard layouts is the
-        // physical right Alt key). Doing nothing when the overlay is not
-        // shown is what makes that safe.
+        function next(): void { root._cycle(1) }
+        function prev(): void { root._cycle(-1) }
+        // Guarded on `shown`: the ALT_L/ALT_R release binds that call this
+        // are registered globally (submap_universal), so this can fire from
+        // an Alt release unrelated to Alt+Tab — do nothing then.
         function confirm(): void { if (root.shown) root._confirm() }
-        function cancel(): void { root.shown = false }
+        function cancel(): void { root._close() }
+        // OOP-24: the gesture and a plain toggle open the same surface,
+        // persistently (there is no Alt to release).
+        function open(): void { root._open(false) }
+        function close(): void { root._close() }
+        function toggle(): void { root.shown ? root._close() : root._open(false) }
     }
 
-    function _windowCount() {
-        return Services.ToplevelBridge.toplevels.values.length
+    // Back-compat: the old "overview" target, until every `qs ipc call
+    // overview …` habit and any un-updated bind is gone (same courtesy
+    // Panels/Sidebar.qml kept for its old "sidebar" target).
+    IpcHandler {
+        target: "overview"
+        function toggle(): void { root.shown ? root._close() : root._open(false) }
+        function open(): void { root._open(false) }
+        function close(): void { root._close() }
     }
 
-    function _step(delta) {
-        const count = root._windowCount()
-        if (count === 0) return
-        if (!root.shown) {
-            // Entering the mode: land on "the other" window, not the one
-            // already focused. This used to assume ToplevelManager orders
-            // its list active-first (`index 1`) — unconfirmed, and found
-            // on real hardware to be wrong: the overlay opened on an
-            // arbitrary window instead of the one after the active one.
-            // Fixed the same way _confirm() below fixes activation: ask
-            // Hyprland directly (`hyprctl activewindow -j`) which window is
-            // actually focused, since ToplevelManager's own ordering is not
-            // something this file can rely on. Set a provisional index
-            // immediately so the overlay never opens with nothing selected
-            // while that query is in flight, then correct it once the
-            // answer comes back.
-            root.shown = true
-            root.selectedIndex = count > 1 ? 1 : 0
-            activeQueryComponent.createObject(root)
-            return
-        }
-        root.selectedIndex = (root.selectedIndex + delta + count) % count
-    }
+    // --- window snapshot --------------------------------------------------
 
-    // See _step()'s comment above. hyprctl's `activewindow -j` returns the
-    // same Client JSON shape as `clients -j` (address/class/title) for a
-    // single object instead of a list — the shape used elsewhere in this
-    // file (_confirm()'s activateComponent) and already relied on for
-    // `class`/`title` there; not independently re-confirmed for
-    // `activewindow` specifically beyond that same shared convention.
-    property Component activeQueryComponent: Component {
-        Process {
-            id: activeProc
-            command: ["hyprctl", "activewindow", "-j"]
-            running: true
-            onExited: activeProc.running = false
-            stdout: StdioCollector {
-                onStreamFinished: {
-                    try {
-                        const active = JSON.parse(this.text)
-                        const windows = Services.ToplevelBridge.toplevels.values
-                        const activeIndex = windows.findIndex((w) =>
-                            w.title === active.title && w.appId === active.class)
-                        if (activeIndex !== -1 && windows.length > 0 && root.shown)
-                            root.selectedIndex = (activeIndex + 1) % windows.length
-                    } catch (e) {
-                        console.warn("phi-shell: hyprctl activewindow -j parse failed during AltTab entry: " + e)
+    // [{ address, title, cls, wsId, wsName }], workspace order not sorted
+    // here (groups does that).
+    property var windows: []
+
+    Process {
+        id: clientsProc
+        command: ["hyprctl", "clients", "-j"]
+        onExited: clientsProc.running = false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const arr = JSON.parse(this.text)
+                    const out = []
+                    for (let i = 0; i < arr.length; i++) {
+                        const c = arr[i]
+                        if (!c || !c.workspace || c.workspace.id < 0) continue
+                        out.push({
+                            address: c.address,
+                            title: (c.title && c.title.length > 0) ? c.title : (c.class || "window"),
+                            cls: c.class || "",
+                            wsId: c.workspace.id,
+                            wsName: (c.workspace.name && c.workspace.name.length > 0)
+                                ? c.workspace.name : String(c.workspace.id)
+                        })
                     }
-                    activeProc.destroy()
+                    root.windows = out
+                } catch (e) {
+                    console.warn("phi-shell: AltTab hyprctl clients -j parse failed: " + e)
+                    root.windows = []
                 }
+                root._selectStartWindow()
             }
         }
     }
 
-    // Found on real hardware, shared with S-35's Overview.qml (same
-    // symptom there too): Toplevel.activate() does not actually focus
-    // the target window, even though the call itself does not error.
-    // Fixed here by falling back to the mechanism Launcher.qml's own
-    // activateWindow action already proves works on this compositor —
-    // `hyprctl dispatch focuswindow address:<addr>` — which needs a
-    // real Hyprland window address the cross-compositor Toplevel type
-    // this file otherwise uses does not expose (that lives on the
-    // separate, Hyprland-specific `hyprctl clients -j` shape instead,
-    // confirmed field names `address`/`class`/`title` against phi's own
-    // Go code, internal/query/windows.go, which already parses the same
-    // JSON). Matched by title (and class as a secondary check) against a
-    // fresh one-off query at the moment of confirming — not perfect (two
-    // windows can share a title), flagged for cheap veto, but this only
-    // ever runs once, right when the user has already committed to a
-    // choice, the same shape Screenshot.qml's own window-capture path
-    // already uses for a one-off Hyprland read. The cycling/highlighting
-    // above is untouched — still driven by the live, reactive
-    // ToplevelBridge, only the final activation step changed.
-    function _confirm() {
-        const windows = Services.ToplevelBridge.toplevels.values
-        if (root.selectedIndex >= 0 && root.selectedIndex < windows.length) {
-            const target = windows[root.selectedIndex]
-            activateComponent.createObject(root, {
-                targetTitle: target.title, targetAppId: target.appId,
-            })
+    Process {
+        id: activeProc
+        command: ["hyprctl", "activewindow", "-j"]
+        onExited: activeProc.running = false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let activeAddr = ""
+                try { activeAddr = JSON.parse(this.text).address || "" } catch (e) {}
+                root._applyStartSelection(activeAddr)
+            }
         }
+    }
+
+    // --- derived model ---------------------------------------------------
+
+    // Windows grouped by workspace, workspaces ascending — one row per
+    // non-empty workspace, top row lowest id.
+    readonly property var groups: {
+        const byWs = ({})
+        const order = []
+        for (let i = 0; i < root.windows.length; i++) {
+            const w = root.windows[i]
+            if (byWs[w.wsId] === undefined) {
+                byWs[w.wsId] = { id: w.wsId, name: w.wsName, windows: [] }
+                order.push(w.wsId)
+            }
+            byWs[w.wsId].windows.push(w)
+        }
+        order.sort((a, b) => a - b)
+        return order.map((id) => byWs[id])
+    }
+
+    // Flat list in the exact top-to-bottom, left-to-right order shown, for
+    // Tab cycling.
+    readonly property var flat: {
+        const out = []
+        for (let g = 0; g < root.groups.length; g++)
+            for (let k = 0; k < root.groups[g].windows.length; k++)
+                out.push(root.groups[g].windows[k])
+        return out
+    }
+
+    readonly property int selectedFlatIndex: {
+        for (let i = 0; i < root.flat.length; i++)
+            if (root.flat[i].address === root.selectedAddress) return i
+        return -1
+    }
+
+    // The workspace the selected window is on — the strip highlights this,
+    // so cycling windows moves the highlight coherently.
+    readonly property int selectedWorkspaceId: {
+        const i = root.selectedFlatIndex
+        return (i >= 0) ? root.flat[i].wsId : -1
+    }
+
+    // --- open / close / cycle ------------------------------------------
+
+    function _open(held) {
+        root.heldOpen = held
+        root.shown = true
+        clientsProc.running = true            // snapshot; _selectStartWindow on return
+    }
+
+    function _close() {
         root.shown = false
+        root.heldOpen = false
     }
 
-    property Component activateComponent: Component {
-        Process {
-            id: activateProc
-            property string targetTitle: ""
-            property string targetAppId: ""
-            command: ["hyprctl", "clients", "-j"]
-            running: true
-            onExited: activateProc.running = false
-            stdout: StdioCollector {
-                onStreamFinished: {
-                    try {
-                        const clients = JSON.parse(this.text)
-                        const match = clients.find((c) =>
-                            c.title === activateProc.targetTitle && c.class === activateProc.targetAppId)
-                            || clients.find((c) => c.title === activateProc.targetTitle)
-                        if (match && match.address) {
-                            Quickshell.execDetached(["hyprctl", "dispatch", "focuswindow", "address:" + match.address])
-                        }
-                    } catch (e) {
-                        console.warn("phi-shell: hyprctl clients -j parse failed during AltTab confirm: " + e)
-                    }
-                    activateProc.destroy()
+    function _selectStartWindow() {
+        // Snapshot just arrived. Ask Hyprland which window is active so we
+        // can land on "the next one" (Alt+Tab convention); if the query is
+        // slow, _applyStartSelection still runs with "" and picks index 0.
+        if (root.flat.length === 0) { root.selectedAddress = ""; return }
+        // Provisional pick so the surface never opens with nothing selected.
+        if (root.selectedFlatIndex < 0)
+            root.selectedAddress = root.flat[0].address
+        activeProc.running = true
+    }
+
+    function _applyStartSelection(activeAddr) {
+        if (!root.shown || root.flat.length === 0) return
+        let start = 0
+        if (root.flat.length > 1 && activeAddr.length > 0) {
+            for (let i = 0; i < root.flat.length; i++) {
+                if (root.flat[i].address === activeAddr) {
+                    start = (i + 1) % root.flat.length
+                    break
                 }
             }
         }
+        root.selectedAddress = root.flat[start].address
     }
+
+    function _cycle(delta) {
+        if (!root.shown) { root._open(true); return }
+        const n = root.flat.length
+        if (n === 0) return
+        let i = root.selectedFlatIndex
+        if (i < 0) i = 0
+        root.selectedAddress = root.flat[(i + delta + n) % n].address
+    }
+
+    function _confirm() {
+        root._focusWindow(root.selectedAddress)
+        root._close()
+    }
+
+    // Address-based focus is the mechanism Launcher.qml's activateWindow
+    // action already proves works on this compositor (the wlr Toplevel
+    // type's own activate() was found not to actually focus).
+    function _focusWindow(addr) {
+        if (addr && addr.length > 0)
+            Quickshell.execDetached(["hyprctl", "dispatch", "focuswindow", "address:" + addr])
+    }
+
+    function _focusWorkspace(wsId) {
+        Quickshell.execDetached(["hyprctl", "dispatch", "workspace", String(wsId)])
+        root._close()
+    }
+
+    // --- geometry ------------------------------------------------------
 
     TextMetrics {
         id: chMetrics
@@ -186,12 +254,19 @@ PanelWindow {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
-    readonly property real cellWidth: chWidth * 20
-    readonly property real bottomMargin: chWidth * Config.Appearance.space5
+    readonly property real cellW: chWidth * 22
+    readonly property real cellH: chWidth * 9
+    readonly property real cellGap: chWidth * Config.Appearance.space2
+    readonly property real rowGap: chWidth * Config.Appearance.space3
 
-    margins { bottom: root.bottomMargin }
-    implicitWidth: Math.min(row.implicitWidth + panel.padding * 2, chWidth * 90)
-    implicitHeight: row.implicitHeight + panel.padding * 2
+    // Item 8: the same modal backdrop the notification panel / chat /
+    // cheatsheet use (OOP-16) — a direct child of the window, fading on
+    // its own `shown`, so with the Overlay layer + exclusiveZone -1 above
+    // it covers the status bar too.
+    Widgets.Scrim {
+        anchors.fill: parent
+        shown: root.shown
+    }
 
     Item {
         id: fadeRoot
@@ -202,55 +277,121 @@ PanelWindow {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
         }
 
-    Widgets.Panel {
-        id: panel
-        anchors.fill: parent
+        // Click on the dim closes with no focus change.
+        MouseArea {
+            anchors.fill: parent
+            onClicked: root._close()
+        }
 
-        Row {
-            id: row
-            anchors.centerIn: parent
-            spacing: root.chWidth * Config.Appearance.space2
+        // --- window grid, centred ------------------------------------
+        // gridCol has an explicit width so each row Item can be that wide
+        // and centre its own Row of boxes within it (a Row cannot centre
+        // its own content, and cross-axis anchors on a positioner's own
+        // children are the fragile path). Vertical overflow for many
+        // workspaces is not handled yet — flagged for the screenshot pass.
+        Column {
+            id: gridCol
+            width: root.width * 0.92
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.verticalCenterOffset: -root.cellH * 0.6   // leave room for the strip
+            spacing: root.rowGap
 
             Repeater {
-                // ToplevelManager's own ordering is unconfirmed (no
-                // document states whether it is creation order, activation
-                // order, or something else) — the starting selection no
-                // longer depends on it (_step()'s own hyprctl query finds
-                // the active window directly), and the cycling mechanism
-                // itself does not depend on the order being any particular
-                // one either, only on it being stable while shown.
-                model: Services.ToplevelBridge.toplevels
+                model: root.groups
 
-                Widgets.Panel {
-                    id: cell
+                Item {
+                    id: wsRow
                     required property var modelData
-                    required property int index
-                    width: root.cellWidth
-                    height: root.cellWidth * 0.6
-                    active: index === root.selectedIndex
+                    width: gridCol.width
+                    height: rowInner.height
 
-                    Widgets.StyledText {
-                        // parent here is Panel's own contentItem (Widgets/
-                        // Panel.qml) — already inset by padding, plain
-                        // parent.width, the same fix this class of issue
-                        // already got in S-31/S-32/S-35.
-                        anchors.centerIn: parent
-                        width: parent.width
-                        horizontalAlignment: Text.AlignHCenter
-                        elide: Text.ElideRight
-                        maximumLineCount: 1
-                        text: cell.modelData.title
+                    Row {
+                        id: rowInner
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        spacing: root.cellGap
+
+                        Repeater {
+                            model: wsRow.modelData.windows
+
+                            Widgets.Panel {
+                                id: box
+                                required property var modelData
+                                width: root.cellW
+                                height: root.cellH
+                                active: box.modelData.address === root.selectedAddress
+
+                                readonly property var desktopEntry:
+                                    DesktopEntries.heuristicLookup(box.modelData.cls)
+                                readonly property string iconPath: box.desktopEntry !== null
+                                    ? Quickshell.iconPath(box.desktopEntry.icon, true) : ""
+
+                                Column {
+                                    anchors.centerIn: parent
+                                    width: parent.width
+                                    spacing: root.chWidth * Config.Appearance.space1
+
+                                    Image {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        visible: box.iconPath.length > 0
+                                        source: box.iconPath
+                                        width: root.chWidth * Config.Appearance.space5
+                                        height: width
+                                        fillMode: Image.PreserveAspectFit
+                                    }
+
+                                    Widgets.StyledText {
+                                        width: parent.width
+                                        horizontalAlignment: Text.AlignHCenter
+                                        elide: Text.ElideRight
+                                        maximumLineCount: 1
+                                        color: box.contentColor
+                                        text: box.modelData.title
+                                    }
+                                }
+
+                                TapHandler {
+                                    onTapped: {
+                                        root._focusWindow(box.modelData.address)
+                                        root._close()
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
+        }
 
-            Widgets.StyledText {
-                anchors.verticalCenter: parent.verticalCenter
-                kind: "label"
-                text: "No open windows."
-                visible: Services.ToplevelBridge.toplevels.values.length === 0
+        Widgets.StyledText {
+            anchors.centerIn: parent
+            kind: "label"
+            text: "No open windows."
+            visible: root.flat.length === 0
+        }
+
+        // --- workspace strip, along the bottom ----------------------
+        Row {
+            id: wsStrip
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: root.chWidth * Config.Appearance.space5
+            spacing: root.chWidth * Config.Appearance.space1
+
+            Repeater {
+                model: Services.HyprlandBridge.workspaces
+
+                Widgets.Segment {
+                    id: wsPill
+                    required property var modelData
+                    visible: wsPill.modelData.id > 0
+                    squared: true
+                    label: wsPill.modelData.name.length > 0
+                        ? wsPill.modelData.name : String(wsPill.modelData.id)
+                    active: wsPill.modelData.id === root.selectedWorkspaceId
+                    onActivated: root._focusWorkspace(wsPill.modelData.id)
+                }
             }
         }
-    }
     }
 }

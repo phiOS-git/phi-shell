@@ -12,7 +12,6 @@ import qs.Spotlight as SpotlightSurface
 import qs.Launcher as Launcher
 import Quickshell.Io
 import qs.Lock as Lock
-import qs.Overview as Overview
 import qs.Screenshot as Screenshot
 import qs.AltTab as AltTab
 import qs.Cheatsheet as Cheatsheet
@@ -161,14 +160,6 @@ ShellRoot {
     // header). One instance here, unlike Bar.Bar/Toast's Variants above.
     Lock.Lock {}
 
-    // S-35: single instance, same reasoning as Panels.Sidebar/Launcher.Launcher
-    // above — see Overview/Overview.qml's own header for why the overlay's
-    // on-screen position is one output even though its content spans every
-    // monitor's windows.
-    Overview.Overview {
-        screen: Quickshell.screens[0]
-    }
-
     // S-36: single instance, same reasoning as every other IPC-triggered
     // overlay above.
     Screenshot.Screenshot {
@@ -181,10 +172,12 @@ ShellRoot {
         screen: Quickshell.screens[0]
     }
 
-    // S-37: single instances, same reasoning as every other IPC-triggered
-    // overlay above. Widgets/ContextMenu.qml and Tooltip/Tooltip.qml are
-    // reusable widget types, not top-level surfaces — they have no
-    // instance here, by design (see their own file headers).
+    // S-35 + S-37, unified at OOP-24: one surface for the window overview
+    // and Alt+Tab (Overview/Overview.qml is retired — the file stays in the
+    // tree, dormant, like Panels/tabs/Calendar.qml). Single instance, same
+    // reasoning as every other IPC-triggered overlay above.
+    // Widgets/ContextMenu.qml and Tooltip/Tooltip.qml are reusable widget
+    // types, not top-level surfaces — no instance here, by design.
     AltTab.AltTab {
         screen: Quickshell.screens[0]
     }

@@ -5,6 +5,14 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
+// RETIRED at OOP-24. The window overview and Alt+Tab were unified into one
+// surface, AltTab/AltTab.qml, on the user's directive ("2 different
+// behaviours, both broken — unify them, using only ALT+TAB"). shell.qml no
+// longer instantiates this file; it is kept in the tree, dormant (same as
+// Panels/tabs/Calendar.qml after OOP-06), so its history and the notes
+// below stay available. Do not wire it back without reconciling with
+// AltTab.qml — they would fight over the same windows and IPC targets.
+//
 // phiOS — Overview/Overview.qml (S-35, master plan §8.3 surface 8): a grid
 // of every open window across every monitor, not just the current
 // workspace (S-35 AGENT: "not only the current workspace"). Window data
