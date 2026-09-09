@@ -40,10 +40,6 @@ Singleton {
     function open(key, x) { root.which = key; root.anchorRightX = x || 0 }
     function hide() { root.which = "" }
 
-    // The two keys that render as an overlay-reference pill (icon · meter ·
-    // %) instead of a readout card.
-    function isMeter(key) { return key === "volume" || key === "brightness" }
-
     function title(key) {
         switch (key) {
         case "volume": return "Volume"

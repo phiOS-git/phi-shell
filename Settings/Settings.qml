@@ -36,8 +36,44 @@ import "sections" as Sections
 PanelWindow {
     id: root
 
-    property bool shown: false
+    // OOP-23: shown state lives in Services/SettingsPanel (one owner, so
+    // the bar volume/brightness card's "settings" button and any future
+    // summon point can reach it) — same shape as Services/NotificationPanel.
+    readonly property bool shown: Services.SettingsPanel.shown
     property int activeIndex: 0
+
+    onShownChanged: {
+        if (!root.shown) return
+        root.query = ""
+        searchField.text = ""
+        Services.SystemInfo.refresh()
+        Services.Keybinds.refresh()
+        root._applyPendingSection()
+        Qt.callLater(function () { searchField.forceActiveFocus() })
+    }
+
+    // OOP-23: a caller can ask for a specific section (the bar brightness
+    // card → "theme", the volume card → "devices"). Matched by sections.json
+    // `type` or, as a fallback, section title.
+    function _applyPendingSection() {
+        var name = Services.SettingsPanel.pendingSection
+        if (!name || name.length === 0) return
+        for (var i = 0; i < root.registryRows.length; i++) {
+            var row = root.registryRows[i]
+            if (row.type === name || (row.title || "").toLowerCase() === name.toLowerCase()) {
+                root.activeIndex = i
+                break
+            }
+        }
+        Services.SettingsPanel.pendingSection = ""
+    }
+
+    Connections {
+        target: Services.SettingsPanel
+        function onPendingSectionChanged() {
+            if (root.shown) root._applyPendingSection()
+        }
+    }
 
     // OOP-13: when the search hides the active section, jump to the first
     // section that still matches — so the content pane never shows a
@@ -98,20 +134,9 @@ PanelWindow {
 
     IpcHandler {
         target: "settings"
-        function toggle(): void { root.setShown(!root.shown) }
-        function open(): void { root.setShown(true) }
-        function close(): void { root.shown = false }
-    }
-
-    function setShown(v) {
-        root.shown = v
-        if (v) {
-            root.query = ""
-            searchField.text = ""
-            Services.SystemInfo.refresh()
-            Services.Keybinds.refresh()
-            Qt.callLater(function() { searchField.forceActiveFocus() })
-        }
+        function toggle(): void { Services.SettingsPanel.toggle() }
+        function open(): void { Services.SettingsPanel.show() }
+        function close(): void { Services.SettingsPanel.hide() }
     }
 
     FileView {
@@ -172,7 +197,7 @@ PanelWindow {
 
         MouseArea {
             anchors.fill: parent
-            onClicked: root.shown = false
+            onClicked: Services.SettingsPanel.hide()
         }
 
         Item {
@@ -233,7 +258,7 @@ PanelWindow {
                     font.pixelSize: Config.Appearance.fontSize2
                     color: Config.Appearance.textPrimary
                     onTextChanged: root.query = text
-                    Keys.onEscapePressed: root.shown = false
+                    Keys.onEscapePressed: Services.SettingsPanel.hide()
                 }
 
                 // OOP-09: a compact squared control (× glyph), not the
@@ -245,7 +270,7 @@ PanelWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     squared: true
                     label: "×"
-                    onActivated: root.shown = false
+                    onActivated: Services.SettingsPanel.hide()
                 }
             }
 

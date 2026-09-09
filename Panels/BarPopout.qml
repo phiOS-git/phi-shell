@@ -3,26 +3,26 @@ import Quickshell
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "../Bar/glyphs.js" as Glyphs
 
-// phiOS — Panels/BarPopout.qml (OOP-11; R3 #2/#9; OOP-22). The small panel
-// that drops below a right-isle button. It (a) aligns its right edge to
-// the button's right edge (Services.BarPopout.anchorRightX) rather than
-// sitting in the corner, sitting one rhythm unit below the bar, and
-// (b) carries minimal real content per key:
-//   - volume / brightness → an overlay-reference.png pill: glyph · a
-//     draggable Widgets.Meter · the percentage. No scrim (this window has
-//     none), no card chrome.
-//   - wifi / bluetooth / network / battery / gpu → a compact readout card,
+// phiOS — Panels/BarPopout.qml (OOP-11; R3 #2/#9; OOP-22; OOP-23). The
+// small card that drops below a right-isle button, its right edge aligned
+// to the button's right edge (Services.BarPopout.anchorRightX), one
+// rhythm unit below the bar. One card, per-key sections:
+//   - volume  → a draggable level + a Mute toggle + a "Sound settings"
+//               deep-link (item 3: the bar icon opens the controls; the
+//               volume KEYS get the transient pill in Osd/Osd.qml).
+//   - brightness → a draggable level + Night mode + True Tone toggles +
+//               a "Display settings" deep-link.
+//   - wifi / bluetooth / network / battery / gpu → a compact readout,
 //     with a deep-link button where a mature TUI exists.
-// A full mixer / network list is still a later pass.
+// No scrim (this window never had one). A full mixer / network list is
+// still a later pass.
 
 PanelWindow {
     id: root
 
     readonly property bool shown: Services.BarPopout.shown
     readonly property string which: Services.BarPopout.which
-    readonly property bool meter: Services.BarPopout.isMeter(root.which)
 
     anchors { top: true; right: true; left: true; bottom: true }
     exclusiveZone: 0
@@ -64,7 +64,7 @@ PanelWindow {
             // low" — was an over-estimated bar height, now the real one
             // plus one rhythm unit of breathing room).
             anchors.topMargin: root.barHeight + root.chWidth * Config.Appearance.space1
-            width: root.meter ? root.chWidth * 30 : root.chWidth * 34
+            width: root.chWidth * 36
             height: panel.height
 
             // OOP-22 (item 4): align the card's RIGHT edge to the button's
@@ -86,63 +86,16 @@ PanelWindow {
                 Loader {
                     id: bodyLoader
                     width: parent.width
-                    sourceComponent: root.meter ? meterBody : cardBody
+                    sourceComponent: cardBody
                 }
             }
         }
     }
 
-    // --- volume / brightness: the overlay-reference pill ------------------
-    Component {
-        id: meterBody
-
-        Item {
-            width: parent ? parent.width : 0
-            implicitHeight: Math.max(pillIcon.implicitHeight, pillMeter.implicitHeight, pctText.implicitHeight)
-
-            Widgets.StyledIcon {
-                id: pillIcon
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-                sizeStep: 2
-                glyph: root.which === "volume"
-                    ? (Services.AudioBridge.muted ? Glyphs.volumeMute : Glyphs.volume)
-                    : Glyphs.brightness
-            }
-
-            Widgets.StyledText {
-                id: pctText
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                mono: true
-                sizeStep: 1
-                horizontalAlignment: Text.AlignRight
-                width: 4 * root.chWidth
-                text: (root.which === "volume" ? root._volumePct() : Services.Brightness.percent) + "%"
-            }
-
-            Widgets.Meter {
-                id: pillMeter
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.left: pillIcon.right
-                anchors.right: pctText.left
-                anchors.leftMargin: root.chWidth * Config.Appearance.space2
-                anchors.rightMargin: root.chWidth * Config.Appearance.space2
-                interactive: true
-                value: root.which === "volume"
-                    ? Services.AudioBridge.volume
-                    : Services.Brightness.percent / 100
-                fillColor: (root.which === "volume" && Services.AudioBridge.muted)
-                    ? Config.Appearance.textFaint : Config.Appearance.accent
-                // Volume is a live property set (cheap); brightness spawns
-                // brightnessctl, so it only commits on release.
-                onMoved: (v) => { if (root.which === "volume") Services.AudioBridge.setVolume(v) }
-                onReleased: (v) => { if (root.which === "brightness") Services.Brightness.set(Math.round(v * 100)) }
-            }
-        }
-    }
-
-    // --- everything else: a compact readout card ------------------------
+    // --- one card, per-key sections. volume/brightness carry the actual
+    //     controls (OOP-23: the bar icons open this, the function keys get
+    //     the transient pill in Osd/Osd.qml); the rest are compact
+    //     readouts with a deep-link where a mature tool exists.
     Component {
         id: cardBody
 
@@ -156,6 +109,107 @@ PanelWindow {
                 text: Services.BarPopout.title(root.which)
             }
             Widgets.Separator { width: parent.width }
+
+            // volume
+            Column {
+                width: parent.width
+                spacing: root.chWidth * Config.Appearance.space2
+                visible: root.which === "volume"
+
+                Item {
+                    width: parent.width
+                    implicitHeight: Math.max(volMeter.implicitHeight, volPct.implicitHeight)
+                    Widgets.StyledText {
+                        id: volPct
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        mono: true
+                        sizeStep: 1
+                        horizontalAlignment: Text.AlignRight
+                        width: 4 * root.chWidth
+                        text: root._volumePct() + "%"
+                    }
+                    Widgets.Meter {
+                        id: volMeter
+                        anchors.left: parent.left
+                        anchors.right: volPct.left
+                        anchors.rightMargin: root.chWidth * Config.Appearance.space2
+                        anchors.verticalCenter: parent.verticalCenter
+                        interactive: true
+                        value: Services.AudioBridge.volume
+                        fillColor: Services.AudioBridge.muted
+                            ? Config.Appearance.textFaint : Config.Appearance.accent
+                        // A Pipewire volume property — a cheap live set.
+                        onMoved: (v) => Services.AudioBridge.setVolume(v)
+                    }
+                }
+                Widgets.ToggleRow {
+                    width: parent.width
+                    label: "Mute"
+                    checked: Services.AudioBridge.muted
+                    onToggled: Services.AudioBridge.toggleMute()
+                }
+                Widgets.StyledButton {
+                    label: "Sound settings…"
+                    onClicked: {
+                        Services.SettingsPanel.openSection("devices")
+                        Services.BarPopout.hide()
+                    }
+                }
+            }
+
+            // brightness
+            Column {
+                width: parent.width
+                spacing: root.chWidth * Config.Appearance.space2
+                visible: root.which === "brightness"
+
+                Item {
+                    width: parent.width
+                    implicitHeight: Math.max(briMeter.implicitHeight, briPct.implicitHeight)
+                    Widgets.StyledText {
+                        id: briPct
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        mono: true
+                        sizeStep: 1
+                        horizontalAlignment: Text.AlignRight
+                        width: 4 * root.chWidth
+                        text: Services.Brightness.percent + "%"
+                    }
+                    Widgets.Meter {
+                        id: briMeter
+                        anchors.left: parent.left
+                        anchors.right: briPct.left
+                        anchors.rightMargin: root.chWidth * Config.Appearance.space2
+                        anchors.verticalCenter: parent.verticalCenter
+                        interactive: true
+                        value: Services.Brightness.percent / 100
+                        fillColor: Config.Appearance.accent
+                        // brightnessctl spawns a process — commit on release.
+                        onReleased: (v) => Services.Brightness.set(Math.round(v * 100))
+                    }
+                }
+                Widgets.ToggleRow {
+                    width: parent.width
+                    label: "Night mode"
+                    checked: Services.NightShift.enabled
+                    onToggled: (v) => Services.NightShift.setEnabled(v)
+                }
+                Widgets.ToggleRow {
+                    width: parent.width
+                    label: "True Tone"
+                    checked: Services.NightShift.trueTone
+                    onToggled: (v) => Services.NightShift.setTrueTone(v)
+                }
+                Widgets.StyledButton {
+                    label: "Display settings…"
+                    onClicked: {
+                        Services.SettingsPanel.openSection("theme")
+                        Services.BarPopout.hide()
+                    }
+                }
+            }
 
             // wifi
             Column {
