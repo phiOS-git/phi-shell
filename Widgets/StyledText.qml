@@ -15,11 +15,15 @@ import "WidgetStates.js" as WidgetStates
 // (`kind: "value"`, the default). A Tier-2 semantic colour (`tone`) is
 // opt-in and never the default — the caller decides when a threshold is
 // crossed, this widget only renders that decision.
+//
+// OOP-02: `kind: "title"` is the one text kind that carries accent — the
+// "fine detail / important element" role accent kept when it stopped
+// being a generic active-state fill (WidgetStates.contentColor).
 
 Text {
     id: root
 
-    property string kind: "value" // "label" | "value"
+    property string kind: "value" // "label" | "value" | "title"
     property string tone: "" // "" | "error" | "warn" | "success" | "info"
     property bool invalid: false
     property bool loading: false

@@ -55,20 +55,37 @@ function resolve(flags) {
 // affordance rule reserving that glyph for the active input point only —
 // it still calls this function for its background/border colour, the
 // glyph is an addition on top, not a replacement.
-function surfaceColors(appearance, resolvedState) {
+//
+// OOP-02 (shell restyle): the "active" case no longer fills with accent —
+// accent retreated to fine detail only (titles, focus ring, the Φ agent
+// processing state). "inversione piena" now means a full inversion between
+// the two structural colours: the ambient surface and its contrast swap.
+// `ambient` selects which surface pair: "panel" (default — main
+// background, opposite border/text) or "isle" (the status bar — opposite
+// background, main border/text). Everything else stays a delta on top of
+// that pair.
+function surfaceColors(appearance, resolvedState, ambient) {
+    var onIsle = ambient === "isle"
+    var surface = onIsle ? appearance.barIsleBackground : appearance.panelBackground
+    var contrast = onIsle ? appearance.colorMain : appearance.colorOpposite
+    var hoverBg = onIsle ? appearance.barButtonHover : appearance.panelHover
     switch (resolvedState) {
     case "active":
-        return { bg: appearance.accent, fg: appearance.accentText, border: appearance.accent }
+        // Full inversion — the loud, selected state.
+        return { bg: contrast, fg: surface, border: contrast }
     case "invalid":
-        return { bg: appearance.surface1, fg: appearance.error, border: appearance.error }
+        return { bg: surface, fg: appearance.error, border: appearance.error }
     case "focus":
-        return { bg: appearance.surface1, fg: appearance.textPrimary, border: appearance.accent }
+        // The one state that still shows accent, and only as the border.
+        return { bg: surface, fg: contrast, border: appearance.focusRing }
     case "hover":
-        return { bg: appearance.surface2, fg: appearance.textPrimary, border: appearance.border }
+        return { bg: hoverBg, fg: contrast, border: contrast }
     default:
         // "default", "loading" and "disabled" share this base recipe —
-        // opacityFor(), not colour, is what marks the latter two.
-        return { bg: appearance.surface1, fg: appearance.textPrimary, border: appearance.border }
+        // opacityFor(), not colour, is what marks the latter two. It is
+        // also exactly the resting Panel look: main background, opposite
+        // border, opposite text.
+        return { bg: surface, fg: contrast, border: contrast }
     }
 }
 
@@ -95,6 +112,11 @@ function contentColor(appearance, kind, tone, invalid) {
     case "success": return appearance.success
     case "info": return appearance.info
     }
+    // OOP-02: "title" is the one text kind that carries accent — the
+    // "fine detail, important element" role the accent kept when it
+    // stopped being a generic active-state fill. "label" stays low-
+    // contrast monochrome, "value" full-contrast monochrome.
+    if (kind === "title") return appearance.accent
     return kind === "label" ? appearance.textMuted : appearance.textPrimary
 }
 

@@ -21,6 +21,17 @@ Item {
     property bool loading: false
     property bool invalid: false
 
+    // OOP-02: which surface pair this button sits on — "panel" (default,
+    // e.g. the sidebar tab strip) or "isle" (the status bar's opposite-
+    // coloured islands). Passed straight through to surfaceColors().
+    property string ambient: "panel"
+
+    // OOP-02: keep the §6.6 Role B rule for the Φ agent segment — its
+    // active (processing) state is Tier-1 accent, not the B&W inversion
+    // every other selected control now uses. The one closed-ADR exception,
+    // set only by Bar/modules/PhiAgent.qml.
+    property bool accentWhenActive: false
+
     readonly property bool hovered: hoverHandler.hovered
     readonly property bool pressed: tapHandler.pressed
     readonly property bool keyboardFocus: activeFocus
@@ -32,7 +43,9 @@ Item {
         active: root.active, keyboardFocus: root.keyboardFocus,
         loading: root.loading, invalid: root.invalid
     })
-    readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState)
+    readonly property var stateColors: (root.accentWhenActive && root.resolvedState === "active")
+        ? ({ bg: Config.Appearance.accent, fg: Config.Appearance.accentText, border: Config.Appearance.accent })
+        : WidgetStates.surfaceColors(Config.Appearance, root.resolvedState, root.ambient)
 
     // design/tokens.common.sh stores space-N in `ch`, not px — see
     // Panel.qml's identical comment.
@@ -57,8 +70,13 @@ Item {
         anchors.fill: parent
         radius: Config.Appearance.radiusBase
         color: root.stateColors.bg
+        border.width: Config.Appearance.borderWidth
+        border.color: root.stateColors.border
 
         Behavior on color {
+            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+        }
+        Behavior on border.color {
             ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
         }
     }

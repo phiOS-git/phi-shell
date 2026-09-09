@@ -68,6 +68,12 @@ Item {
         anchors.fill: parent
         label: "Φ"
         active: root.processing
+        // §6.6 Role B is a closed ADR: the agent's processing state is
+        // Tier-1 accent, not the B&W inversion OOP-02 gave every other
+        // selected control. This flag is the one exception to that rule.
+        // (`ambient` is left at its default here and set for the whole bar
+        // in OOP-03.)
+        accentWhenActive: true
         onActivated: Services.AgentPanel.toggle()
     }
 

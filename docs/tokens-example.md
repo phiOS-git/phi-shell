@@ -92,10 +92,10 @@ Singleton {
     readonly property string ansi15: "#d6d1c9"
 
     // --- Typography --------------------------------------------------------
-    readonly property string fontMono: "Iosevka"
+    readonly property string fontMono: "Source Code Pro"
     readonly property string fontReading: "Source Serif 4"
     readonly property string fontUi: "Source Sans 3"
-    readonly property string fontSymbol: "Symbols Nerd Font"
+    readonly property string fontSymbol: "Symbols Nerd Font Mono"
 
     // --- Size scale --------------------------------------------------------
     readonly property string fontSize0: "12px"
@@ -117,7 +117,15 @@ Singleton {
     // --- Shape -------------------------------------------------------
     readonly property string radiusBase: "2px"
     readonly property string radiusPill: "9999px"
+    readonly property string radiusSmall: "1px"
+    readonly property string radiusLarge: "4px"
     readonly property string borderWidth: "1px"
+    readonly property string borderWidthStrong: "2px"
+    readonly property string panelPadding: "4px"
+
+    // --- User-tunable scale (identity by default) --------------------------
+    readonly property string fontScale: "1"
+    readonly property string spaceScale: "1"
 
     // --- Layering -------------------------------------------------------
     readonly property string zBase: "0"

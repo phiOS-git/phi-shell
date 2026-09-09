@@ -12,6 +12,22 @@ import Quickshell
 // S-20 AGENT contract: every other file in this shell reads Appearance,
 // never Config/Tokens.qml directly.
 //
+// OOP-02 (shell restyle) layered two things on here without touching that
+// contract:
+//
+//   1. Config/ThemeOverrides.qml is merged over Tokens at read time, via
+//      _tok(). The settings panel's Theme section (OOP-07) writes per-user
+//      overrides for the tokens it exposes as editable — accent, the
+//      structural + semantic palette, the font families, the font/spacing
+//      scale and the radii. An unset override falls straight through to the
+//      generated token, so nothing changes until the user sets something.
+//
+//   2. A named style-grammar layer (colorMain / colorOpposite / panel* /
+//      barIsle* / selection* / focusRing) so the restyle's rule — two
+//      structural colours carry the whole shell, accent is fine detail
+//      only, selection is a full inversion between the two — lives in
+//      exactly one file, and the settings display can enumerate it.
+//
 // Only tiers an actual shell surface can plausibly use are exposed. Tier 3
 // (syntax highlighting) and the ANSI 16 / selection / terminal-cursor tokens
 // are terminal-emulator concepts — no surface in master plan §8.3 needs them
@@ -23,59 +39,115 @@ Singleton {
     readonly property string variant: Tokens.variant
 
     // --- Structure ---------------------------------------------------------
-    readonly property color background: _color(Tokens.bg0)
-    readonly property color surface1: _color(Tokens.bg1)
-    readonly property color surface2: _color(Tokens.bg2)
-    readonly property color surface3: _color(Tokens.bg3)
-    readonly property color textPrimary: _color(Tokens.fg0)
-    readonly property color textSecondary: _color(Tokens.fg1)
-    readonly property color textMuted: _color(Tokens.fg2)
-    readonly property color textFaint: _color(Tokens.fg3)
-    readonly property color border: _color(Tokens.border)
-    readonly property color borderStrong: _color(Tokens.borderStrong)
+    readonly property color background: _color(_tok("bg-0", Tokens.bg0))
+    readonly property color surface1: _color(_tok("bg-1", Tokens.bg1))
+    readonly property color surface2: _color(_tok("bg-2", Tokens.bg2))
+    readonly property color surface3: _color(_tok("bg-3", Tokens.bg3))
+    readonly property color textPrimary: _color(_tok("fg-0", Tokens.fg0))
+    readonly property color textSecondary: _color(_tok("fg-1", Tokens.fg1))
+    readonly property color textMuted: _color(_tok("fg-2", Tokens.fg2))
+    readonly property color textFaint: _color(_tok("fg-3", Tokens.fg3))
+    readonly property color border: _color(_tok("border", Tokens.border))
+    readonly property color borderStrong: _color(_tok("border-strong", Tokens.borderStrong))
     readonly property color overlayScrim: _color(Tokens.overlayScrim)
 
     // --- Accent and semantic state ------------------------------------------
-    readonly property color accent: _color(Tokens.accent)
-    readonly property color accentText: _color(Tokens.accentFg)
-    readonly property color error: _color(Tokens.error)
+    readonly property color accent: _color(_tok("accent", Tokens.accent))
+    readonly property color accentText: {
+        var explicit = _tok("accent-fg", null)
+        if (explicit !== null) return _color(explicit)
+        // Auto-flip when the accent is overridden but its text colour is
+        // not: a user-picked light accent needs dark text, and vice versa.
+        if (ThemeOverrides.value("accent") !== null) return _bestText(root.accent)
+        return _color(Tokens.accentFg)
+    }
+    readonly property color error: _color(_tok("error", Tokens.error))
     readonly property color errorText: _color(Tokens.errorFg)
-    readonly property color warn: _color(Tokens.warn)
+    readonly property color warn: _color(_tok("warn", Tokens.warn))
     readonly property color warnText: _color(Tokens.warnFg)
-    readonly property color success: _color(Tokens.success)
+    readonly property color success: _color(_tok("success", Tokens.success))
     readonly property color successText: _color(Tokens.successFg)
-    readonly property color info: _color(Tokens.info)
+    readonly property color info: _color(_tok("info", Tokens.info))
     readonly property color infoText: _color(Tokens.infoFg)
 
+    // --- phiOS style grammar (OOP-02) -------------------------------------
+    // "main"     = bg-0: a warm near-black on the dark variant, a warm
+    //              near-white on the light one.
+    // "opposite" = fg-0: its inverse.
+    // These two carry the whole shell. accent is fine detail only — titles,
+    // the keyboard focus ring, the Φ agent processing state — never a
+    // generic selected/active fill. Selection is a full inversion between
+    // main and opposite.
+    readonly property color colorMain: root.background
+    readonly property color colorOpposite: root.textPrimary
+
+    // Panels: main background, opposite border (borderWidthStrong, 2px),
+    // text in the opposite colour.
+    readonly property color panelBackground: root.colorMain
+    readonly property color panelBorder: root.colorOpposite
+    readonly property color panelText: root.colorOpposite
+
+    // Status bar: the window itself has no background (Bar.qml); each isle
+    // is an opposite-coloured block, and a button inside repeats its
+    // ambient surface with a 1px contrast border — see
+    // Widgets/WidgetStates.js surfaceColors(), ambient "isle".
+    readonly property color barIsleBackground: root.colorOpposite
+
+    // Selection / active item: a block of the opposite colour, text flips
+    // to main.
+    readonly property color selectionBackground: root.colorOpposite
+    readonly property color selectionText: root.colorMain
+
+    // The one control state that still shows accent — a ring, not a fill.
+    readonly property color focusRing: root.accent
+
+    // Subtle hover wash, one small step toward the contrast colour, per
+    // ambient surface. Not a design token: a single ratio kept in one
+    // place, the same latitude Widgets/WidgetStates.js takes for
+    // INACTIVE_OPACITY (not a colour, size or duration — the I-05 ban does
+    // not reach a bare mix ratio).
+    readonly property color panelHover: _mix(root.colorMain, root.colorOpposite, 0.08)
+    readonly property color barButtonHover: _mix(root.colorOpposite, root.colorMain, 0.10)
+
     // --- Typography ----------------------------------------------------
-    readonly property string fontMono: Tokens.fontMono
-    readonly property string fontReading: Tokens.fontReading
-    readonly property string fontUi: Tokens.fontUi
+    readonly property string fontMono: _tok("font-mono", Tokens.fontMono)
+    readonly property string fontReading: _tok("font-reading", Tokens.fontReading)
+    readonly property string fontUi: _tok("font-ui", Tokens.fontUi)
     readonly property string fontSymbol: Tokens.fontSymbol
 
-    readonly property real fontSize0: _px(Tokens.fontSize0)
-    readonly property real fontSize1: _px(Tokens.fontSize1)
-    readonly property real fontSize2: _px(Tokens.fontSize2)
-    readonly property real fontSize3: _px(Tokens.fontSize3)
-    readonly property real fontSize4: _px(Tokens.fontSize4)
-    readonly property real fontSize5: _px(Tokens.fontSize5)
-    readonly property real fontSize6: _px(Tokens.fontSize6)
+    // One multiplier over the whole generated size scale — the settings
+    // panel exposes this rather than seven individual sizes.
+    readonly property real fontScale: _scale("font-scale", Tokens.fontScale)
+
+    readonly property real fontSize0: _px(Tokens.fontSize0) * root.fontScale
+    readonly property real fontSize1: _px(Tokens.fontSize1) * root.fontScale
+    readonly property real fontSize2: _px(Tokens.fontSize2) * root.fontScale
+    readonly property real fontSize3: _px(Tokens.fontSize3) * root.fontScale
+    readonly property real fontSize4: _px(Tokens.fontSize4) * root.fontScale
+    readonly property real fontSize5: _px(Tokens.fontSize5) * root.fontScale
+    readonly property real fontSize6: _px(Tokens.fontSize6) * root.fontScale
 
     // Spacing stays in units of 1ch of fontMono, not px: design/README.md
     // is explicit that storing px here would silently break the moment
     // Q-N01 changes the mono family. A caller that needs px measures the
-    // font itself and multiplies.
-    readonly property real space1: _ch(Tokens.space1)
-    readonly property real space2: _ch(Tokens.space2)
-    readonly property real space3: _ch(Tokens.space3)
-    readonly property real space4: _ch(Tokens.space4)
-    readonly property real space5: _ch(Tokens.space5)
-    readonly property real space6: _ch(Tokens.space6)
+    // font itself and multiplies. One multiplier, same rationale as
+    // fontScale.
+    readonly property real spaceScale: _scale("space-scale", Tokens.spaceScale)
+    readonly property real space1: _ch(Tokens.space1) * root.spaceScale
+    readonly property real space2: _ch(Tokens.space2) * root.spaceScale
+    readonly property real space3: _ch(Tokens.space3) * root.spaceScale
+    readonly property real space4: _ch(Tokens.space4) * root.spaceScale
+    readonly property real space5: _ch(Tokens.space5) * root.spaceScale
+    readonly property real space6: _ch(Tokens.space6) * root.spaceScale
 
     // --- Shape ------------------------------------------------------
-    readonly property real radiusBase: _px(Tokens.radiusBase)
+    readonly property real radiusBase: _px(_tok("radius-base", Tokens.radiusBase))
     readonly property real radiusPill: _px(Tokens.radiusPill)
+    readonly property real radiusSmall: _pxOr(_tok("radius-small", Tokens.radiusSmall), root.radiusBase)
+    readonly property real radiusLarge: _pxOr(_tok("radius-large", Tokens.radiusLarge), root.radiusBase)
     readonly property real borderWidth: _px(Tokens.borderWidth)
+    readonly property real borderWidthStrong: _pxOr(Tokens.borderWidthStrong, root.borderWidth)
+    readonly property real panelPadding: _pxOr(Tokens.panelPadding, root.radiusBase)
 
     // --- Layering ------------------------------------------------------
     readonly property int zBase: parseInt(Tokens.zBase)
@@ -104,20 +176,70 @@ Singleton {
     readonly property string motionCEasing: Tokens.motionCEasing
     readonly property int motionDDuration: _ms(Tokens.motionDDuration)
 
-    function _px(value) { return parseFloat(value) }
-    function _ms(value) { return parseInt(value) }
-    function _ch(value) { return parseFloat(value) }
+    // --- helpers ------------------------------------------------------
+    // parseFloat with a fallback. A design-token string always carries its
+    // unit ("14px", "2px") and parseFloat stops at the unit. `_pxOr`'s
+    // fallback guards the transient window after a NEW token is added to
+    // design/tokens.*.sh but before `phi theme set` has regenerated
+    // Config/Tokens.qml on the machine: the read is `undefined`, and
+    // falling back to a value that DOES resolve (another token) is safer
+    // for one hot-reload than NaN propagating through layout math. `_px`
+    // falls back to 0 — a sharp corner / a hairline / no padding, all
+    // harmless for the same one reload, and 0 is the absence of a
+    // dimension, not a design choice the I-05 ban is about.
+    function _pxOr(value, fallback) {
+        var n = parseFloat(value)
+        return isNaN(n) ? fallback : n
+    }
+    function _px(value) { return root._pxOr(value, 0) }
+    function _ch(value) { return root._pxOr(value, 0) }
+    function _ms(value) {
+        var n = parseInt(value)
+        return isNaN(n) ? 0 : n
+    }
+
+    // A scale multiplier: identity by default, never a "size" in the I-05
+    // sense — a dimensionless factor, same latitude as INACTIVE_OPACITY.
+    function _scale(key, tokenValue) {
+        var raw = root._tok(key, (tokenValue === undefined || tokenValue === null || String(tokenValue).length === 0) ? "1" : tokenValue)
+        var n = parseFloat(raw)
+        return (isNaN(n) || n <= 0) ? 1 : n
+    }
+
+    // Merge a Config/ThemeOverrides.qml value over a generated token.
+    // Passing `null` as the fallback is how a getter asks "is this
+    // overridden at all" (see accentText).
+    function _tok(key, fallback) {
+        var o = ThemeOverrides.value(key)
+        return (o === null || o === undefined || String(o).length === 0) ? fallback : o
+    }
+
+    function _mix(a, b, t) {
+        return Qt.rgba(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t,
+                       a.b + (b.b - a.b) * t, a.a + (b.a - a.a) * t)
+    }
+
+    // Pick main or opposite as the readable text colour over an arbitrary
+    // (user-picked) accent — relative luminance, WCAG-style coefficients.
+    function _bestText(c) {
+        var lum = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
+        return lum > 0.5 ? root.colorMain : root.colorOpposite
+    }
 
     // Tokens store an 8-digit colour as #rrggbbaa (CSS order, see
     // design/tokens.dark.sh's own note on PHI_OVERLAY_SCRIM), not Qt's
     // #aarrggbb — parsed by hand so a scrim's alpha byte never lands in the
-    // wrong place. 6-digit values pass through with alpha 1.
+    // wrong place. 6-digit values pass through with alpha 1. A malformed or
+    // still-undefined value yields transparent rather than throwing.
     function _color(hex) {
-        const h = hex.replace("#", "")
-        const r = parseInt(h.substring(0, 2), 16) / 255
-        const g = parseInt(h.substring(2, 4), 16) / 255
-        const b = parseInt(h.substring(4, 6), 16) / 255
-        const a = h.length >= 8 ? parseInt(h.substring(6, 8), 16) / 255 : 1
+        if (hex === undefined || hex === null) return Qt.rgba(0, 0, 0, 0)
+        var h = String(hex).replace("#", "")
+        if (h.length < 6) return Qt.rgba(0, 0, 0, 0)
+        var r = parseInt(h.substring(0, 2), 16) / 255
+        var g = parseInt(h.substring(2, 4), 16) / 255
+        var b = parseInt(h.substring(4, 6), 16) / 255
+        var a = h.length >= 8 ? parseInt(h.substring(6, 8), 16) / 255 : 1
+        if (isNaN(r) || isNaN(g) || isNaN(b) || isNaN(a)) return Qt.rgba(0, 0, 0, 0)
         return Qt.rgba(r, g, b, a)
     }
 }

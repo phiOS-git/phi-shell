@@ -16,12 +16,18 @@ import "WidgetStates.js" as WidgetStates
 // interactive (a popover's body is; a settings section's frame might not
 // be) — sizing is likewise left to the consumer, same as a plain
 // Rectangle: this widget does not guess a content-based implicit size.
+//
+// OOP-02 (shell restyle): the resting look is now main background + a 2px
+// opposite-coloured border (borderWidthStrong) + a flat panelPadding inset
+// (4px), all from Config/Appearance's grammar layer. `active` inverts the
+// whole surface. `padding` was a 3ch measurement done here with a local
+// TextMetrics; it is now a plain px token, so that measurement is gone.
 
 Item {
     id: root
 
     default property alias content: contentItem.data
-    property real padding: WidgetStates.chToPixels(Config.Appearance.space3, chWidth)
+    property real padding: Config.Appearance.panelPadding
 
     property bool hovered: false
     property bool pressed: false
@@ -37,25 +43,13 @@ Item {
     })
     readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState)
 
-    // design/tokens.common.sh stores space-N in `ch`, not px (Appearance.qml's
-    // own comment: a caller that needs px "measures the font itself and
-    // multiplies"). The "0" glyph's advance at the base chrome size is that
-    // measurement, done once here rather than assumed.
-    TextMetrics {
-        id: chMetrics
-        font.family: Config.Appearance.fontMono
-        font.pixelSize: Config.Appearance.fontSize1
-        text: "0"
-    }
-    readonly property real chWidth: chMetrics.width
-
     opacity: WidgetStates.opacityFor(resolvedState)
 
     Rectangle {
         anchors.fill: parent
         radius: Config.Appearance.radiusBase
         color: root.stateColors.bg
-        border.width: Config.Appearance.borderWidth
+        border.width: Config.Appearance.borderWidthStrong
         border.color: root.stateColors.border
 
         Behavior on color {

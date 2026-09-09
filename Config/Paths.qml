@@ -52,4 +52,15 @@ Singleton {
         return base + "/phi"
     }
     readonly property string wallpaperDir: root.dataDir + "/wallpapers"
+
+    // OOP-02 (shell restyle): live, per-user overrides for the design
+    // tokens the settings panel's Theme section exposes as editable
+    // (accent, palette, font families, the font/spacing scale, radii).
+    // Config/ThemeOverrides.qml owns this file; Config/Appearance.qml
+    // merges it over the generated Config/Tokens.qml at read time. Runtime
+    // state, one flat JSON object — deliberately NOT `phi state` (S-13's
+    // closed scalar-key contract) and NOT the repo (I-05: design/ stays
+    // the single source of the DEFAULTS). Same runtime-state shape as
+    // clipboard/pins.json.
+    readonly property string themeOverridesFile: root.stateDir + "/theme-overrides.json"
 }
