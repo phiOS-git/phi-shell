@@ -49,7 +49,7 @@ Singleton {
     // "one month", not a value any document fixes precisely.
     readonly property int ttlDays: 30
 
-    property var entries: []  // [{id, mime, timestamp}], newest first, rebuilt from disk on refresh()
+    property var entries: []  // [{id, mime, timestamp, preview}], newest first, rebuilt from disk on refresh()
     property var pinnedIds: [] // array of id strings, persisted to pins.json
 
     function isPinned(id) {
@@ -188,56 +188,41 @@ printf '%s' "$id" > "$dir/latest"
     }
     function reload() { latestFile.reload() }
 
+    // OOP-06: one shell loop reads every entry's mime AND its first line in
+    // a single pass, emitting `id<TAB>mime<TAB>firstline` — so `entries`
+    // carries a `preview` string the clipboard panel can filter and render
+    // synchronously, with no per-entry FileView. Replaces the earlier
+    // "list ids, then spawn one mime-reader Process per id" shape.
     Process {
         id: listProcess
-        command: ["sh", "-c",
-            'ls -1 "$1" 2>/dev/null | grep "\\.mime$" | sed "s/\\.mime$//"',
-            "list", Config.Paths.clipboardEntriesDir]
+        command: ["sh", "-c", `
+dir="$1"
+for m in "$dir"/*.mime; do
+  [ -e "$m" ] || continue
+  id=$(basename "$m" .mime)
+  mime=$(cat "$m" 2>/dev/null)
+  first=$(head -n1 "$dir/$id.data" 2>/dev/null | cut -c1-200 | tr -d '\\000\\r\\t')
+  printf '%s\\t%s\\t%s\\n' "$id" "$mime" "$first"
+done
+`.trim(), "list", Config.Paths.clipboardEntriesDir]
         onExited: listProcess.running = false
         stdout: StdioCollector {
             onStreamFinished: {
-                const ids = this.text.split("\n").filter((s) => s.length > 0)
-                const next = ids.map((id) => ({
-                    id: id,
-                    timestamp: Math.round(parseInt(id, 10) / 1e6),
-                    mime: "text/plain", // refined by mimeReaders below once each resolves
-                }))
+                const lines = this.text.split("\n").filter((s) => s.length > 0)
+                const next = lines.map((ln) => {
+                    const parts = ln.split("\t")
+                    const id = parts[0]
+                    return {
+                        id: id,
+                        timestamp: Math.round(parseInt(id, 10) / 1e6),
+                        mime: parts[1] && parts[1].length > 0 ? parts[1] : "text/plain",
+                        preview: parts.length > 2 ? parts[2] : "",
+                    }
+                }).filter((e) => e.id && e.id.length > 0)
                 next.sort((a, b) => b.timestamp - a.timestamp)
                 root.entries = next
-                for (let i = 0; i < next.length; i++) _readMime(next[i].id)
             }
         }
-    }
-
-    // One-shot mime readers, spawned per id rather than modelled as a
-    // FileView per entry: entries are created and deleted continuously and
-    // a FileView is meant for a long-lived watched path, not a fire-once
-    // read of a file that may already be gone by the time it runs — this
-    // reads best-effort and leaves the "text/plain" default from
-    // listProcess above if the file has since vanished.
-    property Component mimeReaderComponent: Component {
-        Process {
-            id: mimeProc
-            property string entryId: ""
-            command: ["cat", Config.Paths.clipboardEntriesDir + "/" + entryId + ".mime"]
-            running: true
-            onExited: mimeProc.running = false
-            stdout: StdioCollector {
-                onStreamFinished: {
-                    const mime = this.text.trim()
-                    if (mime.length === 0) { mimeProc.destroy(); return }
-                    const next = root.entries.slice()
-                    for (let i = 0; i < next.length; i++) {
-                        if (next[i].id === mimeProc.entryId) { next[i] = Object.assign({}, next[i], { mime: mime }); break }
-                    }
-                    root.entries = next
-                    mimeProc.destroy()
-                }
-            }
-        }
-    }
-    function _readMime(id) {
-        mimeReaderComponent.createObject(root, { entryId: id })
     }
 
     function _persistPins() {

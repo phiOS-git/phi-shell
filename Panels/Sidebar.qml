@@ -6,50 +6,59 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "tabs" as Tabs
 
-// phiOS — Panels/Sidebar (S-31, master plan §8.3 surface 4, ADR 078):
-// composition is Panels/tabs.json, read once at startup — adding a tab is a
-// one-file data change, exactly like Bar/Bar.qml's modules.json (S-22),
-// whose componentFor()/registry-loading shape this file deliberately
-// mirrors rather than inventing a second registry mechanism.
+// phiOS — Panels/Sidebar.qml (S-31, master plan §8.3 surface 4, ADR 078):
+// the notification panel. Composition is Panels/tabs.json, read once at
+// startup — adding a tab is a one-file data change.
 //
-// Full-height right-edge panel, fixed width (S-31 AGENT: "fixed dimensions
-// defined in the theme code. No user resizing") — derived from the same
-// chWidth-times-a-plain-number formula Bar.qml and Notifications/Toast.qml
-// already use for their own footprint, not a new §6.3 token: there is
-// nothing here that is a colour, font or literal size in the sense I-05
-// forbids, only a proportion in the existing ch-based rhythm. Flagged for
-// cheap veto if a screenshot says the width is wrong.
+// OOP-06 (shell restyle), to the user's directive:
+//   - slides in from the right edge (x animation); larger than before;
+//     click outside or the bar bell / Super+N closes it
+//   - a display-toggles row at the very top (night mode + True Tone),
+//     shared regardless of which tab is active
+//   - exactly two tabs — Notifications and Clipboard (the Calendar and
+//     Agent tabs are gone: the calendar is its own small panel now,
+//     Panels/Calendar.qml, and the chat is the left-edge Panels/AgentPanel)
+//   - Super+Shift+V opens it straight onto the Clipboard tab
 //
-// No keybinding exists yet to open this (S-22's own note: "no Hyprland
-// keybinding is configured yet on real machines... every step before S-38
-// that wants a keyboard test must first ask whether the bind already
-// exists"). Rather than pre-empting S-38's job of assigning modifiers
-// system-wide for one surface, this exposes an IpcHandler
-// (Quickshell.Io.IpcHandler, verified against the real source —
-// io/ipchandler.hpp — the first use of this mechanism in this repo) so the
-// user can open/close/toggle it today with
-// `qs -p ~/.config/quickshell/phi ipc call sidebar <toggle|open|close>`.
-// The `-p` is required, not optional: confirmed by reading Quickshell's
-// own src/launch/parsecommand.cpp — with no instance/config selector,
-// `ipc call` targets the "default" config
-// (`<xdg dir>/quickshell/shell.qml`), and phi-shell is launched by
-// hyprland.lua as a named path (`qs -p ~/.config/quickshell/phi`), not
-// that default. An earlier version of this comment said no `-p` was
-// needed, reasoning from the docs' worked example, which only covers the
-// default-config case; corrected once the real launch command was
-// checked. S-38 gets a one-line `exec_cmd` bind onto the same command for
-// free instead of a second mechanism.
+// shown state + active tab live in Services/NotificationPanel.qml (one
+// owner for the bell, the two keybinds and the IpcHandler here), same
+// shape as Services/AgentPanel / Services/Calendar.
 
 PanelWindow {
     id: root
 
-    property bool shown: false
-    property int activeIndex: 0
+    readonly property bool shown: Services.NotificationPanel.shown
     property var registryRows: []
 
-    anchors { top: true; bottom: true; right: true }
+    // OOP-06: full-screen + transparent so a click outside the dock closes
+    // it; the dock is positioned right-edge inside fadeRoot.
+    anchors { top: true; bottom: true; left: true; right: true }
     exclusiveZone: 0
     color: "transparent"
+    visible: root.shown || fadeRoot.opacity > 0
+
+    // Needed for the Clipboard tab's search field to receive keystrokes —
+    // see Services/LayerFocus.qml.
+    Services.LayerFocus { target: root }
+
+    IpcHandler {
+        target: "notifications"
+        function toggle(): void { Services.NotificationPanel.toggle() }
+        function open(): void { Services.NotificationPanel.show() }
+        function close(): void { Services.NotificationPanel.hide() }
+        function clipboard(): void { Services.NotificationPanel.openClipboard() }
+        function notifications(): void { Services.NotificationPanel.openNotifications() }
+    }
+
+    // Kept for back-compatibility with anything still calling the old
+    // "sidebar" target (the bar bell, until OOP-06 rewires it; any stale
+    // `qs ipc call sidebar` habit).
+    IpcHandler {
+        target: "sidebar"
+        function toggle(): void { Services.NotificationPanel.toggle() }
+        function open(): void { Services.NotificationPanel.show() }
+        function close(): void { Services.NotificationPanel.hide() }
+    }
 
     TextMetrics {
         id: chMetrics
@@ -58,28 +67,8 @@ PanelWindow {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
-    readonly property real sidebarWidth: chWidth * 48
-
-    implicitWidth: root.sidebarWidth
-    // PanelWindow has no `opacity` property (confirmed against the real
-    // source, src/window/windowinterface.hpp — no `opacity` in its
-    // Q_PROPERTY list at all) — found on real hardware, not by reading the
-    // source first; see Notifications/Toast.qml's own note on this, the
-    // first file in this repo where it surfaced. The fade lives on
-    // `fadeRoot` below instead, a plain Item with a real, animatable
-    // opacity; `visible` stays true until that fade-out finishes.
-    visible: root.shown || fadeRoot.opacity > 0
-
-    // Needed for the AiChat tab's text input to receive keystrokes at
-    // all — see Services/LayerFocus.qml's own header for why.
-    Services.LayerFocus { target: root }
-
-    IpcHandler {
-        target: "sidebar"
-        function toggle(): void { root.shown = !root.shown }
-        function open(): void { root.shown = true }
-        function close(): void { root.shown = false }
-    }
+    readonly property real dockWidth: Math.min(root.width * 0.42, chWidth * 68)
+    readonly property real gap: chWidth * Config.Appearance.space2
 
     FileView {
         id: registryFile
@@ -94,14 +83,10 @@ PanelWindow {
         }
     }
 
-    // The one place a new tab TYPE needs code (ADR 078) — the instance
-    // (title, position, data source) is Panels/tabs.json alone.
     function componentFor(type) {
         switch (type) {
         case "notifications": return notificationsComponent
         case "clipboard": return clipboardComponent
-        case "calendar": return calendarComponent
-        case "aiChat": return aiChatComponent
         default:
             console.warn("phi-shell: Sidebar tab type not recognized: " + type)
             return null
@@ -110,8 +95,6 @@ PanelWindow {
 
     Component { id: notificationsComponent; Tabs.Notifications {} }
     Component { id: clipboardComponent; Tabs.Clipboard {} }
-    Component { id: calendarComponent; Tabs.Calendar {} }
-    Component { id: aiChatComponent; Tabs.AiChat {} }
 
     Item {
         id: fadeRoot
@@ -122,41 +105,86 @@ PanelWindow {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
         }
 
-        Widgets.Panel {
+        // Click anywhere outside the dock closes it.
+        MouseArea {
             anchors.fill: parent
+            onClicked: Services.NotificationPanel.hide()
+        }
 
-            Column {
+        Item {
+            id: dock
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: root.dockWidth
+            // Slides in from the right edge: off-screen (x = full width) to
+            // flush-right (x = width - dockWidth).
+            x: root.shown ? (parent.width - width) : parent.width
+
+            Behavior on x {
+                NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+            }
+
+            // Swallow clicks on the dock (border included).
+            MouseArea { anchors.fill: parent }
+
+            Widgets.Panel {
                 anchors.fill: parent
-                spacing: 0
 
-                Row {
-                    id: tabStrip
-                    width: parent.width
-                    height: implicitHeight
+                Column {
+                    id: header
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    spacing: root.chWidth * Config.Appearance.space1
 
-                    Repeater {
-                        model: root.registryRows
+                    Widgets.StyledText { kind: "title"; text: "Display" }
+                    Widgets.ToggleRow {
+                        width: parent.width
+                        label: "Night mode"
+                        checked: Services.NightShift.enabled
+                        onToggled: (v) => Services.NightShift.setEnabled(v)
+                    }
+                    Widgets.ToggleRow {
+                        width: parent.width
+                        label: "True Tone"
+                        checked: Services.NightShift.trueTone
+                        onToggled: (v) => Services.NightShift.setTrueTone(v)
+                    }
 
-                        Widgets.Segment {
-                            required property var modelData
-                            required property int index
-                            label: modelData.title
-                            active: index === root.activeIndex
-                            onActivated: root.activeIndex = index
+                    Item { width: 1; height: root.gap }
+
+                    Row {
+                        id: tabStrip
+                        width: parent.width
+                        spacing: root.chWidth * Config.Appearance.space1
+
+                        Repeater {
+                            model: root.registryRows
+
+                            Widgets.Segment {
+                                required property var modelData
+                                required property int index
+                                label: modelData.title
+                                active: index === Services.NotificationPanel.tab
+                                onActivated: Services.NotificationPanel.tab = index
+                            }
                         }
                     }
+
+                    Widgets.Separator { width: parent.width }
                 }
 
-                Widgets.Separator { id: tabSeparator; width: parent.width }
-
                 Item {
-                    width: parent.width
-                    height: parent.height - tabStrip.height - tabSeparator.height
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: header.bottom
+                    anchors.topMargin: root.chWidth * Config.Appearance.space1
+                    anchors.bottom: parent.bottom
 
                     Loader {
                         anchors.fill: parent
-                        sourceComponent: root.registryRows.length > root.activeIndex
-                            ? root.componentFor(root.registryRows[root.activeIndex].type) : null
+                        sourceComponent: root.registryRows.length > Services.NotificationPanel.tab
+                            ? root.componentFor(root.registryRows[Services.NotificationPanel.tab].type) : null
                     }
                 }
             }

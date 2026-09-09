@@ -3,16 +3,17 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Panels/tabs/Notifications (S-31). Two sections, bound to the two
-// different collection shapes Services/Notifications.qml exposes (S-30):
-// "Active" is a Repeater directly on `Services.Notifications.active`, the
-// live ObjectModel<Notification> — same binding shape Bar/modules/
-// Workspaces.qml already uses for HyprlandBridge.workspaces, so this reuses
-// a confirmed-working pattern rather than trying to look a live Notification
-// up by id out of an ObjectModel from plain JS, which no file in this repo
-// has attempted and this step has no way to verify off-machine. "History"
-// is a plain Repeater over the persisted JS array — read-only, closed
-// notifications only carry their recorded data, never a working action.
+// phiOS — Panels/tabs/Notifications.qml (S-31; OOP-06 restyle). The
+// notification tab: a DND toggle, then the notification list grouped by
+// app.
+//
+// "Active" (live, still-actionable notifications) is a Repeater straight
+// on Services.Notifications.active — the live ObjectModel<Notification>,
+// with working action buttons — shown ungrouped at the top because those
+// few are transient and each needs its own buttons. Everything already
+// closed is in `history` (a plain JS array), which IS grouped by app
+// below. (Grouping the live ObjectModel from plain JS is the shape S-31's
+// own header flagged as unverified; not attempted here.)
 
 Flickable {
     id: root
@@ -28,29 +29,43 @@ Flickable {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
-    readonly property real inset: chWidth * Config.Appearance.space2
+    readonly property real gap: chWidth * Config.Appearance.space1
+
+    readonly property var groups: {
+        const hist = Services.Notifications.history || []
+        const byApp = {}
+        for (let i = 0; i < hist.length; i++) {
+            const h = hist[i]
+            const k = (h.appName && h.appName.length > 0) ? h.appName : "(unknown)"
+            if (!byApp[k]) byApp[k] = []
+            byApp[k].push(h)
+        }
+        const out = []
+        for (const k in byApp) out.push({ app: k, items: byApp[k] })
+        out.sort((a, b) => a.app.toLowerCase().localeCompare(b.app.toLowerCase()))
+        return out
+    }
+
+    function fmtTime(ts) {
+        return new Date(ts).toLocaleString(Qt.locale(), "ddd HH:mm")
+    }
 
     Column {
         id: column
         width: root.width
-        spacing: root.chWidth * Config.Appearance.space1
+        spacing: root.gap
 
-        Row {
-            x: root.inset
-            spacing: root.chWidth * Config.Appearance.space2
-            height: dndButton.implicitHeight
-
-            Widgets.StyledButton {
-                id: dndButton
-                label: Services.Notifications.dnd ? "DND: on" : "DND: off"
-                active: Services.Notifications.dnd
-                onClicked: Services.Notifications.toggleDnd()
-            }
+        Widgets.ToggleRow {
+            width: parent.width
+            label: "Do not disturb"
+            checked: Services.Notifications.dnd
+            onToggled: (v) => { if (v !== Services.Notifications.dnd) Services.Notifications.toggleDnd() }
         }
 
+        Widgets.Separator { width: parent.width }
+
         Widgets.StyledText {
-            x: root.inset
-            kind: "label"
+            kind: "title"
             text: "Active"
             visible: activeRepeater.count > 0
         }
@@ -61,30 +76,25 @@ Flickable {
 
             Widgets.Panel {
                 required property var modelData
-                width: column.width - root.inset * 2
-                x: root.inset
+                width: column.width
                 height: activeLayout.implicitHeight + padding * 2
 
                 Column {
                     id: activeLayout
-                    // Panel's own contentItem already applies
-                    // anchors.margins: padding on all sides (Widgets/Panel.qml),
-                    // so this Column's parent (that contentItem) is already
-                    // inset — no second subtraction needed here.
                     width: parent.width
-                    spacing: root.chWidth * Config.Appearance.space1
+                    spacing: root.gap
 
                     Widgets.StyledText {
-                        text: modelData.appName + " — " + modelData.summary
                         width: parent.width
                         wrapMode: Text.Wrap
+                        text: modelData.appName + " — " + modelData.summary
                     }
                     Widgets.StyledText {
                         kind: "label"
-                        text: modelData.body
                         width: parent.width
                         wrapMode: Text.Wrap
                         visible: modelData.body.length > 0
+                        text: modelData.body
                     }
                     Row {
                         spacing: root.chWidth * Config.Appearance.space2
@@ -101,30 +111,38 @@ Flickable {
             }
         }
 
-        Widgets.StyledText {
-            x: root.inset
-            kind: "label"
-            text: "History"
-            visible: Services.Notifications.history.length > 0
-        }
-
         Repeater {
-            model: Services.Notifications.history
+            model: root.groups
 
-            Widgets.ListRow {
+            Column {
                 required property var modelData
-                width: column.width - root.inset * 2
-                x: root.inset
-                label: modelData.appName + ": " + modelData.summary
-                value: new Date(modelData.timestamp).toLocaleTimeString(Qt.locale(), Locale.ShortFormat)
+                width: column.width
+                spacing: 0
+
+                Widgets.StyledText {
+                    kind: "title"
+                    topPadding: root.gap
+                    text: modelData.app
+                }
+
+                Repeater {
+                    model: modelData.items
+
+                    Widgets.ListRow {
+                        required property var modelData
+                        width: parent.width
+                        label: modelData.summary
+                        value: root.fmtTime(modelData.timestamp)
+                    }
+                }
             }
         }
 
         Widgets.StyledText {
-            x: root.inset
             kind: "label"
+            topPadding: root.gap
             text: "No notifications yet."
-            visible: activeRepeater.count === 0 && Services.Notifications.history.length === 0
+            visible: activeRepeater.count === 0 && root.groups.length === 0
         }
     }
 }

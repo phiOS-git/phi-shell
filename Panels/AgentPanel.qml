@@ -4,20 +4,21 @@ import Quickshell.Io
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
+import "tabs" as Tabs
 
 // phiOS — Panels/AgentPanel (out-of-plan, 2026-09-09). The shell-summoned
 // phi agent surface of phios-agente.md §10.1 ("evocazione da scorciatoia
 // globale, superficie residente, connessione persistente al flusso di
-// eventi"). AiChat.qml (S-75) already built the full conversational
-// surface, but as a sidebar TAB with no shortcut of its own — this closes
-// the "summoned by a global shortcut" half that §10.1 opened and nothing
-// filled.
+// eventi").
 //
-// PLACEHOLDER content for now, by request. It shows the live A1 status and
-// points at the two places the real functionality lives today (the
-// sidebar's Agent tab, and Settings › AI Agent). The resident
-// conversational panel itself is a later job; when it lands it replaces
-// the body of this file, not its plumbing.
+// OOP-06 (shell restyle): the body is now the real conversational surface
+// — Panels/tabs/AiChat.qml (S-75), embedded here. It used to be a sidebar
+// TAB; OOP-06 dropped the sidebar to two tabs (Notifications, Clipboard)
+// per the user's directive, and the user's own spec is that "the chat has
+// its own panel, it slides in from the left". So AiChat moved from the
+// sidebar into this dock rather than being orphaned. Milestone C already
+// reshaped this surface from a centred float into a left-edge dock that
+// slides in.
 //
 // Entry points, all through Services/AgentPanel.qml (the one owner):
 //   - the bar Φ segment  (Bar/modules/PhiAgent.qml, onActivated)
@@ -30,12 +31,6 @@ import qs.Widgets as Widgets
 // (Quickshell would register the same target N times from a repeated
 // component — that is why Spotlight's handler is in shell.qml and this
 // one is not).
-//
-// Centred float + scrim, like Cheatsheet/Overview, rather than an edge
-// dock like Sidebar: it reads unambiguously as a summoned overlay and
-// does not visually collide with the right-edge Sidebar. Flagged for
-// cheap veto — the final resident-panel shape is a design decision this
-// placeholder does not try to make.
 
 PanelWindow {
     id: root
@@ -116,75 +111,11 @@ PanelWindow {
             Widgets.Panel {
             anchors.fill: parent
 
-            Column {
-                id: bodyCol
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                spacing: root.gap
-
-                // No Φ mark here: P-03's permitted-context list for the
-                // mark is closed (boot splash, TTY/login banner, about
-                // panel, bar agent segment) and a panel header is not on
-                // it. The bar segment that opens this panel already carries
-                // the identity. OOP-04: title kind (accent), same as every
-                // other panel heading in the restyle.
-                Widgets.StyledText {
-                    kind: "title"; sizeStep: 3; text: "phi agent"
-                }
-
-                Widgets.StyledText {
-                    width: parent.width
-                    wrapMode: Text.WordWrap
-                    text: "This panel is a placeholder. The resident conversational "
-                        + "surface (phios-agente.md §10.1) is not built yet."
-                }
-
-                Widgets.Separator { width: parent.width }
-
-                Widgets.ListRow {
-                    width: parent.width
-                    label: "A1 service"
-                    value: root.agent.available ? "connected" : "not running"
-                }
-                Widgets.ListRow {
-                    width: parent.width
-                    label: "Active project"
-                    value: root.agent.activeProject.length > 0 ? root.agent.activeProject : "(none)"
-                }
-                Widgets.ListRow {
-                    width: parent.width
-                    label: "Pending memory proposals"
-                    value: String(root.agent.pendingProposals.length)
-                }
-                Widgets.ListRow {
-                    width: parent.width
-                    label: "Agent is working"
-                    value: root.agent.processing ? "yes" : "no"
-                }
-
-                Widgets.Separator { width: parent.width }
-
-                Widgets.StyledText {
-                    width: parent.width
-                    kind: "label"; sizeStep: 0; wrapMode: Text.WordWrap
-                    text: "Conversation, tool approval and memory review: the "
-                        + "sidebar's Agent tab (Super+N → Agent).\n"
-                        + "Activation, project switching and configuration: "
-                        + "Settings › AI Agent (Super+S)."
-                }
-
-                Row {
-                    spacing: root.chWidth * Config.Appearance.space2
-                    Widgets.StyledButton {
-                        label: root.agent.available ? "Stop A1 service" : "Start A1 service"
-                        onClicked: root.agent.setActivated(!root.agent.available)
-                    }
-                    Widgets.StyledButton {
-                        label: "Close"
-                        onClicked: Services.AgentPanel.hide()
-                    }
-                }
+            // The real conversational surface (S-75), embedded (OOP-06).
+            // AiChat is layout-only and fills its container; Services/Agent
+            // is the one client point either way.
+            Tabs.AiChat {
+                anchors.fill: parent
             }
             } // Widgets.Panel
         } // dock
