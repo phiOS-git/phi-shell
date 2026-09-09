@@ -108,6 +108,9 @@ PanelWindow {
         Item {
             id: dock
             anchors.top: parent.top
+            // OOP-20 (item 2): the dock body starts below the bar. The
+            // scrim above still spans the whole output.
+            anchors.topMargin: Services.BarMetrics.height
             anchors.bottom: parent.bottom
             anchors.left: parent.left
             width: Math.min(parent.width * 0.5, root.chWidth * 68)

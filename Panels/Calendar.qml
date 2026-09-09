@@ -13,10 +13,9 @@ import qs.Widgets as Widgets
 //
 // Single instance (shell.qml, screens[0]) — a focused toggled surface, not
 // a per-monitor ambient one, same as Panels/Sidebar and Settings.
-// Anchored top-right; the top margin approximates the bar height with the
-// same formula Bar.qml derives its own height from (fontSize1 + a 2ch
-// vertical margin on each side) — flagged for the screenshot pass, since
-// the bar's real height is computed in a property no other file can read.
+// Anchored top-right, just below the bar: the top margin is the bar's real
+// height, published by Bar/Bar.qml through Services/BarMetrics (OOP-20 —
+// this file used to keep its own `fontSize1 + space2·ch·2` guess).
 
 PanelWindow {
     id: root
@@ -35,7 +34,6 @@ PanelWindow {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
-    readonly property real barApproxHeight: Config.Appearance.fontSize1 + Config.Appearance.space2 * chWidth * 2
 
     Timer {
         id: clockTimer
@@ -66,7 +64,7 @@ PanelWindow {
             id: cardWrap
             anchors.top: parent.top
             anchors.right: parent.right
-            anchors.topMargin: root.barApproxHeight
+            anchors.topMargin: Services.BarMetrics.height
             anchors.rightMargin: root.chWidth * Config.Appearance.space2
             width: root.chWidth * 34
             height: panel.height

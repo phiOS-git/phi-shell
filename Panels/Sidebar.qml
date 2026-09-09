@@ -132,6 +132,10 @@ PanelWindow {
         Item {
             id: dock
             anchors.top: parent.top
+            // OOP-20 (item 2): the dock body starts below the bar — it was
+            // covering it. The scrim above still spans the whole output,
+            // so the bar stays dimmed ("the shadow should cover the bar").
+            anchors.topMargin: Services.BarMetrics.height
             anchors.bottom: parent.bottom
             anchors.right: parent.right
             width: root.dockWidth

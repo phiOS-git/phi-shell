@@ -35,7 +35,10 @@ PanelWindow {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
-    readonly property real barApproxHeight: Config.Appearance.fontSize1 + Config.Appearance.space1 * chWidth * 2
+    // OOP-20: the bar's real height, published by Bar/Bar.qml — this file
+    // used to keep its own `fontSize1 + space1·ch·2` estimate, which sat
+    // the popout too low (item 4).
+    readonly property real barHeight: Services.BarMetrics.height
 
     function _volumePct() { return Math.round(Services.AudioBridge.volume * 100) }
 
@@ -56,7 +59,7 @@ PanelWindow {
         Item {
             id: cardWrap
             anchors.top: parent.top
-            anchors.topMargin: root.barApproxHeight
+            anchors.topMargin: root.barHeight
             width: root.meter ? root.chWidth * 30 : root.chWidth * 34
             height: panel.height
 

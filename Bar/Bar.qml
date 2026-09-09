@@ -78,6 +78,13 @@ PanelWindow {
         leftIsle.implicitHeight, rightIsle.implicitHeight)
         + islandMargin
 
+    // OOP-20: publish the real height so the surfaces that must sit clear
+    // of the bar (the notification / chat docks, the bar popouts, the
+    // calendar) read one number instead of each keeping its own estimate.
+    // This file is the only one that can measure the isle footprints.
+    onHeightChanged: Services.BarMetrics.report(bar.height)
+    Component.onCompleted: Services.BarMetrics.report(bar.height)
+
     property var registryRows: []
 
     readonly property var leftModules: filterSort("left")
