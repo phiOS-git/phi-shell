@@ -16,9 +16,10 @@ import "WidgetStates.js" as WidgetStates
 // opt-in and never the default — the caller decides when a threshold is
 // crossed, this widget only renders that decision.
 //
-// OOP-02: `kind: "title"` is the one text kind that carries accent — the
-// "fine detail / important element" role accent kept when it stopped
-// being a generic active-state fill (WidgetStates.contentColor).
+// OOP-10: `kind: "title"` is full-contrast ink (like "value"), set apart
+// from body text by a heavier weight and — at the call site — a larger
+// sizeStep. It no longer carries accent (WidgetStates.contentColor): the
+// R2 directive keeps accent for fine detail only.
 
 Text {
     id: root
@@ -42,6 +43,8 @@ Text {
 
     font.family: mono ? Config.Appearance.fontMono : Config.Appearance.fontUi
     font.pixelSize: WidgetStates.fontPixelSize(Config.Appearance, sizeStep)
+    // OOP-10: a title reads as a title by weight, not colour.
+    font.weight: kind === "title" ? Font.DemiBold : Font.Normal
     color: WidgetStates.contentColor(Config.Appearance, kind, tone, invalid)
     opacity: WidgetStates.opacityFor(resolvedState)
 

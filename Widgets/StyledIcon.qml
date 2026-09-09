@@ -20,7 +20,7 @@ Text {
     id: root
 
     property string glyph: ""
-    property string kind: "value" // "label" | "value" | "title" (OOP-02: "title" carries accent)
+    property string kind: "value" // "label" | "value" | "title" (OOP-10: no colour role — accent is fine detail only)
     property string tone: "" // "" | "error" | "warn" | "success" | "info"
     property bool invalid: false
     property bool loading: false

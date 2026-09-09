@@ -98,13 +98,13 @@ Singleton {
     readonly property string fontSymbol: "Symbols Nerd Font Mono"
 
     // --- Size scale --------------------------------------------------------
-    readonly property string fontSize0: "12px"
-    readonly property string fontSize1: "14px"
-    readonly property string fontSize2: "16px"
-    readonly property string fontSize3: "18px"
-    readonly property string fontSize4: "20px"
-    readonly property string fontSize5: "22px"
-    readonly property string fontSize6: "25px"
+    readonly property string fontSize0: "11px"
+    readonly property string fontSize1: "13px"
+    readonly property string fontSize2: "14px"
+    readonly property string fontSize3: "16px"
+    readonly property string fontSize4: "18px"
+    readonly property string fontSize5: "21px"
+    readonly property string fontSize6: "24px"
 
     // --- Spacing -------------------------------------------------------
     readonly property string space1: "1ch"
@@ -120,8 +120,8 @@ Singleton {
     readonly property string radiusSmall: "1px"
     readonly property string radiusLarge: "4px"
     readonly property string borderWidth: "1px"
-    readonly property string borderWidthStrong: "2px"
-    readonly property string panelPadding: "4px"
+    readonly property string borderWidthStrong: "1px"
+    readonly property string panelPadding: "8px"
 
     // --- User-tunable scale (identity by default) --------------------------
     readonly property string fontScale: "1"

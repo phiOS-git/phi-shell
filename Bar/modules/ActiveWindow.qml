@@ -38,7 +38,9 @@ Widgets.StyledText {
     // OOP-03: the centre isle sits on the opposite colour and uses the
     // mono font like the rest of the bar; its Loader (Bar.qml) caps this
     // width so the title can never overlap either side isle.
+    // OOP-10: one step smaller, matching the rest of the bar.
     mono: true
+    sizeStep: 0
     color: Config.Appearance.barText
     width: parent ? parent.width : implicitWidth
     horizontalAlignment: Text.AlignHCenter

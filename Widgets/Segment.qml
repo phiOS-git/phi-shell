@@ -42,6 +42,11 @@ Item {
     // wide their single glyph/digit is.
     property bool squared: false
 
+    // OOP-10: the status bar reads one step smaller than panel body text
+    // (user R2 feedback: "reduce the font size"). A panel Segment keeps
+    // the body size.
+    property int sizeStep: root.ambient === "isle" ? 0 : 2
+
     // OOP-02: keep the §6.6 Role B rule for the Φ agent segment — its
     // active (processing) state is Tier-1 accent, not the B&W inversion
     // every other selected control now uses. The one closed-ADR exception,
@@ -127,6 +132,7 @@ Item {
             id: iconGlyph
             visible: root.glyph.length > 0
             glyph: root.glyph
+            sizeStep: root.sizeStep
             color: root.contentColor
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
@@ -137,6 +143,7 @@ Item {
             visible: root.label.length > 0
             text: root.label
             mono: root.mono
+            sizeStep: root.sizeStep
             color: root.contentColor
             anchors.left: iconGlyph.visible ? iconGlyph.right : parent.left
             anchors.leftMargin: iconGlyph.visible ? root.gap : 0

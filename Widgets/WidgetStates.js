@@ -112,11 +112,13 @@ function contentColor(appearance, kind, tone, invalid) {
     case "success": return appearance.success
     case "info": return appearance.info
     }
-    // OOP-02: "title" is the one text kind that carries accent — the
-    // "fine detail, important element" role the accent kept when it
-    // stopped being a generic active-state fill. "label" stays low-
-    // contrast monochrome, "value" full-contrast monochrome.
-    if (kind === "title") return appearance.accent
+    // OOP-10: "title" no longer carries accent. The user's R2 directive is
+    // that accent is fine detail only — the keyboard focus ring, the Φ
+    // agent processing state, a Tier-2 semantic `tone` — never a
+    // structural "this is a heading" role. A title is now full-contrast
+    // ink like a value, set apart by weight and size instead (StyledText /
+    // StyledIcon apply a heavier font.weight for kind:"title"). "label"
+    // stays low-contrast monochrome.
     return kind === "label" ? appearance.textMuted : appearance.textPrimary
 }
 
