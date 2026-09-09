@@ -38,10 +38,11 @@ PanelWindow {
     property bool shown: false
     property int activeIndex: 0
     property var registryRows: []
+    property string query: ""
 
-    anchors.left: true
-    anchors.top: true
-    anchors.bottom: true
+    // OOP-07: centred, large. Full-screen transparent window; the panel
+    // box is centred inside fadeRoot and a click outside it closes.
+    anchors { top: true; bottom: true; left: true; right: true }
     exclusiveZone: 0
     color: "transparent"
 
@@ -52,14 +53,21 @@ PanelWindow {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
-    // Wider than Sidebar's 48ch: this panel holds a nav column AND content,
-    // Sidebar holds content alone.
-    readonly property real panelWidth: chWidth * 90
+    readonly property real panelW: Math.min(root.width * 0.82, chWidth * 150)
+    readonly property real panelH: Math.min(root.height * 0.85, chWidth * 120)
+    readonly property real navW: chWidth * 26
+    readonly property real gap: chWidth * Config.Appearance.space3
 
-    implicitWidth: root.panelWidth
     // PanelWindow has no `opacity` property — see Panels/Sidebar.qml's
     // identical note; same fadeRoot treatment here.
     visible: root.shown || fadeRoot.opacity > 0
+
+    // Section titles matching the search, so the nav list can filter.
+    function sectionMatches(row) {
+        const q = root.query.trim().toLowerCase()
+        if (q.length === 0) return true
+        return (row.title || "").toLowerCase().indexOf(q) !== -1
+    }
 
     Services.LayerFocus { target: root }
 
@@ -73,8 +81,11 @@ PanelWindow {
     function setShown(v) {
         root.shown = v
         if (v) {
+            root.query = ""
+            searchField.text = ""
             Services.SystemInfo.refresh()
             Services.Keybinds.refresh()
+            Qt.callLater(function() { searchField.forceActiveFocus() })
         }
     }
 
@@ -134,25 +145,101 @@ PanelWindow {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
         }
 
-        Widgets.Panel {
+        MouseArea {
+            anchors.fill: parent
+            onClicked: root.shown = false
+        }
+
+        Item {
+            id: panelWrap
+            anchors.centerIn: parent
+            width: root.panelW
+            height: root.panelH
+
+            MouseArea { anchors.fill: parent }
+
+            Widgets.Panel {
             anchors.fill: parent
 
-            Row {
-                anchors.fill: parent
-                spacing: 0
+            // --- top bar: title, search, close --------------------------
+            Item {
+                id: topBar
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                height: searchField.implicitHeight + root.chWidth * Config.Appearance.space2
+
+                Widgets.StyledText {
+                    id: settingsTitle
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    kind: "title"
+                    sizeStep: 3
+                    text: "Settings"
+                }
+
+                Widgets.StyledText {
+                    id: searchPrompt
+                    anchors.left: settingsTitle.right
+                    anchors.leftMargin: root.gap
+                    anchors.verticalCenter: parent.verticalCenter
+                    mono: true
+                    text: ">"
+                }
+                Widgets.StyledText {
+                    anchors.left: searchField.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    kind: "label"
+                    mono: true
+                    text: "search settings…"
+                    visible: searchField.text.length === 0
+                }
+                TextInput {
+                    id: searchField
+                    anchors.left: searchPrompt.right
+                    anchors.leftMargin: root.chWidth
+                    anchors.right: closeBtn.left
+                    anchors.rightMargin: root.gap
+                    anchors.verticalCenter: parent.verticalCenter
+                    font.family: Config.Appearance.fontMono
+                    font.pixelSize: Config.Appearance.fontSize2
+                    color: Config.Appearance.textPrimary
+                    onTextChanged: root.query = text
+                    Keys.onEscapePressed: root.shown = false
+                }
+
+                Widgets.StyledButton {
+                    id: closeBtn
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    label: "close"
+                    onClicked: root.shown = false
+                }
+            }
+
+            Widgets.Separator {
+                id: topSep
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: topBar.bottom
+            }
+
+            // --- nav column (left ~1/4) --------------------------------
+            Flickable {
+                id: navFlick
+                anchors.left: parent.left
+                anchors.top: topSep.bottom
+                anchors.topMargin: root.chWidth * Config.Appearance.space1
+                anchors.bottom: parent.bottom
+                width: root.navW
+                contentWidth: width
+                contentHeight: navCol.implicitHeight
+                clip: true
 
                 Column {
-                    id: navColumn
-                    width: chMetrics.width * 20
-                    height: parent.height
-
-                    Widgets.StyledText {
-                        kind: "label"
-                        text: "Settings"
-                        leftPadding: Config.Appearance.space2 * chWidth
-                        topPadding: Config.Appearance.space2 * chWidth
-                        bottomPadding: Config.Appearance.space2 * chWidth
-                    }
+                    id: navCol
+                    width: parent.width
+                    spacing: 0
 
                     Repeater {
                         model: root.registryRows
@@ -160,40 +247,44 @@ PanelWindow {
                         Widgets.ListRow {
                             required property var modelData
                             required property int index
-                            width: navColumn.width
+                            width: navCol.width
+                            visible: root.sectionMatches(modelData)
                             label: modelData.title
                             active: index === root.activeIndex
                             onActivated: root.activeIndex = index
                         }
                     }
                 }
+            }
 
-                Widgets.Separator {
-                    id: navSeparator
-                    height: parent.height
-                    vertical: true
-                }
+            Widgets.Separator {
+                id: navSep
+                anchors.left: navFlick.right
+                anchors.top: topSep.bottom
+                anchors.bottom: parent.bottom
+                vertical: true
+            }
 
-                Item {
-                    width: parent.width - navColumn.width - navSeparator.width
-                    height: parent.height
+            // --- content pane (right ~3/4) ----------------------------
+            Flickable {
+                anchors.left: navSep.right
+                anchors.leftMargin: root.gap
+                anchors.right: parent.right
+                anchors.top: topSep.bottom
+                anchors.topMargin: root.gap
+                anchors.bottom: parent.bottom
+                contentWidth: width
+                contentHeight: sectionLoader.item ? sectionLoader.item.implicitHeight : 0
+                clip: true
 
-                    Flickable {
-                        anchors.fill: parent
-                        anchors.margins: Config.Appearance.space3 * chWidth
-                        contentWidth: width
-                        contentHeight: sectionLoader.item ? sectionLoader.item.implicitHeight : 0
-                        clip: true
-
-                        Loader {
-                            id: sectionLoader
-                            width: parent.width
-                            sourceComponent: root.registryRows.length > root.activeIndex
-                                ? root.componentFor(root.registryRows[root.activeIndex].type) : null
-                        }
-                    }
+                Loader {
+                    id: sectionLoader
+                    width: parent.width
+                    sourceComponent: root.registryRows.length > root.activeIndex
+                        ? root.componentFor(root.registryRows[root.activeIndex].type) : null
                 }
             }
-        }
+            } // Widgets.Panel
+        } // panelWrap
     }
 }
