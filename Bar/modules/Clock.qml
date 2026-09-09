@@ -1,11 +1,14 @@
 import QtQuick
 import Quickshell
+import qs.Services as Services
 import qs.Widgets as Widgets
 
 // phiOS — Bar/modules/Clock.qml (S-22, master plan §8.4: every host's
-// status cluster "termina con l'orologio"). No service surface needed —
-// just the system clock — so this is the one module type in this step
-// that touches neither Config.Capabilities nor a Services/ bridge.
+// status cluster "termina con l'orologio"). Just the system clock — no
+// capability, and (OOP-04) one Services bridge: a click toggles the small
+// calendar panel (Panels/Calendar.qml, Services/Calendar.qml owns its
+// shown state) — the user's directive that the calendar "appears when
+// pressing on the datetime".
 //
 // `screen` is required for API uniformity with every other module type
 // Bar.qml's registry can load (each Component wrapper in Bar.qml binds it
@@ -21,6 +24,9 @@ Widgets.Segment {
     ambient: "isle"
 
     label: Qt.formatDateTime(clockTimer.now, "hh:mm")
+    active: Services.Calendar.shown
+
+    onActivated: Services.Calendar.toggle()
 
     Timer {
         id: clockTimer

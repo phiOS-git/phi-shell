@@ -79,11 +79,11 @@ PanelWindow {
         shown: root.shown
     }
 
-    // No click-outside-to-dismiss and no Services.LayerFocus: a placeholder
-    // takes no keystrokes, and a background MouseArea competing with the
-    // buttons' own TapHandlers is exactly the kind of subtle pointer-grab
-    // bug this milestone has already spent rounds on. Dismiss is the bar Φ
-    // segment, Super+P, or the Close button — same as Cheatsheet.
+    // OOP-04: the chat panel is now a left-edge dock that slides in (user
+    // directive: "it slides in from the left (super+P or phi button)").
+    // Click-outside-to-dismiss is added here now that the blocker-MouseArea
+    // pattern (a MouseArea filling the panel, behind its content) makes it
+    // safe against the pointer-grab bug the earlier note warned about.
 
     Item {
         id: fadeRoot
@@ -94,23 +94,43 @@ PanelWindow {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
         }
 
-        Widgets.Panel {
-            anchors.centerIn: parent
-            width: Math.min(parent.width * 0.9, root.chWidth * 68)
-            height: Math.min(parent.height * 0.8, bodyCol.implicitHeight + padding * 2)
+        MouseArea {
+            anchors.fill: parent
+            onClicked: Services.AgentPanel.hide()
+        }
+
+        Item {
+            id: dock
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: Math.min(parent.width * 0.5, root.chWidth * 68)
+            x: root.shown ? 0 : -width
+
+            Behavior on x {
+                NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+            }
+
+            // Swallow clicks on the dock (border included).
+            MouseArea { anchors.fill: parent }
+
+            Widgets.Panel {
+            anchors.fill: parent
 
             Column {
                 id: bodyCol
-                width: parent.width
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
                 spacing: root.gap
 
                 // No Φ mark here: P-03's permitted-context list for the
                 // mark is closed (boot splash, TTY/login banner, about
                 // panel, bar agent segment) and a panel header is not on
                 // it. The bar segment that opens this panel already carries
-                // the identity. Plain heading, same as AiChat's "Agent".
+                // the identity. OOP-04: title kind (accent), same as every
+                // other panel heading in the restyle.
                 Widgets.StyledText {
-                    kind: "label"; sizeStep: 3; text: "phi agent"
+                    kind: "title"; sizeStep: 3; text: "phi agent"
                 }
 
                 Widgets.StyledText {
@@ -166,6 +186,7 @@ PanelWindow {
                     }
                 }
             }
-        }
+            } // Widgets.Panel
+        } // dock
     }
 }
