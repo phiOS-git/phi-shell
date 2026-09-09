@@ -87,14 +87,17 @@ Singleton {
     readonly property color panelBorder: root.colorOpposite
     readonly property color panelText: root.colorOpposite
 
-    // Status bar: the window itself has no background (Bar.qml); each isle
-    // is an opposite-coloured block, and a button inside repeats its
-    // ambient surface with a 1px contrast border — see
-    // Widgets/WidgetStates.js surfaceColors(), ambient "isle".
-    readonly property color barIsleBackground: root.colorOpposite
-    // Text placed directly on an isle (the centre isle's active-window
-    // title) — main colour, i.e. the contrast against the isle.
-    readonly property color barText: root.colorMain
+    // Status bar (OOP-21): the bar has no fill of its own — not the
+    // window (always transparent), and no longer the isles either (item
+    // 10). A bar button is just an opposite-coloured glyph/label sitting
+    // on the wallpaper; only its selected state paints a full block
+    // (opposite bg, main text — the same inversion a selected panel row
+    // uses). Item 6: the bar's colours were the inverse of a panel's;
+    // they now match. See Widgets/WidgetStates.js surfaceColors(), ambient
+    // "isle".
+    // Text placed directly on the bar (the centre isle's active-window
+    // title) — the opposite colour, readable on the wallpaper.
+    readonly property color barText: root.colorOpposite
 
     // Selection / active item: a block of the opposite colour, text flips
     // to main.
@@ -110,7 +113,11 @@ Singleton {
     // INACTIVE_OPACITY (not a colour, size or duration — the I-05 ban does
     // not reach a bare mix ratio).
     readonly property color panelHover: _mix(root.colorMain, root.colorOpposite, 0.08)
-    readonly property color barButtonHover: _mix(root.colorOpposite, root.colorMain, 0.10)
+    // OOP-21: a bar button rests on the wallpaper with no fill, so its
+    // hover cannot be a solid mix — it is a faint translucent wash of the
+    // text colour instead.
+    readonly property color barButtonHover: Qt.rgba(root.colorOpposite.r,
+        root.colorOpposite.g, root.colorOpposite.b, 0.14)
 
     // --- Typography ----------------------------------------------------
     readonly property string fontMono: _tok("font-mono", Tokens.fontMono)

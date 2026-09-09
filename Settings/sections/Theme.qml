@@ -100,7 +100,7 @@ Column {
     readonly property var groupShape: [
         { key: "space-scale", label: "Spacing scale (×)", kind: "text" },
         { key: "radius-base", label: "Radius, base", kind: "text" },
-        { key: "radius-small", label: "Radius, small (bar)", kind: "text" },
+        { key: "radius-small", label: "Radius, small", kind: "text" },
         { key: "radius-large", label: "Radius, large (runner)", kind: "text" }
     ]
 

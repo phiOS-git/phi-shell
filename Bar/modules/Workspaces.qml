@@ -48,8 +48,9 @@ Item {
 
             Widgets.Segment {
                 required property var modelData
-                // OOP-03: squared buttons on the opposite-coloured island,
-                // number inside, inverted when current (master plan §8.4).
+                // OOP-03/OOP-21: squared bar buttons — the number on the
+                // wallpaper, boxed (opposite block, main digit) only when
+                // it is the current workspace (master plan §8.4).
                 ambient: "isle"
                 squared: true
                 // OOP-11: special workspaces (Hyprland gives them a

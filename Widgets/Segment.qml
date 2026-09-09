@@ -11,13 +11,15 @@ import "WidgetStates.js" as WidgetStates
 // actions" cap belongs there too); this widget only renders itself and
 // signals `activated()` when clicked.
 //
-// OOP-02/OOP-03 (shell restyle): the button now carries a 1px contrast
-// border and its label/icon track the resolved state's fg (so an inverted
-// active segment reads as inverted, not as invisible same-on-same). Two
-// bar-specific knobs: `ambient: "isle"` puts it on the status bar's
-// opposite-coloured island grammar and switches its text to the mono
-// font; `squared` forces a roughly square footprint for the workspace and
-// btop buttons.
+// OOP-02/OOP-03 (shell restyle): the button's label/icon track the
+// resolved state's fg, so an inverted active segment reads as inverted,
+// not as invisible same-on-same. Two bar-specific knobs: `ambient:
+// "isle"` switches the text to the mono font and (OOP-21) drops the
+// resting fill and border entirely — a bar button is a bare
+// opposite-coloured glyph on the wallpaper, boxed only when selected;
+// `squared` forces a roughly square footprint for the workspace and btop
+// buttons. A panel Segment keeps its 1px contrast border and resting
+// background.
 
 Item {
     id: root

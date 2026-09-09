@@ -1,13 +1,14 @@
 import QtQuick
-import qs.Config as Config
 
 // phiOS — Widgets/BarIsle (OOP-03, shell restyle). One island of the
-// status bar (master plan §8.4, "barra a isole"): an opposite-coloured
-// block, rounded at radiusSmall (1px — the bar window itself has no
-// background, so the isles are the only chrome), holding a horizontal row
-// of bar buttons. Buttons placed inside read ambient "isle"
-// (Widgets/WidgetStates.js surfaceColors) — that is set on each module by
-// Bar.qml, not here.
+// status bar (master plan §8.4, "barra a isole"): a horizontal row of bar
+// buttons. OOP-21 removed the opposite-coloured block it used to paint
+// (item 10) — the isle is now a pure layout container, and the buttons
+// inside sit directly on the wallpaper (ambient "isle",
+// Widgets/WidgetStates.js surfaceColors, set on each module by Bar.qml).
+// Kept as its own type so the three-island layout in Bar.qml and the
+// centre isle's height/padding contract (padH) do not have to be
+// reinvented inline.
 //
 // Children go straight into the inner Row via the default `content` alias;
 // a Repeater child instantiates its delegates into that Row.
@@ -25,12 +26,6 @@ Item {
 
     implicitWidth: row.implicitWidth + root.padH * 2
     implicitHeight: row.implicitHeight + root.pad * 2
-
-    Rectangle {
-        anchors.fill: parent
-        radius: Config.Appearance.radiusSmall
-        color: Config.Appearance.barIsleBackground
-    }
 
     Row {
         id: row
