@@ -69,11 +69,13 @@ PanelWindow {
     readonly property real islandMargin: chWidth * Config.Appearance.space1
 
     // No §6.3 token covers bar height — it was never part of the token
-    // set. R3 #3: derived from the actual isle footprint plus one small
-    // outer margin, not fontSize + 2·margin, so reducing islandMargin
-    // does not risk clipping the isle content.
+    // set. R3 #3: derived from the side-isle footprint plus one small
+    // outer margin. The centre isle is deliberately NOT in this max — its
+    // content (the active-window title) comes and goes, and the bar must
+    // not resize when an app opens or closes. The centre isle is instead
+    // pinned to the side-isle height below.
     height: Math.max(Config.Appearance.fontSize1,
-        leftIsle.implicitHeight, rightIsle.implicitHeight, centerIsle.implicitHeight)
+        leftIsle.implicitHeight, rightIsle.implicitHeight)
         + islandMargin
 
     property var registryRows: []
@@ -262,9 +264,12 @@ PanelWindow {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
         visible: centerLoader.item !== null && centerLoader.width > 0
-        // R3 #8: a little breathing room on each side of the active-window
-        // title so it does not touch the isle edge.
-        pad: bar.chWidth * Config.Appearance.space2
+        // R3 (this round): exactly the height of the side isles — the
+        // window-title element is the same as every other bar element,
+        // only with horizontal breathing room (padH), no vertical pad.
+        height: Math.max(leftIsle.implicitHeight, rightIsle.implicitHeight)
+        pad: 0
+        padH: bar.chWidth * Config.Appearance.space2
 
         readonly property real maxContentWidth: Math.max(0,
             bar.width - 2 * (bar.islandMargin

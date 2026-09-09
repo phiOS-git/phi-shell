@@ -17,9 +17,13 @@ Item {
 
     default property alias content: row.data
     property real spacing: 0
+    // R3: `pad` is the vertical inset; `padH` the horizontal one (defaults
+    // to `pad`). The centre isle sets `padH` for breathing room around the
+    // window title WITHOUT growing taller than the other isles.
     property real pad: 0
+    property real padH: root.pad
 
-    implicitWidth: row.implicitWidth + root.pad * 2
+    implicitWidth: row.implicitWidth + root.padH * 2
     implicitHeight: row.implicitHeight + root.pad * 2
 
     Rectangle {

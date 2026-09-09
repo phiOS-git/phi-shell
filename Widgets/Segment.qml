@@ -98,7 +98,12 @@ Item {
     }
     readonly property real chWidth: chMetrics.width
     readonly property real paddingH: WidgetStates.chToPixels(Config.Appearance.space2, chWidth)
+    // R3: the status bar reads much tighter than a panel button — half a
+    // rhythm unit of vertical inset on an isle Segment, a full one on a
+    // panel Segment (the same half-step latitude the runner takes for its
+    // own hpad).
     readonly property real paddingV: WidgetStates.chToPixels(Config.Appearance.space1, chWidth)
+        * (root.ambient === "isle" ? 0.5 : 1)
 
     readonly property real gap: WidgetStates.chToPixels(Config.Appearance.space1, chWidth)
 
