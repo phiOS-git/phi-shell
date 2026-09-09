@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import qs.Services as Services
 import qs.Widgets as Widgets
+import "../glyphs.js" as Glyphs
 
 // phiOS — Bar/modules/Battery.qml (S-23, master plan §8.4: razer's
 // "batteria anomaly-carrier"). Continuous value → text, colour-on-threshold
@@ -26,18 +27,24 @@ Widgets.Segment {
 
     required property ShellScreen screen
 
-    // OOP-03: bar buttons sit on the opposite-coloured islands. (This
-    // module is not in modules.json after the restyle — the user's right-
-    // isle inventory omits the battery anomaly-carrier — but it stays
-    // re-addable as a one-line data change, ADR 078.)
+    // OOP-03: bar buttons sit on the opposite-coloured islands. Back in
+    // modules.json as of OOP-09 (the user's R2 answer: battery + GPU stay
+    // visible regardless of the right-isle inventory).
     ambient: "isle"
 
     readonly property bool present: Services.PowerBridge.present
     readonly property int percent: Math.round(Services.PowerBridge.percentage * 100)
     readonly property bool lowPercent: Services.PowerBridge.percentage < Services.PowerBridge.lowPercentThreshold
     readonly property bool anomaly: Services.PowerBridge.anomaly
+    readonly property bool charging: root.present && !Services.PowerBridge.discharging
 
     visible: root.present
+    // OOP-11: icon + value.
+    glyph: root.charging ? Glyphs.batteryCharging
+        : (root.lowPercent ? Glyphs.batteryAlert : Glyphs.battery)
     label: root.percent + "%"
     tone: !root.anomaly ? "" : (root.lowPercent ? "error" : "warn")
+    active: Services.BarPopout.which === "battery"
+
+    onActivated: Services.BarPopout.toggle("battery")
 }

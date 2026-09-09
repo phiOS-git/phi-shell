@@ -1,7 +1,9 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.Services as Services
 import qs.Widgets as Widgets
+import "../glyphs.js" as Glyphs
 
 // phiOS — Bar/modules/Gpu.qml (S-23, master plan §8.4: zotac's "GPU
 // anomaly-carrier"). Capability-gated on the new `nvidiaGpu` derived
@@ -12,24 +14,15 @@ import qs.Widgets as Widgets
 // this file drives) only works for nvidia, so the capability it needs
 // really is vendor-specific, not a stand-in for host identity (ADR 074).
 //
-// Continuous values → text, colour-on-threshold (§8.4's icon-vs-text rule):
-// temperature over threshold is `error` (immediate, no sustain window in
-// the AGENT card's own wording), sustained utilisation is `warn` — both
-// placeholders from the AGENT card, kept as settable properties so a
-// future calibration pass has something real to change instead of a
-// buried literal.
+// Continuous values → icon + value (OOP-11): a chip glyph and the
+// utilisation percentage, colour-on-threshold (§8.4's icon-vs-text rule) —
+// temperature over threshold is `error`, sustained utilisation is `warn`,
+// both settable placeholder thresholds from the AGENT card.
 //
-// Level-3 deep-link: launches `btop` (already in `base/packages.txt`) in a
-// new terminal, tagged `--class phios-btop` so the Hyprland window rule
-// added at S-24 (phios-dotfiles' hyprland.lua) can assign this specific
-// kitty instance to btop's dedicated special workspace (ADR 122, Q-N03,
-// decided at S-22) by Wayland app id — set once at launch, never rewritten
-// by btop's own TUI, unlike the window title. A dedicated persistent bar
-// toggle for that workspace is still unassigned to any step (flagged in
-// S-22's own PROGRESS row) — until one exists, `togglespecialworkspace`
-// shows the workspace but nothing switches to it automatically, so a
-// direct launch is what actually works today. Migratable to a
-// Hyprland.dispatch() call in one line once that toggle lands.
+// OOP-11: a click opens the shared bar popout (Services/BarPopout.qml,
+// placeholder). The btop deep-link this module used to carry moved to the
+// dedicated left-isle btop button (Bar/modules/Btop.qml) — the single
+// control point for btop's special workspace.
 
 Widgets.Segment {
     id: root
@@ -54,15 +47,15 @@ Widgets.Segment {
     readonly property bool utilAnomaly: root.aboveSince !== null
         && (Date.now() - root.aboveSince) > root.sustainedMs
 
+    // OOP-11: icon + value; a click opens the shared bar popout
+    // (placeholder). The btop deep-link this button used to carry is now
+    // the dedicated left-isle btop button (Bar/modules/Btop.qml).
+    glyph: Glyphs.gpu
     label: Math.round(root.utilPercent) + "%"
     tone: root.tempAnomaly ? "error" : (root.utilAnomaly ? "warn" : "")
+    active: Services.BarPopout.which === "gpu"
 
-    onActivated: btopLauncher.startDetached()
-
-    Process {
-        id: btopLauncher
-        command: ["kitty", "--class", "phios-btop", "-e", "btop"]
-    }
+    onActivated: Services.BarPopout.toggle("gpu")
 
     Timer {
         // A functional constant (how often to poll nvidia-smi), not a

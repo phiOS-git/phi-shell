@@ -99,6 +99,13 @@ ShellRoot {
         screen: Quickshell.screens[0]
     }
 
+    // OOP-11: the small placeholder panel that drops below the bar when a
+    // right-isle indicator is clicked (volume, brightness, network, wifi,
+    // bluetooth, battery, gpu). Services/BarPopout owns which key.
+    Panels.BarPopout {
+        screen: Quickshell.screens[0]
+    }
+
     // Out-of-plan (2026-09-09): the shell-summoned phi agent surface
     // (phios-agente.md §10.1). Single instance, same reasoning as
     // Panels.Sidebar/Settings above. Its IpcHandler (target "agent") lives

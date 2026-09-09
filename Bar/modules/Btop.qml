@@ -1,26 +1,22 @@
 import QtQuick
 import Quickshell
 import qs.Widgets as Widgets
+import "../glyphs.js" as Glyphs
 
-// phiOS — Bar/modules/Btop.qml (OOP-03, shell restyle). The user's status-
-// bar directive: "a button for btop (same as the desktop squares, with an
-// icon instead of the number)" — so a squared island button carrying one
-// symbol-font glyph, sitting in the left isle after the workspace list.
+// phiOS — Bar/modules/Btop.qml (OOP-03; fixed OOP-11). A squared left-isle
+// button carrying one symbol glyph — the single control point for btop's
+// dedicated special workspace (`special:btop`, persistent, hyprland.lua
+// window rule assigns `--class phios-btop` there `silent`, ADR 122).
 //
-// btop already has a dedicated special workspace (hyprland.lua.tmpl, ADR
-// 122 / Q-N03) and Bar/modules/Gpu.qml already launches it as
-// `kitty --class phios-btop -e btop` so the window rule can match by app
-// id. This button does the same launch when btop is not already running,
-// then toggles that special workspace into view either way — the
-// `togglespecialworkspace` call is what makes it a real show/hide button
-// rather than "spawn another btop every click".
-//
-// The glyph (U+F080, a bar-chart from the Nerd Font symbol set, rendered
-// through font-symbol via StyledIcon) is the first symbol glyph any bar
-// module in this shell uses — every earlier module deliberately stuck to
-// text because font-symbol coverage was never exercised on real hardware
-// (Volume.qml's note). Flagged for the screenshot pass: if it renders as a
-// box, it is a one-codepoint fix.
+// OOP-11 fixes the two reasons the button "did not evoke btop":
+//   1. the launch string was `hyprctl dispatch exec 'kitty …'` inside an
+//      `sh -c "…"` — the single quotes were literal, so hyprctl tried to
+//      run a command called `'kitty`. Dropped them.
+//   2. `active` never reflected whether the workspace was showing. There
+//      is no keybind for `special:btop` (S-38) and Quickshell.Hyprland
+//      exposes no special-workspace-visible property this bridge re-exports,
+//      so `shown` is tracked locally — it can drift only if something
+//      outside this button toggles the workspace, and nothing does.
 
 Widgets.Segment {
     id: root
@@ -29,8 +25,16 @@ Widgets.Segment {
 
     ambient: "isle"
     squared: true
-    glyph: ""
+    glyph: Glyphs.monitor
+    active: root._shown
 
-    onActivated: Quickshell.execDetached(["sh", "-c",
-        "hyprctl clients -j | grep -q phios-btop || hyprctl dispatch exec 'kitty --class phios-btop -e btop'; hyprctl dispatch togglespecialworkspace btop"])
+    property bool _shown: false
+
+    onActivated: {
+        root._shown = !root._shown
+        Quickshell.execDetached(["sh", "-c",
+            "hyprctl clients -j | grep -q '\"class\": \"phios-btop\"' "
+            + "|| hyprctl dispatch exec kitty --class phios-btop -e btop; "
+            + "hyprctl dispatch togglespecialworkspace btop"])
+    }
 }

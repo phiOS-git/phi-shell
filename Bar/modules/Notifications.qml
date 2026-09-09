@@ -3,6 +3,7 @@ import Quickshell
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
+import "../glyphs.js" as Glyphs
 
 // phiOS — Bar/modules/Notifications.qml (OOP-03; OOP-06 rewire). The
 // user's right-isle directive: "notification icon (toggles the
@@ -24,7 +25,7 @@ Widgets.Segment {
 
     ambient: "isle"
     active: Services.NotificationPanel.shown
-    glyph: Services.Notifications.dnd ? "" : ""
+    glyph: Services.Notifications.dnd ? Glyphs.bellOff : Glyphs.bell
     tone: (!Services.Notifications.dnd && (Services.Notifications.active.values || []).length > 0) ? "info" : ""
 
     onActivated: Services.NotificationPanel.toggle()

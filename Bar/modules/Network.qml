@@ -2,40 +2,29 @@ import QtQuick
 import Quickshell
 import qs.Services as Services
 import qs.Widgets as Widgets
+import "../glyphs.js" as Glyphs
 
-// phiOS — Bar/modules/Network.qml (S-23, master plan §8.4: "rete (icona
-// solo su stato Tailscale)" on zotac, "rete" on razer — both hosts install
-// Tailscale, phios-procedura-base-2.md/razer-procedura-completata.md).
-// A quiet dot in the normal (connected) case — Tailscale being up is the
-// expected, silent state, not itself worth a permanent label — switching to
-// a plain "off" word (anomaly-carrier-shaped, though not one of the two
-// thresholds the AGENT card names) when disconnected, since master plan
-// §8.4's icon-vs-text rule treats connectivity as exactly the kind of
-// discrete/binary state an icon (here, safe text — see Volume.qml's own
-// note on why this step avoids StyledIcon glyphs) should represent.
-//
-// ADR 067, enforced structurally, not by convention: this file reads only
-// Services.Tailscale.connected/hostName, and that file's own contract
-// is to never parse `TailscaleIPs` out of `tailscale status --json` at all —
-// there is no IP field reachable from here to accidentally display. Clicking
-// reveals the overlay name on request; it never reveals more than that.
+// phiOS — Bar/modules/Network.qml (S-23; OOP-11 restyle R2). Tailscale
+// state. Icon + value now (user: "wifi, bluetooth and tailscale buttons
+// should show their values"): a VPN glyph and the overlay hostname when
+// connected, "off" when not. ADR 067 is still enforced structurally —
+// Services.Tailscale never exposes an IP field to read, so the value here
+// can only ever be the overlay name. A click opens the shared bar popout
+// (placeholder).
 
 Widgets.Segment {
     id: root
 
     required property ShellScreen screen
 
-    // OOP-03: bar buttons sit on the opposite-coloured islands.
     ambient: "isle"
-
-    property bool detailsShown: false
 
     readonly property bool connected: Services.Tailscale.connected
 
-    label: root.detailsShown && root.connected
-        ? Services.Tailscale.hostName
-        : (root.connected ? "●" : "off")
+    glyph: root.connected ? Glyphs.vpn : Glyphs.vpnOff
+    label: root.connected ? Services.Tailscale.hostName : "off"
     tone: root.connected ? "" : "warn"
+    active: Services.BarPopout.which === "network"
 
-    onActivated: root.detailsShown = !root.detailsShown
+    onActivated: Services.BarPopout.toggle("network")
 }

@@ -91,7 +91,15 @@ Item {
 
     readonly property real gap: WidgetStates.chToPixels(Config.Appearance.space1, chWidth)
 
-    implicitHeight: layout.implicitHeight + paddingV * 2
+    // OOP-11: floor the content box against the mono cell height. A
+    // glyph-only button (btop) and a text-only button (a workspace digit)
+    // measure to different heights otherwise — the symbol font's glyph
+    // box is shorter than a text line — so glyph-only bar buttons came out
+    // visibly short next to their neighbours. Flooring here makes every
+    // Segment in an isle the same height regardless of what it holds.
+    readonly property real _contentHeight: Math.max(layout.implicitHeight, chMetrics.height)
+
+    implicitHeight: _contentHeight + paddingV * 2
     // A squared button uses symmetric (vertical) padding and then grows to
     // at least its own height, so a single digit or glyph reads as a
     // square tile rather than a wide pill.

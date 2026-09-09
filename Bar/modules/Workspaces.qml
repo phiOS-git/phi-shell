@@ -52,7 +52,12 @@ Item {
                 // number inside, inverted when current (master plan §8.4).
                 ambient: "isle"
                 squared: true
-                visible: modelData.monitor !== null && modelData.monitor.name === root.screen.name
+                // OOP-11: special workspaces (Hyprland gives them a
+                // negative id — e.g. `special:btop`) never appear in the
+                // numbered list; the btop button is that workspace's only
+                // control point.
+                visible: modelData.id > 0
+                    && modelData.monitor !== null && modelData.monitor.name === root.screen.name
                 label: modelData.name.length > 0 ? modelData.name : String(modelData.id)
                 active: modelData.active
                 onActivated: modelData.activate()
