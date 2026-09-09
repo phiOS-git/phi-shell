@@ -1,5 +1,4 @@
 import QtQuick
-import qs.Config as Config
 import qs.Widgets as Widgets
 
 // phiOS — Panels/tabs/ChatBubble (S-31). One message row for AiChat.qml's
@@ -35,6 +34,11 @@ Widgets.Panel {
         width: parent.width
         wrapMode: Text.Wrap
         text: bubbleRoot.text
-        color: bubbleRoot.from === "you" ? Config.Appearance.accentText : Config.Appearance.textPrimary
+        // OOP-19: a "you" bubble sets `active`, so the Panel inverts its
+        // background — the text must invert with it. This was `accentText`
+        // (text-on-accent) from before OOP-02 made the active fill the
+        // opposite structural colour rather than accent; `contentColor`
+        // resolves correctly for both bubble kinds.
+        color: bubbleRoot.contentColor
     }
 }

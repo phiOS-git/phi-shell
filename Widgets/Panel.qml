@@ -46,6 +46,19 @@ Item {
     })
     readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState)
 
+    // OOP-19: the resolved foreground for this panel's content. A Panel
+    // with a plain content slot (a bare StyledText, a Column of them)
+    // cannot have its children recoloured from here — QML has no ancestor
+    // colour inheritance — so a consumer that shows selectable text inside
+    // a Panel binds its text `color` to this instead of hand-rolling a
+    // `selected ? selectionText : textPrimary` ternary at each call site.
+    // Mirrors Segment.contentColor. At rest this is the ordinary
+    // full-contrast ink; when the panel is `active` (selected) it is the
+    // inverted fg, so the text flips with the background.
+    readonly property color contentColor: root.invalid
+        ? Config.Appearance.error
+        : root.stateColors.fg
+
     opacity: WidgetStates.opacityFor(resolvedState)
 
     Rectangle {

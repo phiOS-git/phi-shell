@@ -37,6 +37,22 @@ Item {
     })
     readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState)
 
+    // OOP-19: when the row background inverts (the "active"/selected state,
+    // surfaceColors() → bg: contrast), the label, value and leading glyph
+    // must invert with it or the row reads as invisible same-on-same — the
+    // bug the user reported for every ListRow-based selection surface
+    // (Settings nav, the agent project list, the memory-notice picker).
+    // Segment (OOP-03) and StyledButton already recolour their own content
+    // this way; ListRow did not. `labelColor` tracks the resolved fg in
+    // every state (which is the ordinary full-contrast ink except when
+    // inverted or invalid); `valueColor` keeps the §8.6 affordance split —
+    // a value stays low-contrast monochrome at rest — and only follows the
+    // inversion when the whole row is selected.
+    readonly property color labelColor: root.stateColors.fg
+    readonly property color valueColor: root.resolvedState === "active"
+        ? root.stateColors.fg
+        : Config.Appearance.textMuted
+
     // design/tokens.common.sh stores space-N in `ch`, not px — see
     // Panel.qml's identical comment.
     TextMetrics {
@@ -71,6 +87,7 @@ Item {
         // never for hover/active/pressed, and never anywhere else.
         glyph: root.resolvedState === "focus" ? ">" : root.glyph
         visible: glyph.length > 0
+        color: root.labelColor
         anchors.left: parent.left
         anchors.leftMargin: root.inset
         anchors.verticalCenter: parent.verticalCenter
@@ -80,6 +97,7 @@ Item {
         id: labelText
         text: root.label
         invalid: root.invalid
+        color: root.labelColor
         anchors.left: parent.left
         anchors.leftMargin: root.inset + (leading.visible ? leading.implicitWidth + root.gap : 0)
         anchors.right: valueText.visible ? valueText.left : parent.right
@@ -92,6 +110,7 @@ Item {
         id: valueText
         text: root.value
         kind: "label"
+        color: root.valueColor
         visible: root.value.length > 0
         anchors.right: parent.right
         anchors.rightMargin: root.inset

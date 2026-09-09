@@ -217,7 +217,7 @@ Item {
                     elide: Text.ElideRight
                     maximumLineCount: 2
                     wrapMode: Text.Wrap
-                    color: card.selected ? Config.Appearance.selectionText : Config.Appearance.textPrimary
+                    color: card.contentColor
                     text: card.isImage ? "[image]"
                         : (card.modelData.preview && card.modelData.preview.length > 0
                             ? card.modelData.preview : "(empty)")
@@ -227,7 +227,7 @@ Item {
                     horizontalAlignment: Text.AlignRight
                     kind: "label"
                     sizeStep: 0
-                    color: card.selected ? Config.Appearance.selectionText : Config.Appearance.textMuted
+                    color: card.selected ? card.contentColor : Config.Appearance.textMuted
                     text: root.fmtTime(card.modelData.timestamp)
                 }
             }
@@ -240,7 +240,7 @@ Item {
                 mono: true
                 color: Services.Clipboard.isPinned(card.modelData.id)
                     ? Config.Appearance.accent
-                    : (card.selected ? Config.Appearance.selectionText : Config.Appearance.textMuted)
+                    : (card.selected ? card.contentColor : Config.Appearance.textMuted)
                 text: Services.Clipboard.isPinned(card.modelData.id) ? "*" : "+"
 
                 TapHandler {

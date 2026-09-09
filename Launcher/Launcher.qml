@@ -529,18 +529,26 @@ PanelWindow {
                                 opacity: opt.isLoading ? 0.45 : 1
                             }
 
+                            // Item 7: the name and the directory sit at
+                            // opposite ends of the row — the space between
+                            // them is maxed out, not a fixed gap after the
+                            // name. Anchored from the name's right edge to
+                            // the panel's right padding and right-aligned,
+                            // so a path hugs the right edge (tail visible,
+                            // elided from the left) however short the name.
                             Widgets.StyledText {
                                 id: dirText
+                                anchors.left: nameText.right
+                                anchors.leftMargin: root.chWidth * Config.Appearance.space3
                                 anchors.right: parent.right
                                 anchors.rightMargin: root.chWidth
                                 anchors.verticalCenter: parent.verticalCenter
+                                horizontalAlignment: Text.AlignRight
                                 text: opt.modelData.subtitle
                                 kind: "label"
                                 sizeStep: 0
                                 font.italic: true
                                 elide: Text.ElideLeft
-                                width: Math.max(0, parent.width - root.inputPrefixWidth
-                                    - nameText.implicitWidth - root.chWidth * 3)
                             }
 
                             TapHandler { onTapped: root.activate(opt.modelData) }
