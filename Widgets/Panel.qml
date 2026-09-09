@@ -28,6 +28,9 @@ Item {
 
     default property alias content: contentItem.data
     property real padding: Config.Appearance.panelPadding
+    // OOP-05: overridable so the runner can round more (radiusLarge) than
+    // every other panel, per shell doc §3 / the user's directive.
+    property real radius: Config.Appearance.radiusBase
 
     property bool hovered: false
     property bool pressed: false
@@ -47,7 +50,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: Config.Appearance.radiusBase
+        radius: root.radius
         color: root.stateColors.bg
         border.width: Config.Appearance.borderWidthStrong
         border.color: root.stateColors.border

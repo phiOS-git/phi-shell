@@ -45,7 +45,10 @@ PanelWindow {
     property var views: []
     readonly property bool atRoot: views.length === 0
 
-    anchors { top: true }
+    // OOP-05: full-screen transparent window so a click anywhere outside
+    // the runner box can close it (same shape as Cheatsheet). The box
+    // itself is positioned by `panelBox` inside fadeRoot.
+    anchors { top: true; bottom: true; left: true; right: true }
     exclusiveZone: 0
     color: "transparent"
 
@@ -56,12 +59,23 @@ PanelWindow {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
-    readonly property real launcherWidth: chWidth * 60
+    // OOP-05: ~25% of the screen width (user directive), with a mono floor
+    // so it never collapses on a narrow display.
+    readonly property real launcherWidth: Math.max(chWidth * 34, (root.screen ? root.screen.width : 0) * 0.25)
     readonly property real topMargin: chWidth * Config.Appearance.space6
 
-    margins { top: root.topMargin }
-    implicitWidth: root.launcherWidth
-    implicitHeight: layout.implicitHeight + panel.padding * 2
+    // The input prefix ("φ : ") and the pixel width it occupies — the
+    // result options are indented to start exactly where the typed text
+    // does (user directive).
+    readonly property string inputPrefix: "φ : "
+    TextMetrics {
+        id: prefixMetrics
+        font.family: Config.Appearance.fontMono
+        font.pixelSize: Config.Appearance.fontSize2
+        text: root.inputPrefix
+    }
+    readonly property real inputPrefixWidth: prefixMetrics.width
+
     // PanelWindow has no `opacity` property (confirmed against the real
     // source, src/window/windowinterface.hpp — no `opacity` in its
     // Q_PROPERTY list at all) — found on real hardware, not by reading the
@@ -299,27 +313,59 @@ PanelWindow {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
         }
 
+        // Click anywhere outside the runner box closes it.
+        MouseArea {
+            anchors.fill: parent
+            onClicked: root.setShown(false)
+        }
+
+    Item {
+        id: panelWrap
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        anchors.topMargin: root.topMargin
+        width: root.launcherWidth
+        height: panel.height
+
+        // Swallow clicks on the box (border included).
+        MouseArea { anchors.fill: parent }
+
     Widgets.Panel {
         id: panel
-        anchors.fill: parent
+        width: parent.width
+        height: layout.implicitHeight + panel.padding * 2
+        // OOP-05: the runner rounds more than every other panel.
+        radius: Config.Appearance.radiusLarge
 
         Column {
             id: layout
             width: parent.width
             spacing: root.chWidth * Config.Appearance.space2
 
-            // Level 0: search field, always present so Escape/typing
-            // history is never lost just because a sub-view is open —
-            // hidden, not destroyed, while a sub-view sits on top.
-            Widgets.Panel {
+            // Level 0: the input line — a "φ : " prefix, then the field.
+            // Always present so Escape/typing history is never lost while
+            // a sub-view sits on top; hidden, not destroyed.
+            Item {
+                id: inputRow
                 width: parent.width
-                height: searchField.implicitHeight + padding * 2
+                height: searchField.implicitHeight
                 visible: root.atRoot
 
+                Widgets.StyledText {
+                    id: prefixLabel
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    mono: true
+                    sizeStep: 2
+                    text: root.inputPrefix
+                }
                 TextInput {
                     id: searchField
-                    width: parent.width
-                    font.family: Config.Appearance.fontUi
+                    anchors.left: parent.left
+                    anchors.leftMargin: root.inputPrefixWidth
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    font.family: Config.Appearance.fontMono
                     font.pixelSize: Config.Appearance.fontSize2
                     color: Config.Appearance.textPrimary
                     // One-way sync out only (see setShown's own comment):
@@ -343,37 +389,80 @@ PanelWindow {
                 }
             }
 
+            Widgets.Separator {
+                width: parent.width
+                visible: root.atRoot && root.results.length > 0
+            }
+
             Column {
                 id: resultList
                 width: parent.width
                 visible: root.atRoot
-                spacing: root.chWidth * Config.Appearance.space1
+                spacing: 0
 
                 Repeater {
                     model: root.results
 
-                    Widgets.ListRow {
+                    delegate: Item {
+                        id: opt
                         required property var modelData
                         required property int index
+                        readonly property bool selected: opt.index === root.highlightedIndex
+                        readonly property bool isLoading: opt.modelData.action
+                            && opt.modelData.action.kind === "loading"
+                        readonly property real hpad: Config.Appearance.borderWidth * 2
+
                         width: resultList.width
-                        label: modelData.title
-                        value: modelData.subtitle
-                        active: index === root.highlightedIndex
-                        // ActionLoading (phi/internal/query, added for
-                        // CurrencyProvider — see that file's own header):
-                        // a transient, not-yet-answerable result. ListRow's
-                        // own `loading` state (S-21's seven-state model)
-                        // already has a defined look for exactly this;
-                        // root.activate() itself also refuses to act on
-                        // one, so this is presentation, not the only guard.
-                        loading: modelData.action && modelData.action.kind === "loading"
-                        onActivated: root.activate(modelData)
+                        height: nameText.implicitHeight + root.chWidth * Config.Appearance.space1
+
+                        // OOP-05: the selection highlight is on the NAME
+                        // text only, not the whole row — a block of the
+                        // opposite colour behind the text, text flipped to
+                        // main.
+                        Rectangle {
+                            visible: opt.selected
+                            x: root.inputPrefixWidth - opt.hpad
+                            width: nameText.implicitWidth + opt.hpad * 2
+                            height: parent.height
+                            radius: Config.Appearance.radiusSmall
+                            color: Config.Appearance.selectionBackground
+                        }
+
+                        Widgets.StyledText {
+                            id: nameText
+                            x: root.inputPrefixWidth
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: opt.modelData.title
+                            mono: true
+                            color: opt.selected
+                                ? Config.Appearance.selectionText
+                                : Config.Appearance.textPrimary
+                            opacity: opt.isLoading ? 0.45 : 1
+                        }
+
+                        Widgets.StyledText {
+                            id: dirText
+                            anchors.right: parent.right
+                            anchors.rightMargin: root.chWidth
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: opt.modelData.subtitle
+                            kind: "label"
+                            font.italic: true
+                            elide: Text.ElideLeft
+                            width: Math.max(0, parent.width - root.inputPrefixWidth
+                                - nameText.implicitWidth - root.chWidth * 3)
+                        }
+
+                        TapHandler { onTapped: root.activate(opt.modelData) }
                     }
                 }
 
                 Widgets.StyledText {
+                    id: noResults
+                    x: root.inputPrefixWidth
+                    topPadding: root.chWidth * Config.Appearance.space1
                     kind: "label"
-                    text: "No results."
+                    text: "no results"
                     visible: root.queryText.length > 0 && root.results.length === 0
                 }
             }
@@ -432,5 +521,6 @@ PanelWindow {
             }
         }
     }
-    }
+    } // panelWrap
+    } // fadeRoot
 }
