@@ -76,9 +76,11 @@ PanelWindow {
     readonly property real gap: chWidth * Config.Appearance.space3
 
     // The dock widens for the Memory-proposals section so the literal diffs
-    // have room (delta §3.7), capped.
-    readonly property real baseWidth: Math.min(parent.width * 0.5, chWidth * 68)
-    readonly property real wideWidth: Math.min(parent.width * 0.62, chWidth * 92)
+    // have room (delta §3.7), capped. Sized off `root.width` (the layer
+    // surface spans the output) — a PanelWindow has no `parent`, so
+    // `parent.width` here is undefined and the dock collapses to zero.
+    readonly property real baseWidth: Math.min(root.width * 0.5, chWidth * 68)
+    readonly property real wideWidth: Math.min(root.width * 0.62, chWidth * 92)
     readonly property real targetWidth:
         (root.section === "memory" && root.agent.totalPendingProposals > 0) ? wideWidth : baseWidth
 
