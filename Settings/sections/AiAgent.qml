@@ -106,8 +106,12 @@ Column {
     }
     Widgets.StyledText {
         kind: "label"; sizeStep: 0
+        width: parent.width; wrapMode: Text.WordWrap
         visible: root.agent.switching
-        text: "Rebuilding the containment for the new project…"
+        text: "Rebuilding the containment for the new project… If this does not "
+            + "clear, phi-agent-a1.service failed to restart — check "
+            + "`systemctl --user status phi-agent-a1.service` (the broker's "
+            + "provider key must be set)."
     }
     Repeater {
         model: root.agent.projects

@@ -104,17 +104,13 @@ PanelWindow {
                 width: parent.width
                 spacing: root.gap
 
-                Row {
-                    width: parent.width
-                    spacing: root.chWidth * Config.Appearance.space2
-                    Widgets.StyledText {
-                        anchors.verticalCenter: parent.verticalCenter
-                        kind: "label"; sizeStep: 4; text: "Φ"
-                    }
-                    Widgets.StyledText {
-                        anchors.verticalCenter: parent.verticalCenter
-                        kind: "label"; sizeStep: 3; text: "phi agent"
-                    }
+                // No Φ mark here: P-03's permitted-context list for the
+                // mark is closed (boot splash, TTY/login banner, about
+                // panel, bar agent segment) and a panel header is not on
+                // it. The bar segment that opens this panel already carries
+                // the identity. Plain heading, same as AiChat's "Agent".
+                Widgets.StyledText {
+                    kind: "label"; sizeStep: 3; text: "phi agent"
                 }
 
                 Widgets.StyledText {
