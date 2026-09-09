@@ -92,6 +92,15 @@ ShellRoot {
         screen: Quickshell.screens[0]
     }
 
+    // Out-of-plan (2026-09-09): the shell-summoned phi agent surface
+    // (phios-agente.md §10.1). Single instance, same reasoning as
+    // Panels.Sidebar/Settings above. Its IpcHandler (target "agent") lives
+    // inside the file, not here — one instance, so no N-times registration
+    // to avoid. Placeholder content; the toggle plumbing is real.
+    Panels.AgentPanel {
+        screen: Quickshell.screens[0]
+    }
+
     // S-43: single instance, same reasoning — a transient surface with no
     // per-monitor meaning (see Osd/Osd.qml's own header).
     Osd.Osd {

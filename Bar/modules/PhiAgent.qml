@@ -53,11 +53,22 @@ Item {
     implicitWidth: segment.implicitWidth
     implicitHeight: segment.implicitHeight
 
+    // Out-of-plan (2026-09-09): clicking the segment toggles the phi agent
+    // panel (Panels/AgentPanel.qml) through Services/AgentPanel.qml, the
+    // one owner of that surface's shown state — same path as the Super+P
+    // bind and the Settings button. `active` still tracks `processing`
+    // only: §6.6 reserves Role B accent for "durante l'elaborazione", so a
+    // panel-open state is deliberately NOT reflected here (the panel being
+    // on screen is its own feedback). Handler on the inner Segment, not the
+    // wrapper Item — the wrapper exists only to host the opacity breathe
+    // (see the note above on why an external opacity animation on Segment
+    // would sever its internal binding).
     Widgets.Segment {
         id: segment
         anchors.fill: parent
         label: "Φ"
         active: root.processing
+        onActivated: Services.AgentPanel.toggle()
     }
 
     SequentialAnimation on opacity {
