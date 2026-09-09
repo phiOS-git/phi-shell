@@ -384,8 +384,13 @@ PanelWindow {
                 Widgets.Segment {
                     id: wsPill
                     required property var modelData
-                    visible: wsPill.modelData.id > 0
+                    // Same grammar as the bar's own workspace buttons
+                    // (OOP-21): a bare digit on the dim, a filled block for
+                    // the current one — this is the same control in two
+                    // places, it should not look like two different things.
+                    ambient: "isle"
                     squared: true
+                    visible: wsPill.modelData.id > 0
                     label: wsPill.modelData.name.length > 0
                         ? wsPill.modelData.name : String(wsPill.modelData.id)
                     active: wsPill.modelData.id === root.selectedWorkspaceId
