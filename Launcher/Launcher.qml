@@ -388,6 +388,10 @@ PanelWindow {
         height: layout.implicitHeight + panel.padding * 2
         // OOP-05: the runner rounds more than every other panel.
         radius: Config.Appearance.radiusLarge
+        // R3 #4: the runner carries more inner padding than a normal
+        // panel — the input and the option list breathe away from the
+        // frame, left and right especially.
+        padding: root.chWidth * Config.Appearance.space3
 
         Column {
             id: layout
@@ -441,10 +445,8 @@ PanelWindow {
                 }
             }
 
-            Widgets.Separator {
-                width: parent.width
-                visible: root.atRoot
-            }
+            // R3 #4: no rule between the input and the options — the
+            // gap alone separates them.
 
             // OOP-12: a fixed-height scroll area (~20 rows) so the box
             // opens at full height and never grows/shrinks as results

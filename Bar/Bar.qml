@@ -63,13 +63,18 @@ PanelWindow {
     // OOP-03: gap BETWEEN buttons inside an isle (tight) vs. gap from an
     // isle to the screen edge / the reserved centre zone.
     readonly property real islandGap: chWidth * Config.Appearance.space1
-    readonly property real islandMargin: chWidth * Config.Appearance.space2
+    // R3 #3: the isle sits closer to the screen edge and to the reserved
+    // centre zone (was space2) — this also shrinks the reserved strip
+    // between the bar and the window area.
+    readonly property real islandMargin: chWidth * Config.Appearance.space1
 
     // No §6.3 token covers bar height — it was never part of the token
-    // set. Derived from the base text size plus vertical padding on each
-    // side, the same recipe every Widgets/ surface uses for its own
-    // footprint, rather than a fixed literal (I-05).
-    height: Config.Appearance.fontSize1 + islandMargin * 2
+    // set. R3 #3: derived from the actual isle footprint plus one small
+    // outer margin, not fontSize + 2·margin, so reducing islandMargin
+    // does not risk clipping the isle content.
+    height: Math.max(Config.Appearance.fontSize1,
+        leftIsle.implicitHeight, rightIsle.implicitHeight, centerIsle.implicitHeight)
+        + islandMargin
 
     property var registryRows: []
 
@@ -257,6 +262,9 @@ PanelWindow {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
         visible: centerLoader.item !== null && centerLoader.width > 0
+        // R3 #8: a little breathing room on each side of the active-window
+        // title so it does not touch the isle edge.
+        pad: bar.chWidth * Config.Appearance.space2
 
         readonly property real maxContentWidth: Math.max(0,
             bar.width - 2 * (bar.islandMargin
