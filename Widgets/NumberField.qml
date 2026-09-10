@@ -52,7 +52,7 @@ Row {
     onValueChanged: if (!field.keyboardFocus) field.text = root._fmt(root.value)
     Component.onCompleted: field.text = root._fmt(root.value)
 
-    StyledButton {
+    SmallButton {
         anchors.verticalCenter: parent.verticalCenter
         label: "−"
         enabled: root.value - root.step >= root.from - 1e-9
@@ -73,7 +73,7 @@ Row {
         }
     }
 
-    StyledButton {
+    SmallButton {
         anchors.verticalCenter: parent.verticalCenter
         label: "+"
         enabled: root.value + root.step <= root.to + 1e-9

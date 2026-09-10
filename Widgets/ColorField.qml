@@ -80,7 +80,7 @@ Column {
             onCommitted: (t) => root._accept(t)
         }
 
-        StyledButton {
+        SmallButton {
             anchors.verticalCenter: parent.verticalCenter
             label: root.expanded ? "done" : "pick"
             active: root.expanded
