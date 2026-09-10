@@ -12,11 +12,16 @@ import qs.Widgets as Widgets
 // this is not a missing feature, it is a closed decision), and the secrets
 // entry point depends on Q-F02 (KeePassXC vs Vaultwarden), still [HOLD] in
 // §9.13.
+//
+// features-change (item 1): rebuilt onto SettingsGroup like every other
+// section — it was the one section still using bare sizeStep-3 labels as
+// headers and a different outer spacing, so it read as a different panel.
+// No row removed, every value is the same placeholder it was.
 
 Column {
     id: root
-    width: parent.width
-    spacing: Config.Appearance.space2 * chWidth
+    width: parent ? parent.width : 0
+    spacing: Config.Appearance.space3 * chWidth
 
     TextMetrics {
         id: chMetricsLocal
@@ -26,23 +31,32 @@ Column {
     }
     readonly property real chWidth: chMetricsLocal.width
 
-    Widgets.StyledText { kind: "label"; sizeStep: 3; text: "ClamAV" }
-    Widgets.ListRow { width: parent.width; label: "Service status"; value: "not built yet (M6, S-65)" }
-    Widgets.ListRow { width: parent.width; label: "Signature freshness"; value: "not built yet (M6, S-65)" }
-    Widgets.ListRow { width: parent.width; label: "On-access scanning"; value: "not built yet (M6, S-65)" }
-    Widgets.ListRow { width: parent.width; label: "Quarantine"; value: "not built yet (M6, S-65)" }
-
-    Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Face unlock" }
-    Widgets.ListRow {
-        width: parent.width
-        label: "Face unlock"
-        value: "disabled — AUR/T4 only (howdy), Q-01 deferred"
+    SettingsGroup {
+        title: "ClamAV"
+        caption: "Antivirus — not built yet (M6, S-65)."
+        Widgets.ListRow { width: parent.width; label: "Service status"; value: "not built yet (M6, S-65)" }
+        Widgets.ListRow { width: parent.width; label: "Signature freshness"; value: "not built yet (M6, S-65)" }
+        Widgets.ListRow { width: parent.width; label: "On-access scanning"; value: "not built yet (M6, S-65)" }
+        Widgets.ListRow { width: parent.width; label: "Quarantine"; value: "not built yet (M6, S-65)" }
     }
 
-    Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Secrets" }
-    Widgets.ListRow {
-        width: parent.width
-        label: "Password manager"
-        value: "not chosen yet — Q-F02 [HOLD] (§9.13)"
+    SettingsGroup {
+        title: "Face unlock"
+        caption: "Howdy is AUR/T4 only — excluded while Q-01 is deferred (master plan §3.3). A closed decision, not a gap."
+        Widgets.ListRow {
+            width: parent.width
+            label: "Face unlock"
+            value: "disabled — AUR/T4 only (howdy), Q-01 deferred"
+        }
+    }
+
+    SettingsGroup {
+        title: "Secrets"
+        caption: "Password manager not chosen yet — Q-F02 [HOLD] (§9.13)."
+        Widgets.ListRow {
+            width: parent.width
+            label: "Password manager"
+            value: "not chosen yet — Q-F02 [HOLD] (§9.13)"
+        }
     }
 }

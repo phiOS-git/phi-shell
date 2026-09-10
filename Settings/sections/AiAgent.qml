@@ -124,8 +124,21 @@ Column {
                             font.family: Config.Appearance.fontMono
                             font.pixelSize: Config.Appearance.fontSize1
                             color: Config.Appearance.textPrimary
+                            selectionColor: Config.Appearance.selectionBackground
+                            selectedTextColor: Config.Appearance.selectionText
                             selectByMouse: true
-                            text: root.infra.codeBlocklistText
+                            // features-change (item 1): seed once, then only
+                            // re-seed from the service while the field is not
+                            // being edited — a plain `text:` binding threw the
+                            // user's in-progress edits away on any refresh.
+                            Component.onCompleted: text = root.infra.codeBlocklistText
+                            Connections {
+                                target: root.infra
+                                function onCodeBlocklistTextChanged() {
+                                    if (!blocklistEdit.activeFocus)
+                                        blocklistEdit.text = root.infra.codeBlocklistText
+                                }
+                            }
                         }
                     }
                 }

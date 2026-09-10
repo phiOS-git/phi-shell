@@ -48,7 +48,9 @@ Item {
     }
     readonly property real chWidth: chMetrics.width
     readonly property real padH: WidgetStates.chToPixels(Config.Appearance.space1, chWidth)
-    readonly property real padV: WidgetStates.chToPixels(Config.Appearance.space1, chWidth) * 0.75
+    // features-change: the shared field/button height, so a TextField and a
+    // StyledButton in the same Row match instead of the button towering.
+    readonly property real _controlHeight: WidgetStates.controlHeight(Config.Appearance, chWidth)
 
     readonly property string resolvedState: WidgetStates.resolve({
         enabled: root.enabled, hovered: false, pressed: false,
@@ -57,7 +59,7 @@ Item {
     })
 
     implicitWidth: WidgetStates.chToPixels(Config.Appearance.space6, chWidth) * 3
-    implicitHeight: input.implicitHeight + padV * 2
+    implicitHeight: Math.max(input.implicitHeight, _controlHeight)
     opacity: WidgetStates.opacityFor(resolvedState)
 
     Rectangle {

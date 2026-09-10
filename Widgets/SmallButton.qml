@@ -47,7 +47,11 @@ Item {
     }
     readonly property real chWidth: chMetrics.width
     readonly property real paddingH: WidgetStates.chToPixels(Config.Appearance.space2, chWidth)
-    readonly property real paddingV: WidgetStates.chToPixels(Config.Appearance.space1, chWidth) * 0.5
+    // features-change: floor the height at the shared control height so a
+    // −/+ stepper, a "pick" or a "reset" lines up with the field it sits
+    // next to. Its "small" comes from no resting chrome and a muted label,
+    // not from being shorter than everything else.
+    readonly property real _controlHeight: WidgetStates.controlHeight(Config.Appearance, chWidth)
 
     // No resting chrome; a background/border only once the control is
     // hovered, focused or active.
@@ -56,7 +60,7 @@ Item {
         || resolvedState === "invalid"
 
     implicitWidth: Math.max(labelText.implicitWidth + paddingH * 2, height)
-    implicitHeight: labelText.implicitHeight + paddingV * 2
+    implicitHeight: Math.max(labelText.implicitHeight, _controlHeight)
     activeFocusOnTab: true
     opacity: WidgetStates.opacityFor(resolvedState)
 

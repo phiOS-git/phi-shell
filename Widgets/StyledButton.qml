@@ -41,11 +41,14 @@ Item {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
-    readonly property real paddingH: WidgetStates.chToPixels(Config.Appearance.space4, chWidth)
-    readonly property real paddingV: WidgetStates.chToPixels(Config.Appearance.space2, chWidth)
+    // features-change: was space4 / space2 — a ~48px slab. Now space3 of
+    // side padding and the shared control height (~30px), so it is a
+    // compact button that lines up with a TextField beside it.
+    readonly property real paddingH: WidgetStates.chToPixels(Config.Appearance.space3, chWidth)
+    readonly property real _controlHeight: WidgetStates.controlHeight(Config.Appearance, chWidth)
 
     implicitWidth: labelText.implicitWidth + paddingH * 2
-    implicitHeight: labelText.implicitHeight + paddingV * 2
+    implicitHeight: Math.max(labelText.implicitHeight, _controlHeight)
     activeFocusOnTab: true
     opacity: WidgetStates.opacityFor(resolvedState)
 

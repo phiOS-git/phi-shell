@@ -126,6 +126,10 @@ Column {
                 Widgets.StyledText {
                     anchors.verticalCenter: parent.verticalCenter
                     mono: true
+                    // features-change (item 1): fixed width so the button
+                    // cluster does not shuffle as the reading changes width.
+                    horizontalAlignment: Text.AlignHCenter
+                    width: 5 * root.chWidth
                     text: Services.AudioBridge.ready ? root._pct(Services.AudioBridge.volume) : "—"
                 }
                 Widgets.StyledButton {
@@ -133,7 +137,9 @@ Column {
                     onClicked: Services.AudioBridge.setVolume(Services.AudioBridge.volume + 0.1)
                 }
                 Widgets.StyledButton {
-                    label: Services.AudioBridge.muted ? "Unmute" : "Mute"
+                    // Constant label + `active` (like the per-app rules) so
+                    // the width never changes on toggle.
+                    label: "Mute"
                     active: Services.AudioBridge.muted
                     onClicked: Services.AudioBridge.toggleMute()
                 }
@@ -170,6 +176,8 @@ Column {
                 Widgets.StyledText {
                     anchors.verticalCenter: parent.verticalCenter
                     mono: true
+                    horizontalAlignment: Text.AlignHCenter
+                    width: 5 * root.chWidth
                     text: Services.AudioBridge.inputReady ? root._pct(Services.AudioBridge.inputVolume) : "—"
                 }
                 Widgets.StyledButton {
@@ -177,7 +185,7 @@ Column {
                     onClicked: Services.AudioBridge.setInputVolume(Services.AudioBridge.inputVolume + 0.1)
                 }
                 Widgets.StyledButton {
-                    label: Services.AudioBridge.inputMuted ? "Unmute" : "Mute"
+                    label: "Mute"
                     active: Services.AudioBridge.inputMuted
                     onClicked: Services.AudioBridge.toggleInputMute()
                 }

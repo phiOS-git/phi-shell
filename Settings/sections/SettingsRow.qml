@@ -20,6 +20,12 @@ import "options.js" as Options
 //   wide: true — control full-width below the title (a colour picker, a
 //                keyboard map, a chart, a font preview).
 //
+// features-change (item 1): the per-row "reset" was top-RIGHT, and the
+// control slot reserved room for it only once the row became resettable —
+// so a control jumped sideways the instant a value was first changed.
+// "reset" now sits under the label on the LEFT, out of the control's way,
+// so the control never moves; the row just grows a line taller.
+//
 // `pulse()` is the reveal's arrival flash — a short symmetric fade,
 // category B (a search selection is frequent by definition, style plan §5 /
 // S-52) — never ScrambleText/TypingText, which are category C.
@@ -46,7 +52,6 @@ Item {
     }
     readonly property real _ch: chMetrics.width
     readonly property real _pad: Config.Appearance.space2 * _ch
-    readonly property real _resetW: resetLabel.visible ? resetLabel.implicitWidth + _pad : 0
 
     readonly property bool highlighted: Services.SettingsPanel.shown
         && Services.SettingsPanel.query.length > 0
@@ -122,6 +127,15 @@ Item {
             sizeStep: 0
             text: root.description
         }
+
+        // features-change (item 1): "reset" lives here, under the label, so
+        // it never displaces the control. Only present when the row is
+        // resettable — the row grows a line, the control does not move.
+        Widgets.SmallButton {
+            visible: root.resettable
+            label: "reset"
+            onClicked: root.reset()
+        }
     }
 
     // Control slot. Content-sized and right-aligned by default; full-width
@@ -133,23 +147,10 @@ Item {
     Item {
         id: slot
         anchors.right: parent.right
-        anchors.rightMargin: root._pad + (root.wide ? 0 : root._resetW)
+        anchors.rightMargin: root._pad
         anchors.top: root.wide ? labelBlock.bottom : parent.top
         anchors.topMargin: root._pad
         width: root.wide ? Math.max(0, root.width - root._pad * 2) : childrenRect.width
         height: childrenRect.height
-    }
-
-    Widgets.StyledText {
-        id: resetLabel
-        anchors.right: parent.right
-        anchors.rightMargin: root._pad
-        anchors.top: parent.top
-        anchors.topMargin: root._pad
-        visible: root.resettable
-        kind: "label"
-        sizeStep: 0
-        text: "reset"
-        TapHandler { onTapped: root.reset() }
     }
 }

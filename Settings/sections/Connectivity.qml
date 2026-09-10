@@ -159,18 +159,21 @@ Column {
                 Row {
                     spacing: root._gap
                     Widgets.StyledButton {
+                        anchors.verticalCenter: parent.verticalCenter
                         visible: !modelData.managed
                         label: "Import"
                         enabled: !Services.Vpn.busy
                         onClicked: Services.Vpn.importConfig("/etc/wireguard/" + modelData.name + ".conf")
                     }
                     Widgets.StyledButton {
+                        anchors.verticalCenter: parent.verticalCenter
                         visible: modelData.managed
                         label: "Forget"
                         enabled: !Services.Vpn.busy && !modelData.up
                         onClicked: Services.Vpn.forget(modelData.name)
                     }
                     Widgets.Toggle {
+                        anchors.verticalCenter: parent.verticalCenter
                         checked: modelData.up
                         enabled: !Services.Vpn.busy
                         onToggled: (v) => v ? Services.Vpn.up(modelData.name) : Services.Vpn.down(modelData.name)

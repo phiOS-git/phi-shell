@@ -167,3 +167,13 @@ function fontPixelSize(appearance, sizeStep) {
 function chToPixels(chCount, chWidth) {
     return chCount * chWidth
 }
+
+// features-change: the shared height of a single-line field or button on a
+// settings row — StyledButton, SmallButton, TextField (and through them
+// NumberField and ColorField) all floor their implicitHeight at this, so a
+// text field and a button sitting in the same Row line up instead of the
+// button towering over the field. One formula (body font size + one rhythm
+// unit), not a design token — the same latitude INACTIVE_OPACITY takes.
+function controlHeight(appearance, chWidth) {
+    return Math.round(appearance.fontSize2 + chToPixels(appearance.space2, chWidth))
+}

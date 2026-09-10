@@ -136,6 +136,37 @@ PanelWindow {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
+
+    // features-change (item 1): switching section used to keep the previous
+    // section's scroll offset — land on a short section after scrolling a
+    // long one and it opened blank-looking, scrolled past its end.
+    onActiveIndexChanged: contentFlick.contentY = 0
+
+    // features-change (item 1): a thin, non-interactive position hint — the
+    // content pane (Theme especially) scrolls well past a screen with no
+    // indication there was more. Decoration only: it never takes input, and
+    // if the geometry is a pixel off it is still just a faint mark.
+    component ScrollHint: Rectangle {
+        id: hint
+        property var flick: null
+        readonly property bool _overflow: !!hint.flick && hint.flick.contentHeight > hint.flick.height + 1
+        width: Math.max(Config.Appearance.borderWidthStrong, Math.round(root.chWidth * 0.4))
+        radius: width / 2
+        color: Config.Appearance.textFaint
+        visible: hint._overflow
+        opacity: hint._overflow ? 0.45 : 0
+        x: hint.flick ? hint.flick.x + hint.flick.width - width : 0
+        height: hint._overflow
+            ? Math.max(root.chWidth * 3, hint.flick.height * hint.flick.height / hint.flick.contentHeight)
+            : 0
+        y: (hint.flick ? hint.flick.y : 0) + (hint._overflow
+            ? hint.flick.contentY / (hint.flick.contentHeight - hint.flick.height) * (hint.flick.height - height)
+            : 0)
+        Behavior on opacity {
+            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+        }
+    }
+
     readonly property real panelW: Math.min(root.width * 0.82, chWidth * 150)
     readonly property real panelH: Math.min(root.height * 0.85, chWidth * 120)
     readonly property real navW: chWidth * 26
@@ -370,6 +401,9 @@ PanelWindow {
                         ? root.componentFor(root.registryRows[root.activeIndex].type) : null
                 }
             }
+
+            ScrollHint { flick: contentFlick }
+            ScrollHint { flick: navFlick }
             } // Widgets.Panel
         } // panelWrap
     }
