@@ -3,24 +3,21 @@ import QtQml
 import Quickshell
 import qs.Config as Config
 
-// phiOS — Services/Magnifier (OOP-50). Owns the screen-magnifier loupe's
-// state: shown, zoom factor and lens size, each persisted through
-// Config/Settings (`phi state`) the same way Services/Spotlight owns its
-// own `size`.
+// phiOS — Services/Magnifier (OOP-50, revised OOP-58). Owns the screen-
+// magnifier loupe's state: shown, zoom factor and lens size, each
+// persisted through Config/Settings (`phi state`) the same way
+// Services/Spotlight owns its own `size`.
 //
-// Why a loupe OFFSET from the cursor rather than one centred on it (the
-// Glasscope look the card references): Glasscope is a Hyprland *compositor
-// plugin* — it magnifies the frame Hyprland has already composed, from
-// inside the render pipeline, so it can sit under the pointer with no
-// feedback. phiOS cannot add a compositor plugin (Q-01 / I-01), and the
-// screen-shader route that could see the cursor is a closed finding
-// (Q-F07). A Quickshell overlay can only re-capture the whole output with
-// wlr-screencopy — which includes the overlay itself, so a lens drawn
-// under the pointer would show an infinite tunnel of itself. Magnifier/
-// Magnifier.qml therefore draws the lens just above the pointer, showing
-// the area the pointer is actually on; the capture region and the lens
-// never overlap, so there is no feedback. Documented as a deliberate
-// deviation, flagged for the screenshot pass.
+// The loupe is centred ON the pointer (the user's OOP-58 directive). A
+// centred lens fed a *live* wlr-screencopy stream is self-referential —
+// the capture region under the pointer is the lens's own hole — so
+// Magnifier/Magnifier.qml does not use a live feed: it recaptures a still
+// (ScreencopyView.captureFrame) whenever the pointer settles, with the
+// magnified layer hidden for the grab. See that file's header for the
+// full rationale (and why the earlier OOP-50 offset lens is retired).
+// Glasscope, the reference, is a Hyprland *compositor plugin* — barred by
+// Q-01 / I-01 — and the screen-shader route is a closed finding (Q-F07);
+// the freeze-on-stop still is the best a Quickshell overlay can do.
 
 Singleton {
     id: root

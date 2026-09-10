@@ -626,7 +626,7 @@ Column {
         SettingsRow {
             optionId: "theme.magnifier"
             title: "Magnifier loupe"
-            description: "A zoomed lens above the pointer. Super+Z toggles it; Super+scroll changes zoom, Super+Shift+scroll the lens size."
+            description: "A circular lens on the pointer. Super+Z toggles it; Super + = / Super + - change zoom, Super+Shift + those the lens size (Super+scroll too, where supported)."
             Widgets.Toggle {
                 checked: Services.Magnifier.shown
                 onToggled: (v) => (v ? Services.Magnifier.show() : Services.Magnifier.hide())
