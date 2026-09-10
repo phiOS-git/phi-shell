@@ -56,6 +56,48 @@ Singleton {
     property var toastQueue: []    // pending Notification objects awaiting a toast
     property var activeToast: null // the one currently shown, or null
 
+    // settings-overhaul batch I — per-app rules (master plan §9.12: "regole
+    // per applicazione"). { "<appName>": { mute, hide, priority } }:
+    //   mute     — recorded in history, no toast (and no Chroma blink)
+    //   hide     — fully suppressed: not tracked, not recorded, not shown
+    //   priority — still toasts even while DND is on
+    // Stored as one JSON object at Config.Paths.notificationRulesFile —
+    // a collection, not a `phi state` scalar (S-13), same shape as
+    // Config/ThemeOverrides.qml.
+    property var rules: ({})
+
+    // The apps the picker offers: every app seen in history plus every app
+    // that already has a rule. Derived, not separately persisted.
+    readonly property var knownApps: {
+        var set = ({})
+        for (var i = 0; i < root.history.length; i++) {
+            var a = root.history[i].appName
+            if (a && String(a).length > 0) set[a] = true
+        }
+        for (var k in root.rules) set[k] = true
+        return Object.keys(set).sort(function (x, y) {
+            return x.toLowerCase().localeCompare(y.toLowerCase())
+        })
+    }
+
+    function ruleFor(appName) {
+        var r = (appName && root.rules[appName]) ? root.rules[appName] : ({})
+        return { mute: r.mute === true, hide: r.hide === true, priority: r.priority === true }
+    }
+
+    function setRule(appName, key, val) {
+        if (!appName) return
+        var next = ({})
+        for (var a in root.rules) next[a] = Object.assign({}, root.rules[a])
+        if (!next[appName]) next[appName] = ({})
+        next[appName][key] = !!val
+        // Drop an all-false rule so the file stays clean.
+        var r = next[appName]
+        if (!r.mute && !r.hide && !r.priority) delete next[appName]
+        root.rules = next
+        rulesFile.setText(JSON.stringify(root.rules, null, 2))
+    }
+
     function toggleDnd() {
         root.dnd = !root.dnd
         Config.Settings.set("toggle.dnd", root.dnd ? "true" : "false")
@@ -136,6 +178,12 @@ Singleton {
         persistenceSupported: false
 
         onNotification: (notification) => {
+            // settings-overhaul batch I — per-app rules. `hide` suppresses
+            // completely: never tracked, so it also never enters history
+            // and the server drops it on its own timeout.
+            const rule = root.ruleFor(notification.appName)
+            if (rule.hide) return
+
             notification.tracked = true
 
             root._pushHistory({
@@ -149,16 +197,18 @@ Singleton {
                 closeReason: -1, // still open; NotificationCloseReason starts at 1
             })
 
-            if (!root.dnd) {
+            // A toast (and the Chroma blink) shows when notifications are
+            // not silenced — DND off, or the app is marked priority — and
+            // the app is not muted.
+            const allowToast = (!root.dnd || rule.priority) && !rule.mute
+            if (allowToast) {
                 root.toastQueue = root.toastQueue.concat([notification])
                 root._advanceQueue()
 
                 // settings-overhaul batch G: the Chroma "notifications"
-                // integration — a function-row blink on arrival. Gated on
-                // the same !dnd branch (the user's directive: "works only
-                // when notifications are not in DND"); Chroma.notifyBlink()
-                // is itself a no-op unless the integration is enabled and
-                // the keyboard is on.
+                // integration — a function-row blink on arrival.
+                // Chroma.notifyBlink() is itself a no-op unless the
+                // integration is enabled and the keyboard is on.
                 Services.Chroma.notifyBlink()
             }
 
@@ -260,6 +310,24 @@ Singleton {
         onLoadFailed: (error) => {
             // FileNotFound on first run is expected: history starts empty
             // and the first _persist() call creates the file.
+        }
+    }
+
+    FileView {
+        id: rulesFile
+        path: Config.Paths.notificationRulesFile
+        watchChanges: false
+        onLoaded: {
+            try {
+                const parsed = JSON.parse(rulesFile.text())
+                if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
+                    root.rules = parsed
+            } catch (e) {
+                console.warn("phi-shell: notification-rules.json failed to parse, ignoring: " + e)
+            }
+        }
+        onLoadFailed: (error) => {
+            // FileNotFound before the first rule is set — rules stays {}.
         }
     }
 }

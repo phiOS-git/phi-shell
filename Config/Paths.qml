@@ -29,6 +29,12 @@ Singleton {
 
     readonly property string notificationsFile: root.stateDir + "/notifications.json"
 
+    // Out-of-plan: settings-overhaul batch I. Per-app notification rules
+    // ({ "<appName>": { mute, hide, priority } }) — a collection, not a
+    // scalar, so a JSON file here rather than `phi state` (same call as
+    // theme-overrides.json / chroma.json). Owned by Services/Notifications.qml.
+    readonly property string notificationRulesFile: root.stateDir + "/notification-rules.json"
+
     // S-32: no manifest file — the capture script (Services/Clipboard.qml)
     // is plain POSIX sh with no JSON writer available, so structure lives
     // in the filesystem instead: one <id>.data + <id>.mime pair per entry,
