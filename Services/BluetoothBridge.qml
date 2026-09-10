@@ -26,4 +26,18 @@ Singleton {
     // First connected device's name, for the "on request" label toggle
     // each discrete-state bar module in this step exposes — "" when none.
     readonly property string firstConnectedName: root.anyConnected ? root.devices.values[0].name : ""
+
+    // Out-of-plan: settings-overhaul batch F — the Connectivity section's
+    // Bluetooth group. `BluetoothAdapter.enabled` and `BluetoothDevice.
+    // disconnect()` are the documented Quickshell.Bluetooth API
+    // (bluez/adapter.hpp, device.hpp) but UNVERIFIED here against 0.3.x —
+    // flagged for the screenshot pass. Pairing / scanning for a NEW device
+    // stays a `bluetuith` deep-link (the section provides it); this only
+    // toggles the radio and drops an already-connected device.
+    function setEnabled(v) {
+        if (root.adapter !== null) root.adapter.enabled = v
+    }
+    function disconnectDevice(dev) {
+        if (dev && typeof dev.disconnect === "function") dev.disconnect()
+    }
 }
