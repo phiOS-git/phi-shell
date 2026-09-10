@@ -140,6 +140,7 @@ Singleton {
     readonly property string motionAEasing: "linear"
     readonly property string motionBDuration: "120ms"
     readonly property string motionBEasing: "ease-out"
+    readonly property string motionBBezier: "0.25,0.46,0.45,0.94"
     readonly property string motionCTypeStep: "24ms"
     readonly property string motionCScramble: "600ms"
     readonly property string motionCEasing: "linear"

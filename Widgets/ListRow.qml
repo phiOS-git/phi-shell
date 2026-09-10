@@ -81,7 +81,7 @@ Item {
         color: root.stateColors.bg
 
         Behavior on color {
-            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
     }
 
@@ -91,7 +91,7 @@ Item {
         color: Config.Appearance.accent
         opacity: root.highlighted && root.resolvedState !== "active" ? 0.12 : 0
         Behavior on opacity {
-            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
     }
 
@@ -144,6 +144,6 @@ Item {
     }
 
     Behavior on opacity {
-        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
     }
 }

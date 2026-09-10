@@ -89,6 +89,22 @@ Column {
         }
     }
 
+    // one motion-duration override row (category period / step / duration)
+    component MotionRow: SettingsRow {
+        id: mr
+        property string mkey: ""
+        property int seedMs: 0
+        resettable: Config.ThemeOverrides.has(mkey)
+        onReset: { Config.ThemeOverrides.clear(mkey); mnum.value = mr.seedMs }
+        Widgets.NumberField {
+            id: mnum
+            value: mr.seedMs
+            step: 20; suffix: "ms"; from: 0; to: 4000
+            onCommitted: (v) => Config.ThemeOverrides.setValue(mr.mkey, Math.round(v) + "ms")
+            Connections { target: resetSignal; function onFired() { mnum.value = mr.seedMs } }
+        }
+    }
+
     component TokenNumberRow: SettingsRow {
         id: nr
         property string tokenKey: ""
@@ -286,6 +302,44 @@ Column {
         TokenNumberRow { tokenKey: "radius-base"; title: "Radius, base"; step: 1; suffix: "px"; from: 0; to: 24 }
         TokenNumberRow { tokenKey: "radius-small"; title: "Radius, small (bar isles)"; step: 1; suffix: "px"; from: 0; to: 24 }
         TokenNumberRow { tokenKey: "radius-large"; title: "Radius, large (runner)"; step: 1; suffix: "px"; from: 0; to: 24 }
+    }
+
+    // --- Animations --------------------------------------------
+    SettingsGroup {
+        title: "Animations"
+        optionId: "theme.animations"
+        caption: "The four style-plan motion categories. Category B is every state transition — panels, drawers, workspaces, notifications — so its duration and curve reach the whole shell. A is the agent's tracking indicator, C the rare boot/unlock effects, D ambient (off by default)."
+
+        MotionRow { mkey: "motion-b-duration"; title: "B — transition duration"; seedMs: Config.Appearance.motionBDuration }
+
+        SettingsRow {
+            title: "B — transition curve"
+            description: "Drag the handles; the marker loops on the edited curve."
+            wide: true
+            resettable: Config.ThemeOverrides.has("motion-b-bezier")
+            onReset: { Config.ThemeOverrides.clear("motion-b-bezier"); bez.setCurve(
+                Config.Appearance.motionBCurve[0], Config.Appearance.motionBCurve[1],
+                Config.Appearance.motionBCurve[2], Config.Appearance.motionBCurve[3]) }
+            Widgets.BezierEditor {
+                id: bez
+                Component.onCompleted: setCurve(
+                    Config.Appearance.motionBCurve[0], Config.Appearance.motionBCurve[1],
+                    Config.Appearance.motionBCurve[2], Config.Appearance.motionBCurve[3])
+                onCommitted: (a, b, c, d) => Config.ThemeOverrides.setValue("motion-b-bezier",
+                    a.toFixed(3) + "," + b.toFixed(3) + "," + c.toFixed(3) + "," + d.toFixed(3))
+                Connections {
+                    target: resetSignal
+                    function onFired() { bez.setCurve(
+                        Config.Appearance.motionBCurve[0], Config.Appearance.motionBCurve[1],
+                        Config.Appearance.motionBCurve[2], Config.Appearance.motionBCurve[3]) }
+                }
+            }
+        }
+
+        MotionRow { mkey: "motion-a-period"; title: "A — tracking period"; seedMs: Config.Appearance.motionAPeriod }
+        MotionRow { mkey: "motion-c-type-step"; title: "C — typing step"; seedMs: Config.Appearance.motionCTypeStep }
+        MotionRow { mkey: "motion-c-scramble"; title: "C — scramble duration"; seedMs: Config.Appearance.motionCScramble }
+        MotionRow { mkey: "motion-d-duration"; title: "D — ambient duration"; seedMs: Config.Appearance.motionDDuration }
     }
 
     Widgets.StyledButton {

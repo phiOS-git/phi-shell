@@ -224,7 +224,7 @@ PanelWindow {
         y: bar.autoHidden ? -bar.height : 0
 
         Behavior on y {
-            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
     Widgets.BarIsle {

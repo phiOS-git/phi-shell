@@ -56,7 +56,7 @@ Item {
     }
 
     Behavior on opacity {
-        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
     }
 
     // Positioned just below the target item, in the target's own parent's

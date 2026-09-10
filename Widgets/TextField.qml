@@ -69,7 +69,7 @@ Item {
             : (root.keyboardFocus ? Config.Appearance.focusRing : Config.Appearance.border)
 
         Behavior on border.color {
-            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
     }
 

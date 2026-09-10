@@ -76,7 +76,7 @@ Item {
         color: Config.Appearance.accent
         opacity: root.highlighted ? 0.10 : 0
         Behavior on opacity {
-            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
     }
     Rectangle {
