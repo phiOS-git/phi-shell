@@ -261,7 +261,7 @@ WlSessionLock {
             function onAuthenticatedChanged() {
                 if (root.authenticated) {
                     revealFade.stop()
-                    matrixRain.running = false
+                    if (effectLoader.item) effectLoader.item.running = false
                     concealFade.start()
                 }
             }
@@ -274,12 +274,28 @@ WlSessionLock {
             onTriggered: if (contentRoot.opacity === 0 && !root.authenticated) contentRoot.opacity = 1
         }
 
-        // OOP-31: falling-glyph backdrop (lavat-style), behind everything.
-        Local.MatrixRain {
-            id: matrixRain
+        // OOP-31/35: the ambient backdrop, behind everything. Which effect
+        // (none / lava / matrix / starfield) is chosen in Settings → Theme
+        // and read from Config.LockPrefs. Every effect exposes `running`,
+        // bound here to freeze it the moment the conceal fade starts.
+        Loader {
+            id: effectLoader
             anchors.fill: parent
             z: -1
+            active: Config.LockPrefs.effect !== "none"
+            sourceComponent: {
+                switch (Config.LockPrefs.effect) {
+                case "lava": return lavaFx
+                case "matrix": return matrixFx
+                case "starfield": return starFx
+                default: return null
+                }
+            }
+            onLoaded: if (item) item.running = Qt.binding(function () { return !root.authenticated })
         }
+        Component { id: lavaFx; Local.LavaLamp {} }
+        Component { id: matrixFx; Local.MatrixRain {} }
+        Component { id: starFx; Local.Starfield {} }
 
         Column {
             anchors.centerIn: parent

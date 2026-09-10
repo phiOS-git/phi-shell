@@ -214,6 +214,30 @@ Column {
             }
         }
 
+        // --- Lock screen ------------------------------------------
+        // OOP-35: the ambient backdrop behind the lock screen. Stored in
+        // Config/LockPrefs.qml ($XDG_STATE_HOME/phi/lock.json), read by
+        // Lock/Lock.qml. Not a design token — runtime UI state, same
+        // category as the spotlight size above.
+        Widgets.StyledText { kind: "title"; sizeStep: 3; topPadding: root.gap; text: "Lock screen effect" }
+        Row {
+            spacing: root.chWidth * Config.Appearance.space2
+            Repeater {
+                model: [
+                    { key: "none", label: "None" },
+                    { key: "lava", label: "Lava lamp" },
+                    { key: "matrix", label: "Matrix" },
+                    { key: "starfield", label: "Starfield" }
+                ]
+                Widgets.StyledButton {
+                    required property var modelData
+                    label: modelData.label
+                    active: Config.LockPrefs.effect === modelData.key
+                    onClicked: Config.LockPrefs.setEffect(modelData.key)
+                }
+            }
+        }
+
         // --- Wallpaper --------------------------------------------
         Widgets.StyledText { kind: "title"; sizeStep: 3; topPadding: root.gap; text: "Wallpaper" }
         Widgets.ListRow {

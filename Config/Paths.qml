@@ -63,4 +63,11 @@ Singleton {
     // the single source of the DEFAULTS). Same runtime-state shape as
     // clipboard/pins.json.
     readonly property string themeOverridesFile: root.stateDir + "/theme-overrides.json"
+
+    // OOP-35: the lock screen's ambient-effect choice (none / lava / matrix
+    // / starfield). Runtime UI state, same shape and reasoning as
+    // themeOverridesFile — one flat JSON object, written by the settings
+    // Theme section, read by Lock/Lock.qml. Not `phi state` (its key set is
+    // closed, phi/internal/state/state.go) and not the repo.
+    readonly property string lockPrefsFile: root.stateDir + "/lock.json"
 }
