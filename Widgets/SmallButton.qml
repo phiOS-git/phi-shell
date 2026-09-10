@@ -2,11 +2,19 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/StyledButton (S-21). A generic rectangular push button —
-// popover quick actions (§8.5's "2 azioni rapide"), settings actions,
-// anywhere a click needs a labelled target. Widgets/Toggle is the standard
-// two-state switch (§8.6); this is the general-purpose rectangular push
-// button. Full seven-state model, self-detected.
+// phiOS — Widgets/SmallButton (OOP-55). A quiet, compact push button for
+// minor actions — a stepper's − / +, a colour field's "pick", a "reset",
+// the small actions inside a status-bar popout. Distinct on purpose from
+// Widgets/StyledButton (the full-weight labelled action) and from the
+// selectable-option grammar (StyledButton/Segment with `active`): the
+// user's directive was that a minor action and a selectable choice must
+// not read the same.
+//
+// At rest it is just a low-contrast label with no fill and no border;
+// hover brings it to full contrast with a faint wash; pressed inverts to a
+// small block, the same "inversione piena" every other control uses.
+// Same seven-state model and the same `label` / `active` / `clicked()`
+// API as StyledButton, so it drops in wherever that was overkill.
 
 Item {
     id: root
@@ -30,10 +38,7 @@ Item {
     readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState)
 
     // design/tokens.common.sh stores space-N in `ch`, not px — see
-    // Panel.qml's identical comment. Measured locally rather than shared,
-    // since neither WidgetStates.js nor a QML Singleton can host the
-    // TextMetrics object that does the measuring (confirmed against real
-    // Quickshell source, see WidgetStates.js).
+    // Panel.qml's identical comment.
     TextMetrics {
         id: chMetrics
         font.family: Config.Appearance.fontMono
@@ -41,25 +46,28 @@ Item {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
-    readonly property real paddingH: WidgetStates.chToPixels(Config.Appearance.space4, chWidth)
-    readonly property real paddingV: WidgetStates.chToPixels(Config.Appearance.space2, chWidth)
+    readonly property real paddingH: WidgetStates.chToPixels(Config.Appearance.space2, chWidth)
+    readonly property real paddingV: WidgetStates.chToPixels(Config.Appearance.space1, chWidth) * 0.5
 
-    implicitWidth: labelText.implicitWidth + paddingH * 2
+    // No resting chrome; a background/border only once the control is
+    // hovered, focused or active.
+    readonly property bool _chrome: resolvedState === "hover"
+        || resolvedState === "focus" || resolvedState === "active"
+        || resolvedState === "invalid"
+
+    implicitWidth: Math.max(labelText.implicitWidth + paddingH * 2, height)
     implicitHeight: labelText.implicitHeight + paddingV * 2
     activeFocusOnTab: true
     opacity: WidgetStates.opacityFor(resolvedState)
 
     Rectangle {
         anchors.fill: parent
-        radius: Config.Appearance.radiusBase
-        color: root.stateColors.bg
-        border.width: Config.Appearance.borderWidth
-        border.color: root.stateColors.border
+        radius: Config.Appearance.radiusSmall
+        color: root._chrome ? root.stateColors.bg : "transparent"
+        border.width: root._chrome ? Config.Appearance.borderWidth : 0
+        border.color: root._chrome ? root.stateColors.border : "transparent"
 
         Behavior on color {
-            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
-        }
-        Behavior on border.color {
             ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
     }
@@ -68,10 +76,9 @@ Item {
         id: labelText
         anchors.centerIn: parent
         text: root.label
-        // Overrides StyledText's own kind/tone colour so the label tracks
-        // this button's inversion instead — StyledText's own internal
-        // `Behavior on color` still animates the change, no need to repeat it.
-        color: root.stateColors.fg
+        sizeStep: 0
+        // Muted at rest (a minor action), full contrast once engaged.
+        color: root._chrome ? root.stateColors.fg : Config.Appearance.textMuted
     }
 
     HoverHandler {

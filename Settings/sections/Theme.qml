@@ -4,6 +4,7 @@ import Quickshell.Io
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
+import "options.js" as Options
 
 // phiOS — Settings/sections/Theme (S-40; OOP-08; Out-of-plan: settings-
 // overhaul batches C/D/E). Every variable that is reasonable to change has
@@ -41,6 +42,11 @@ Column {
     property string pendingVariant: Config.Appearance.variant
     readonly property string testString: "0008 iIlL1 g9qCGQ ~ -+=>"
 
+    // OOP-54: the token key whose ColorChip editor is currently open. One
+    // at a time across every colour sub-group, so the palette stays a grid
+    // of swatches and only the one being edited grows to a full row.
+    property string _openColor: ""
+
     function setVariant(v) {
         root.pendingVariant = v
         setProc.command = ["phi", "theme", "set", v]
@@ -61,30 +67,139 @@ Column {
     }
 
     // --- reusable rows ---------------------------------------------------
-    component TokenColorRow: SettingsRow {
-        id: cr
+
+    // OOP-54: one entry in a colour sub-group's Flow. Collapsed it is a
+    // compact swatch + name + hex; tapped (or revealed by search) it grows
+    // to a full-width row carrying the ColorField editor, the contrast
+    // badge and a reset. `root._openColor` keeps exactly one chip open
+    // across every sub-group. Registers its `theme.colors.<key>` optionId
+    // with Services/SettingsPanel like a SettingsRow, so search reveal
+    // still lands on an individual colour.
+    component ColorFlow: Flow {
+        width: parent ? parent.width : 0
+        spacing: root.chWidth
+    }
+
+    component ColorChip: Column {
+        id: chip
         property string tokenKey: ""
+        property string label: ""
         property bool showContrast: false
-        wide: true
-        optionId: "theme.colors." + tokenKey
-        resettable: Config.ThemeOverrides.has(tokenKey)
-        onReset: { Config.ThemeOverrides.clear(tokenKey); field.value = Config.Appearance.tokenValue(tokenKey) }
+
+        readonly property string optionId: "theme.colors." + chip.tokenKey
+        readonly property bool expanded: root._openColor === chip.tokenKey
+        readonly property string _hex: Config.Appearance.tokenValue(chip.tokenKey)
+        readonly property bool _valid: /^#([0-9a-fA-F]{6})$/.test(chip._hex)
+        readonly property bool _overridden: Config.ThemeOverrides.has(chip.tokenKey)
+        readonly property bool _highlighted: Services.SettingsPanel.shown
+            && Services.SettingsPanel.query.length > 0
+            && Options.matches(chip.optionId, Services.SettingsPanel.query)
+
+        width: chip.expanded && parent ? parent.width : Math.round(root.chWidth * 24)
+        spacing: 4
+
+        Component.onCompleted: Services.SettingsPanel.registerRow(chip.optionId, chip)
+        Component.onDestruction: Services.SettingsPanel.unregisterRow(chip.optionId)
+        function pulse() { root._openColor = chip.tokenKey; pulseAnim.restart() }
+
+        Rectangle {
+            id: chipHeader
+            width: parent.width
+            height: hdr.implicitHeight + root.chWidth
+            radius: Config.Appearance.radiusSmall
+            color: chip.expanded ? Config.Appearance.surface1 : "transparent"
+            Behavior on color {
+                ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                radius: parent.radius
+                color: Config.Appearance.accent
+                opacity: chip._highlighted && !chip.expanded ? 0.12 : 0
+                Behavior on opacity {
+                    NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                }
+            }
+            Rectangle {
+                id: pulseRect
+                anchors.fill: parent
+                radius: parent.radius
+                color: Config.Appearance.accent
+                opacity: 0
+                SequentialAnimation {
+                    id: pulseAnim
+                    NumberAnimation { target: pulseRect; property: "opacity"; to: 0.28; duration: Config.Appearance.motionBDuration; easing.type: Easing.OutQuad }
+                    NumberAnimation { target: pulseRect; property: "opacity"; to: 0; duration: Config.Appearance.motionBDuration * 3; easing.type: Easing.InQuad }
+                }
+            }
+
+            Row {
+                id: hdr
+                anchors.left: parent.left
+                anchors.leftMargin: root.chWidth
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: root.chWidth
+
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.round(Config.Appearance.fontSize2 * 1.4)
+                    height: width
+                    radius: Config.Appearance.radiusSmall
+                    color: chip._valid ? chip._hex : "transparent"
+                    border.width: Config.Appearance.borderWidth
+                    border.color: Config.Appearance.border
+                }
+
+                Column {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 1
+                    Widgets.StyledText { text: chip.label }
+                    Widgets.StyledText {
+                        kind: "label"
+                        sizeStep: 0
+                        mono: true
+                        text: chip._hex + (chip._overridden ? "  ·edited" : "")
+                    }
+                }
+            }
+
+            TapHandler {
+                onTapped: root._openColor = chip.expanded ? "" : chip.tokenKey
+            }
+        }
 
         Column {
-            width: parent.width
-            spacing: 4
+            visible: chip.expanded
+            width: parent.width - root.chWidth
+            x: root.chWidth
+            spacing: 6
+
             Widgets.ColorField {
                 id: field
-                value: Config.Appearance.tokenValue(cr.tokenKey)
-                onCommitted: (hex) => Config.ThemeOverrides.setValue(cr.tokenKey, hex)
+                width: parent.width
+                value: Config.Appearance.tokenValue(chip.tokenKey)
+                onCommitted: (hex) => Config.ThemeOverrides.setValue(chip.tokenKey, hex)
                 Connections {
                     target: resetSignal
-                    function onFired() { field.value = Config.Appearance.tokenValue(cr.tokenKey) }
+                    function onFired() { field.value = Config.Appearance.tokenValue(chip.tokenKey) }
                 }
             }
             ContrastBadge {
-                visible: cr.showContrast
+                visible: chip.showContrast
                 hex: field.value
+            }
+            Widgets.StyledText {
+                visible: chip._overridden
+                kind: "label"
+                sizeStep: 0
+                text: "reset to default"
+                TapHandler {
+                    onTapped: {
+                        Config.ThemeOverrides.clear(chip.tokenKey)
+                        field.value = Config.Appearance.tokenValue(chip.tokenKey)
+                    }
+                }
             }
         }
     }
@@ -231,34 +346,58 @@ Column {
     }
 
     // --- Colours (first inner section) -------------------------------
+    // OOP-54: grouped by context and laid out as a Flow of swatches, more
+    // than one per row. Editing one grows it to a full-width row in place
+    // (see ColorChip / root._openColor).
     SettingsGroup {
-        title: "Colours"
-        caption: "The accent is fine detail only — titles, the keyboard focus ring, the agent's working state. Two structural colours (background, primary text) carry the rest of the shell."
+        title: "Colours — structure"
+        caption: "Two structural colours (background, primary text) carry the whole shell; the surfaces step up from the background for stacked panels."
+        ColorFlow {
+            ColorChip { tokenKey: "bg-0"; label: "Background" }
+            ColorChip { tokenKey: "bg-1"; label: "Surface +1" }
+            ColorChip { tokenKey: "bg-2"; label: "Surface +2" }
+            ColorChip { tokenKey: "bg-3"; label: "Surface +3" }
+        }
+    }
 
-        TokenColorRow { tokenKey: "accent"; title: "Accent"; showContrast: true }
-        TokenColorRow { tokenKey: "bg-0"; title: "Background (main)" }
-        TokenColorRow { tokenKey: "bg-1"; title: "Surface +1" }
-        TokenColorRow { tokenKey: "bg-2"; title: "Surface +2" }
-        TokenColorRow { tokenKey: "bg-3"; title: "Surface +3" }
-        TokenColorRow { tokenKey: "fg-0"; title: "Text (primary)"; showContrast: true }
-        TokenColorRow { tokenKey: "fg-1"; title: "Text, secondary"; showContrast: true }
-        TokenColorRow { tokenKey: "fg-2"; title: "Text, muted"; showContrast: true }
-        TokenColorRow { tokenKey: "fg-3"; title: "Text, faint" }
-        TokenColorRow { tokenKey: "border"; title: "Border" }
-        TokenColorRow { tokenKey: "border-strong"; title: "Border, strong" }
-        TokenColorRow { tokenKey: "error"; title: "Error"; showContrast: true }
-        TokenColorRow { tokenKey: "warn"; title: "Warning"; showContrast: true }
-        TokenColorRow { tokenKey: "success"; title: "Success"; showContrast: true }
-        TokenColorRow { tokenKey: "info"; title: "Info"; showContrast: true }
+    SettingsGroup {
+        title: "Colours — text"
+        ColorFlow {
+            ColorChip { tokenKey: "fg-0"; label: "Text (primary)"; showContrast: true }
+            ColorChip { tokenKey: "fg-1"; label: "Text, secondary"; showContrast: true }
+            ColorChip { tokenKey: "fg-2"; label: "Text, muted"; showContrast: true }
+            ColorChip { tokenKey: "fg-3"; label: "Text, faint" }
+        }
+    }
+
+    SettingsGroup {
+        title: "Colours — borders"
+        ColorFlow {
+            ColorChip { tokenKey: "border"; label: "Border" }
+            ColorChip { tokenKey: "border-strong"; label: "Border, strong" }
+        }
+    }
+
+    SettingsGroup {
+        title: "Colours — accent & status"
+        caption: "The accent is fine detail only — titles, the keyboard focus ring, the agent's working state. The status colours appear only when a real threshold is crossed."
+        ColorFlow {
+            ColorChip { tokenKey: "accent"; label: "Accent"; showContrast: true }
+            ColorChip { tokenKey: "error"; label: "Error"; showContrast: true }
+            ColorChip { tokenKey: "warn"; label: "Warning"; showContrast: true }
+            ColorChip { tokenKey: "success"; label: "Success"; showContrast: true }
+            ColorChip { tokenKey: "info"; label: "Info"; showContrast: true }
+        }
     }
 
     SettingsGroup {
         title: "Colour preview"
+        preview: true
 
         SettingsRow {
             wide: true
             title: "Live preview"
-            description: "Rendered from the current overrides."
+            description: "Rendered from the current overrides — not editable here."
             Column {
                 width: parent.width
                 spacing: root.gap
@@ -266,8 +405,8 @@ Column {
                     spacing: root.gap
                     Widgets.StyledButton { label: "Button" }
                     Widgets.StyledButton { label: "Active"; active: true }
-                    Widgets.Pill { checked: true }
-                    Widgets.Pill { checked: false }
+                    Widgets.Toggle { checked: true }
+                    Widgets.Toggle { checked: false }
                 }
                 Widgets.ListRow { width: parent.width; label: "Selected row"; value: "value"; active: true }
                 Widgets.ListRow { width: parent.width; label: "Resting row"; value: "value" }
@@ -354,14 +493,14 @@ Column {
             optionId: "theme.nightshift"
             title: "Night shift"
             description: "Warms the display in the evening."
-            Widgets.Pill { checked: Services.NightShift.enabled; onToggled: (v) => Services.NightShift.setEnabled(v) }
+            Widgets.Toggle { checked: Services.NightShift.enabled; onToggled: (v) => Services.NightShift.setEnabled(v) }
         }
         SettingsRow {
             title: "True Tone"
             description: Config.Capabilities.ambientLight
                 ? "Drive colour temperature from ambient light instead of a fixed value."
                 : "No ambient light sensor on this host — True Tone has nothing to read."
-            Widgets.Pill {
+            Widgets.Toggle {
                 checked: Services.NightShift.trueTone
                 enabled: Config.Capabilities.ambientLight
                 onToggled: (v) => Services.NightShift.setTrueTone(v)
@@ -387,7 +526,7 @@ Column {
             optionId: "theme.spotlight"
             title: "Cursor spotlight"
             description: "Locate the pointer on a large or busy screen."
-            Widgets.Pill {
+            Widgets.Toggle {
                 checked: Services.Spotlight.shown
                 onToggled: (v) => (v ? Services.Spotlight.show() : Services.Spotlight.hide())
             }
@@ -487,8 +626,8 @@ Column {
         SettingsRow {
             optionId: "theme.magnifier"
             title: "Magnifier loupe"
-            description: "A zoomed lens above the pointer. Super+Z toggles it; Super+scroll changes zoom, Super+Shift+scroll the lens size."
-            Widgets.Pill {
+            description: "A circular lens on the pointer. Super+Z toggles it; Super + = / Super + - change zoom, Super+Shift + those the lens size (Super+scroll too, where supported)."
+            Widgets.Toggle {
                 checked: Services.Magnifier.shown
                 onToggled: (v) => (v ? Services.Magnifier.show() : Services.Magnifier.hide())
             }

@@ -57,7 +57,7 @@ Column {
         SettingsRow {
             title: "Activation"
             description: "phi-agent-a1.service"
-            Widgets.Pill {
+            Widgets.Toggle {
                 checked: root.agent.available
                 onToggled: (v) => root.agent.setActivated(v)
             }

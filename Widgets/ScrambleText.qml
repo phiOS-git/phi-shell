@@ -65,7 +65,7 @@ Item {
         // No `text: root.finalText` binding: this widget reassigns `text`
         // imperatively every animation frame below, and QML permanently
         // drops a declarative binding the instant anything assigns to the
-        // same property once — the exact class of bug Widgets/Pill.qml's
+        // same property once — the exact class of bug Widgets/Toggle.qml (ex-Pill)
         // own S-40 note already found and fixed for `checked`. Never
         // declaring the binding here means there is nothing to drop.
     }
