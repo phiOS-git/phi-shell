@@ -27,7 +27,7 @@
 var SECTIONS = [
     { id: "general",       title: "General",       keywords: "machine hardware hostname cpu gpu ram memory disk storage os kernel uptime model" },
     { id: "theme",         title: "Theme",         keywords: "appearance colour color palette accent font typography size scale spacing radius border variant dark light animation motion easing bezier wallpaper texture night shift true tone cursor spotlight lock screen effect lava lamp matrix starfield" },
-    { id: "connectivity",  title: "Connectivity",  keywords: "network tailscale vpn wireguard wifi wi-fi ssid bluetooth speed ping download upload latency overlay" },
+    { id: "connectivity",  title: "Connectivity",  keywords: "network tailscale vpn wireguard wifi wi-fi ssid bluetooth speed ping download upload latency overlay firewall nftables port" },
     { id: "devices",       title: "Devices",       keywords: "audio volume mute output input sink source microphone monitor display resolution scaling chroma keyboard backlight per-key rgb mouse trackpad pointer sensitivity brightness" },
     { id: "keybindings",   title: "Keybindings",   keywords: "shortcuts binds hotkeys hyprland keys reference cheatsheet context" },
     { id: "notifications", title: "Notifications", keywords: "do not disturb dnd rules per app toast sound chroma blink priority" },
@@ -90,6 +90,7 @@ var OPTIONS = [
     { id: "connectivity.wifi.speed",  title: "Wi-Fi speed & ping",     keywords: "throughput download upload latency graph chart flow bandwidth" },
     { id: "connectivity.vpn",         title: "VPN (WireGuard)",        keywords: "wireguard tunnel wg-quick up down" },
     { id: "connectivity.tailscale",   title: "Tailscale",              keywords: "overlay mesh tailnet hostname up down" },
+    { id: "connectivity.firewall",    title: "Firewall",               keywords: "nftables nft inbound port allow block drop deny preset home public paranoid logging blocked security" },
 
     // --- Devices ---------------------------------------------------
     { id: "devices.audio.output",     title: "Audio output",           keywords: "sink speaker headphones device select volume" },
