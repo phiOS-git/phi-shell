@@ -175,6 +175,51 @@ WlSessionLock {
         }
         readonly property real chWidth: chMetrics.width
 
+        // One mono cell at the password field's own size — the block
+        // caret below is exactly this wide and tall, the fixed-cell
+        // terminal cursor.
+        TextMetrics {
+            id: fieldCell
+            font.family: Config.Appearance.fontMono
+            font.pixelSize: Config.Appearance.fontSize2
+            text: "0"
+        }
+
+        // Block-caret blink. Category C is the wrong bucket (its only two
+        // admitted effects are per-character typing and the scramble);
+        // this is Category A — "feedback di tracciamento ... continuo,
+        // leggero", linear — so it is a hard on/off toggle at half the
+        // tracking period (PHI_MOTION_A_PERIOD, no literal), running only
+        // while the field holds focus.
+        QtObject { id: caret; property bool on: true }
+        Timer {
+            id: caretBlink
+            interval: Config.Appearance.motionAPeriod / 2
+            running: passwordField.activeFocus
+            repeat: true
+            onTriggered: caret.on = !caret.on
+        }
+
+        // R3 #6 (PROGRESS, shell-restyle consolidated): the lock content
+        // fades in when the surface appears. The surface's own `color` —
+        // the opaque background — never animates: the ext-session-lock
+        // protocol requires a locked output to stay fully painted, so only
+        // this inner layer carries the fade. Category B, the same timing
+        // as every other panel/drawer transition. Children are left at
+        // their original indentation to keep this a minimal wrap.
+        Item {
+        id: contentRoot
+        anchors.fill: parent
+        property bool shown: false
+        opacity: shown ? 1 : 0
+        Component.onCompleted: shown = true
+        Behavior on opacity {
+            NumberAnimation {
+                duration: Config.Appearance.motionBDuration
+                easing.type: Config.Appearance.motionBEasingType
+            }
+        }
+
         Column {
             anchors.centerIn: parent
             spacing: surface.chWidth * Config.Appearance.space4
@@ -232,15 +277,37 @@ WlSessionLock {
             }
 
             Widgets.Panel {
+                id: passwordPanel
                 width: parent.width
                 height: passwordField.implicitHeight + padding * 2
+                // A terminal input has a hard edge, not a rounded card —
+                // the sharpest radius the grammar carries.
+                radius: Config.Appearance.radiusSmall
 
                 TextInput {
                     id: passwordField
                     width: parent.width
-                    font.family: Config.Appearance.fontUi
+                    // Old-terminal input: the monospace role, a solid
+                    // block caret (cursorDelegate), and `*` for every
+                    // masked character — the same bullet the Plymouth
+                    // passphrase prompt draws, so the two auth surfaces
+                    // read as one.
+                    font.family: Config.Appearance.fontMono
                     font.pixelSize: Config.Appearance.fontSize2
-                    color: Config.Appearance.textPrimary
+                    color: passwordPanel.contentColor
+                    passwordCharacter: "*"
+                    selectByMouse: false
+                    cursorDelegate: Rectangle {
+                        width: fieldCell.width
+                        height: fieldCell.height
+                        color: passwordPanel.contentColor
+                        visible: passwordField.activeFocus && caret.on
+                    }
+                    onTextChanged: {
+                        caret.on = true
+                        if (passwordField.activeFocus)
+                            caretBlink.restart()
+                    }
                     // `root.pam.` explicitly, not a bare `pam.`: this
                     // object lives inside `surface: Component { ... }`,
                     // instantiated once per screen at lock time rather
@@ -314,6 +381,21 @@ WlSessionLock {
                 repeat: true
                 onTriggered: clockTick.now = new Date()
             }
+        }
+
+        } // contentRoot
+
+        // Blank the pointer over the whole locked surface — mouse and
+        // touch alike. `acceptedButtons: NoButton` so a press still falls
+        // through and the keyboard focus forced above is untouched; this
+        // area only paints the cursor shape. A touch device that shows no
+        // pointer has nothing to blank and is unaffected. Outside
+        // contentRoot so it does not fade with the content.
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.NoButton
+            hoverEnabled: true
+            cursorShape: Qt.BlankCursor
         }
     }
     }
