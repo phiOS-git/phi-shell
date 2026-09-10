@@ -1,0 +1,16 @@
+[
+    {
+        "id": "btop",
+        "glyph": "monitor",
+        "match": "^phios-btop$",
+        "special": "btop",
+        "launch": ["kitty", "--class", "phios-btop", "-e", "btop"],
+        "alwaysShow": true
+    },
+    {
+        "id": "steam",
+        "glyph": "steam",
+        "match": "^steam$",
+        "workspace": "name:steam"
+    }
+]

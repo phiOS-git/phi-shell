@@ -727,7 +727,7 @@ Singleton {
     function openCodingSessionInTerminal(dir) {
         if (openSessProc.running || !dir) return
         // A fresh terminal running `phi agent code DIR`. kitty is the shell's
-        // terminal (Bar/modules/Btop.qml uses it).
+        // terminal (Bar/pinned-apps.json launches btop the same way).
         openSessProc.command = ["hyprctl", "dispatch", "exec",
             "kitty --class phios-agent-code -e sh -c 'phi agent code " + JSON.stringify(dir) + "'"]
         openSessProc.running = true

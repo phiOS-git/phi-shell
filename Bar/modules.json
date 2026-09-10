@@ -1,7 +1,7 @@
 [
     { "type": "phiAgent", "island": "left", "position": 0, "source": "internal:phi-agent", "capability": "" },
     { "type": "workspaces", "island": "left", "position": 10, "source": "internal:hyprland", "capability": "" },
-    { "type": "btop", "island": "left", "position": 20, "source": "internal:hyprland", "capability": "" },
+    { "type": "specialWorkspaces", "island": "left", "position": 15, "source": "internal:hyprland", "capability": "" },
     { "type": "activeWindow", "island": "center", "position": 0, "source": "internal:hyprland", "capability": "" },
     { "type": "volume", "island": "right", "position": 10, "source": "internal:pipewire", "capability": "" },
     { "type": "brightness", "island": "right", "position": 20, "source": "internal:brightnessctl", "capability": "backlight" },

@@ -21,8 +21,8 @@ import "../glyphs.js" as Glyphs
 //
 // OOP-11: a click opens the shared bar popout (Services/BarPopout.qml,
 // placeholder). The btop deep-link this module used to carry moved to the
-// dedicated left-isle btop button (Bar/modules/Btop.qml) — the single
-// control point for btop's special workspace.
+// left-isle btop button (Bar/modules/SpecialWorkspaces.qml, SF-3) — the
+// single control point for btop's special workspace.
 
 Widgets.Segment {
     id: root
@@ -49,7 +49,7 @@ Widgets.Segment {
 
     // OOP-11: icon + value; a click opens the shared bar popout
     // (placeholder). The btop deep-link this button used to carry is now
-    // the dedicated left-isle btop button (Bar/modules/Btop.qml).
+    // the left-isle btop button (Bar/modules/SpecialWorkspaces.qml).
     glyph: Glyphs.gpu
     label: Math.round(root.utilPercent) + "%"
     tone: root.tempAnomaly ? "error" : (root.utilAnomaly ? "warn" : "")

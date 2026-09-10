@@ -132,7 +132,7 @@ PanelWindow {
         case "gpu": return gpuComponent
         case "nightMode": return nightModeComponent
         case "phiAgent": return phiAgentComponent
-        case "btop": return btopComponent
+        case "specialWorkspaces": return specialWorkspacesComponent
         case "notifications": return notificationsComponent
         case "timer": return timerComponent
         default:
@@ -168,7 +168,10 @@ PanelWindow {
     Component { id: gpuComponent; Modules.Gpu { screen: bar.screen } }
     Component { id: nightModeComponent; Modules.NightMode { screen: bar.screen } }
     Component { id: phiAgentComponent; Modules.PhiAgent { screen: bar.screen } }
-    Component { id: btopComponent; Modules.Btop { screen: bar.screen } }
+    // SF-3: the pinned-app / special-workspace buttons (btop always, Steam
+    // when running), sitting right of the numbered workspaces. Replaces the
+    // old dedicated btop-only Modules.Btop.
+    Component { id: specialWorkspacesComponent; Modules.SpecialWorkspaces { screen: bar.screen } }
     Component { id: notificationsComponent; Modules.Notifications { screen: bar.screen } }
     Component { id: timerComponent; Modules.Timer { screen: bar.screen } }
 

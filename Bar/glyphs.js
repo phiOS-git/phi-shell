@@ -36,3 +36,5 @@ var gpu             = _c(0xF08AE)   // nf-md-expansion_card
 var bell            = _c(0xF009A)   // nf-md-bell
 var bellOff         = _c(0xF009B)   // nf-md-bell_off
 var monitor         = _c(0xF0A07)   // nf-md-monitor_dashboard (btop button)
+var steam           = _c(0xF03F7)   // nf-md-steam (Steam special-workspace button, SF-3)
+var gamepad         = _c(0xF0297)   // nf-md-gamepad_variant (generic app fallback)
