@@ -104,10 +104,17 @@ PanelWindow {
         return Options.sectionMatches(row.type, Services.SettingsPanel.query)
     }
 
-    // Enter in the search field acts on the top-ranked catalogue hit.
-    function _acceptTop() {
-        var id = Options.topResult(searchField.text)
-        if (!id || id.length === 0) return
+    // Enter in the search field acts on a ranked catalogue hit; pressing
+    // Enter again advances to the next one and wraps, so a query with
+    // several matches is walked by repeated Enter. `_acceptIdx` resets
+    // whenever the query changes (onTextChanged below).
+    property int _acceptIdx: 0
+    function _acceptCycle() {
+        var hits = Options.rank(searchField.text)
+        if (hits.length === 0) return
+        var i = root._acceptIdx % hits.length
+        var id = hits[i].id
+        root._acceptIdx = (i + 1) % hits.length
         if (Options.isSection(id)) Services.SettingsPanel.openSection(id)
         else Services.SettingsPanel.reveal(id)
     }
@@ -253,7 +260,7 @@ PanelWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     kind: "label"
                     mono: true
-                    text: "search settings — enter jumps to the first result"
+                    text: "search settings — enter cycles through the results"
                     visible: searchField.text.length === 0
                 }
                 TextInput {
@@ -266,8 +273,8 @@ PanelWindow {
                     font.family: Config.Appearance.fontMono
                     font.pixelSize: Config.Appearance.fontSize2
                     color: Config.Appearance.textPrimary
-                    onTextChanged: Services.SettingsPanel.query = text
-                    onAccepted: root._acceptTop()
+                    onTextChanged: { Services.SettingsPanel.query = text; root._acceptIdx = 0 }
+                    onAccepted: root._acceptCycle()
                     Keys.onEscapePressed: Services.SettingsPanel.hide()
                 }
 
