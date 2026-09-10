@@ -31,6 +31,10 @@ Column {
     property string title: ""
     property string caption: ""
     property string optionId: ""
+    // OOP-56: a group that shows rendered samples rather than controls.
+    // It gets a marked title and its body sits on a recessed surface, so
+    // a preview never reads as another block of settings.
+    property bool preview: false
     default property alias content: body.data
 
     width: parent ? parent.width : 0
@@ -63,14 +67,40 @@ Column {
         width: parent.width
         spacing: Math.round(root._ch * Config.Appearance.space1 * 0.6)
 
-        Widgets.StyledText {
+        Row {
             // Indented to line up with the row labels below (SettingsRow's
             // own _pad inset); the rule under it stays full-width.
             x: Config.Appearance.space2 * root._ch
+            spacing: Config.Appearance.space2 * root._ch
             visible: root.title.length > 0
-            kind: "label"
-            sizeStep: 0
-            text: root.title.toUpperCase()
+
+            Widgets.StyledText {
+                anchors.verticalCenter: parent.verticalCenter
+                kind: "label"
+                sizeStep: 0
+                text: root.title.toUpperCase()
+            }
+
+            // OOP-56: a preview group is tagged so it never reads as
+            // another block of settings.
+            Rectangle {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: root.preview
+                width: previewTag.implicitWidth + root._ch * Config.Appearance.space2
+                height: previewTag.implicitHeight + root._ch
+                radius: Config.Appearance.radiusSmall
+                color: "transparent"
+                border.width: Config.Appearance.borderWidth
+                border.color: Config.Appearance.border
+                Widgets.StyledText {
+                    id: previewTag
+                    anchors.centerIn: parent
+                    kind: "label"
+                    sizeStep: 0
+                    mono: true
+                    text: "preview"
+                }
+            }
         }
 
         Widgets.Separator {
@@ -83,7 +113,19 @@ Column {
     Item {
         id: bodyWrap
         width: parent.width
-        implicitHeight: body.implicitHeight
+        implicitHeight: root.preview ? body.implicitHeight + _previewPad * 2 : body.implicitHeight
+
+        readonly property real _previewPad: root.preview ? root._ch * Config.Appearance.space2 : 0
+
+        // OOP-56: a preview group's samples sit on a recessed surface.
+        Rectangle {
+            anchors.fill: parent
+            visible: root.preview
+            radius: Config.Appearance.radiusSmall
+            color: Config.Appearance.surface1
+            border.width: Config.Appearance.borderWidth
+            border.color: Config.Appearance.border
+        }
 
         Rectangle {
             anchors.fill: parent
@@ -109,7 +151,9 @@ Column {
 
         Column {
             id: body
-            width: parent.width
+            x: bodyWrap._previewPad
+            y: bodyWrap._previewPad
+            width: parent.width - bodyWrap._previewPad * 2
             spacing: 0
         }
     }

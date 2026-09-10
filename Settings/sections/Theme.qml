@@ -392,11 +392,12 @@ Column {
 
     SettingsGroup {
         title: "Colour preview"
+        preview: true
 
         SettingsRow {
             wide: true
             title: "Live preview"
-            description: "Rendered from the current overrides."
+            description: "Rendered from the current overrides — not editable here."
             Column {
                 width: parent.width
                 spacing: root.gap
