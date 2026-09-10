@@ -91,6 +91,12 @@ Singleton {
     property string _serial: ""
     property bool _serialResolved: false
 
+    // Config.Capabilities.chroma resolves from an async probe, and this
+    // singleton may instantiate (and load chroma.json, and first _render())
+    // before it lands. Re-render the moment it does, so a restored per-key
+    // map / integration paints without waiting for the first user action.
+    onPresentChanged: if (root.present) root._render()
+
     // ==================================================================
     // setters
     // ==================================================================
@@ -157,8 +163,10 @@ Singleton {
 
     // One-shot notification blink of the function row. Caller:
     // Services/Notifications.qml onNotification, gated on !dnd there.
+    // `present` is not checked here — _render() guards on it, and this can
+    // be called before the async capability probe resolves.
     function notifyBlink() {
-        if (!root.present || !root.enabled || !root.integrations.notifications) return
+        if (!root.enabled || root.integrations.notifications !== true) return
         blinkTimer._count = 0
         root._blinkOn = true
         root._render()
