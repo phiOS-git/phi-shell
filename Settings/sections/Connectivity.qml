@@ -31,8 +31,17 @@ Column {
     Component.onCompleted: {
         Services.NetStats.watch()
         Services.Vpn.refresh()
+        Services.Firewall.refresh()
     }
     Component.onDestruction: Services.NetStats.unwatch()
+
+    function _fmtBlocked(b) {
+        var when = b.time ? new Date(b.time).toLocaleString(Qt.locale(), "dd MMM  HH:mm") : "—"
+        var src = (b.src && b.src.length > 0) ? b.src : "?"
+        var proto = (b.proto && b.proto.length > 0) ? b.proto.toLowerCase() : "?"
+        var dport = (b.dport && b.dport.length > 0) ? b.dport : "?"
+        return when + "   " + src + "  →  " + proto + " " + dport
+    }
 
     // --- Bluetooth ---------------------------------------------------
     SettingsGroup {
@@ -250,6 +259,182 @@ Column {
             wide: true
             title: "Last error"
             Widgets.StyledText { width: parent.width; wrapMode: Text.WordWrap; tone: "error"; text: Services.Tailscale.lastError }
+        }
+    }
+
+    // --- Firewall (nftables) ----------------------------------
+    SettingsGroup {
+        id: fwGroup
+        title: "Firewall"
+        optionId: "connectivity.firewall"
+        property string fwProto: "tcp"
+        caption: "One nftables table (inet phi), written to /etc/nftables.conf and loaded at boot by nftables.service. Control goes through `sudo -n` and needs profiles/desktop/system/etc/sudoers.d/49-phi-firewall installed."
+
+        SettingsRow {
+            title: "Inbound firewall"
+            description: Services.Firewall.enabled
+                ? ("Default-deny. " + Services.Firewall.rules.length
+                    + (Services.Firewall.rules.length === 1 ? " open port." : " open ports."))
+                : "Off — every inbound connection is accepted."
+            Widgets.Toggle {
+                checked: Services.Firewall.enabled
+                enabled: Services.Firewall.nftAvailable && !Services.Firewall.busy
+                onToggled: (v) => v ? Services.Firewall.enable() : Services.Firewall.disable()
+            }
+        }
+
+        SettingsRow {
+            visible: !Services.Firewall.nftAvailable
+            wide: true
+            title: "nftables missing"
+            Widgets.StyledText {
+                width: parent.width; wrapMode: Text.WordWrap; tone: "warn"
+                text: "Install the `nftables` package — it is declared in the desktop profile."
+            }
+        }
+
+        SettingsRow {
+            visible: Services.Firewall.drifted
+            wide: true
+            title: Services.Firewall.enabled ? "Not enforced" : "Still loaded"
+            Widgets.StyledText {
+                width: parent.width; wrapMode: Text.WordWrap; tone: "error"
+                text: Services.Firewall.driftReason
+            }
+        }
+
+        SettingsRow {
+            wide: true
+            title: "Preset"
+            description: "home — LAN-friendly, answers ping.  public — strict, silent.  paranoid — no ICMP, logs everything."
+            Flow {
+                width: parent.width
+                spacing: root._gap
+                Repeater {
+                    model: Services.Firewall.presetNames
+                    Widgets.StyledButton {
+                        required property string modelData
+                        label: modelData
+                        active: Services.Firewall.preset === modelData
+                        enabled: !Services.Firewall.busy
+                        onClicked: Services.Firewall.setPreset(modelData)
+                    }
+                }
+            }
+        }
+
+        SettingsRow {
+            wide: true
+            title: "Open ports"
+            description: Services.Firewall.preset === "home"
+                ? "Allowed inbound while the firewall is on."
+                : ("Held — the " + Services.Firewall.preset + " preset ignores these; only 'home' applies them.")
+            Column {
+                width: parent.width
+                spacing: 6
+
+                Repeater {
+                    model: Services.Firewall.rules
+                    Widgets.ListRow {
+                        required property var modelData
+                        width: parent.width
+                        label: modelData.port + "/" + modelData.proto
+                            + (modelData.from && modelData.from.length > 0 ? "   from " + modelData.from : "")
+                        value: "remove"
+                        onActivated: Services.Firewall.remove(modelData.id)
+                    }
+                }
+                Widgets.StyledText {
+                    visible: Services.Firewall.rules.length === 0
+                    kind: "label"; sizeStep: 0; text: "No ports opened."
+                }
+
+                Flow {
+                    width: parent.width
+                    spacing: root._gap
+                    Widgets.TextField {
+                        id: fwPort
+                        width: root._ch * 12
+                        placeholder: "port or N-M"
+                        onCommitted: fwAdd.add()
+                    }
+                    Widgets.StyledButton {
+                        label: "tcp"; active: fwGroup.fwProto === "tcp"
+                        onClicked: fwGroup.fwProto = "tcp"
+                    }
+                    Widgets.StyledButton {
+                        label: "udp"; active: fwGroup.fwProto === "udp"
+                        onClicked: fwGroup.fwProto = "udp"
+                    }
+                    Widgets.TextField {
+                        id: fwFrom
+                        width: root._ch * 16
+                        placeholder: "from CIDR (optional)"
+                        onCommitted: fwAdd.add()
+                    }
+                    Widgets.StyledButton {
+                        id: fwAdd
+                        label: "Add"
+                        enabled: !Services.Firewall.busy && fwPort.text.trim().length > 0
+                        function add() {
+                            if (fwPort.text.trim().length === 0) return
+                            Services.Firewall.allow(fwPort.text, fwGroup.fwProto, fwFrom.text)
+                            fwPort.text = ""
+                            fwFrom.text = ""
+                        }
+                        onClicked: add()
+                    }
+                }
+            }
+        }
+
+        SettingsRow {
+            title: "Log dropped packets"
+            description: "Rate-limited kernel-log entries for blocked inbound traffic."
+            Widgets.Toggle {
+                checked: Services.Firewall.logging
+                enabled: !Services.Firewall.busy
+                onToggled: (v) => Services.Firewall.setLogging(v)
+            }
+        }
+
+        SettingsRow {
+            wide: true
+            visible: Services.Firewall.logging
+            title: "Recently blocked"
+            Column {
+                width: parent.width
+                spacing: 4
+                Row {
+                    spacing: root._gap
+                    Widgets.StyledButton { label: "Refresh"; onClicked: Services.Firewall.refreshBlocked() }
+                    Widgets.StyledText {
+                        kind: "label"; sizeStep: 0
+                        text: Services.Firewall.blocked.length + " logged"
+                    }
+                }
+                Repeater {
+                    model: Services.Firewall.blocked.slice(0, 20)
+                    Widgets.StyledText {
+                        required property var modelData
+                        width: parent.width
+                        kind: "label"; sizeStep: 0; mono: true
+                        elide: Text.ElideRight
+                        text: root._fmtBlocked(modelData)
+                    }
+                }
+                Widgets.StyledText {
+                    visible: Services.Firewall.blocked.length === 0
+                    kind: "label"; sizeStep: 0; text: "Nothing logged yet."
+                }
+            }
+        }
+
+        SettingsRow {
+            visible: Services.Firewall.lastError.length > 0
+            wide: true
+            title: "Last error"
+            Widgets.StyledText { width: parent.width; wrapMode: Text.WordWrap; tone: "error"; text: Services.Firewall.lastError }
         }
     }
 
