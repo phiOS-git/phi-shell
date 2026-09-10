@@ -39,12 +39,7 @@ Column {
     readonly property real gap: chWidth * Config.Appearance.space2
 
     property string pendingVariant: Config.Appearance.variant
-    property string wallpaperPath: "…"
     readonly property string testString: "0008 iIlL1 g9qCGQ ~ -+=>"
-
-    Component.onCompleted: {
-        Config.Settings.get("wallpaper.path", (v, code) => root.wallpaperPath = v || "(unset)")
-    }
 
     function setVariant(v) {
         root.pendingVariant = v
@@ -358,28 +353,172 @@ Column {
         }
     }
 
-    // --- Wallpaper (batch E rebuilds this fully) -----------------
+    // --- Wallpaper (settings-overhaul batch D) ------------------
     SettingsGroup {
         title: "Wallpaper"
-        optionId: "theme.wallpaper.image"
-        caption: "Full wallpaper controls (solid colour, images, fit modes, textures) land in a later pass."
+        Component.onCompleted: Services.Background.refreshAvailable()
 
         SettingsRow {
-            title: "Current"
-            Widgets.StyledText { width: parent.width; elide: Text.ElideMiddle; text: root.wallpaperPath }
+            optionId: "theme.wallpaper.color"
+            title: "Solid colour"
+            description: "The base layer — always visible where an image does not cover the screen."
+            wide: true
+            Widgets.ColorField {
+                value: Services.Background.color
+                onCommitted: (hex) => Services.Background.setColor(hex)
+            }
         }
+
         SettingsRow {
-            title: "Set from a path"
+            optionId: "theme.wallpaper.image"
+            title: "Image"
+            description: "Pick from the wallpaper folder, or add one from a path (it is copied into the folder and selected). Any image is allowed."
+            wide: true
             Column {
                 width: parent.width
+                spacing: root.gap
+
+                Flow {
+                    width: parent.width
+                    spacing: 6
+
+                    Rectangle {
+                        width: root.chWidth * 12; height: root.chWidth * 8
+                        radius: Config.Appearance.radiusSmall
+                        color: Config.Appearance.surface1
+                        border.width: Config.Appearance.borderWidth
+                        border.color: Services.Background.image.length === 0
+                            ? Config.Appearance.accent : Config.Appearance.border
+                        Widgets.StyledText { anchors.centerIn: parent; kind: "label"; sizeStep: 0; text: "none" }
+                        TapHandler { onTapped: Services.Background.clearImage() }
+                    }
+
+                    Repeater {
+                        model: Services.Background.available
+                        Rectangle {
+                            required property string modelData
+                            width: root.chWidth * 12; height: root.chWidth * 8
+                            radius: Config.Appearance.radiusSmall
+                            color: Config.Appearance.surface1
+                            clip: true
+                            border.width: Config.Appearance.borderWidth
+                            border.color: Services.Background.image === modelData
+                                ? Config.Appearance.accent : Config.Appearance.border
+                            Image {
+                                anchors.fill: parent
+                                anchors.margins: Config.Appearance.borderWidth
+                                source: "file://" + modelData
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                                sourceSize.width: 256
+                            }
+                            TapHandler { onTapped: Services.Background.setImage(modelData) }
+                        }
+                    }
+                }
+
+                Row {
+                    width: parent.width
+                    spacing: root.gap
+                    Widgets.TextField {
+                        id: wpPath
+                        width: parent.width - addBtn.implicitWidth - openBtn.implicitWidth - root.gap * 2
+                        mono: false
+                        placeholder: "Path to an image…"
+                        onCommitted: root._addWallpaper(text)
+                    }
+                    Widgets.StyledButton { id: addBtn; label: "Add"; onClicked: root._addWallpaper(wpPath.text) }
+                    Widgets.StyledButton {
+                        id: openBtn
+                        label: "Open folder"
+                        onClicked: Quickshell.execDetached(["xdg-open", Config.Paths.wallpaperDir])
+                    }
+                }
+            }
+        }
+
+        SettingsRow {
+            optionId: "theme.wallpaper.mode"
+            title: "Fit mode"
+            enabled: Services.Background.image.length > 0
+            Row {
                 spacing: 6
-                Widgets.TextField { id: wallpaperInput; width: parent.width; mono: false; placeholder: "Path to an image…" }
-                Widgets.StyledButton { label: "Set"; onClicked: root._setWallpaper(wallpaperInput.text) }
+                Repeater {
+                    model: ["cover", "contain", "stretch", "repeat"]
+                    Widgets.StyledButton {
+                        required property string modelData
+                        label: modelData
+                        active: Services.Background.mode === modelData
+                        onClicked: Services.Background.setMode(modelData)
+                    }
+                }
+            }
+        }
+
+        SettingsRow {
+            optionId: "theme.wallpaper.scale"
+            title: "Scale"
+            description: "Zoom for contain and repeat; ignored for cover and stretch."
+            enabled: Services.Background.image.length > 0
+                && (Services.Background.mode === "contain" || Services.Background.mode === "repeat")
+            Widgets.NumberField {
+                value: Services.Background.scale
+                step: 0.1; decimals: 1; from: 0.1; to: 4.0
+                onCommitted: (v) => Services.Background.setScale(v)
+            }
+        }
+
+        SettingsRow {
+            optionId: "theme.wallpaper.texture"
+            title: "Texture"
+            description: Services.Background.textureApplies
+                ? "A generated grain added over the solid colour. Generated once, not at runtime."
+                : "Available only when there is no image, or the image is contain / repeat."
+            enabled: Services.Background.textureApplies
+            wide: true
+            Column {
+                width: parent.width
+                spacing: root.gap
+                Flow {
+                    width: parent.width
+                    spacing: 6
+                    Widgets.StyledButton {
+                        label: "none"
+                        active: Services.Background.texture.length === 0
+                        onClicked: Services.Background.setTexture("", Services.Background.textureIntensity)
+                    }
+                    Repeater {
+                        model: Config.Appearance.textureModes
+                        Widgets.StyledButton {
+                            required property string modelData
+                            label: modelData
+                            active: Services.Background.texture === modelData
+                            onClicked: Services.Background.setTexture(modelData, Services.Background.textureIntensity)
+                        }
+                    }
+                }
+                Row {
+                    width: parent.width
+                    spacing: root.gap
+                    visible: Services.Background.texture.length > 0
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Intensity" }
+                    Widgets.Meter {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width - 14 * root.chWidth
+                        interactive: true
+                        value: Services.Background.textureIntensity / 100
+                        onReleased: (v) => Services.Background.setTextureIntensity(Math.round(v * 100))
+                    }
+                    Widgets.StyledText {
+                        anchors.verticalCenter: parent.verticalCenter
+                        mono: true; text: Services.Background.textureIntensity + "%"
+                    }
+                }
             }
         }
     }
 
-    function _setWallpaper(srcPath) {
+    function _addWallpaper(srcPath) {
         let p = (srcPath || "").trim()
         if (p.length === 0) return
         if (p === "~" || p.startsWith("~/")) {
@@ -399,8 +538,8 @@ Column {
             onStreamFinished: {
                 const dest = this.text.trim()
                 if (dest.length === 0) return
-                root.wallpaperPath = dest
-                Services.Background.setPath(dest)
+                Services.Background.setImage(dest)
+                Services.Background.refreshAvailable()
             }
         }
     }

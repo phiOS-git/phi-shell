@@ -144,5 +144,9 @@ Singleton {
     readonly property string motionCScramble: "600ms"
     readonly property string motionCEasing: "linear"
     readonly property string motionDDuration: "0ms"
+
+    // --- Wallpaper texture catalogue (Out-of-plan: settings-overhaul) -----
+    readonly property string textureModes: "grain noise paper leather rock fabric"
+    readonly property string textureIntensityDefault: "40"
 }
 ```

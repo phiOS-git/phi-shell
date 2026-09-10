@@ -186,6 +186,21 @@ Singleton {
     readonly property string motionCEasing: Tokens.motionCEasing
     readonly property int motionDDuration: _ms(Tokens.motionDDuration)
 
+    // --- Wallpaper textures (OOP: settings-overhaul) ----------------------
+    // The catalogue is a design decision (design/tokens.common.sh
+    // PHI_TEXTURE_MODES); the settings panel's wallpaper section reads it
+    // from here rather than hardcoding the list or touching Tokens directly.
+    // Falls back to the known set for the hot-reload window before `phi
+    // theme set` has regenerated Tokens.qml with the new key.
+    readonly property var textureModes: {
+        var s = String(Tokens.textureModes || "").trim()
+        return s.length > 0 ? s.split(/\s+/) : ["grain", "noise", "paper", "leather", "rock", "fabric"]
+    }
+    readonly property int textureIntensityDefault: {
+        var n = parseInt(Tokens.textureIntensityDefault)
+        return isNaN(n) ? 40 : n
+    }
+
     // --- helpers ------------------------------------------------------
     // parseFloat with a fallback. A design-token string always carries its
     // unit ("14px", "2px") and parseFloat stops at the unit. `_pxOr`'s

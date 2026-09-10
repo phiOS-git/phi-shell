@@ -53,6 +53,12 @@ Singleton {
     }
     readonly property string wallpaperDir: root.dataDir + "/wallpapers"
 
+    // Out-of-plan: settings-overhaul batch D. Generated wallpaper texture
+    // overlays (`phi wallpaper texture`), cached by "<mode>-<intensity>.png"
+    // — a real generated asset, not disposable state, so $XDG_DATA_HOME like
+    // the wallpapers beside it.
+    readonly property string texturesDir: root.dataDir + "/textures"
+
     // OOP-02 (shell restyle): live, per-user overrides for the design
     // tokens the settings panel's Theme section exposes as editable
     // (accent, palette, font families, the font/spacing scale, radii).
