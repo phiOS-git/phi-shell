@@ -110,6 +110,11 @@ Singleton {
         function ipcTo(target) { return argHas("ipc call " + target) }
 
         // A submap binding, or the entry points into the alt-tab submap.
+        // The resize submap (Super+R and its arrow/hjkl children) is window
+        // management, not window switching — classify it before the generic
+        // submap rule catches it.
+        if (sub === "resize" || d.indexOf("resize mode") !== -1)
+            return "Window management"
         if (sub.length > 0 || argHas("submap") || d.indexOf("cycle to the") !== -1)
             return "Window switching"
 
@@ -144,7 +149,11 @@ Singleton {
             "focusmonitor", "movecurrentworkspacetomonitor"]
         if (wmDisp.indexOf(disp) !== -1
                 || d.indexOf("window") !== -1 || d.indexOf("workspace") !== -1
-                || d.indexOf("focus") !== -1)
+                || d.indexOf("focus") !== -1
+                || d.indexOf("fullscreen") !== -1 || d.indexOf("floating") !== -1
+                || d.indexOf("split") !== -1 || d.indexOf("scratchpad") !== -1
+                || d.indexOf("monitor") !== -1 || argHas("hyprctl dispatch fullscreen")
+                || argHas("focusmonitor") || argHas("movewindow"))
             return "Window management"
 
         // Anything else that just runs a command is an application launch.
