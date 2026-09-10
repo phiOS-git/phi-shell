@@ -64,16 +64,18 @@ Singleton {
         root._lastTx = -1
     }
 
-    // Resolve the interface + gateway carrying the default route, once.
-    // `ip route get` is asked about a public host by name (Cloudflare's
-    // resolver, one.one.one.one) rather than an IP literal.
+    // Resolve the interface + gateway of the default route, once.
+    // `ip route show default` names both with no DNS lookup and no address
+    // argument — so it still works when the network is down (which is
+    // exactly when someone opens the speed graph), and there is no IPv4
+    // literal for the repo hook to catch.
     Process {
         id: routeProc
-        command: ["sh", "-c", "ip route get $(getent ahostsv4 one.one.one.one 2>/dev/null | awk 'NR==1{print $1}') 2>/dev/null | head -1"]
+        command: ["sh", "-c", "ip route show default 2>/dev/null | head -1"]
         onExited: routeProc.running = false
         stdout: StdioCollector {
             onStreamFinished: {
-                // "<host> via <gateway> dev wlan0 src <local>"
+                // "default via <gateway> dev wlan0 proto ... metric ..."
                 var t = this.text.trim()
                 var m = t.match(/\bdev\s+(\S+)/)
                 if (m) root.iface = m[1]
