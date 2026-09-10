@@ -79,13 +79,22 @@ WlSessionLock {
     property int attempts: 0
     property string errorText: ""
 
-    // Set to true ONLY in the PamResult.Success branch below. It is the
-    // conceal fade's trigger and nothing else reads or writes it. `locked`
-    // is never cleared directly any more — the surface's own conceal
-    // animation clears it when the fade finishes (see contentRoot). This
-    // stays fail-closed: the single writer of `locked = false` is still
-    // one deterministic path gated on Success, and if the animation never
-    // finishes the screen stays locked, never the reverse.
+    // Set to true ONLY in the PamResult.Success branch below, and reset to
+    // false at the start of every lock (lockIpc.lock()). It is the conceal
+    // fade's trigger and nothing else reads or writes it. `locked` is never
+    // cleared directly any more — the surface's own conceal animation clears
+    // it when the fade finishes (see contentRoot).
+    //
+    // The reset is load-bearing, and fail-closed: `authenticated` is a
+    // level, not an edge, but the unlock only happens on its rising edge
+    // (Connections.onAuthenticatedChanged → concealFade). Without the reset,
+    // the second lock of a session starts with `authenticated` still true
+    // from the first unlock, so `authenticated = true` on the next Success
+    // is a no-op that fires no change signal, the conceal fade never runs,
+    // and `locked` is never cleared — the screen stays locked with a
+    // correct password. Writing `authenticated = false` can only ever keep
+    // a screen locked, never open one; the single writer of `true` is still
+    // the one deterministic path gated on PamResult.Success.
     property bool authenticated: false
 
     // No `id:` on any of these three — a bare id identical to a property
@@ -165,6 +174,9 @@ WlSessionLock {
         function lock(): void {
             root.attempts = 0
             root.errorText = ""
+            // Per-lock reset — see the `authenticated` property comment for
+            // why a stale `true` here would make this lock un-unlockable.
+            root.authenticated = false
             root.locked = true
             root.pam.start()
         }
