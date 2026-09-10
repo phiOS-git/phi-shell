@@ -135,9 +135,13 @@ PanelWindow {
             // OOP-20 (item 2): the dock body starts below the bar — it was
             // covering it. The scrim above still spans the whole output,
             // so the bar stays dimmed ("the shadow should cover the bar").
-            anchors.topMargin: Services.BarMetrics.height
+            // features-change (item 2): the same small inset (panelGap) on
+            // all four sides — below the bar and off the three screen edges.
+            anchors.topMargin: Services.BarMetrics.height + Config.Appearance.panelGap
             anchors.bottom: parent.bottom
+            anchors.bottomMargin: Config.Appearance.panelGap
             anchors.right: parent.right
+            anchors.rightMargin: Config.Appearance.panelGap
             width: root.dockWidth
 
             // OOP-09: the slide is a self-relative Translate (0 shown,
@@ -147,7 +151,7 @@ PanelWindow {
             // edge) the first time it opened. `_animReady` keeps the
             // initial settle instant.
             transform: Translate {
-                x: root.shown ? 0 : dock.width
+                x: root.shown ? 0 : dock.width + Config.Appearance.panelGap
                 Behavior on x {
                     enabled: root._animReady
                     NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
@@ -159,6 +163,7 @@ PanelWindow {
 
             Widgets.Panel {
                 anchors.fill: parent
+                radius: Config.Appearance.panelRadius
 
                 Column {
                     id: header

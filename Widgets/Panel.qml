@@ -28,6 +28,11 @@ Item {
 
     default property alias content: contentItem.data
     property real padding: Config.Appearance.panelPadding
+    // features-change (item 4): the OSD pill needs a thin vertical inset
+    // and a wider horizontal one (overlay-reference.png). Both default to
+    // `padding`, so every existing caller is unchanged.
+    property real paddingV: root.padding
+    property real paddingH: root.padding
     // OOP-05: overridable so the runner can round more (radiusLarge) than
     // every other panel, per shell doc §3 / the user's directive.
     property real radius: Config.Appearance.radiusBase
@@ -79,7 +84,10 @@ Item {
     Item {
         id: contentItem
         anchors.fill: parent
-        anchors.margins: root.padding
+        anchors.topMargin: root.paddingV
+        anchors.bottomMargin: root.paddingV
+        anchors.leftMargin: root.paddingH
+        anchors.rightMargin: root.paddingH
     }
 
     Behavior on opacity {

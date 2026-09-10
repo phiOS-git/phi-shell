@@ -122,6 +122,9 @@ Singleton {
     readonly property string borderWidth: "1px"
     readonly property string borderWidthStrong: "1px"
     readonly property string panelPadding: "8px"
+    readonly property string panelGap: "4px"
+    readonly property string panelRadius: "6px"
+    readonly property string sliderThickness: "4px"
 
     // --- User-tunable scale (identity by default) --------------------------
     readonly property string fontScale: "1"

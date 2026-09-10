@@ -113,11 +113,19 @@ Singleton {
     // INACTIVE_OPACITY (not a colour, size or duration — the I-05 ban does
     // not reach a bare mix ratio).
     readonly property color panelHover: _mix(root.colorMain, root.colorOpposite, 0.08)
-    // OOP-21: a bar button rests on the wallpaper with no fill, so its
-    // hover cannot be a solid mix — it is a faint translucent wash of the
-    // text colour instead.
-    readonly property color barButtonHover: Qt.rgba(root.colorOpposite.r,
-        root.colorOpposite.g, root.colorOpposite.b, 0.14)
+    // features-change (item 3): a bar button now carries a resting surface
+    // of its own — a translucent main-coloured fill and a hairline — so
+    // each control reads as a discrete button on the wallpaper. This
+    // reverses OOP-21's "bare opposite-coloured glyph, boxed only when
+    // selected" rest state, on the user's directive. The selected state is
+    // unchanged (the full opposite/main inversion in
+    // Widgets/WidgetStates.js). Translucent so the wallpaper still shows
+    // through — a bare rgba ratio, the same latitude panelHover takes.
+    // Hover reuses panelHover (one opaque step toward the contrast colour).
+    readonly property color barButtonBackground: Qt.rgba(root.colorMain.r,
+        root.colorMain.g, root.colorMain.b, 0.72)
+    readonly property color barButtonBorder: Qt.rgba(root.colorOpposite.r,
+        root.colorOpposite.g, root.colorOpposite.b, 0.22)
 
     // --- Typography ----------------------------------------------------
     readonly property string fontMono: _tok("font-mono", Tokens.fontMono)
@@ -158,6 +166,18 @@ Singleton {
     readonly property real borderWidth: _px(Tokens.borderWidth)
     readonly property real borderWidthStrong: _pxOr(Tokens.borderWidthStrong, root.borderWidth)
     readonly property real panelPadding: _pxOr(Tokens.panelPadding, root.radiusBase)
+
+    // features-change: the inset the below-the-bar surfaces (the notification
+    // and chat docks, the bar popouts, the calendar) keep from the bar and
+    // the screen edges, and the corner radius they round at. Both per-user
+    // editable (Theme › Shape & spacing → panel-gap / panel-radius). The
+    // fallbacks cover the hot-reload window before `phi theme set` has
+    // regenerated Tokens.qml with the two new keys.
+    readonly property real panelGap: _pxOr(_tok("panel-gap", Tokens.panelGap), 4)
+    readonly property real panelRadius: _pxOr(_tok("panel-radius", Tokens.panelRadius), 6)
+    // features-change: the visible track height of Widgets/Meter — a thin
+    // rail (references/overlay-reference.png). Not settings-exposed.
+    readonly property real sliderThickness: _pxOr(Tokens.sliderThickness, 4)
 
     // --- Layering ------------------------------------------------------
     readonly property int zBase: parseInt(Tokens.zBase)
@@ -294,6 +314,8 @@ Singleton {
         case "radius-base": return Tokens.radiusBase
         case "radius-small": return root._numString(Tokens.radiusSmall, Tokens.radiusBase)
         case "radius-large": return root._numString(Tokens.radiusLarge, Tokens.radiusBase)
+        case "panel-gap": return root._numString(Tokens.panelGap, "4px")
+        case "panel-radius": return root._numString(Tokens.panelRadius, "6px")
         }
         return ""
     }

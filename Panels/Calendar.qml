@@ -64,8 +64,9 @@ PanelWindow {
             id: cardWrap
             anchors.top: parent.top
             anchors.right: parent.right
-            anchors.topMargin: Services.BarMetrics.height
-            anchors.rightMargin: root.chWidth * Config.Appearance.space2
+            // features-change (item 1): the same minimal gap the docks keep.
+            anchors.topMargin: Services.BarMetrics.height + Config.Appearance.panelGap
+            anchors.rightMargin: Config.Appearance.panelGap
             width: root.chWidth * 34
             height: panel.height
 
@@ -75,6 +76,7 @@ PanelWindow {
             Widgets.Panel {
             id: panel
             width: parent.width
+            radius: Config.Appearance.panelRadius
             height: bodyCol.implicitHeight + padding * 2
 
             Column {

@@ -64,12 +64,13 @@ function resolve(flags) {
 // `ambient` selects the surface family:
 //   "panel" (default) — main background, opposite border/text; the
 //     selected state inverts to an opposite block with main text.
-//   "isle" (the status bar) — OOP-21: NO resting fill and no border at
-//     all. A bar button is a bare opposite-coloured glyph/label on the
-//     wallpaper; only the selected state paints a block, and it is the
-//     same opposite-bg / main-text inversion a panel uses (item 6: the
-//     bar's colours were the inverse of a panel's — they now match;
-//     item 10: the isle background is gone).
+//   "isle" (the status bar) — features-change (item 3): a bar button now
+//     has a resting surface of its own, a translucent main-coloured fill
+//     (barButtonBackground) and a hairline (barButtonBorder), so each
+//     control reads as a discrete button on the wallpaper. This reverses
+//     OOP-21's bare-glyph rest state on the user's directive; the selected
+//     state is unchanged — the same opposite-bg / main-text inversion a
+//     panel uses.
 function surfaceColors(appearance, resolvedState, ambient) {
     if (ambient === "isle") {
         switch (resolvedState) {
@@ -77,16 +78,17 @@ function surfaceColors(appearance, resolvedState, ambient) {
             return { bg: appearance.colorOpposite, fg: appearance.colorMain,
                      border: appearance.colorOpposite }
         case "invalid":
-            return { bg: "transparent", fg: appearance.error, border: appearance.error }
+            return { bg: appearance.barButtonBackground, fg: appearance.error,
+                     border: appearance.error }
         case "focus":
-            return { bg: "transparent", fg: appearance.colorOpposite,
+            return { bg: appearance.barButtonBackground, fg: appearance.colorOpposite,
                      border: appearance.focusRing }
         case "hover":
-            return { bg: appearance.barButtonHover, fg: appearance.colorOpposite,
-                     border: "transparent" }
+            return { bg: appearance.panelHover, fg: appearance.colorOpposite,
+                     border: appearance.barButtonBorder }
         default:
-            return { bg: "transparent", fg: appearance.colorOpposite,
-                     border: "transparent" }
+            return { bg: appearance.barButtonBackground, fg: appearance.colorOpposite,
+                     border: appearance.barButtonBorder }
         }
     }
 

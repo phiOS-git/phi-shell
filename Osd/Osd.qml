@@ -43,10 +43,13 @@ PanelWindow {
     }
     readonly property real chWidth: chMetrics.width
     readonly property real osdWidth: chWidth * 26
+    // features-change (item 4): thin top/bottom inset, wider left/right one
+    // — the overlay-reference pill proportions.
+    readonly property real osdPadV: chWidth * Config.Appearance.space1
+    readonly property real osdPadH: chWidth * Config.Appearance.space3
 
     implicitWidth: root.osdWidth
-    implicitHeight: chMetrics.height + Config.Appearance.panelPadding * 2
-        + Config.Appearance.space2 * chWidth
+    implicitHeight: chMetrics.height + root.osdPadV * 2 + chWidth * Config.Appearance.space1
     // margins below the bottom anchor point — matches every other
     // PanelWindow's "no opacity property" workaround (Notifications/
     // Toast.qml's own note, first surfaced there).
@@ -87,6 +90,9 @@ PanelWindow {
 
         Widgets.Panel {
             anchors.fill: parent
+            radius: Config.Appearance.panelRadius
+            paddingV: root.osdPadV
+            paddingH: root.osdPadH
 
             Item {
                 anchors.fill: parent
@@ -106,6 +112,8 @@ PanelWindow {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     mono: true
+                    // features-change (item 4): a bolder readout.
+                    kind: "title"
                     sizeStep: 1
                     horizontalAlignment: Text.AlignRight
                     width: 4 * root.chWidth
@@ -120,7 +128,7 @@ PanelWindow {
                     anchors.rightMargin: root.chWidth * Config.Appearance.space2
                     value: root.value
                     fillColor: (root.kind === "volume" && Services.AudioBridge.muted)
-                        ? Config.Appearance.textFaint : Config.Appearance.accent
+                        ? Config.Appearance.textFaint : Config.Appearance.textPrimary
                 }
             }
         }

@@ -18,8 +18,12 @@ Item {
 
     property real value: 0            // 0..1, clamped on read
     property bool interactive: false
-    property color fillColor: Config.Appearance.accent
-    property color trackColor: Config.Appearance.surface2
+    // features-change (item 4): the fill is the ink colour, never accent
+    // (overlay-reference.png); the track is a faint wash of the same ink so
+    // it reads on any surface the meter sits on. Both still overridable.
+    property color fillColor: Config.Appearance.textPrimary
+    property color trackColor: Qt.rgba(Config.Appearance.textPrimary.r,
+        Config.Appearance.textPrimary.g, Config.Appearance.textPrimary.b, 0.15)
 
     // `moved` fires continuously during a drag (cheap live updates, e.g.
     // a Pipewire volume property); `released` fires once when the drag
@@ -32,18 +36,26 @@ Item {
     property real _dragFrac: 0
     readonly property real _shown: root._dragging ? root._dragFrac : root._v
 
+    // The row still reserves a full text line so callers that vertically
+    // centre against it are unchanged; the visible rail is a few px tall,
+    // centred in that line, and the MouseArea keeps the whole line as its
+    // hit target.
     implicitHeight: Config.Appearance.fontSize1
     implicitWidth: Config.Appearance.fontSize1 * 14
 
     Rectangle {
-        anchors.fill: parent
-        radius: Config.Appearance.radiusPill
+        id: track
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        height: Config.Appearance.sliderThickness
+        radius: height / 2
         color: root.trackColor
 
         Rectangle {
             width: root._shown * parent.width
             height: parent.height
-            radius: Config.Appearance.radiusPill
+            radius: height / 2
             color: root.fillColor
             Behavior on width {
                 enabled: !root._dragging

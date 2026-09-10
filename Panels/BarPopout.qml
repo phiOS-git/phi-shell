@@ -79,10 +79,10 @@ PanelWindow {
         Item {
             id: cardWrap
             anchors.top: parent.top
-            // OOP-22: a small gap below the bar (item 4: "positioned too
-            // low" — was an over-estimated bar height, now the real one
-            // plus one rhythm unit of breathing room).
-            anchors.topMargin: root.barHeight + root.chWidth * Config.Appearance.space1
+            // features-change (item 1): sit right under the bar — the same
+            // minimal gap the docks keep (panelGap), not a full rhythm unit
+            // (OOP-22 left it "too low").
+            anchors.topMargin: root.barHeight + Config.Appearance.panelGap
             width: root.chWidth * 36
             height: panel.height
 
@@ -90,16 +90,17 @@ PanelWindow {
             // right edge, clamped to the screen; fall back to the right
             // corner when there is no anchor.
             x: Services.BarPopout.anchorRightX > 0
-                ? Math.max(root.chWidth,
-                    Math.min(parent.width - width - root.chWidth,
+                ? Math.max(Config.Appearance.panelGap,
+                    Math.min(parent.width - width - Config.Appearance.panelGap,
                         Services.BarPopout.anchorRightX - width))
-                : parent.width - width - root.chWidth * Config.Appearance.space2
+                : parent.width - width - Config.Appearance.panelGap
 
             MouseArea { anchors.fill: parent }
 
             Widgets.Panel {
                 id: panel
                 width: parent.width
+                radius: Config.Appearance.panelRadius
                 height: bodyLoader.item ? bodyLoader.item.implicitHeight + padding * 2 : 0
 
                 Loader {
@@ -143,6 +144,7 @@ PanelWindow {
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
                         mono: true
+                        kind: "title"
                         sizeStep: 1
                         horizontalAlignment: Text.AlignRight
                         width: 4 * root.chWidth
@@ -157,7 +159,7 @@ PanelWindow {
                         interactive: true
                         value: Services.AudioBridge.volume
                         fillColor: Services.AudioBridge.muted
-                            ? Config.Appearance.textFaint : Config.Appearance.accent
+                            ? Config.Appearance.textFaint : Config.Appearance.textPrimary
                         // A Pipewire volume property — a cheap live set.
                         onMoved: (v) => Services.AudioBridge.setVolume(v)
                     }
@@ -191,6 +193,7 @@ PanelWindow {
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
                         mono: true
+                        kind: "title"
                         sizeStep: 1
                         horizontalAlignment: Text.AlignRight
                         width: 4 * root.chWidth
@@ -204,7 +207,7 @@ PanelWindow {
                         anchors.verticalCenter: parent.verticalCenter
                         interactive: true
                         value: Services.Brightness.percent / 100
-                        fillColor: Config.Appearance.accent
+                        fillColor: Config.Appearance.textPrimary
                         // brightnessctl spawns a process — commit on release.
                         onReleased: (v) => Services.Brightness.set(Math.round(v * 100))
                     }

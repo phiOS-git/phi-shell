@@ -441,6 +441,14 @@ Column {
         TokenNumberRow { tokenKey: "radius-base"; title: "Radius, base"; step: 1; suffix: "px"; from: 0; to: 24 }
         TokenNumberRow { tokenKey: "radius-small"; title: "Radius, small (bar isles)"; step: 1; suffix: "px"; from: 0; to: 24 }
         TokenNumberRow { tokenKey: "radius-large"; title: "Radius, large (runner)"; step: 1; suffix: "px"; from: 0; to: 24 }
+        TokenNumberRow {
+            tokenKey: "panel-gap"; title: "Panel gap"; step: 1; suffix: "px"; from: 0; to: 24
+            description: "Inset the notification and chat docks, the calendar and the bar popouts keep from the bar and the screen edges."
+        }
+        TokenNumberRow {
+            tokenKey: "panel-radius"; title: "Panel corner radius"; step: 1; suffix: "px"; from: 0; to: 24
+            description: "Corner rounding of those same below-the-bar surfaces."
+        }
     }
 
     // --- Animations --------------------------------------------

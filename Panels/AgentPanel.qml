@@ -99,9 +99,13 @@ PanelWindow {
         Item {
             id: dock
             anchors.top: parent.top
-            anchors.topMargin: Services.BarMetrics.height
+            // features-change (item 2): the same small inset (panelGap) on
+            // all four sides — below the bar and off the three screen edges.
+            anchors.topMargin: Services.BarMetrics.height + Config.Appearance.panelGap
             anchors.bottom: parent.bottom
+            anchors.bottomMargin: Config.Appearance.panelGap
             anchors.left: parent.left
+            anchors.leftMargin: Config.Appearance.panelGap
             width: root.targetWidth
             Behavior on width {
                 enabled: root._animReady
@@ -109,7 +113,7 @@ PanelWindow {
             }
 
             transform: Translate {
-                x: root.shown ? 0 : -dock.width
+                x: root.shown ? 0 : -(dock.width + Config.Appearance.panelGap)
                 Behavior on x {
                     enabled: root._animReady
                     NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
@@ -120,6 +124,7 @@ PanelWindow {
 
             Widgets.Panel {
                 anchors.fill: parent
+                radius: Config.Appearance.panelRadius
 
                 Row {
                     anchors.fill: parent
