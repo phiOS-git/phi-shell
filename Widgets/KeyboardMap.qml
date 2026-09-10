@@ -30,9 +30,15 @@ Item {
 
     signal keyPicked(int row, int col)
 
-    readonly property real _gap: 3
+    TextMetrics {
+        id: chMetrics
+        font.family: Config.Appearance.fontMono
+        font.pixelSize: Config.Appearance.fontSize1
+        text: "0"
+    }
+    readonly property real _gap: Math.max(2, Config.Appearance.borderWidthStrong)
     readonly property real _cellW: root.cols > 0
-        ? Math.max(6, (root.width - (root.cols - 1) * _gap) / root.cols)
+        ? Math.max(chMetrics.width, (root.width - (root.cols - 1) * _gap) / root.cols)
         : 0
     readonly property real _cellH: _cellW * 0.92
 
@@ -80,8 +86,10 @@ Item {
                 visible: cell.ov !== undefined && cell.ov !== null && String(cell.ov).length > 0
                 anchors.top: parent.top
                 anchors.right: parent.right
-                anchors.margins: 1
-                width: 3; height: 3; radius: 1.5
+                anchors.margins: Config.Appearance.borderWidth
+                width: Math.max(2, root._cellW * 0.18)
+                height: width
+                radius: width / 2
                 color: Config.Appearance.textPrimary
                 opacity: 0.5
             }

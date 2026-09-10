@@ -49,7 +49,7 @@ Column {
         property var current: null
         property bool isSink: true
         width: parent ? parent.width : 0
-        spacing: 4
+        spacing: Config.Appearance.space1 * root.chWidth
 
         Repeater {
             model: dl.devices
@@ -80,7 +80,7 @@ Column {
         property string label: ""
         property string blurb: ""
         width: parent ? parent.width : 0
-        spacing: 2
+        spacing: Config.Appearance.space1 * root.chWidth
 
         Widgets.ToggleRow {
             width: parent.width
