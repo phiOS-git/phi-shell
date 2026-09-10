@@ -9,6 +9,7 @@ import qs.Panels as Panels
 import qs.Settings as SettingsSurface
 import qs.Osd as Osd
 import qs.Spotlight as SpotlightSurface
+import qs.Magnifier as MagnifierSurface
 import qs.Launcher as Launcher
 import Quickshell.Io
 import qs.Lock as Lock
@@ -147,6 +148,32 @@ ShellRoot {
         function press(): void { Services.Spotlight.show() }
         function release(): void { Services.Spotlight.hide() }
         function toggle(): void { Services.Spotlight.toggle() }
+    }
+
+    // OOP-50: the screen-magnifier loupe. Per-screen, same reasoning as
+    // Spotlight above — the lens must be able to appear on whichever
+    // monitor the pointer is on. `Services.Magnifier` owns the state; the
+    // one IpcHandler lives here so Quickshell does not register the target
+    // N times. `toggle` is SUPER+Z; the four scroll verbs are
+    // hyprland.lua's SUPER/SUPER+SHIFT + mouse-wheel binds.
+    Variants {
+        model: Quickshell.screens
+
+        MagnifierSurface.Magnifier {
+            required property ShellScreen modelData
+            screen: modelData
+        }
+    }
+
+    IpcHandler {
+        target: "magnifier"
+        function toggle(): void { Services.Magnifier.toggle() }
+        function show(): void { Services.Magnifier.show() }
+        function hide(): void { Services.Magnifier.hide() }
+        function zoomIn(): void { Services.Magnifier.zoomIn() }
+        function zoomOut(): void { Services.Magnifier.zoomOut() }
+        function grow(): void { Services.Magnifier.grow() }
+        function shrink(): void { Services.Magnifier.shrink() }
     }
 
     // S-33: single instance, same reasoning as Panels.Sidebar above — a

@@ -117,7 +117,7 @@ Singleton {
         // cursor spotlight.
         if (key.indexOf("xf86audio") === 0 || key.indexOf("xf86monbrightness") === 0
                 || argHas("wpctl") || ipcTo("brightness") || ipcTo("spotlight")
-                || argHas("cursor:zoom") || d.indexOf("magnifier") !== -1
+                || ipcTo("magnifier") || argHas("cursor:zoom") || d.indexOf("magnifier") !== -1
                 || d.indexOf("spotlight") !== -1 || d.indexOf("brightness") !== -1
                 || d.indexOf("volume") !== -1)
             return "Media & display"
