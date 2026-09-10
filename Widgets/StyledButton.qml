@@ -4,9 +4,9 @@ import "WidgetStates.js" as WidgetStates
 
 // phiOS — Widgets/StyledButton (S-21). A generic rectangular push button —
 // popover quick actions (§8.5's "2 azioni rapide"), settings actions,
-// anywhere a click needs a labelled target. radius-base, not radius-pill:
-// Pill is the pill-shaped standard toggle (§8.6), this is the general-
-// purpose rectangular one. Full seven-state model, self-detected.
+// anywhere a click needs a labelled target. Widgets/Toggle is the standard
+// two-state switch (§8.6); this is the general-purpose rectangular push
+// button. Full seven-state model, self-detected.
 
 Item {
     id: root

@@ -43,7 +43,7 @@ Column {
         SettingsRow {
             title: "Adapter"
             description: "Turn the radio on or off."
-            Widgets.Pill {
+            Widgets.Toggle {
                 checked: Services.BluetoothBridge.adapterEnabled
                 onToggled: (v) => Services.BluetoothBridge.setEnabled(v)
             }
@@ -140,7 +140,7 @@ Column {
             visible: !vpnGroup.hasTunnels
             title: "Tunnel"
             description: "No WireGuard tunnels found. Import a .conf below, or bring one up with wg-quick."
-            Widgets.Pill { checked: false; enabled: false }
+            Widgets.Toggle { checked: false; enabled: false }
         }
 
         Repeater {
@@ -170,7 +170,7 @@ Column {
                         enabled: !Services.Vpn.busy && !modelData.up
                         onClicked: Services.Vpn.forget(modelData.name)
                     }
-                    Widgets.Pill {
+                    Widgets.Toggle {
                         checked: modelData.up
                         enabled: !Services.Vpn.busy
                         onToggled: (v) => v ? Services.Vpn.up(modelData.name) : Services.Vpn.down(modelData.name)
@@ -237,7 +237,7 @@ Column {
         }
         SettingsRow {
             title: "Connection"
-            Widgets.Pill {
+            Widgets.Toggle {
                 checked: Services.Tailscale.connected
                 onToggled: (v) => v ? Services.Tailscale.up() : Services.Tailscale.down()
             }

@@ -11,7 +11,7 @@ import "WidgetStates.js" as WidgetStates
 // (the one control state that still shows accent, §8.6 / OOP-02), and an
 // `invalid` tint for a field validating free text (a hex colour, a number).
 //
-// Controlled, like Pill: `text` is a plain property the caller owns;
+// Controlled, like Widgets/Toggle: `text` is a plain property the caller owns;
 // editing emits `edited(text)` continuously and `committed(text)` on Enter
 // or focus-out (Qt's TextInput.editingFinished). A caller that repaints the
 // shell on every keystroke binds to `committed` only — a half-typed hex

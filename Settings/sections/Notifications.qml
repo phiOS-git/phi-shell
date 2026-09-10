@@ -32,7 +32,7 @@ Column {
         SettingsRow {
             title: "Do not disturb"
             description: "Silences toasts. Notifications are still recorded in history."
-            Widgets.Pill {
+            Widgets.Toggle {
                 checked: Services.Notifications.dnd
                 onToggled: Services.Notifications.toggleDnd()
             }
@@ -59,7 +59,7 @@ Column {
         SettingsRow {
             title: "Play a sound on arrival"
             description: "Silent during Do Not Disturb and for muted apps, like the toast."
-            Widgets.Pill {
+            Widgets.Toggle {
                 checked: Services.Notifications.soundEnabled
                 onToggled: (v) => Services.Notifications.setSoundEnabled(v)
             }
@@ -172,7 +172,7 @@ Column {
             optionId: "notifications.chroma"
             title: "Keyboard blink on notification"
             description: "Mirrors the Chroma integration toggle in the Devices section — one value."
-            Widgets.Pill {
+            Widgets.Toggle {
                 checked: Services.Chroma.integrations.notifications === true
                 onToggled: (v) => Services.Chroma.setIntegration("notifications", v)
             }

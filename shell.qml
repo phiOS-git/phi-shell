@@ -196,7 +196,7 @@ ShellRoot {
     // the cursor-locator dim comes up above an already-open settings /
     // notification / chat panel. The IpcHandler for "spotlight" is up near
     // the top (registered once; `press`/`release` are SUPER+G's hold binds,
-    // `toggle` is the settings Pill).
+    // `toggle` is the settings Toggle).
     Variants {
         model: Quickshell.screens
 

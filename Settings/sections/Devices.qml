@@ -234,7 +234,7 @@ Column {
         SettingsRow {
             title: "Lighting"
             description: "Master on/off for the keyboard backlight."
-            Widgets.Pill {
+            Widgets.Toggle {
                 checked: Services.Chroma.enabled
                 onToggled: (v) => Services.Chroma.setEnabled(v)
             }
@@ -255,7 +255,7 @@ Column {
             optionId: "devices.chroma.advanced"
             title: "Per-key colours"
             description: "Give individual keys their own fixed colour. Solid colour only — no lighting animation."
-            Widgets.Pill {
+            Widgets.Toggle {
                 checked: Services.Chroma.advanced
                 onToggled: (v) => Services.Chroma.setAdvanced(v)
             }

@@ -5,7 +5,7 @@ import Quickshell.Io
 import qs.Config as Config
 
 // phiOS — Services/Spotlight (S-43; SF-5). Owns the cursor-locator overlay's
-// state: `shown` (hold-to-show, or the settings Pill's sticky toggle) and
+// state: `shown` (hold-to-show, or the settings Toggle's sticky toggle) and
 // the chosen effect + its per-effect options.
 //
 // Effects (Spotlight/Spotlight.qml renders one, picked by `effect`):
@@ -25,7 +25,7 @@ import qs.Config as Config
 //
 // Hold-to-show, not a persistent toggle (real-hardware feedback): show() /
 // hide() are hyprland.lua's SUPER+G press / bare-g release binds; toggle()
-// is kept for the settings Pill.
+// is kept for the settings Toggle.
 
 Singleton {
     id: root

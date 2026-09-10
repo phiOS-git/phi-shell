@@ -266,8 +266,8 @@ Column {
                     spacing: root.gap
                     Widgets.StyledButton { label: "Button" }
                     Widgets.StyledButton { label: "Active"; active: true }
-                    Widgets.Pill { checked: true }
-                    Widgets.Pill { checked: false }
+                    Widgets.Toggle { checked: true }
+                    Widgets.Toggle { checked: false }
                 }
                 Widgets.ListRow { width: parent.width; label: "Selected row"; value: "value"; active: true }
                 Widgets.ListRow { width: parent.width; label: "Resting row"; value: "value" }
@@ -354,14 +354,14 @@ Column {
             optionId: "theme.nightshift"
             title: "Night shift"
             description: "Warms the display in the evening."
-            Widgets.Pill { checked: Services.NightShift.enabled; onToggled: (v) => Services.NightShift.setEnabled(v) }
+            Widgets.Toggle { checked: Services.NightShift.enabled; onToggled: (v) => Services.NightShift.setEnabled(v) }
         }
         SettingsRow {
             title: "True Tone"
             description: Config.Capabilities.ambientLight
                 ? "Drive colour temperature from ambient light instead of a fixed value."
                 : "No ambient light sensor on this host — True Tone has nothing to read."
-            Widgets.Pill {
+            Widgets.Toggle {
                 checked: Services.NightShift.trueTone
                 enabled: Config.Capabilities.ambientLight
                 onToggled: (v) => Services.NightShift.setTrueTone(v)
@@ -387,7 +387,7 @@ Column {
             optionId: "theme.spotlight"
             title: "Cursor spotlight"
             description: "Locate the pointer on a large or busy screen."
-            Widgets.Pill {
+            Widgets.Toggle {
                 checked: Services.Spotlight.shown
                 onToggled: (v) => (v ? Services.Spotlight.show() : Services.Spotlight.hide())
             }
@@ -488,7 +488,7 @@ Column {
             optionId: "theme.magnifier"
             title: "Magnifier loupe"
             description: "A zoomed lens above the pointer. Super+Z toggles it; Super+scroll changes zoom, Super+Shift+scroll the lens size."
-            Widgets.Pill {
+            Widgets.Toggle {
                 checked: Services.Magnifier.shown
                 onToggled: (v) => (v ? Services.Magnifier.show() : Services.Magnifier.hide())
             }
