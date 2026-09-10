@@ -48,6 +48,81 @@ Column {
         }
     }
 
+    // --- Sound & testing -----------------------------------------
+    SettingsGroup {
+        title: "Sound & testing"
+        optionId: "notifications.sound"
+        caption: Services.Notifications.soundError.length > 0
+            ? ("Last sound error: " + Services.Notifications.soundError)
+            : "Plays through pw-play (pipewire). The name resolves to /usr/share/sounds/freedesktop/stereo/<name>.oga, or give an absolute path. The freedesktop set needs sound-theme-freedesktop installed."
+
+        SettingsRow {
+            title: "Play a sound on arrival"
+            description: "Silent during Do Not Disturb and for muted apps, like the toast."
+            Widgets.Pill {
+                checked: Services.Notifications.soundEnabled
+                onToggled: (v) => Services.Notifications.setSoundEnabled(v)
+            }
+        }
+        SettingsRow {
+            title: "Sound"
+            description: "A freedesktop name (message, bell, complete…) or an absolute path to an audio file."
+            wide: true
+            Widgets.TextField {
+                width: parent.width
+                mono: false
+                placeholder: "message"
+                Component.onCompleted: text = Services.Notifications.soundName
+                onCommitted: (t) => Services.Notifications.setSoundName(t)
+            }
+        }
+        SettingsRow {
+            title: "Volume"
+            Widgets.NumberField {
+                value: Services.Notifications.soundVolume
+                step: 5; suffix: "%"; from: 0; to: 100
+                onCommitted: (v) => Services.Notifications.setSoundVolume(v)
+            }
+        }
+        SettingsRow {
+            title: "Test"
+            Row {
+                spacing: root.gap
+                Widgets.StyledButton {
+                    label: "Test sound"
+                    onClicked: Services.Notifications.playSound(true)
+                }
+                Widgets.StyledButton {
+                    label: "Test notification"
+                    onClicked: Services.Notifications.testNotification()
+                }
+            }
+        }
+    }
+
+    // --- History -----------------------------------------------
+    SettingsGroup {
+        title: "History"
+        optionId: "notifications.retention"
+
+        SettingsRow {
+            title: "Keep history for"
+            description: "Notifications older than this are cleared automatically, on start and hourly. 0 keeps everything."
+            Widgets.NumberField {
+                value: Services.Notifications.retentionDays
+                step: 1; suffix: " days"; from: 0; to: 365
+                onCommitted: (v) => Services.Notifications.setRetentionDays(v)
+            }
+        }
+        SettingsRow {
+            title: "Clear now"
+            Widgets.StyledButton {
+                label: "Clear all notifications"
+                onClicked: Services.Notifications.clearAll()
+            }
+        }
+    }
+
     // --- Per-app rules ---------------------------------------------
     SettingsGroup {
         title: "Per-app rules"

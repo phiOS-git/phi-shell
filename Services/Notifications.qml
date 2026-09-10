@@ -56,6 +56,119 @@ Singleton {
     property var toastQueue: []    // pending Notification objects awaiting a toast
     property var activeToast: null // the one currently shown, or null
 
+    // shell-features: fired once per recorded, non-muted notification (DND
+    // or not) so Bar/modules/Notifications.qml can blink its bell. `entry`
+    // is the same object just pushed to `history`.
+    signal arrived(var entry)
+
+    // shell-features: preferences (notification-prefs.json). Sound is OFF by
+    // default — the default `soundName` resolves to a freedesktop sound
+    // theme file that is only present if sound-theme-freedesktop is
+    // installed; `soundName` may also be an absolute path. `retentionDays`
+    // prunes history older than that on load and hourly.
+    property int retentionDays: 7
+    property bool soundEnabled: false
+    property string soundName: "message"   // freedesktop theme name, or an absolute path
+    property int soundVolume: 100           // 0-100
+    property string soundError: ""
+
+    function setRetentionDays(n) {
+        root.retentionDays = Math.max(0, Math.round(n))
+        root._persistPrefs()
+        root._pruneOld()
+    }
+    function setSoundEnabled(b) { root.soundEnabled = !!b; root._persistPrefs() }
+    function setSoundName(s) { root.soundName = String(s || "").trim(); root._persistPrefs() }
+    function setSoundVolume(n) { root.soundVolume = Math.max(0, Math.min(100, Math.round(n))); root._persistPrefs() }
+
+    // Resolve soundName to a filesystem path: an absolute path as-is, else a
+    // freedesktop sound-theme basename.
+    function _soundPath() {
+        var n = root.soundName
+        if (n.length === 0) return ""
+        if (n.charAt(0) === "/") return n
+        return "/usr/share/sounds/freedesktop/stereo/" + n + ".oga"
+    }
+
+    // Play the notification sound via pw-play (pipewire — always present).
+    // Overlapping calls are dropped rather than queued; a burst of
+    // notifications should not stack beeps. `force` is set by the settings
+    // "Test sound" button so it plays even while soundEnabled is false.
+    function playSound(force) {
+        if (!force && !root.soundEnabled) return
+        if (soundProc.running) return
+        var path = root._soundPath()
+        if (path.length === 0) { root.soundError = "no sound file configured"; return }
+        root.soundError = ""
+        // --volume= (not "--volume 0.75"): pw-play's long option takes the
+        // value glued on. 0.00-1.00 linear.
+        soundProc.command = ["pw-play", "--volume=" + (root.soundVolume / 100).toFixed(2), path]
+        soundProc.running = true
+    }
+
+    function testNotification() {
+        Quickshell.execDetached(["notify-send", "-a", "phiOS", "phiOS",
+            "Test notification — toast, sound, history and the bar blink all fire from this."])
+    }
+
+    Process {
+        id: soundProc
+        onExited: (exitCode) => {
+            soundProc.running = false
+            if (exitCode !== 0 && root.soundError.length === 0)
+                root.soundError = "pw-play exited " + exitCode + " (is " + root._soundPath() + " present? sound-theme-freedesktop may not be installed)"
+        }
+        stderr: StdioCollector {
+            onStreamFinished: {
+                var t = this.text.trim()
+                if (t.length > 0) root.soundError = t
+            }
+        }
+    }
+
+    // --- clean-up (user directive: clear all / one / a group) ------------
+    function clearAll() {
+        root.history = []
+        root._persist()
+        // also release any still-live notifications
+        var live = server.trackedNotifications ? server.trackedNotifications.values : []
+        for (var i = 0; i < live.length; i++) {
+            try { live[i].dismiss() } catch (e) { live[i].tracked = false }
+        }
+    }
+    function clearApp(appName) {
+        root.history = root.history.filter(function (h) {
+            return ((h.appName && h.appName.length > 0) ? h.appName : "(unknown)") !== appName
+        })
+        root._persist()
+    }
+    function clearEntry(entry) {
+        if (!entry) return
+        root.history = root.history.filter(function (h) {
+            return !(h.timestamp === entry.timestamp && h.summary === entry.summary && h.appName === entry.appName)
+        })
+        root._persist()
+    }
+
+    // Drop history entries older than retentionDays. retentionDays === 0
+    // means "keep forever".
+    function _pruneOld() {
+        if (root.retentionDays <= 0) return
+        var cutoff = Date.now() - root.retentionDays * 24 * 60 * 60 * 1000
+        var kept = root.history.filter(function (h) { return (h.timestamp || 0) >= cutoff })
+        if (kept.length !== root.history.length) {
+            root.history = kept
+            root._persist()
+        }
+    }
+
+    Timer {
+        interval: 60 * 60 * 1000   // hourly — retention is measured in days
+        running: true
+        repeat: true
+        onTriggered: root._pruneOld()
+    }
+
     // settings-overhaul batch I — per-app rules (master plan §9.12: "regole
     // per applicazione"). { "<appName>": { mute, hide, priority } }:
     //   mute     — recorded in history, no toast (and no Chroma blink)
@@ -139,6 +252,13 @@ Singleton {
         historyFile.setText(JSON.stringify(root.history))
     }
 
+    function _persistPrefs() {
+        prefsFile.setText(JSON.stringify({
+            retentionDays: root.retentionDays,
+            sound: { enabled: root.soundEnabled, name: root.soundName, volume: root.soundVolume }
+        }, null, 2))
+    }
+
     Timer {
         id: durationTimer
         // Named restartFor, not restart: Timer already has a built-in
@@ -186,7 +306,7 @@ Singleton {
 
             notification.tracked = true
 
-            root._pushHistory({
+            const entry = {
                 id: notification.id,
                 appName: notification.appName,
                 summary: notification.summary,
@@ -195,11 +315,17 @@ Singleton {
                 image: notification.image,
                 timestamp: Date.now(),
                 closeReason: -1, // still open; NotificationCloseReason starts at 1
-            })
+            }
+            root._pushHistory(entry)
 
-            // A toast (and the Chroma blink) shows when notifications are
-            // not silenced — DND off, or the app is marked priority — and
-            // the app is not muted.
+            // shell-features: the bar bell blinks for every recorded,
+            // non-muted notification — DND or not (a muted app is silent
+            // everywhere; DND still lets the quiet cue through).
+            if (!rule.mute) root.arrived(entry)
+
+            // A toast (and the Chroma blink, and the sound) shows when
+            // notifications are not silenced — DND off, or the app is
+            // marked priority — and the app is not muted.
             const allowToast = (!root.dnd || rule.priority) && !rule.mute
             if (allowToast) {
                 root.toastQueue = root.toastQueue.concat([notification])
@@ -210,6 +336,10 @@ Singleton {
                 // Chroma.notifyBlink() is itself a no-op unless the
                 // integration is enabled and the keyboard is on.
                 Services.Chroma.notifyBlink()
+
+                // shell-features: notification sound. A no-op unless
+                // soundEnabled; overlapping calls are dropped.
+                root.playSound(false)
             }
 
             // Every tracked notification gets a bounded lifetime, DND or
@@ -303,6 +433,7 @@ Singleton {
             try {
                 const parsed = JSON.parse(historyFile.text())
                 if (Array.isArray(parsed)) root.history = parsed
+                root._pruneOld()
             } catch (e) {
                 console.warn("phi-shell: notifications.json failed to parse: " + e)
             }
@@ -328,6 +459,31 @@ Singleton {
         }
         onLoadFailed: (error) => {
             // FileNotFound before the first rule is set — rules stays {}.
+        }
+    }
+
+    FileView {
+        id: prefsFile
+        path: Config.Paths.notificationPrefsFile
+        watchChanges: false
+        onLoaded: {
+            try {
+                const p = JSON.parse(prefsFile.text())
+                if (p && typeof p === "object") {
+                    if (typeof p.retentionDays === "number") root.retentionDays = p.retentionDays
+                    if (p.sound && typeof p.sound === "object") {
+                        if (typeof p.sound.enabled === "boolean") root.soundEnabled = p.sound.enabled
+                        if (typeof p.sound.name === "string") root.soundName = p.sound.name
+                        if (typeof p.sound.volume === "number") root.soundVolume = p.sound.volume
+                    }
+                }
+                root._pruneOld()
+            } catch (e) {
+                console.warn("phi-shell: notification-prefs.json failed to parse, ignoring: " + e)
+            }
+        }
+        onLoadFailed: (error) => {
+            // FileNotFound before anything is configured — defaults stand.
         }
     }
 }

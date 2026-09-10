@@ -4,7 +4,7 @@
     { "type": "connectivity", "title": "Connectivity", "keywords": "tailscale overlay vpn wifi wi-fi ssid network bluetooth" },
     { "type": "devices", "title": "Devices", "keywords": "audio volume mute output sink monitor display resolution scaling chroma keyboard backlight mouse trackpad sensitivity brightness" },
     { "type": "keybindings", "title": "Keybindings", "keywords": "shortcuts binds hotkeys hyprland keys reference" },
-    { "type": "notifications", "title": "Notifications", "keywords": "do not disturb dnd rules per app chroma blink toasts" },
+    { "type": "notifications", "title": "Notifications", "keywords": "do not disturb dnd rules per app chroma blink toasts sound test clear history retention" },
     { "type": "security", "title": "Security", "keywords": "clamav antivirus scan quarantine signatures face unlock howdy secrets keepass vault" },
     { "type": "aiAgent", "title": "AI Agent", "keywords": "phi agent activation project personality broker opencode model provider key egress whitelist systemd units memory proposals" },
     { "type": "updates", "title": "Updates", "keywords": "packages pacman aur t4 phi-packages check upgrade" }

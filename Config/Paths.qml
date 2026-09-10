@@ -46,6 +46,12 @@ Singleton {
     // theme-overrides.json / chroma.json). Owned by Services/Notifications.qml.
     readonly property string notificationRulesFile: root.stateDir + "/notification-rules.json"
 
+    // shell-features: notification preferences — { retentionDays, sound: {
+    // enabled, name, volume } }. Nested, so a JSON file here (same reasoning
+    // and shape as notification-rules.json / chroma.json), NOT `phi state`'s
+    // closed scalar key set. Owned by Services/Notifications.qml.
+    readonly property string notificationPrefsFile: root.stateDir + "/notification-prefs.json"
+
     // S-32: no manifest file — the capture script (Services/Clipboard.qml)
     // is plain POSIX sh with no JSON writer available, so structure lives
     // in the filesystem instead: one <id>.data + <id>.mime pair per entry,

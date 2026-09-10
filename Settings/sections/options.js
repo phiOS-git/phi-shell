@@ -104,6 +104,8 @@ var OPTIONS = [
     // --- Notifications ---------------------------------------
     { id: "notifications.dnd",         title: "Do not disturb",         keywords: "dnd silence duration" },
     { id: "notifications.rules",       title: "Per-app rules",          keywords: "application mute no toast no sound priority" },
+    { id: "notifications.sound",       title: "Sound & testing",        keywords: "audio beep chime pw-play freedesktop volume test notification" },
+    { id: "notifications.retention",   title: "History retention",      keywords: "keep days auto clear prune old clean all" },
     { id: "notifications.chroma",      title: "Keyboard blink on notification", keywords: "chroma razer function row" },
 
     // --- Updates --------------------------------------------
