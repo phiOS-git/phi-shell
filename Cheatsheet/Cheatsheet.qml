@@ -14,12 +14,10 @@ import qs.Widgets as Widgets
 // second place holding it.
 //
 // OOP-04 (shell restyle): a search field, auto-focused on open; Esc or a
-// click outside the panel closes it; three columns per row, aligned across
-// rows and packed to the left — the key combination in the mono font,
-// wrapped in square brackets with every character spaced out, then an
-// arrow, then the description. The key column width is the longest visible
-// key string times one chWidth (mono font → one glyph is one cell, so the
-// columns line up exactly with no per-row measurement).
+// click outside the panel closes it; each entry is the key combination in
+// the mono font, wrapped in square brackets (OOP-09: spaced around the
+// combination and its "+", never per-character), an arrow, then the
+// description.
 //
 // Out-of-plan: settings-overhaul batch H: rows are grouped by context
 // (Services.Keybinds.groups — the same derivation the settings panel's
@@ -27,6 +25,14 @@ import qs.Widgets as Widgets
 // hairline. Inner padding bumped to the runner's value
 // (Config.Appearance.space3 · chWidth), per the user's directive that the
 // cheatsheet should breathe like the runner does.
+//
+// Out-of-plan: cheatsheet-two-columns (OOP-59): each group's ENTRY list is
+// laid out on two columns — the context header + hairline still span the
+// full width, the bindings below split into balanced left/right halves.
+// Each column derives its own key-column width (its longest key string +
+// one cell, same cap as OOP-13), so rows stay aligned within a column with
+// no per-row measurement and one long key no longer narrows every
+// description panel-wide.
 
 PanelWindow {
     id: root
@@ -53,6 +59,48 @@ PanelWindow {
         function toggle(): void { root.setShown(!root.shown) }
         function open(): void { root.setShown(true) }
         function close(): void { root.setShown(false) }
+    }
+
+    // OOP-59: one of the two entry columns of a context group. Sized off
+    // `colWidth`, gets its key gutter from its own binds, and renders each
+    // binding as the usual key → description row (elided to fit).
+    component BindColumn: Column {
+        id: bcol
+        property var binds: []
+        property real colWidth: 0
+        width: bcol.colWidth
+        spacing: fadeRoot.chWidth * Config.Appearance.space2
+
+        readonly property real keyW: root.columnKeyWidth(bcol.binds)
+
+        Repeater {
+            model: bcol.binds
+
+            Row {
+                required property var modelData
+                width: bcol.width
+                spacing: fadeRoot.chWidth * Config.Appearance.space3
+                readonly property real descW: Math.max(0,
+                    width - bcol.keyW - arrowText.implicitWidth - spacing * 2)
+
+                Widgets.StyledText {
+                    width: bcol.keyW
+                    mono: true
+                    text: root.keyChips(modelData)
+                }
+                Widgets.StyledText {
+                    id: arrowText
+                    mono: true
+                    kind: "label"
+                    text: "→"
+                }
+                Widgets.StyledText {
+                    width: parent.descW
+                    text: Services.Keybinds.describe(modelData)
+                    elide: Text.ElideRight
+                }
+            }
+        }
     }
 
     function setShown(v) {
@@ -86,6 +134,29 @@ PanelWindow {
         return "[ " + Services.Keybinds.keyLabel(bind) + " ]"
     }
 
+    // OOP-59: the two balanced halves of one group's bindings (differ by
+    // at most one entry), so the two entry columns stay in step.
+    function leftHalf(list) {
+        return list.slice(0, Math.ceil(list.length / 2))
+    }
+    function rightHalf(list) {
+        return list.slice(Math.ceil(list.length / 2))
+    }
+
+    // OOP-13 + OOP-59: width of one entry column's key gutter — its
+    // longest visible key string (one mono glyph == one cell, so no
+    // per-row measuring), plus a cell of breathing room, capped so a
+    // single very long binding cannot push that column's descriptions
+    // off to the right.
+    function columnKeyWidth(list) {
+        let m = 0
+        for (let i = 0; i < list.length; i++) {
+            const n = root.keyChips(list[i]).length
+            if (n > m) m = n
+        }
+        return (Math.min(m, 34) + 1) * fadeRoot.chWidth
+    }
+
     Widgets.Scrim {
         anchors.fill: parent
         shown: root.shown
@@ -108,20 +179,6 @@ PanelWindow {
         }
         readonly property real chWidth: chMetrics.width
         readonly property real gap: fadeRoot.chWidth * Config.Appearance.space2
-        // OOP-13: width of the key column — the longest visible key
-        // string (one mono glyph == one cell, so no per-row measuring),
-        // plus a cell of breathing room, capped so a single very long
-        // binding cannot push the whole description column off to the
-        // right.
-        readonly property real keyColW: {
-            let m = 0
-            const rows = root.filtered
-            for (let i = 0; i < rows.length; i++) {
-                const n = root.keyChips(rows[i]).length
-                if (n > m) m = n
-            }
-            return (Math.min(m, 34) + 1) * fadeRoot.chWidth
-        }
 
         // Click anywhere outside the panel closes it.
         MouseArea {
@@ -234,32 +291,21 @@ PanelWindow {
                             }
                             Widgets.Separator { width: parent.width }
 
-                            Repeater {
-                                model: groupCol.modelData.binds
+                            // OOP-59: the group's entries on TWO columns —
+                            // balanced halves so the columns differ by at
+                            // most one row, each one a BindColumn.
+                            Row {
+                                id: bindsRow
+                                width: groupCol.width
+                                spacing: fadeRoot.chWidth * Config.Appearance.space2
 
-                                Row {
-                                    required property var modelData
-                                    width: groupCol.width
-                                    spacing: fadeRoot.chWidth * Config.Appearance.space3
-                                    readonly property real descW: Math.max(0,
-                                        width - fadeRoot.keyColW - arrowText.implicitWidth - spacing * 2)
-
-                                    Widgets.StyledText {
-                                        width: fadeRoot.keyColW
-                                        mono: true
-                                        text: root.keyChips(modelData)
-                                    }
-                                    Widgets.StyledText {
-                                        id: arrowText
-                                        mono: true
-                                        kind: "label"
-                                        text: "→"
-                                    }
-                                    Widgets.StyledText {
-                                        width: parent.descW
-                                        text: Services.Keybinds.describe(modelData)
-                                        elide: Text.ElideRight
-                                    }
+                                BindColumn {
+                                    binds: root.leftHalf(groupCol.modelData.binds)
+                                    colWidth: (bindsRow.width - bindsRow.spacing) / 2
+                                }
+                                BindColumn {
+                                    binds: root.rightHalf(groupCol.modelData.binds)
+                                    colWidth: (bindsRow.width - bindsRow.spacing) / 2
                                 }
                             }
                         }
