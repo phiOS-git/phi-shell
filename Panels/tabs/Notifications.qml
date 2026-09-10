@@ -22,6 +22,13 @@ import qs.Widgets as Widgets
 // dead to clicks even though the data bindings updated fine. The other
 // sidebar tab that scrolls, Panels/tabs/Clipboard.qml, wraps its Flickable
 // in an Item; this one now matches.
+//
+// features-change round 3 (panel style pass): the top-level blocks stack on
+// `blockGap` (space2), matching the Sidebar container, while `gap` (space1)
+// stays for the tight inside-a-card rhythm. "Clear all" is right-aligned on
+// the Active/History header line rather than floating in its own row, and a
+// "History" heading now separates the live cards from the grouped history
+// when both are present. Group-header padding matches a history row.
 
 Item {
     id: root
@@ -33,7 +40,11 @@ Item {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
+    // gap  — tight, inside a card / between a label and its control.
+    // blockGap — the rhythm between the tab's top-level blocks, matching
+    // the Sidebar container it sits in.
     readonly property real gap: chWidth * Config.Appearance.space1
+    readonly property real blockGap: chWidth * Config.Appearance.space2
 
     // { "<app>": true } — collapsed groups.
     property var collapsed: ({})
@@ -72,7 +83,7 @@ Item {
         Column {
             id: column
             width: flick.width
-            spacing: root.gap
+            spacing: root.blockGap
 
             Widgets.ToggleRow {
                 width: parent.width
@@ -81,22 +92,29 @@ Item {
                 onToggled: (v) => { if (v !== Services.Notifications.dnd) Services.Notifications.toggleDnd() }
             }
 
-            Row {
-                width: parent.width
-                spacing: root.gap
-                Widgets.StyledButton {
-                    label: "Clear all"
-                    enabled: activeRepeater.count > 0 || root.groups.length > 0
-                    onClicked: Services.Notifications.clearAll()
-                }
-            }
-
             Widgets.Separator { width: parent.width }
 
-            Widgets.StyledText {
-                kind: "title"
-                text: "Active"
-                visible: activeRepeater.count > 0
+            // Active header — the title on the left, the one destructive
+            // action right-aligned on the same line.
+            Item {
+                width: parent.width
+                height: Math.max(activeTitle.implicitHeight, clearAllBtn.implicitHeight)
+                visible: activeRepeater.count > 0 || root.groups.length > 0
+
+                Widgets.StyledText {
+                    id: activeTitle
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    kind: "title"
+                    text: activeRepeater.count > 0 ? "Active" : "History"
+                }
+                Widgets.StyledButton {
+                    id: clearAllBtn
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    label: "Clear all"
+                    onClicked: Services.Notifications.clearAll()
+                }
             }
 
             Repeater {
@@ -160,6 +178,18 @@ Item {
                 }
             }
 
+            // Only needed when Active sits above — otherwise the header row
+            // already reads "History".
+            Widgets.Separator {
+                width: parent.width
+                visible: activeRepeater.count > 0 && root.groups.length > 0
+            }
+            Widgets.StyledText {
+                kind: "title"
+                text: "History"
+                visible: activeRepeater.count > 0 && root.groups.length > 0
+            }
+
             Repeater {
                 model: root.groups
 
@@ -175,7 +205,9 @@ Item {
                     // separate, non-overlapping "clear group".
                     Item {
                         width: parent.width
-                        implicitHeight: Math.max(groupLabel.implicitHeight, clearGroup.implicitHeight) + root.gap * 1.5
+                        // Same vertical breathing room as a history row below,
+                        // so the header does not sit visibly tighter or looser.
+                        implicitHeight: Math.max(groupLabel.implicitHeight, clearGroup.implicitHeight) + root.gap
 
                         Item {
                             id: groupToggle

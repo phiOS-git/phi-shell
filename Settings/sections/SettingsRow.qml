@@ -52,6 +52,9 @@ Item {
     }
     readonly property real _ch: chMetrics.width
     readonly property real _pad: Config.Appearance.space2 * _ch
+    // A label sits directly above its description / reset — a half rhythm
+    // unit, the same derived micro-gap SettingsGroup's title block uses.
+    readonly property real _labelGap: Math.round(_ch * Config.Appearance.space1 * 0.5)
 
     readonly property bool highlighted: Services.SettingsPanel.shown
         && Services.SettingsPanel.query.length > 0
@@ -112,7 +115,7 @@ Item {
         width: root.wide
             ? root.width - root._pad * 2
             : Math.max(0, Math.round(root.width * 0.42) - root._pad)
-        spacing: 2
+        spacing: root._labelGap
 
         Widgets.StyledText {
             width: parent.width

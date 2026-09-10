@@ -30,6 +30,7 @@ Column {
     }
     readonly property real _ch: chMetrics.width
     readonly property real _gap: Config.Appearance.space2 * _ch
+    readonly property real _labelGap: Math.round(_ch * Config.Appearance.space1 * 0.5)
     readonly property int _cols: root.width < _ch * 52 ? 1 : 2
 
     component StatTile: Column {
@@ -41,7 +42,7 @@ Column {
             var w = parent ? parent.width : 0
             return (span || root._cols === 1) ? w : (w - root._gap) / 2
         }
-        spacing: 2
+        spacing: root._labelGap
         Widgets.StyledText {
             width: parent.width; kind: "label"; sizeStep: 0
             text: tile.label; elide: Text.ElideRight

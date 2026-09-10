@@ -7,6 +7,11 @@ import qs.Widgets as Widgets
 // detail). Name, description, instruction list, context files (materiali/),
 // folders of interest (read-only real dirs), default personality, project
 // chats.
+//
+// features-change round 3 (panel style pass): the six section headers are
+// `kind: "title"` (DemiBold ink), matching every other panel heading; the
+// three add-a-path rows use Widgets/TextField; micro-gaps are derived
+// tokens (`tightGap`), no literal `spacing: 2`.
 
 Item {
     id: root
@@ -19,6 +24,9 @@ Item {
     TextMetrics { id: ch; font.family: Config.Appearance.fontMono; font.pixelSize: Config.Appearance.fontSize1; text: "0" }
     readonly property real chWidth: ch.width
     readonly property real gap: chWidth * Config.Appearance.space2
+    // A half rhythm unit, for a label directly above its field — the derived
+    // micro-gap SettingsGroup uses, never a literal.
+    readonly property real tightGap: Math.round(chWidth * Config.Appearance.space1 * 0.5)
 
     property var meta: ({})
     Component.onCompleted: { agent.refreshProjectMeta(projectName); agent.refreshMaterials(projectName) }
@@ -63,7 +71,7 @@ Item {
             }
 
             // description
-            Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Description" }
+            Widgets.StyledText { kind: "title"; text: "Description" }
             EditableText {
                 width: parent.width
                 text: root.meta.description || ""
@@ -72,7 +80,7 @@ Item {
             }
 
             // instructions
-            Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Instructions" }
+            Widgets.StyledText { kind: "title"; text: "Instructions" }
             Repeater {
                 model: root.meta.instructions || []
                 delegate: Widgets.ListRow {
@@ -86,14 +94,12 @@ Item {
             Row {
                 width: parent.width
                 spacing: root.gap
-                TextInput {
+                Widgets.TextField {
                     id: insInput
                     width: parent.width - insAdd.implicitWidth - parent.spacing
                     anchors.verticalCenter: parent.verticalCenter
-                    font.family: Config.Appearance.fontUi
-                    font.pixelSize: Config.Appearance.fontSize1
-                    color: Config.Appearance.textPrimary
-                    Widgets.StyledText { anchors.fill: parent; kind: "label"; text: "add an instruction…"; visible: insInput.text.length === 0 }
+                    mono: false
+                    placeholder: "add an instruction…"
                 }
                 Widgets.StyledButton {
                     id: insAdd; label: "Add"
@@ -102,7 +108,7 @@ Item {
             }
 
             // context files (materiali/) — static copies
-            Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Context files" }
+            Widgets.StyledText { kind: "title"; text: "Context files" }
             Widgets.StyledText {
                 kind: "label"; sizeStep: 0; width: parent.width; wrapMode: Text.WordWrap
                 text: "Static copies in the project folder. Add a path below; it is copied, not linked."
@@ -120,14 +126,11 @@ Item {
             Row {
                 width: parent.width
                 spacing: root.gap
-                TextInput {
+                Widgets.TextField {
                     id: matInput
                     width: parent.width - matAdd.implicitWidth - parent.spacing
                     anchors.verticalCenter: parent.verticalCenter
-                    font.family: Config.Appearance.fontMono
-                    font.pixelSize: Config.Appearance.fontSize1
-                    color: Config.Appearance.textPrimary
-                    Widgets.StyledText { anchors.fill: parent; kind: "label"; text: "/path/to/file to copy…"; visible: matInput.text.length === 0 }
+                    placeholder: "/path/to/file to copy…"
                 }
                 Widgets.StyledButton {
                     id: matAdd; label: "Copy in"
@@ -136,7 +139,7 @@ Item {
             }
 
             // folders of interest — read-only real directories
-            Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Folders of interest (read-only)" }
+            Widgets.StyledText { kind: "title"; text: "Folders of interest (read-only)" }
             Widgets.StyledText {
                 kind: "label"; sizeStep: 0; width: parent.width; wrapMode: Text.WordWrap
                 text: "Real directories the agent can read but not modify. Not copied. Blocked paths are refused."
@@ -154,14 +157,11 @@ Item {
             Row {
                 width: parent.width
                 spacing: root.gap
-                TextInput {
+                Widgets.TextField {
                     id: folderInput
                     width: parent.width - folderAdd.implicitWidth - parent.spacing
                     anchors.verticalCenter: parent.verticalCenter
-                    font.family: Config.Appearance.fontMono
-                    font.pixelSize: Config.Appearance.fontSize1
-                    color: Config.Appearance.textPrimary
-                    Widgets.StyledText { anchors.fill: parent; kind: "label"; text: "/path/to/directory…"; visible: folderInput.text.length === 0 }
+                    placeholder: "/path/to/directory…"
                 }
                 Widgets.StyledButton {
                     id: folderAdd; label: "Add folder"
@@ -170,7 +170,7 @@ Item {
             }
 
             // default personality
-            Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Default personality" }
+            Widgets.StyledText { kind: "title"; text: "Default personality" }
             Row {
                 width: parent.width
                 spacing: root.gap
@@ -187,7 +187,7 @@ Item {
             }
 
             // project chats
-            Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Conversations" }
+            Widgets.StyledText { kind: "title"; text: "Conversations" }
             Repeater {
                 model: (root.agent.chats || []).filter(function (c) { return (c.Project || c.project) === root.projectName })
                 delegate: Widgets.ListRow {
@@ -207,7 +207,7 @@ Item {
         property string text: ""
         property string placeholder: ""
         signal commit(string value)
-        spacing: 2
+        spacing: root.tightGap
         Widgets.Panel {
             width: et.width
             TextEdit {

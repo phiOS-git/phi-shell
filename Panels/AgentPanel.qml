@@ -15,6 +15,10 @@ import "tabs/agent" as Agent
 //
 // Every call goes through Services/Agent.qml, the one client point (ADR 098).
 //
+// features-change round 3 (panel style pass): the nav rail gained a hover
+// wash and a hairline "you are here" marker on its inner edge — it had no
+// clickable affordance at all before, only a weight change on the glyph.
+//
 // Entry points, all through Services/AgentPanel.qml:
 //   - the bar Φ segment  (Bar/modules/PhiAgent.qml)
 //   - Super+P            (hyprland.lua.tmpl → `ipc call agent toggle`)
@@ -145,15 +149,40 @@ PanelWindow {
                                 { key: "memory", glyph: "✎", label: "Memory proposals" }
                             ]
                             delegate: Item {
+                                id: railItem
                                 required property var modelData
                                 width: rail.width
                                 height: rail.width
+                                readonly property bool current: root.section === modelData.key
+
+                                // Hover wash — the rail had no clickable
+                                // affordance at all before.
+                                Rectangle {
+                                    anchors.fill: parent
+                                    color: Config.Appearance.panelHover
+                                    opacity: railHover.hovered && !railItem.current ? 1 : 0
+                                    Behavior on opacity {
+                                        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                                    }
+                                }
+                                // "You are here" — a hairline block on the
+                                // inner edge, the opposite colour.
+                                Rectangle {
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: Config.Appearance.borderWidthStrong
+                                    height: parent.height * 0.5
+                                    radius: width / 2
+                                    color: Config.Appearance.colorOpposite
+                                    visible: railItem.current
+                                }
                                 Widgets.StyledText {
                                     anchors.centerIn: parent
                                     text: modelData.glyph
-                                    kind: root.section === modelData.key ? "title" : "label"
+                                    kind: railItem.current ? "title" : "label"
                                     sizeStep: 3
                                 }
+                                HoverHandler { id: railHover }
                                 // badge on the memory rail item
                                 Widgets.StyledText {
                                     visible: modelData.key === "memory" && root.agent.totalPendingProposals > 0

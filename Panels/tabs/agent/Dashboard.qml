@@ -6,6 +6,13 @@ import qs.Widgets as Widgets
 // phiOS — agent Dashboard (phios-agente-delta.md §3.7 section 1).
 // Projects + chat history + search (title & content) + a separate pinned
 // list + actions. Selecting a project shows ProjectView.
+//
+// features-change round 3 (panel style pass): section headers are
+// `kind: "title"` (DemiBold ink) like every other panel heading, not the
+// muted `sizeStep: 3` label they were; the two hand-rolled TextInputs are
+// Widgets/TextField now; the search dropped its redundant Panel frame (the
+// field carries its own border). Every micro-gap is a derived token, no
+// literal `spacing: 2`.
 
 Item {
     id: root
@@ -18,6 +25,9 @@ Item {
     TextMetrics { id: ch; font.family: Config.Appearance.fontMono; font.pixelSize: Config.Appearance.fontSize1; text: "0" }
     readonly property real chWidth: ch.width
     readonly property real gap: chWidth * Config.Appearance.space2
+    // A half rhythm unit, for a label sitting directly above its value —
+    // the same derived micro-gap SettingsGroup uses, never a literal.
+    readonly property real tightGap: Math.round(chWidth * Config.Appearance.space1 * 0.5)
 
     Component.onCompleted: { agent.refreshProject(); agent.refreshChats() }
 
@@ -65,14 +75,12 @@ Item {
                 width: parent.width
                 spacing: root.gap
                 function valid(s) { return /^[a-z0-9][a-z0-9._-]{0,63}$/.test(s || "") }
-                TextInput {
+                Widgets.TextField {
                     id: npInput
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width - npCreate.implicitWidth - npCancel.implicitWidth - parent.spacing * 2
-                    font.family: Config.Appearance.fontMono
-                    font.pixelSize: Config.Appearance.fontSize1
-                    color: (text.length === 0 || newProjectRow.valid(text)) ? Config.Appearance.textPrimary : Config.Appearance.error
-                    Widgets.StyledText { anchors.fill: parent; kind: "label"; text: "project name…"; visible: npInput.text.length === 0 }
+                    placeholder: "project name…"
+                    invalid: text.length > 0 && !newProjectRow.valid(text)
                 }
                 Widgets.StyledButton {
                     id: npCreate; label: "Create"
@@ -82,52 +90,41 @@ Item {
             }
 
             // --- search -------------------------------------------
-            Widgets.Panel {
+            Column {
                 width: parent.width
-                Column {
+                spacing: root.chWidth * Config.Appearance.space1
+
+                Widgets.TextField {
+                    id: searchInput
                     width: parent.width
-                    spacing: root.chWidth * Config.Appearance.space1
-                    Row {
-                        width: parent.width
-                        spacing: root.chWidth * Config.Appearance.space1
-                        Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: ">" }
-                        TextInput {
-                            id: searchInput
-                            width: parent.width - x
-                            anchors.verticalCenter: parent.verticalCenter
-                            font.family: Config.Appearance.fontMono
-                            font.pixelSize: Config.Appearance.fontSize1
-                            color: Config.Appearance.textPrimary
-                            onTextChanged: searchDebounce.restart()
-                            Widgets.StyledText { anchors.fill: parent; kind: "label"; text: "search chats — title and content"; visible: searchInput.text.length === 0 }
+                    placeholder: "Search chats — title and content"
+                    onEdited: searchDebounce.restart()
+                }
+                Timer { id: searchDebounce; interval: 220; onTriggered: root.agent.search(searchInput.text) }
+
+                Widgets.StyledText { visible: root.agent.searching; kind: "label"; sizeStep: 0; text: "searching…" }
+
+                Repeater {
+                    model: root.agent.searchResults.Groups || []
+                    delegate: Column {
+                        required property var modelData
+                        width: col.width
+                        spacing: root.tightGap
+                        visible: searchInput.text.length > 0
+                        Widgets.StyledText {
+                            kind: "label"; sizeStep: 0
+                            text: modelData.Project === "_unfiled" ? "(unfiled)"
+                                : modelData.Project === "_memory" ? "(memory & instructions)" : modelData.Project
                         }
-                    }
-                    Timer { id: searchDebounce; interval: 220; onTriggered: root.agent.search(searchInput.text) }
-
-                    Widgets.StyledText { visible: root.agent.searching; kind: "label"; text: "searching…" }
-
-                    Repeater {
-                        model: root.agent.searchResults.Groups || []
-                        delegate: Column {
-                            required property var modelData
-                            width: col.width
-                            spacing: 2
-                            visible: searchInput.text.length > 0
-                            Widgets.StyledText {
-                                kind: "label"; sizeStep: 0
-                                text: modelData.Project === "_unfiled" ? "(unfiled)"
-                                    : modelData.Project === "_memory" ? "(memory & instructions)" : modelData.Project
-                            }
-                            Repeater {
-                                model: modelData.Hits || []
-                                delegate: Widgets.ListRow {
-                                    required property var modelData
-                                    width: parent.width
-                                    label: modelData.Title
-                                    value: modelData.InTitle && modelData.InBody ? "title+body" : modelData.InTitle ? "title" : "body"
-                                    onActivated: {
-                                        if (modelData.Kind === "conversation") { root.agent.openSession(modelData.ID); root.openChat() }
-                                    }
+                        Repeater {
+                            model: modelData.Hits || []
+                            delegate: Widgets.ListRow {
+                                required property var modelData
+                                width: parent.width
+                                label: modelData.Title
+                                value: modelData.InTitle && modelData.InBody ? "title+body" : modelData.InTitle ? "title" : "body"
+                                onActivated: {
+                                    if (modelData.Kind === "conversation") { root.agent.openSession(modelData.ID); root.openChat() }
                                 }
                             }
                         }
@@ -136,14 +133,14 @@ Item {
             }
 
             // --- pinned chats -------------------------------------
-            Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Pinned"; visible: (root.agent.pinnedChats || []).length > 0 }
+            Widgets.StyledText { kind: "title"; text: "Pinned"; visible: (root.agent.pinnedChats || []).length > 0 }
             Repeater {
                 model: root.agent.pinnedChats || []
                 delegate: ChatRow { required property var modelData; width: col.width; rec: modelData; onOpen: root.openChat() }
             }
 
             // --- projects ----------------------------------------
-            Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Projects" }
+            Widgets.StyledText { kind: "title"; text: "Projects" }
             Widgets.StyledText { visible: (root.agent.projects || []).length === 0; kind: "label"; sizeStep: 0; text: "No projects yet." }
             Repeater {
                 model: root.agent.projects || []
@@ -158,7 +155,7 @@ Item {
             }
 
             // --- all chats --------------------------------------
-            Widgets.StyledText { kind: "label"; sizeStep: 3; text: "Chats" }
+            Widgets.StyledText { kind: "title"; text: "Chats" }
             Widgets.StyledText { visible: root.agent.chatsLoading; kind: "label"; sizeStep: 0; text: "loading…" }
             Repeater {
                 model: root.agent.chats || []

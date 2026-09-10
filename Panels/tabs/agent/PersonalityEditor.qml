@@ -8,6 +8,11 @@ import qs.Widgets as Widgets
 // IS the user (§8.2 "scrive solo l'utente"); personalita/ stays read-only
 // inside the mount. Writes go through `phi agent personality` for validation
 // and agent.md regeneration.
+//
+// features-change round 3 (panel style pass): the name field is
+// Widgets/TextField (with its `invalid` tint for the slug check); a new
+// personality opens with an empty field, not the "+" sentinel; the list
+// gap is a derived token.
 
 Item {
     id: root
@@ -19,6 +24,7 @@ Item {
     TextMetrics { id: ch; font.family: Config.Appearance.fontMono; font.pixelSize: Config.Appearance.fontSize1; text: "0" }
     readonly property real chWidth: ch.width
     readonly property real gap: chWidth * Config.Appearance.space2
+    readonly property real tightGap: Math.round(chWidth * Config.Appearance.space1 * 0.5)
 
     property string editing: ""   // "" = list; a name = editing that one; "+" = new
 
@@ -34,7 +40,9 @@ Item {
     }
     function open(name) {
         root.editing = name
-        nameField.text = name
+        // "+" is the sentinel for a new personality — the field starts empty,
+        // not pre-filled with the sentinel.
+        nameField.text = (name === "+") ? "" : name
         promptArea.text = ""
         if (name.length > 0 && name !== "+") agent.personalityShow(name)
     }
@@ -56,7 +64,7 @@ Item {
         // --- list ------------------------------------------------
         Column {
             width: parent.width
-            spacing: 2
+            spacing: root.tightGap
             visible: root.editing.length === 0
             Repeater {
                 model: root.agent.personalities || []
@@ -80,14 +88,13 @@ Item {
                 width: parent.width
                 spacing: root.gap
                 Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "name" }
-                TextInput {
+                Widgets.TextField {
                     id: nameField
                     width: 24 * root.chWidth
                     anchors.verticalCenter: parent.verticalCenter
-                    font.family: Config.Appearance.fontMono
-                    font.pixelSize: Config.Appearance.fontSize1
                     readOnly: root.editing !== "+"
-                    color: /^[a-z0-9][a-z0-9._-]{0,63}$/.test(text) ? Config.Appearance.textPrimary : Config.Appearance.error
+                    placeholder: "lower-case-name"
+                    invalid: !readOnly && !/^[a-z0-9][a-z0-9._-]{0,63}$/.test(text)
                 }
             }
 

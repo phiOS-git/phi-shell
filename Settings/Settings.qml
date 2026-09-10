@@ -33,6 +33,11 @@ import "sections/options.js" as Options
 // bar overlay's "Show in settings" button lands on the exact control.
 //
 // Bound to Super+S in dotfiles (S-40).
+//
+// features-change round 3 (panel style pass): the top bar is two lines —
+// "Settings" (title, body size, like every other panel heading) with the
+// close control on the first, the `>` search on its own line below — rather
+// than title + prompt + field + close crammed onto one.
 
 PanelWindow {
     id: root
@@ -260,62 +265,75 @@ PanelWindow {
             Widgets.Panel {
             anchors.fill: parent
 
-            // --- top bar: title, search, close --------------------------
+            // --- top bar: title + close, then the search on its own line -
             Item {
                 id: topBar
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: parent.top
-                height: Math.max(searchField.implicitHeight, closeBtn.implicitHeight)
-                    + root.chWidth * Config.Appearance.space2
+                height: topBarCol.implicitHeight + root.chWidth * Config.Appearance.space2 * 2
 
-                Widgets.StyledText {
-                    id: settingsTitle
+                Column {
+                    id: topBarCol
                     anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    kind: "title"
-                    sizeStep: 3
-                    text: "Settings"
-                }
-
-                Widgets.StyledText {
-                    id: searchPrompt
-                    anchors.left: settingsTitle.right
-                    anchors.leftMargin: root.gap
-                    anchors.verticalCenter: parent.verticalCenter
-                    mono: true
-                    text: ">"
-                }
-                Widgets.StyledText {
-                    anchors.left: searchField.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    kind: "label"
-                    mono: true
-                    text: "search settings — enter cycles through the results"
-                    visible: searchField.text.length === 0
-                }
-                TextInput {
-                    id: searchField
-                    anchors.left: searchPrompt.right
-                    anchors.leftMargin: root.chWidth
-                    anchors.right: closeBtn.left
-                    anchors.rightMargin: root.gap
-                    anchors.verticalCenter: parent.verticalCenter
-                    font.family: Config.Appearance.fontMono
-                    font.pixelSize: Config.Appearance.fontSize2
-                    color: Config.Appearance.textPrimary
-                    onTextChanged: { Services.SettingsPanel.query = text; root._acceptIdx = 0 }
-                    onAccepted: root._acceptCycle()
-                    Keys.onEscapePressed: Services.SettingsPanel.hide()
-                }
-
-                Widgets.Segment {
-                    id: closeBtn
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    squared: true
-                    label: "×"
-                    onActivated: Services.SettingsPanel.hide()
+                    spacing: root.chWidth * Config.Appearance.space2
+
+                    Item {
+                        width: parent.width
+                        height: Math.max(settingsTitle.implicitHeight, closeBtn.implicitHeight)
+
+                        Widgets.StyledText {
+                            id: settingsTitle
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            kind: "title"
+                            text: "Settings"
+                        }
+                        Widgets.Segment {
+                            id: closeBtn
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            squared: true
+                            label: "×"
+                            onActivated: Services.SettingsPanel.hide()
+                        }
+                    }
+
+                    Item {
+                        width: parent.width
+                        height: Math.max(searchField.implicitHeight, searchPrompt.implicitHeight)
+
+                        Widgets.StyledText {
+                            id: searchPrompt
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            mono: true
+                            text: ">"
+                        }
+                        Widgets.StyledText {
+                            anchors.left: searchField.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            kind: "label"
+                            mono: true
+                            text: "search settings — Enter cycles the matches"
+                            visible: searchField.text.length === 0
+                        }
+                        TextInput {
+                            id: searchField
+                            anchors.left: searchPrompt.right
+                            anchors.leftMargin: root.chWidth
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            font.family: Config.Appearance.fontMono
+                            font.pixelSize: Config.Appearance.fontSize2
+                            color: Config.Appearance.textPrimary
+                            onTextChanged: { Services.SettingsPanel.query = text; root._acceptIdx = 0 }
+                            onAccepted: root._acceptCycle()
+                            Keys.onEscapePressed: Services.SettingsPanel.hide()
+                        }
+                    }
                 }
             }
 

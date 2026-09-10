@@ -9,6 +9,11 @@ import "../" as Tabs
 // id as the fallback). Per-chat personality via a real control. Autoscroll.
 // Streaming + tool approval + a non-blocking memory-proposal cue (§8.6); the
 // full review is in the Memory-proposals section.
+//
+// features-change round 3 (panel style pass): the transcript rows sit on
+// space2 rather than space3 — each ChatBubble now carries its own "you" /
+// "agent" role label and the user's bubble is capped short of full width,
+// so the roles read without the extra air the old label-less stack needed.
 
 Item {
     id: root
@@ -198,7 +203,9 @@ Item {
             Column {
                 id: messages
                 width: history.width
-                spacing: root.chWidth * Config.Appearance.space3
+                // Each bubble now carries its own role label, so the rows
+                // need less air between them than the old label-less stack.
+                spacing: root.chWidth * Config.Appearance.space2
 
                 Repeater {
                     model: root.agent.messages
