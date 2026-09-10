@@ -120,28 +120,6 @@ ShellRoot {
         screen: Quickshell.screens[0]
     }
 
-    // S-43: per-screen (Services/Spotlight.qml's own header on why a
-    // primary-only instance would defeat the feature). `shown` is read
-    // directly from Services.Spotlight inside that file now (revised after
-    // the first real-hardware round to fix the settings-panel toggle never
-    // reaching the overlay) — no external binding needed here any more.
-    // The one IpcHandler for "spotlight" still lives here, not inside the
-    // repeated component, since Quickshell would otherwise register the
-    // same target N times. `press`/`release` are hyprland.lua's SUPER+G
-    // hold binds; `toggle` stays for the settings panel's Pill, which has
-    // no natural "hold" gesture of its own. (Rounds 4/5 routed these
-    // through a bare-Super tap-count state machine in Services/Spotlight;
-    // round 6 removed it — see that file's own header — so these call
-    // show()/hide() directly again.)
-    Variants {
-        model: Quickshell.screens
-
-        SpotlightSurface.Spotlight {
-            required property ShellScreen modelData
-            screen: modelData
-        }
-    }
-
     IpcHandler {
         target: "spotlight"
         function press(): void { Services.Spotlight.show() }
@@ -183,6 +161,22 @@ ShellRoot {
     }
     Cheatsheet.Cheatsheet {
         screen: Quickshell.screens[0]
+    }
+
+    // S-43 / SF-5: per-screen (Services/Spotlight.qml's header on why a
+    // primary-only instance defeats the feature). Declared LAST, and it
+    // sets WlrLayer.Overlay + only maps its surface while shown (SF-5) — so
+    // the cursor-locator dim comes up above an already-open settings /
+    // notification / chat panel. The IpcHandler for "spotlight" is up near
+    // the top (registered once; `press`/`release` are SUPER+G's hold binds,
+    // `toggle` is the settings Pill).
+    Variants {
+        model: Quickshell.screens
+
+        SpotlightSurface.Spotlight {
+            required property ShellScreen modelData
+            screen: modelData
+        }
     }
 
     Component.onCompleted: {

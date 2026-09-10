@@ -381,17 +381,39 @@ Column {
     // --- Cursor spotlight --------------------------------------
     SettingsGroup {
         title: "Cursor spotlight"
+        caption: "Hold Super+G to show it; the toggle here is sticky. Dim and flashlight dim the screen around a clear circle; crosshair and ring just mark the pointer and never dim."
+
         SettingsRow {
             optionId: "theme.spotlight"
             title: "Cursor spotlight"
-            description: "A vignette that follows the pointer. Hold Super+G elsewhere; this toggle is sticky."
+            description: "Locate the pointer on a large or busy screen."
             Widgets.Pill {
                 checked: Services.Spotlight.shown
                 onToggled: (v) => (v ? Services.Spotlight.show() : Services.Spotlight.hide())
             }
         }
         SettingsRow {
-            title: "Size"
+            title: "Effect"
+            wide: true
+            Flow {
+                width: parent.width
+                spacing: root.gap
+                Repeater {
+                    model: Services.Spotlight.effects
+                    Widgets.StyledButton {
+                        required property string modelData
+                        label: modelData
+                        active: Services.Spotlight.effect === modelData
+                        onClicked: Services.Spotlight.setEffect(modelData)
+                    }
+                }
+            }
+        }
+
+        // dim / flashlight options
+        SettingsRow {
+            title: "Circle size"
+            visible: Services.Spotlight.effect === "dim" || Services.Spotlight.effect === "flashlight"
             Row {
                 spacing: root.gap
                 Repeater {
@@ -403,6 +425,55 @@ Column {
                         onClicked: Services.Spotlight.setSize(modelData)
                     }
                 }
+            }
+        }
+        SettingsRow {
+            title: "Dim strength"
+            visible: Services.Spotlight.effect === "dim" || Services.Spotlight.effect === "flashlight"
+            Widgets.NumberField {
+                value: Services.Spotlight.intensity
+                step: 5; suffix: "%"; from: 0; to: 100
+                onCommitted: (v) => Services.Spotlight.setIntensity(v)
+            }
+        }
+
+        // crosshair options
+        SettingsRow {
+            title: "Line thickness"
+            visible: Services.Spotlight.effect === "crosshair"
+            Widgets.NumberField {
+                value: Services.Spotlight.crosshairThickness
+                step: 1; suffix: "px"; from: 1; to: 8
+                onCommitted: (v) => Services.Spotlight.setCrosshairThickness(v)
+            }
+        }
+        SettingsRow {
+            title: "Line opacity"
+            visible: Services.Spotlight.effect === "crosshair"
+            Widgets.NumberField {
+                value: Services.Spotlight.crosshairOpacity
+                step: 5; suffix: "%"; from: 5; to: 100
+                onCommitted: (v) => Services.Spotlight.setCrosshairOpacity(v)
+            }
+        }
+
+        // ring options
+        SettingsRow {
+            title: "Ring radius"
+            visible: Services.Spotlight.effect === "ring"
+            Widgets.NumberField {
+                value: Services.Spotlight.ringRadius
+                step: 5; suffix: "px"; from: 20; to: 240
+                onCommitted: (v) => Services.Spotlight.setRingRadius(v)
+            }
+        }
+        SettingsRow {
+            title: "Ring thickness"
+            visible: Services.Spotlight.effect === "ring"
+            Widgets.NumberField {
+                value: Services.Spotlight.ringThickness
+                step: 1; suffix: "px"; from: 1; to: 12
+                onCommitted: (v) => Services.Spotlight.setRingThickness(v)
             }
         }
     }

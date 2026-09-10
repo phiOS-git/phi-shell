@@ -78,7 +78,7 @@ var OPTIONS = [
     { id: "theme.wallpaper.scale",    title: "Wallpaper scale",        keywords: "background zoom size" },
     { id: "theme.wallpaper.texture",  title: "Wallpaper texture",      keywords: "background grain leather rock noise paper overlay intensity" },
     { id: "theme.nightshift",         title: "Night shift",            keywords: "warm temperature evening true tone ambient light" },
-    { id: "theme.spotlight",          title: "Cursor spotlight",       keywords: "vignette pointer glow" },
+    { id: "theme.spotlight",          title: "Cursor spotlight",       keywords: "vignette pointer glow locate cursor effect dim flashlight crosshair ring size intensity thickness" },
     { id: "theme.lockscreen",         title: "Lock screen effect",     keywords: "ambient backdrop lava lamp matrix rain starfield none" },
 
     // --- Connectivity -----------------------------------------------

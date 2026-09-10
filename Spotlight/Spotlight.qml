@@ -1,80 +1,41 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import qs.Config as Config
 import qs.Services as Services
 
-// phiOS — Spotlight/Spotlight.qml (S-43, master plan §8.3 surface 17,
-// shell §2.14). Vignette overlay via QtQuick's Canvas 2D API
-// (createRadialGradient — a standard, dependency-free Canvas primitive,
-// not Qt5Compat.GraphicalEffects or a custom ShaderEffect, since neither
-// was verified available in this Quickshell/Qt6 build from here).
+// phiOS — Spotlight/Spotlight.qml (S-43; SF-5 rewrite). A cursor-locator
+// overlay. `shown` is driven by Services/Spotlight (SUPER+G hold, or the
+// settings Pill); the effect and its options are also on that singleton.
 //
-// DEVIATION FROM THE CARD, FLAGGED: "updated on cursor movement via the
-// Hyprland event socket" is read here as polling `hyprctl cursorpos` on a
-// fast timer (60ms) instead of a raw socket subscription — hand-rolling a
-// persistent reader of Hyprland's IPC event socket2 is real, unproven
-// complexity this step's effort did not spend. Master plan §9.10's own
-// words allow dropping this feature entirely if maintenance becomes
-// unmanageable — polling is a smaller compromise than that.
+// SF-5 changes:
 //
-// SECOND real-hardware round. The first round's own "physical -> logical"
-// devicePixelRatio conversion (justified by analogy with Screenshot.qml's
-// real, confirmed S-36 fix) made the offset WORSE ("corner on cursor"
-// instead of the milder original "not correctly centered") — meaning
-// `hyprctl cursorpos`, unlike `activewindow -j`'s at/size or grim's own -g
-// geometry, is NOT in the same physical-pixel space after all; reverted to
-// the raw value. console.log below prints every raw sample plus this
-// screen's own geometry/scale so a genuinely wrong remaining offset can be
-// fixed from real numbers next round instead of guessed a third time.
+//   1. OPTIMISATION. The old version repainted a full-screen QtQuick Canvas
+//      (createRadialGradient over the whole output) on every 60 ms cursor
+//      poll — genuinely heavy on a HiDPI screen. Now:
+//        - the dim/flashlight vignette is a SMALL Canvas "sprite" (a radial
+//          gradient, transparent centre → solid scrim rim) painted ONCE and
+//          only re-painted when a size/intensity option changes, never on
+//          cursor movement;
+//        - the rest of the screen is four plain scrim Rectangles that
+//          resize to tile around the sprite square.
+//      Moving the cursor now only updates x/y/width/height bindings on five
+//      GPU-composited items — no CPU repaint at all.
+//        - crosshair / ring effects are 1-2 Rectangles and never dim.
 //
-// "Whole screen black until the cursor moves": the first round's own fix
-// (triggeredOnStart + a screen-centre default) was not enough — reasoned
-// through harder this round: fadeRoot's opacity Behavior means `shown`
-// flipping true starts a fade IMMEDIATELY, racing the async hyprctl
-// subprocess for the real position, and any default (even a plausible one)
-// can still paint visibly wrong for that window. Fixed properly this time:
-// fadeRoot's opacity now gates on `hasPosition` too, so nothing fades in
-// at all until the first real sample has actually arrived — the window
-// stays fully transparent for that brief gap instead of guessing.
+//   2. Z-INDEX. WlrLayer.Overlay + it maps only while shown (visible gates
+//      on the fade), so it comes up ABOVE an already-open settings /
+//      notification / chat panel (all also Overlay). The lock screen
+//      (WlSessionLock, a different protocol) still wins.
 //
-// THIRD real-hardware round left this BROKEN and marked "no further
-// guessing" on explicit instruction, pending the user's own decision on
-// the toggle-vs-hold question. Two things changed since:
+//   3. mask: Region {} — fully click-through, so the overlay never eats a
+//      click while it is up.
 //
-// FOURTH round — offset root cause found, not guessed a third time: this
-// PanelWindow left `exclusionMode` at its default (`Auto`), and Auto only
-// defines a shrink-to-content behaviour for a window anchored on exactly
-// three edges (Quickshell docs, ExclusionMode) — this one is anchored on
-// all four, so it fell back to respecting OTHER layers' exclusive zones
-// like `Normal` would. `Bar/Bar.qml` reserves `bar.height` at the top
-// whenever it is not auto-hidden, so this window's actual on-screen
-// top-left sat `bar.height` below `screen.y` while the cursor math below
-// still subtracted bare `screen.y` — every local Y came out `bar.height`
-// too large, i.e. the vignette drawn too far DOWN. Exactly the reported
-// "slightly down" symptom, and exactly why round 1's blanket scale
-// conversion and round 2's plain revert both missed it: neither round
-// touched window placement, only the cursor sample. Fixed by setting
-// `exclusionMode: ExclusionMode.Ignore` (Quickshell docs: "Ignore
-// exclusion zones of other shell layers"), so this window's local (0,0)
-// is always the true `screen.x`/`screen.y`, matching what the cursor math
-// already assumed. Unverified end to end — no compositor here.
-//
-// The interaction-model question, reopened at round 4 (a bare-Super
-// double-/triple-tap-and-hold, replacing SUPER+G), is closed again at
-// round 6: confirmed a compositor-level Hyprland bug (release events
-// never fire for a bare modifier keysym bind, hyprwm/Hyprland#6946,
-// still reproducing as of a 2026-08-17 comment) — not fixable from this
-// repository. Reverted to plain SUPER+G hold by the user's own choice,
-// once given the real cause. Position: confirmed correctly centred on
-// real hardware at round 5, unaffected by any of this.
-//
-// The own-drawn cursor marker a previous round of this file added was
-// never requested and has been removed.
-//
-// `shown` is still driven by Services/Spotlight.qml, and hyprland.lua's
-// SUPER+G press bind / bare-g release bind call show()/hide() on it
-// directly — this file has no keybinding logic of its own.
+// Cursor position is still `hyprctl cursorpos` polled while shown (there is
+// no cursor-move event on Hyprland's socket; this path was verified centred
+// on real hardware at S-43 round 5 and is unchanged). exclusionMode.Ignore
+// keeps local (0,0) at the true screen origin (S-43 round 4's fix).
 
 PanelWindow {
     id: root
@@ -82,31 +43,27 @@ PanelWindow {
     required property ShellScreen screen
 
     readonly property bool shown: Services.Spotlight.shown
+    readonly property string effect: Services.Spotlight.effect
     property real cursorX: screen.width / 2
     property real cursorY: screen.height / 2
     property bool hasPosition: false
 
     anchors { top: true; bottom: true; left: true; right: true }
-    // See this file's own header, round 4: without this, the window is
-    // inset by the bar's own exclusiveZone whenever it is not
-    // auto-hidden, and the cursor math below (which assumes local (0,0)
-    // == screen.x/screen.y) draws the vignette too far down by exactly
-    // the bar's height. NOT paired with an `exclusiveZone` assignment —
-    // Quickshell's own docs state that setting `exclusiveZone` sets
-    // `exclusionMode` back to `Normal` as a side effect, which would
-    // silently undo this. This window never reserves space of its own
-    // (it is a transparent overlay), so it needs nothing from
-    // `exclusiveZone` anyway.
     exclusionMode: ExclusionMode.Ignore
+    mask: Region {}
     color: "transparent"
     visible: fadeRoot.opacity > 0
+
+    Component.onCompleted: {
+        if (root.WlrLayershell) root.WlrLayershell.layer = WlrLayer.Overlay
+    }
 
     onShownChanged: {
         if (!root.shown) root.hasPosition = false
     }
 
     Timer {
-        interval: 60
+        interval: 55
         running: root.shown
         repeat: true
         triggeredOnStart: true
@@ -115,74 +72,165 @@ PanelWindow {
 
     Process {
         id: cursorProbe
-        onExited: cursorProbe.running = false
         command: ["hyprctl", "cursorpos"]
+        onExited: cursorProbe.running = false
         stdout: StdioCollector {
             onStreamFinished: {
-                // "x, y" — confirmed against real Hyprland source
-                // (src/ipc/s1/Commands.cpp: std::format("{}, {}", x, y)).
+                // "x, y" — Hyprland src/ipc/s1/Commands.cpp.
                 const parts = this.text.trim().split(",")
                 if (parts.length === 2) {
                     const x = parseFloat(parts[0])
                     const y = parseFloat(parts[1])
                     if (!isNaN(x) && !isNaN(y)) {
-                        // Raw, no scale conversion (see this file's own
-                        // header — the first round's conversion made
-                        // things worse, reverted). Logged so a real
-                        // remaining offset can be diagnosed from actual
-                        // numbers rather than guessed again.
-                        console.log("phi-shell: spotlight raw=(" + x + "," + y
-                            + ") screen=" + root.screen.name + " at (" + root.screen.x + "," + root.screen.y
-                            + ") " + root.screen.width + "x" + root.screen.height
-                            + " scale=" + root.screen.devicePixelRatio)
                         root.cursorX = x - root.screen.x
                         root.cursorY = y - root.screen.y
-                        root.hasPosition = true
-                        canvas.requestPaint()
+                        if (!root.hasPosition) {
+                            root.hasPosition = true
+                            console.log("phi-shell: spotlight first sample raw=(" + x + "," + y
+                                + ") local=(" + root.cursorX + "," + root.cursorY + ") on " + root.screen.name)
+                        }
                     }
                 }
             }
         }
     }
 
-    readonly property int radius: root._radiusFor(Services.Spotlight.size)
-    function _radiusFor(size) {
-        switch (size) {
-        case "small": return 80
-        case "large": return 220
-        default: return 140
-        }
-    }
-    // Live: Services.Spotlight.size changing (settings panel) repaints
-    // immediately, unlike the earlier draft's one-shot Component.onCompleted
-    // fetch that never updated after startup.
-    onRadiusChanged: canvas.requestPaint()
-
     Item {
         id: fadeRoot
         anchors.fill: parent
-        // Gated on hasPosition too (see this file's own header) — nothing
-        // fades in until the first real sample has actually arrived.
+        // Nothing fades in until the first real cursor sample has arrived
+        // (S-43 round 2's fix — a default position can paint visibly wrong
+        // for the fade's duration otherwise).
         opacity: (root.shown && root.hasPosition) ? 1 : 0
 
         Behavior on opacity {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
-        Canvas {
-            id: canvas
+        Loader {
             anchors.fill: parent
+            sourceComponent: {
+                switch (root.effect) {
+                case "flashlight": return flashlightComponent
+                case "crosshair": return crosshairComponent
+                case "ring": return ringComponent
+                default: return dimComponent
+                }
+            }
+        }
+    }
+
+    // --- dim / flashlight: sprite + four scrim bands --------------------
+    // cx/cy are passed in at instantiation: an inline `component` gets its
+    // own id scope, so `root` (the PanelWindow id) is NOT resolvable from
+    // inside here — unlike a plain Component, whose contents share the
+    // document scope (that is why crosshairComponent / ringComponent can
+    // still read `root` directly).
+    component Vignette: Item {
+        id: vig
+        anchors.fill: parent
+        property bool hard: false
+        property real cx: 0
+        property real cy: 0
+
+        readonly property color scrim: Config.Appearance.overlayScrim
+        readonly property real dimA: vig.scrim.a * (Services.Spotlight.intensity / 100)
+        readonly property color scrimSolid: Qt.rgba(vig.scrim.r, vig.scrim.g, vig.scrim.b,
+            vig.hard ? Math.min(1, vig.dimA * 1.6) : vig.dimA)
+        readonly property real r: Services.Spotlight.radiusPx()
+        readonly property real outer: vig.hard ? vig.r * 1.06 : vig.r * 1.5
+
+        // sprite: painted once; requestPaint() only on option change.
+        Canvas {
+            id: sprite
+            width: vig.outer * 2
+            height: width
+            x: vig.cx - width / 2
+            y: vig.cy - height / 2
             onPaint: {
                 const ctx = getContext("2d")
                 ctx.clearRect(0, 0, width, height)
-                const grad = ctx.createRadialGradient(
-                    root.cursorX, root.cursorY, root.radius * 0.6,
-                    root.cursorX, root.cursorY, root.radius * 1.4)
-                const scrim = Config.Appearance.overlayScrim
-                grad.addColorStop(0, Qt.rgba(scrim.r, scrim.g, scrim.b, 0))
-                grad.addColorStop(1, Qt.rgba(scrim.r, scrim.g, scrim.b, scrim.a))
-                ctx.fillStyle = grad
+                const inner = vig.hard ? vig.r * 0.94 : vig.r * 0.35
+                const g = ctx.createRadialGradient(width / 2, height / 2, inner,
+                    width / 2, height / 2, vig.outer)
+                const s = vig.scrim
+                g.addColorStop(0, Qt.rgba(s.r, s.g, s.b, 0))
+                g.addColorStop(1, vig.scrimSolid)
+                ctx.fillStyle = g
                 ctx.fillRect(0, 0, width, height)
+            }
+            Component.onCompleted: requestPaint()
+        }
+        Connections {
+            target: Services.Spotlight
+            function onSizeChanged() { sprite.requestPaint() }
+            function onIntensityChanged() { sprite.requestPaint() }
+            function onEffectChanged() { sprite.requestPaint() }
+        }
+
+        readonly property real sTop: Math.max(0, Math.min(vig.height, sprite.y))
+        readonly property real sBot: Math.max(0, Math.min(vig.height, sprite.y + sprite.height))
+        readonly property real sLeft: Math.max(0, Math.min(vig.width, sprite.x))
+        readonly property real sRight: Math.max(0, Math.min(vig.width, sprite.x + sprite.width))
+
+        Rectangle {   // above the sprite square
+            x: 0; y: 0; width: vig.width; height: vig.sTop
+            color: vig.scrimSolid
+        }
+        Rectangle {   // below
+            x: 0; y: vig.sBot; width: vig.width; height: vig.height - vig.sBot
+            color: vig.scrimSolid
+        }
+        Rectangle {   // left of the sprite, sprite's vertical band only
+            x: 0; y: vig.sTop; width: vig.sLeft; height: vig.sBot - vig.sTop
+            color: vig.scrimSolid
+        }
+        Rectangle {   // right
+            x: vig.sRight; y: vig.sTop; width: vig.width - vig.sRight; height: vig.sBot - vig.sTop
+            color: vig.scrimSolid
+        }
+    }
+
+    Component { id: dimComponent; Vignette { hard: false; cx: root.cursorX; cy: root.cursorY } }
+    Component { id: flashlightComponent; Vignette { hard: true; cx: root.cursorX; cy: root.cursorY } }
+
+    // --- crosshair: two hairlines, no dim -----------------------------
+    Component {
+        id: crosshairComponent
+        Item {
+            id: xh
+            anchors.fill: parent
+            readonly property int th: Services.Spotlight.crosshairThickness
+            readonly property color lineColor: Qt.rgba(Config.Appearance.textPrimary.r,
+                Config.Appearance.textPrimary.g, Config.Appearance.textPrimary.b,
+                Services.Spotlight.crosshairOpacity / 100)
+            Rectangle {
+                x: root.cursorX - xh.th / 2; y: 0
+                width: xh.th; height: xh.height
+                color: xh.lineColor
+            }
+            Rectangle {
+                x: 0; y: root.cursorY - xh.th / 2
+                width: xh.width; height: xh.th
+                color: xh.lineColor
+            }
+        }
+    }
+
+    // --- ring: a stroked circle, no dim -------------------------------
+    Component {
+        id: ringComponent
+        Item {
+            anchors.fill: parent
+            Rectangle {
+                width: Services.Spotlight.ringRadius * 2
+                height: width
+                radius: width / 2
+                x: root.cursorX - width / 2
+                y: root.cursorY - height / 2
+                color: "transparent"
+                border.width: Services.Spotlight.ringThickness
+                border.color: Config.Appearance.accent
             }
         }
     }

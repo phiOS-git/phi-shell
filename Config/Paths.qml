@@ -52,6 +52,12 @@ Singleton {
     // closed scalar key set. Owned by Services/Notifications.qml.
     readonly property string notificationPrefsFile: root.stateDir + "/notification-prefs.json"
 
+    // shell-features: cursor-spotlight preferences — the chosen effect and
+    // its per-effect options. Nested, same reasoning as above. Owned by
+    // Services/Spotlight.qml. (`spotlight.size` / `toggle.spotlight` stay as
+    // phi-state keys; `size` is read here once as a seed for back-compat.)
+    readonly property string spotlightPrefsFile: root.stateDir + "/spotlight.json"
+
     // S-32: no manifest file — the capture script (Services/Clipboard.qml)
     // is plain POSIX sh with no JSON writer available, so structure lives
     // in the filesystem instead: one <id>.data + <id>.mime pair per entry,
