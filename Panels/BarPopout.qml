@@ -168,7 +168,7 @@ PanelWindow {
                     checked: Services.AudioBridge.muted
                     onToggled: Services.AudioBridge.toggleMute()
                 }
-                Widgets.StyledButton {
+                Widgets.SmallButton {
                     label: "Sound settings…"
                     onClicked: {
                         Services.SettingsPanel.openSection("devices")
@@ -221,7 +221,7 @@ PanelWindow {
                     checked: Services.NightShift.trueTone
                     onToggled: (v) => Services.NightShift.setTrueTone(v)
                 }
-                Widgets.StyledButton {
+                Widgets.SmallButton {
                     label: "Display settings…"
                     onClicked: {
                         Services.SettingsPanel.openSection("theme")
@@ -255,11 +255,11 @@ PanelWindow {
                     Widgets.StyledText { kind: "label"; sizeStep: 0
                         text: "ping " + (Services.NetStats.pingMs >= 0 ? Services.NetStats.pingMs + " ms" : "—") }
                 }
-                Widgets.StyledButton {
+                Widgets.SmallButton {
                     label: "Manage networks…"
                     onClicked: { Quickshell.execDetached(["kitty", "-e", "nmtui"]); Services.BarPopout.hide() }
                 }
-                Widgets.StyledButton {
+                Widgets.SmallButton {
                     label: "Show in settings…"
                     onClicked: root._showInSettings("connectivity.wifi.speed")
                 }
@@ -282,11 +282,11 @@ PanelWindow {
                     value: Services.BluetoothBridge.connectedCount > 0
                         ? Services.BluetoothBridge.firstConnectedName : "none"
                 }
-                Widgets.StyledButton {
+                Widgets.SmallButton {
                     label: "Manage devices…"
                     onClicked: { Quickshell.execDetached(["kitty", "-e", "bluetuith"]); Services.BarPopout.hide() }
                 }
-                Widgets.StyledButton {
+                Widgets.SmallButton {
                     label: "Show in settings…"
                     onClicked: root._showInSettings("connectivity.bluetooth")
                 }
@@ -319,7 +319,7 @@ PanelWindow {
                     label: "VPN · no tunnels"
                     checked: false
                 }
-                Widgets.StyledButton {
+                Widgets.SmallButton {
                     label: "Show in settings…"
                     onClicked: root._showInSettings("connectivity.vpn")
                 }

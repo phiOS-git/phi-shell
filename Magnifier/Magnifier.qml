@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -30,11 +31,14 @@ import qs.Widgets as Widgets
 // cursor on top of this overlay at its true position — so it "rests on
 // top of" the lens with no glyph of our own to draw.
 //
-// Circular shape + the glass edge are a plain Canvas (createRadialGradient,
-// the same primitive Spotlight.qml uses) — no ShaderEffect / effects
-// module, none of which this Quickshell/Qt build confirms. True optical
-// refraction needs a shader (Q-F07 territory) and is approximated by the
-// edge-shadow falloff a real lens rim has.
+// The circle is a real mask (QtQuick.Effects MultiEffect, maskSource a
+// round Rectangle) — confirmed present in this Qt build (qt6-declarative
+// ships it; qmllint resolves it). It replaces the earlier opaque bezel
+// disc, which the user found too heavy ("remove the large solid colour
+// border"). The glass edge is a plain Canvas (createRadialGradient, the
+// same primitive Spotlight.qml uses): an inner shadow falloff + a crisp
+// rim. True optical refraction needs a fragment shader (Q-F07 territory)
+// and is approximated by that falloff.
 //
 // Cursor tracking is the same `hyprctl cursorpos` poll Spotlight.qml uses;
 // the lens position eases toward each sample on a SpringAnimation for the
@@ -108,9 +112,6 @@ PanelWindow {
     onZoomChanged: { bezel.requestPaint(); root._settled = false }
     onLensSizeChanged: { bezel.requestPaint(); root._settled = false }
 
-    // Bezel disc a comfortable margin larger than the feed square's
-    // diagonal, so its opaque ring hides the square's corners.
-    readonly property real bezelD: root.lensSize * 1.6
     readonly property real lensR: root.lensSize / 2
 
     TextMetrics {
@@ -224,20 +225,21 @@ PanelWindow {
 
         Item {
             id: lens
-            width: root.bezelD
-            height: root.bezelD
+            width: root.lensSize
+            height: root.lensSize
             x: root.viewX - width / 2
             y: root.viewY - height / 2
 
-            // The magnified still. Clipped to its bounding square; the
-            // bezel Canvas on top hides everything outside the circle.
+            readonly property bool _feedShown: root._ready && !root._capturing
+
+            // The magnified still, rendered to a texture and masked to a
+            // circle by the MultiEffect below (no opaque frame — the mask
+            // is what makes it round).
             Item {
                 id: feedClip
-                anchors.centerIn: parent
-                width: root.lensSize
-                height: root.lensSize
-                clip: true
-                visible: root._ready && !root._capturing
+                anchors.fill: parent
+                visible: false
+                layer.enabled: true
 
                 ScreencopyView {
                     id: scv
@@ -247,24 +249,38 @@ PanelWindow {
                     width: root.screen.width * root.zoom
                     height: root.screen.height * root.zoom
                     // Pan so (viewX, viewY) in screen space lands at the
-                    // clip centre.
+                    // lens centre.
                     x: root.lensSize / 2 - root.viewX * root.zoom
                     y: root.lensSize / 2 - root.viewY * root.zoom
                 }
             }
 
+            Rectangle {
+                id: lensMask
+                anchors.fill: parent
+                radius: width / 2
+                visible: false
+            }
+
+            MultiEffect {
+                anchors.fill: parent
+                source: feedClip
+                maskEnabled: true
+                maskSource: lensMask
+                visible: lens._feedShown
+            }
+
             // While a fresh grab is in flight the magnified layer is
             // hidden; show a faint hint the loupe is still there.
             Rectangle {
-                anchors.centerIn: parent
-                width: root.lensSize
-                height: root.lensSize
+                anchors.fill: parent
                 radius: width / 2
-                visible: !feedClip.visible
+                visible: !lens._feedShown
                 color: Qt.rgba(Config.Appearance.colorMain.r,
-                    Config.Appearance.colorMain.g, Config.Appearance.colorMain.b, 0.04)
+                    Config.Appearance.colorMain.g, Config.Appearance.colorMain.b, 0.05)
             }
 
+            // Glass edge + rim — arcs only, no fill disc.
             Canvas {
                 id: bezel
                 anchors.fill: parent
@@ -273,52 +289,31 @@ PanelWindow {
                     ctx.clearRect(0, 0, width, height)
                     const c = width / 2
                     const rLens = root.lensR
-                    const rHole = rLens * 0.88
-                    const rDisc = width / 2
-                    const main = Config.Appearance.colorMain
                     const opp = Config.Appearance.colorOpposite
                     const scrim = Config.Appearance.overlayScrim
 
-                    // 1. opaque bezel disc — hides the feed square's corners.
-                    ctx.fillStyle = Qt.rgba(main.r, main.g, main.b, 1)
-                    ctx.beginPath(); ctx.arc(c, c, rDisc, 0, 2 * Math.PI); ctx.fill()
-
-                    // 2. punch the lens hole, soft edge.
-                    ctx.globalCompositeOperation = "destination-out"
-                    const hole = ctx.createRadialGradient(c, c, rHole, c, c, rLens)
-                    hole.addColorStop(0, "rgba(0,0,0,1)")
-                    hole.addColorStop(1, "rgba(0,0,0,0)")
-                    ctx.fillStyle = hole
-                    ctx.beginPath(); ctx.arc(c, c, rLens, 0, 2 * Math.PI); ctx.fill()
-                    ctx.globalCompositeOperation = "source-over"
-
-                    // 3. glass edge — the light falloff a real lens rim has,
+                    // 1. glass edge — the light falloff a real lens rim has,
                     //    darkening toward the edge (approximates refraction).
-                    const sh = ctx.createRadialGradient(c, c, rLens * 0.6, c, c, rLens)
+                    const sh = ctx.createRadialGradient(c, c, rLens * 0.62, c, c, rLens)
                     sh.addColorStop(0, Qt.rgba(scrim.r, scrim.g, scrim.b, 0))
                     sh.addColorStop(0.8, Qt.rgba(scrim.r, scrim.g, scrim.b, 0))
-                    sh.addColorStop(1, Qt.rgba(scrim.r, scrim.g, scrim.b, Math.min(0.55, scrim.a + 0.2)))
+                    sh.addColorStop(1, Qt.rgba(scrim.r, scrim.g, scrim.b, Math.min(0.5, scrim.a + 0.18)))
                     ctx.fillStyle = sh
                     ctx.beginPath(); ctx.arc(c, c, rLens, 0, 2 * Math.PI); ctx.fill()
 
-                    // 4. crisp rim.
+                    // 2. crisp rim.
                     const rimW = Math.max(2, Config.Appearance.borderWidthStrong * 2)
                     ctx.lineWidth = rimW
                     ctx.strokeStyle = Qt.rgba(opp.r, opp.g, opp.b, 1)
                     ctx.beginPath(); ctx.arc(c, c, rLens - rimW / 2, 0, 2 * Math.PI); ctx.stroke()
-
-                    // 5. thin inner bevel line for a sense of glass thickness.
-                    ctx.lineWidth = Math.max(1, Config.Appearance.borderWidth)
-                    ctx.strokeStyle = Qt.rgba(main.r, main.g, main.b, 0.5)
-                    ctx.beginPath(); ctx.arc(c, c, rLens - rimW - 1, 0, 2 * Math.PI); ctx.stroke()
                 }
             }
 
-            // Zoom readout, small, at the lens corner.
+            // Zoom readout, small, just below the lens.
             Widgets.StyledText {
                 anchors.horizontalCenter: parent.horizontalCenter
-                anchors.top: parent.verticalCenter
-                anchors.topMargin: root.lensR + root.chWidth
+                anchors.top: parent.bottom
+                anchors.topMargin: root.chWidth
                 text: "×" + root.zoom.toFixed(1)
                 kind: "label"
                 sizeStep: 0
