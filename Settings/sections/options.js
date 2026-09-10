@@ -41,10 +41,9 @@ var SECTIONS = [
 // on-screen order.
 var OPTIONS = [
     // --- General -------------------------------------------------------
-    { id: "general.machine",  title: "Machine",       keywords: "hostname cpu gpu ram memory model hardware" },
-    { id: "general.storage",  title: "Storage",       keywords: "disk free root filesystem space" },
-    { id: "general.os",       title: "Operating system", keywords: "os kernel uptime arch linux version" },
-    { id: "general.battery",  title: "Battery",       keywords: "charge health cycles time remaining power profile" },
+    { id: "general.machine",  title: "Machine",       keywords: "hostname cpu processor gpu graphics ram memory model hardware" },
+    { id: "general.system",   title: "System",        keywords: "os kernel uptime arch linux version disk storage free root filesystem" },
+    { id: "general.battery",  title: "Battery",       keywords: "charge health cycles time remaining power profile tlp saver" },
 
     // --- Theme --------------------------------------------------------
     { id: "theme.variant",            title: "Light / dark variant",   keywords: "appearance theme dark light mode" },
