@@ -312,9 +312,12 @@ PanelWindow {
                         onToggled: (v) => v ? Services.Vpn.up(modelData.name) : Services.Vpn.down(modelData.name)
                     }
                 }
-                Widgets.StyledText {
+                Widgets.ToggleRow {
                     visible: Services.Vpn.tunnels.length === 0
-                    kind: "label"; sizeStep: 0; text: "No WireGuard tunnels configured."
+                    width: parent.width
+                    enabled: false
+                    label: "VPN · no tunnels"
+                    checked: false
                 }
                 Widgets.StyledButton {
                     label: "Show in settings…"

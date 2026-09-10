@@ -29,6 +29,17 @@ Singleton {
 
     readonly property string notificationsFile: root.stateDir + "/notifications.json"
 
+    // shell-features: the "Open folder" deep-link in the Connectivity
+    // section's VPN group. $XDG_CONFIG_HOME/phi/wireguard, matching
+    // phi/internal/vpn ConfigDir() exactly — `phi vpn` owns the directory,
+    // this is only ever a path to hand to xdg-open.
+    readonly property string configDir: {
+        const xdg = Quickshell.env("XDG_CONFIG_HOME")
+        const base = (xdg && xdg.length > 0) ? xdg : (Quickshell.env("HOME") + "/.config")
+        return base + "/phi"
+    }
+    readonly property string vpnConfigDir: root.configDir + "/wireguard"
+
     // Out-of-plan: settings-overhaul batch I. Per-app notification rules
     // ({ "<appName>": { mute, hide, priority } }) — a collection, not a
     // scalar, so a JSON file here rather than `phi state` (same call as

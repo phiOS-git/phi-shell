@@ -126,27 +126,91 @@ Column {
 
     // --- VPN (WireGuard) ---------------------------------------
     SettingsGroup {
+        id: vpnGroup
         title: "VPN — WireGuard"
         optionId: "connectivity.vpn"
-        caption: Services.Vpn.tunnels.length === 0
-            ? "No tunnels. Drop a WireGuard .conf into ~/.config/phi/wireguard/ (kept out of every repo). up/down need the sudoers drop-in profiles/desktop/system/etc/sudoers.d/49-phi-vpn installed."
-            : "Configs live in ~/.config/phi/wireguard/. up/down go through `sudo -n wg-quick` — never an endpoint or address is shown (ADR 067)."
+        readonly property bool hasTunnels: Services.Vpn.tunnels.length > 0
+        caption: "up/down go through `sudo -n wg-quick` — never an endpoint or address is shown (ADR 067). Needs the sudoers drop-in profiles/desktop/system/etc/sudoers.d/49-phi-vpn installed (see profiles/desktop/manual.txt)."
+
+        // The controls stay VISIBLE and DISABLED when there is nothing yet,
+        // rather than the section collapsing to a single line of prose
+        // (user directive). A tunnel appears here once its .conf is in
+        // ~/.config/phi/wireguard OR /etc/wireguard, OR it is simply up.
+        SettingsRow {
+            visible: !vpnGroup.hasTunnels
+            title: "Tunnel"
+            description: "No WireGuard tunnels found. Import a .conf below, or bring one up with wg-quick."
+            Widgets.Pill { checked: false; enabled: false }
+        }
 
         Repeater {
             model: Services.Vpn.tunnels
             SettingsRow {
                 required property var modelData
                 title: modelData.name
-                description: modelData.up
-                    ? ("handshake " + (modelData.handshake || "—") + " · ↓ " + (modelData.rx || "—") + " · ↑ " + (modelData.tx || "—"))
-                    : "down"
-                Widgets.Pill {
-                    checked: modelData.up
-                    enabled: !Services.Vpn.busy
-                    onToggled: (v) => v ? Services.Vpn.up(modelData.name) : Services.Vpn.down(modelData.name)
+                description: {
+                    var origin = modelData.origin === "managed" ? "managed"
+                        : (modelData.origin === "etc" ? "/etc/wireguard" : "running, not managed")
+                    if (modelData.up)
+                        return origin + " · handshake " + (modelData.handshake || "—")
+                            + " · ↓ " + (modelData.rx || "—") + " · ↑ " + (modelData.tx || "—")
+                    return origin + " · down"
+                }
+                Row {
+                    spacing: root._gap
+                    Widgets.StyledButton {
+                        visible: !modelData.managed
+                        label: "Import"
+                        enabled: !Services.Vpn.busy
+                        onClicked: Services.Vpn.importConfig("/etc/wireguard/" + modelData.name + ".conf")
+                    }
+                    Widgets.StyledButton {
+                        visible: modelData.managed
+                        label: "Forget"
+                        enabled: !Services.Vpn.busy && !modelData.up
+                        onClicked: Services.Vpn.forget(modelData.name)
+                    }
+                    Widgets.Pill {
+                        checked: modelData.up
+                        enabled: !Services.Vpn.busy
+                        onToggled: (v) => v ? Services.Vpn.up(modelData.name) : Services.Vpn.down(modelData.name)
+                    }
                 }
             }
         }
+
+        SettingsRow {
+            wide: true
+            title: "Import a config"
+            description: "Copies the .conf into ~/.config/phi/wireguard (0600, outside every repo). The private key stays on this machine."
+            Column {
+                width: parent.width
+                spacing: 6
+                Row {
+                    width: parent.width
+                    spacing: root._gap
+                    Widgets.TextField {
+                        id: vpnImportPath
+                        width: parent.width - vpnImportBtn.implicitWidth - vpnOpenBtn.implicitWidth - root._gap * 2
+                        mono: false
+                        placeholder: "Path to a WireGuard .conf…"
+                        onCommitted: { Services.Vpn.importConfig(text); text = "" }
+                    }
+                    Widgets.StyledButton {
+                        id: vpnImportBtn
+                        label: "Import"
+                        enabled: !Services.Vpn.busy
+                        onClicked: { Services.Vpn.importConfig(vpnImportPath.text); vpnImportPath.text = "" }
+                    }
+                    Widgets.StyledButton {
+                        id: vpnOpenBtn
+                        label: "Open folder"
+                        onClicked: Quickshell.execDetached(["xdg-open", Config.Paths.vpnConfigDir])
+                    }
+                }
+            }
+        }
+
         SettingsRow {
             visible: Services.Vpn.lastError.length > 0
             wide: true
