@@ -44,9 +44,9 @@ Singleton {
 
     // Dispatch straight over Hyprland's own IPC socket — no `hyprctl`
     // subprocess. `Hyprland.dispatch("<dispatcher> <args>")` is a plain
-    // function on the singleton (confirmed against the real type). SF-3's
-    // Bar/modules/SpecialWorkspaces.qml uses it for togglespecialworkspace
-    // / focuswindow / workspace; window class/running detection there goes
-    // through Services/ToplevelBridge (wlr), same as Overview and Idle.
+    // function on the singleton (confirmed against the real type). Kept as
+    // a general passthrough for any surface that needs to send a dispatch;
+    // the workspace strip switches workspaces through the model's own
+    // `activate()` and does not need this.
     function dispatch(request) { Hyprland.dispatch(request) }
 }

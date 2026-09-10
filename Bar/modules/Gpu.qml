@@ -20,9 +20,9 @@ import "../glyphs.js" as Glyphs
 // both settable placeholder thresholds from the AGENT card.
 //
 // OOP-11: a click opens the shared bar popout (Services/BarPopout.qml,
-// placeholder). The btop deep-link this module used to carry moved to the
-// left-isle btop button (Bar/modules/SpecialWorkspaces.qml, SF-3) — the
-// single control point for btop's special workspace.
+// placeholder). The btop deep-link this module used to carry is gone — btop
+// lives on its own workspace (ADR 134), reached from its icon in the
+// left-isle workspace strip (Bar/modules/Workspaces.qml).
 
 Widgets.Segment {
     id: root
@@ -48,8 +48,7 @@ Widgets.Segment {
         && (Date.now() - root.aboveSince) > root.sustainedMs
 
     // OOP-11: icon + value; a click opens the shared bar popout
-    // (placeholder). The btop deep-link this button used to carry is now
-    // the left-isle btop button (Bar/modules/SpecialWorkspaces.qml).
+    // (placeholder).
     glyph: Glyphs.gpu
     label: Math.round(root.utilPercent) + "%"
     tone: root.tempAnomaly ? "error" : (root.utilAnomaly ? "warn" : "")
