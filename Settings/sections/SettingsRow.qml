@@ -26,6 +26,12 @@ import "options.js" as Options
 // "reset" now sits under the label on the LEFT, out of the control's way,
 // so the control never moves; the row just grows a line taller.
 //
+// panels-ux-rework: the row's own height eases (category B) so a "reset"
+// appearing, a description changing, or a `wide` control growing/shrinking
+// slides rather than jumps — the same motion a search reveal already used.
+// The label column also took a slightly wider share of the row (0.46, was
+// 0.42) so a description wraps a little less tightly.
+//
 // `pulse()` is the reveal's arrival flash — a short symmetric fade,
 // category B (a search selection is frequent by definition, style plan §5 /
 // S-52) — never ScrambleText/TypingText, which are category C.
@@ -69,10 +75,24 @@ Item {
         : Math.max(labelBlock.implicitHeight, slot.childrenRect.height)
     implicitHeight: _bodyH + _pad * 2
 
-    Component.onCompleted: if (optionId.length > 0) {
-        if (!Options.known(optionId))
-            console.warn("phi-shell: SettingsRow optionId not in options.js catalogue: " + optionId)
-        Services.SettingsPanel.registerRow(optionId, root)
+    // panels-ux-rework: ease the row's own height so a "reset" line, a
+    // changed description or a growing `wide` control slides in on the
+    // shell's one transition category rather than snapping the column.
+    // `_settled` keeps the first layout (and section switches) instant —
+    // only later height changes animate.
+    property bool _settled: false
+    Behavior on implicitHeight {
+        enabled: root._settled
+        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+    }
+
+    Component.onCompleted: {
+        Qt.callLater(function () { root._settled = true })
+        if (optionId.length > 0) {
+            if (!Options.known(optionId))
+                console.warn("phi-shell: SettingsRow optionId not in options.js catalogue: " + optionId)
+            Services.SettingsPanel.registerRow(optionId, root)
+        }
     }
     Component.onDestruction: if (optionId.length > 0) Services.SettingsPanel.unregisterRow(optionId)
 
@@ -114,7 +134,7 @@ Item {
         anchors.topMargin: root._pad
         width: root.wide
             ? root.width - root._pad * 2
-            : Math.max(0, Math.round(root.width * 0.42) - root._pad)
+            : Math.max(0, Math.round(root.width * 0.46) - root._pad)
         spacing: root._labelGap
 
         Widgets.StyledText {

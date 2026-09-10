@@ -145,11 +145,13 @@ Column {
         // rather than the section collapsing to a single line of prose
         // (user directive). A tunnel appears here once its .conf is in
         // ~/.config/phi/wireguard OR /etc/wireguard, OR it is simply up.
-        SettingsRow {
-            visible: !vpnGroup.hasTunnels
-            title: "Tunnel"
-            description: "No WireGuard tunnels found. Import a .conf below, or bring one up with wg-quick."
-            Widgets.Toggle { checked: false; enabled: false }
+        Widgets.Reveal {
+            shown: !vpnGroup.hasTunnels
+            SettingsRow {
+                title: "Tunnel"
+                description: "No WireGuard tunnels found. Import a .conf below, or bring one up with wg-quick."
+                Widgets.Toggle { checked: false; enabled: false }
+            }
         }
 
         Repeater {
@@ -223,11 +225,13 @@ Column {
             }
         }
 
-        SettingsRow {
-            visible: Services.Vpn.lastError.length > 0
-            wide: true
-            title: "Last error"
-            Widgets.StyledText { width: parent.width; wrapMode: Text.WordWrap; tone: "error"; text: Services.Vpn.lastError }
+        Widgets.Reveal {
+            shown: Services.Vpn.lastError.length > 0
+            SettingsRow {
+                wide: true
+                title: "Last error"
+                Widgets.StyledText { width: parent.width; wrapMode: Text.WordWrap; tone: "error"; text: Services.Vpn.lastError }
+            }
         }
     }
 
@@ -254,11 +258,13 @@ Column {
                 onToggled: (v) => v ? Services.Tailscale.up() : Services.Tailscale.down()
             }
         }
-        SettingsRow {
-            visible: Services.Tailscale.lastError.length > 0
-            wide: true
-            title: "Last error"
-            Widgets.StyledText { width: parent.width; wrapMode: Text.WordWrap; tone: "error"; text: Services.Tailscale.lastError }
+        Widgets.Reveal {
+            shown: Services.Tailscale.lastError.length > 0
+            SettingsRow {
+                wide: true
+                title: "Last error"
+                Widgets.StyledText { width: parent.width; wrapMode: Text.WordWrap; tone: "error"; text: Services.Tailscale.lastError }
+            }
         }
     }
 
@@ -283,23 +289,27 @@ Column {
             }
         }
 
-        SettingsRow {
-            visible: !Services.Firewall.nftAvailable
-            wide: true
-            title: "nftables missing"
-            Widgets.StyledText {
-                width: parent.width; wrapMode: Text.WordWrap; tone: "warn"
-                text: "Install the `nftables` package — it is declared in the desktop profile."
+        Widgets.Reveal {
+            shown: !Services.Firewall.nftAvailable
+            SettingsRow {
+                wide: true
+                title: "nftables missing"
+                Widgets.StyledText {
+                    width: parent.width; wrapMode: Text.WordWrap; tone: "warn"
+                    text: "Install the `nftables` package — it is declared in the desktop profile."
+                }
             }
         }
 
-        SettingsRow {
-            visible: Services.Firewall.drifted
-            wide: true
-            title: Services.Firewall.enabled ? "Not enforced" : "Still loaded"
-            Widgets.StyledText {
-                width: parent.width; wrapMode: Text.WordWrap; tone: "error"
-                text: Services.Firewall.driftReason
+        Widgets.Reveal {
+            shown: Services.Firewall.drifted
+            SettingsRow {
+                wide: true
+                title: Services.Firewall.enabled ? "Not enforced" : "Still loaded"
+                Widgets.StyledText {
+                    width: parent.width; wrapMode: Text.WordWrap; tone: "error"
+                    text: Services.Firewall.driftReason
+                }
             }
         }
 
@@ -398,43 +408,47 @@ Column {
             }
         }
 
-        SettingsRow {
-            wide: true
-            visible: Services.Firewall.logging
-            title: "Recently blocked"
-            Column {
-                width: parent.width
-                spacing: 4
-                Row {
-                    spacing: root._gap
-                    Widgets.StyledButton { label: "Refresh"; onClicked: Services.Firewall.refreshBlocked() }
-                    Widgets.StyledText {
-                        kind: "label"; sizeStep: 0
-                        text: Services.Firewall.blocked.length + " logged"
+        Widgets.Reveal {
+            shown: Services.Firewall.logging
+            SettingsRow {
+                wide: true
+                title: "Recently blocked"
+                Column {
+                    width: parent.width
+                    spacing: 4
+                    Row {
+                        spacing: root._gap
+                        Widgets.StyledButton { label: "Refresh"; onClicked: Services.Firewall.refreshBlocked() }
+                        Widgets.StyledText {
+                            kind: "label"; sizeStep: 0
+                            text: Services.Firewall.blocked.length + " logged"
+                        }
                     }
-                }
-                Repeater {
-                    model: Services.Firewall.blocked.slice(0, 20)
-                    Widgets.StyledText {
-                        required property var modelData
-                        width: parent.width
-                        kind: "label"; sizeStep: 0; mono: true
-                        elide: Text.ElideRight
-                        text: root._fmtBlocked(modelData)
+                    Repeater {
+                        model: Services.Firewall.blocked.slice(0, 20)
+                        Widgets.StyledText {
+                            required property var modelData
+                            width: parent.width
+                            kind: "label"; sizeStep: 0; mono: true
+                            elide: Text.ElideRight
+                            text: root._fmtBlocked(modelData)
+                        }
                     }
-                }
-                Widgets.StyledText {
-                    visible: Services.Firewall.blocked.length === 0
-                    kind: "label"; sizeStep: 0; text: "Nothing logged yet."
+                    Widgets.StyledText {
+                        visible: Services.Firewall.blocked.length === 0
+                        kind: "label"; sizeStep: 0; text: "Nothing logged yet."
+                    }
                 }
             }
         }
 
-        SettingsRow {
-            visible: Services.Firewall.lastError.length > 0
-            wide: true
-            title: "Last error"
-            Widgets.StyledText { width: parent.width; wrapMode: Text.WordWrap; tone: "error"; text: Services.Firewall.lastError }
+        Widgets.Reveal {
+            shown: Services.Firewall.lastError.length > 0
+            SettingsRow {
+                wide: true
+                title: "Last error"
+                Widgets.StyledText { width: parent.width; wrapMode: Text.WordWrap; tone: "error"; text: Services.Firewall.lastError }
+            }
         }
     }
 

@@ -137,7 +137,6 @@ PanelWindow {
         case "gpu": return gpuComponent
         case "nightMode": return nightModeComponent
         case "phiAgent": return phiAgentComponent
-        case "specialWorkspaces": return specialWorkspacesComponent
         case "notifications": return notificationsComponent
         case "timer": return timerComponent
         default:
@@ -173,10 +172,9 @@ PanelWindow {
     Component { id: gpuComponent; Modules.Gpu { screen: bar.screen } }
     Component { id: nightModeComponent; Modules.NightMode { screen: bar.screen } }
     Component { id: phiAgentComponent; Modules.PhiAgent { screen: bar.screen } }
-    // SF-3: the pinned-app / special-workspace buttons (btop always, Steam
-    // when running), sitting right of the numbered workspaces. Replaces the
-    // old dedicated btop-only Modules.Btop.
-    Component { id: specialWorkspacesComponent; Modules.SpecialWorkspaces { screen: bar.screen } }
+    // ADR 134 (reversing ADR 122) removed the separate `specialWorkspaces`
+    // module: btop and Steam are plain numbered workspaces now, rendered by
+    // Modules.Workspaces itself as a pinned-app glyph (Bar/workspace-icons.json).
     Component { id: notificationsComponent; Modules.Notifications { screen: bar.screen } }
     Component { id: timerComponent; Modules.Timer { screen: bar.screen } }
 
@@ -247,6 +245,12 @@ PanelWindow {
             delegate: Loader {
                 required property var modelData
                 sourceComponent: bar.componentFor(modelData.type)
+                // A module that hides itself (e.g. Network, when neither
+                // Tailscale nor a VPN is up) sets its own root visible to
+                // false. Without mirroring that here, the Loader stays
+                // visible at the hidden module's implicitWidth and the
+                // isle's Row reserves a blank gap plus its spacing for it.
+                visible: !item || item.visible
             }
         }
     }
@@ -263,6 +267,9 @@ PanelWindow {
             delegate: Loader {
                 required property var modelData
                 sourceComponent: bar.componentFor(modelData.type)
+                // See the left isle's Loader — mirror a self-hiding
+                // module's visibility so the Row does not keep a blank gap.
+                visible: !item || item.visible
             }
         }
     }

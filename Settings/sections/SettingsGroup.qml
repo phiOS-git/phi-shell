@@ -5,16 +5,22 @@ import qs.Widgets as Widgets
 import "options.js" as Options
 
 // phiOS — Settings/SettingsGroup (Out-of-plan: settings-overhaul batch A;
-// optionId registration added batch B; restyled OOP-52). A titled group of
-// related controls: a small-caps label, a full-width hairline directly
-// under it, then the rows stacked flush with no gap (each SettingsRow
-// draws its own top hairline after the first).
+// optionId registration added batch B; restyled OOP-52; header reworked
+// panels-ux-rework). A titled group of related controls: a small-caps
+// label, the group's descriptive caption directly under it, a full-width
+// hairline, then the rows stacked flush with no gap (each SettingsRow draws
+// its own top hairline after the first).
+//
+// panels-ux-rework: the `caption` moved from the very bottom of the group
+// (where it read as a detached footnote and was routinely missed) to
+// directly under the title, above the rule — context before the controls
+// it describes, the ordering every system-settings panel uses. The rule
+// now cleanly separates "what this group is" from "the controls".
 //
 // OOP-52: the bordered Widgets.Panel card is gone — the user's directive
 // was "remove the full border, add a full-width thin line below the group
-// title". Rows now align to the group's own edges (and to the title),
-// rather than being inset inside a card, which is also what removed the
-// left-heavier padding the card produced against the content pane.
+// title". Rows align to the group's own edges (and to the title), rather
+// than being inset inside a card.
 //
 // Settings-panel structure, not a general widget, so it lives here with
 // SettingsRow and assumes its children stack with no gap.
@@ -47,6 +53,7 @@ Column {
         text: "0"
     }
     readonly property real _ch: chMetrics.width
+    readonly property real _pad: Config.Appearance.space2 * _ch
 
     readonly property bool highlighted: Services.SettingsPanel.shown
         && Services.SettingsPanel.query.length > 0
@@ -62,16 +69,17 @@ Column {
 
     function pulse() { pulseAnim.restart() }
 
-    // --- title + rule -------------------------------------------------
+    // --- title + caption + rule -------------------------------------
     Column {
         width: parent.width
         spacing: Math.round(root._ch * Config.Appearance.space1 * 0.6)
 
         Row {
             // Indented to line up with the row labels below (SettingsRow's
-            // own _pad inset); the rule under it stays full-width.
-            x: Config.Appearance.space2 * root._ch
-            spacing: Config.Appearance.space2 * root._ch
+            // own _pad inset); the caption and rule stay full-bleed on the
+            // left, the caption text just picks up the same inset.
+            x: root._pad
+            spacing: root._pad
             visible: root.title.length > 0
 
             Widgets.StyledText {
@@ -103,6 +111,16 @@ Column {
             }
         }
 
+        Widgets.StyledText {
+            x: root._pad
+            visible: root.caption.length > 0
+            width: parent.width - root._pad * 2
+            wrapMode: Text.WordWrap
+            kind: "label"
+            sizeStep: 0
+            text: root.caption
+        }
+
         Widgets.Separator {
             width: parent.width
             visible: root.title.length > 0
@@ -115,7 +133,7 @@ Column {
         width: parent.width
         implicitHeight: root.preview ? body.implicitHeight + _previewPad * 2 : body.implicitHeight
 
-        readonly property real _previewPad: root.preview ? root._ch * Config.Appearance.space2 : 0
+        readonly property real _previewPad: root.preview ? root._pad : 0
 
         // OOP-56: a preview group's samples sit on a recessed surface.
         Rectangle {
@@ -156,15 +174,5 @@ Column {
             width: parent.width - bodyWrap._previewPad * 2
             spacing: 0
         }
-    }
-
-    Widgets.StyledText {
-        x: Config.Appearance.space2 * root._ch
-        visible: root.caption.length > 0
-        width: parent.width - Config.Appearance.space2 * root._ch * 2
-        wrapMode: Text.WordWrap
-        kind: "label"
-        sizeStep: 0
-        text: root.caption
     }
 }

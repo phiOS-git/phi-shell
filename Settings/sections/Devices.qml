@@ -269,8 +269,9 @@ Column {
             }
         }
 
-        SettingsRow {
-            visible: Services.Chroma.advanced
+        Widgets.Reveal {
+            shown: Services.Chroma.advanced
+            SettingsRow {
             wide: true
             title: "Key map"
             description: "Grid sized from the keyboard's own matrix. Click a key, then pick its colour. The grid also tells you a key's (row, column) for the integration settings below."
@@ -301,11 +302,12 @@ Column {
                         : "No key selected."
                 }
 
-                Widgets.ColorPicker {
-                    id: keyPicker
-                    visible: kmap.selectedRow >= 0
-                    height: visible ? implicitHeight : 0
-                    onCommitted: (hex) => Services.Chroma.setKeyOverride(kmap.selectedRow, kmap.selectedCol, hex)
+                Widgets.Reveal {
+                    shown: kmap.selectedRow >= 0
+                    Widgets.ColorPicker {
+                        id: keyPicker
+                        onCommitted: (hex) => Services.Chroma.setKeyOverride(kmap.selectedRow, kmap.selectedCol, hex)
+                    }
                 }
 
                 Row {
@@ -321,6 +323,7 @@ Column {
                         onClicked: Services.Chroma.clearAllKeyOverrides()
                     }
                 }
+            }
             }
         }
 

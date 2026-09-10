@@ -349,8 +349,12 @@ PanelWindow {
                 id: navFlick
                 anchors.left: parent.left
                 anchors.top: topSep.bottom
-                anchors.topMargin: root.chWidth * Config.Appearance.space1
+                // panels-ux-rework: the nav column and the content pane now
+                // start on the same line below the rule (both root.gap),
+                // rather than the nav riding one rhythm unit higher.
+                anchors.topMargin: root.gap
                 anchors.bottom: parent.bottom
+                anchors.bottomMargin: root.gap
                 width: root.navW
                 contentWidth: width
                 contentHeight: navCol.implicitHeight
@@ -400,6 +404,10 @@ PanelWindow {
                 anchors.top: topSep.bottom
                 anchors.topMargin: root.gap
                 anchors.bottom: parent.bottom
+                // panels-ux-rework: a real bottom gutter so the last row of a
+                // section clears the panel edge instead of scrolling flush
+                // against it.
+                anchors.bottomMargin: root.gap
                 contentWidth: width
                 contentHeight: sectionLoader.item ? sectionLoader.item.implicitHeight : 0
                 clip: true
