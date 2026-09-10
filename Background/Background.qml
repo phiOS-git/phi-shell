@@ -46,7 +46,22 @@ PanelWindow {
         anchors.fill: parent
         clip: true
 
-        // Layer 2: the wallpaper image.
+        // Layer 2: procedural texture overlay, tiled. Alpha is baked in by
+        // `phi wallpaper texture`, so plain opacity-1 compositing — no blend
+        // mode, no shader.
+        Image {
+            anchors.fill: parent
+            visible: Services.Background.texture.length > 0
+                && Services.Background.textureApplies
+                && Services.Background.texturePath.length > 0
+            source: Services.Background.texturePath.length > 0
+                ? "file://" + Services.Background.texturePath : ""
+            fillMode: Image.Tile
+            asynchronous: true
+            cache: false
+        }
+
+        // Layer 3: the wallpaper image.
         Image {
             id: wall
             anchors.fill: parent
@@ -69,23 +84,6 @@ PanelWindow {
             // fitted image; for repeat it resizes the tiled plane.
             scale: (Services.Background.mode === "contain" || Services.Background.mode === "repeat")
                 ? Math.max(0.1, Services.Background.scale) : 1.0
-        }
-
-        // Layer 3 (features-change item 3): the procedural texture grain, on
-        // TOP of the colour AND the image — it is an overlay, and gating it
-        // behind the image (as it was) meant an ordinary cover wallpaper hid
-        // it entirely. Alpha is baked in by `phi wallpaper texture`, so plain
-        // opacity-1 compositing — no blend mode, no shader. Tiles seamlessly
-        // (the generator wraps toroidally).
-        Image {
-            anchors.fill: parent
-            visible: Services.Background.texture.length > 0
-                && Services.Background.texturePath.length > 0
-            source: Services.Background.texturePath.length > 0
-                ? "file://" + Services.Background.texturePath : ""
-            fillMode: Image.Tile
-            asynchronous: true
-            cache: false
         }
     }
 }

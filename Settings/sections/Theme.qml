@@ -808,7 +808,10 @@ Column {
         SettingsRow {
             optionId: "theme.wallpaper.texture"
             title: "Texture"
-            description: "A generated grain composited over the whole wallpaper — the solid colour and any image alike. Generated once, then cached."
+            description: Services.Background.textureApplies
+                ? "A generated grain added over the solid colour. Generated once, not at runtime."
+                : "Available only when there is no image, or the image is contain / repeat."
+            enabled: Services.Background.textureApplies
             wide: true
             Column {
                 width: parent.width
@@ -847,14 +850,6 @@ Column {
                         anchors.verticalCenter: parent.verticalCenter
                         mono: true; text: Services.Background.textureIntensity + "%"
                     }
-                }
-                Widgets.StyledText {
-                    width: parent.width
-                    visible: Services.Background.textureError.length > 0
-                    wrapMode: Text.WordWrap
-                    tone: "error"
-                    sizeStep: 0
-                    text: "Texture: " + Services.Background.textureError
                 }
             }
         }
