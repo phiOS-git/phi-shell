@@ -20,6 +20,13 @@ import qs.Widgets as Widgets
 // arrow, then the description. The key column width is the longest visible
 // key string times one chWidth (mono font → one glyph is one cell, so the
 // columns line up exactly with no per-row measurement).
+//
+// Out-of-plan: settings-overhaul batch H: rows are grouped by context
+// (Services.Keybinds.groups — the same derivation the settings panel's
+// Keybindings section renders), each group under a small caps header and a
+// hairline. Inner padding bumped to the runner's value
+// (Config.Appearance.space3 · chWidth), per the user's directive that the
+// cheatsheet should breathe like the runner does.
 
 PanelWindow {
     id: root
@@ -65,9 +72,11 @@ PanelWindow {
         return rows.filter((b) => {
             const k = Services.Keybinds.keyLabel(b).toLowerCase()
             const d = Services.Keybinds.describe(b).toLowerCase()
-            return k.indexOf(q) !== -1 || d.indexOf(q) !== -1
+            const c = Services.Keybinds.context(b).toLowerCase()
+            return k.indexOf(q) !== -1 || d.indexOf(q) !== -1 || c.indexOf(q) !== -1
         })
     }
+    readonly property var grouped: Services.Keybinds.groups(root.filtered)
 
     // OOP-09: spacing goes around the whole combination and its "+"
     // separators, NOT between every character — the per-letter split made
@@ -133,6 +142,9 @@ PanelWindow {
 
             Widgets.Panel {
             anchors.fill: parent
+            // batch H: the runner's inner padding, not a plain panel's —
+            // matches Launcher/Launcher.qml:402.
+            padding: fadeRoot.chWidth * Config.Appearance.space3
 
             Column {
                 id: headerCol
@@ -203,30 +215,52 @@ PanelWindow {
                     spacing: fadeRoot.chWidth * Config.Appearance.space2
 
                     Repeater {
-                        model: root.filtered
+                        model: root.grouped
 
-                        Row {
+                        Column {
+                            id: groupCol
                             required property var modelData
                             width: column.width
-                            spacing: fadeRoot.chWidth * Config.Appearance.space3
-                            readonly property real descW: Math.max(0,
-                                width - fadeRoot.keyColW - arrowText.implicitWidth - spacing * 2)
+                            spacing: fadeRoot.chWidth * Config.Appearance.space2
 
+                            // batch H: the context header + a hairline, in
+                            // the same grammar the settings panel uses.
                             Widgets.StyledText {
-                                width: fadeRoot.keyColW
-                                mono: true
-                                text: root.keyChips(modelData)
-                            }
-                            Widgets.StyledText {
-                                id: arrowText
-                                mono: true
+                                topPadding: fadeRoot.chWidth * Config.Appearance.space1
                                 kind: "label"
-                                text: "→"
+                                sizeStep: 0
+                                mono: true
+                                text: String(groupCol.modelData.context).toUpperCase()
                             }
-                            Widgets.StyledText {
-                                width: parent.descW
-                                text: Services.Keybinds.describe(modelData)
-                                elide: Text.ElideRight
+                            Widgets.Separator { width: parent.width }
+
+                            Repeater {
+                                model: groupCol.modelData.binds
+
+                                Row {
+                                    required property var modelData
+                                    width: groupCol.width
+                                    spacing: fadeRoot.chWidth * Config.Appearance.space3
+                                    readonly property real descW: Math.max(0,
+                                        width - fadeRoot.keyColW - arrowText.implicitWidth - spacing * 2)
+
+                                    Widgets.StyledText {
+                                        width: fadeRoot.keyColW
+                                        mono: true
+                                        text: root.keyChips(modelData)
+                                    }
+                                    Widgets.StyledText {
+                                        id: arrowText
+                                        mono: true
+                                        kind: "label"
+                                        text: "→"
+                                    }
+                                    Widgets.StyledText {
+                                        width: parent.descW
+                                        text: Services.Keybinds.describe(modelData)
+                                        elide: Text.ElideRight
+                                    }
+                                }
                             }
                         }
                     }
