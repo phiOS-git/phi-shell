@@ -1,6 +1,6 @@
 [
     { "type": "general", "title": "General", "keywords": "hostname cpu gpu ram memory disk storage os kernel uptime machine hardware" },
-    { "type": "theme", "title": "Theme", "keywords": "appearance accent colour color palette font typography size scale spacing radius border variant dark light night shift true tone temperature wallpaper cursor spotlight lock screen effect lava lamp matrix starfield" },
+    { "type": "theme", "title": "Theme", "keywords": "appearance accent colour color palette font typography size scale spacing radius border variant dark light night shift true tone temperature wallpaper cursor spotlight magnifier loupe zoom lens lock screen effect lava lamp matrix starfield" },
     { "type": "connectivity", "title": "Connectivity", "keywords": "tailscale overlay vpn wifi wi-fi ssid network bluetooth" },
     { "type": "devices", "title": "Devices", "keywords": "audio volume mute output sink monitor display resolution scaling chroma keyboard backlight mouse trackpad sensitivity brightness" },
     { "type": "keybindings", "title": "Keybindings", "keywords": "shortcuts binds hotkeys hyprland keys reference" },

@@ -478,6 +478,39 @@ Column {
         }
     }
 
+    // --- Screen magnifier ------------------------------------
+    // OOP-50: the loupe (Magnifier/Magnifier.qml). Runtime UI state stored
+    // through `phi state` by Services/Magnifier, same category as the
+    // spotlight size above — not a design token.
+    SettingsGroup {
+        title: "Screen magnifier"
+        SettingsRow {
+            optionId: "theme.magnifier"
+            title: "Magnifier loupe"
+            description: "A zoomed lens above the pointer. Super+Z toggles it; Super+scroll changes zoom, Super+Shift+scroll the lens size."
+            Widgets.Pill {
+                checked: Services.Magnifier.shown
+                onToggled: (v) => (v ? Services.Magnifier.show() : Services.Magnifier.hide())
+            }
+        }
+        SettingsRow {
+            title: "Zoom"
+            Widgets.NumberField {
+                value: Services.Magnifier.zoom
+                step: 0.5; suffix: "×"; from: 1.5; to: 6; decimals: 1
+                onCommitted: (v) => Services.Magnifier.setZoom(v)
+            }
+        }
+        SettingsRow {
+            title: "Lens size"
+            Widgets.NumberField {
+                value: Services.Magnifier.size
+                step: 20; suffix: "px"; from: 180; to: 720
+                onCommitted: (v) => Services.Magnifier.setSize(Math.round(v))
+            }
+        }
+    }
+
     // --- Lock screen -----------------------------------------
     // OOP-35 (auth surfaces): the ambient backdrop behind the lock screen.
     // Stored in Config/LockPrefs.qml ($XDG_STATE_HOME/phi/lock.json), read

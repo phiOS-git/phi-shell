@@ -200,6 +200,14 @@ PanelWindow {
     readonly property var displayResults: root.queryText.trim().length === 0
         ? root.browseResults : root.results
 
+    // OOP-49: the `rich` payload of the currently highlighted result, if it
+    // has one (calculator steps / roots / plot / a converter's alternate
+    // units). Drives the side card in fadeRoot below.
+    readonly property var highlightedRich: {
+        var r = root.displayResults[root.highlightedIndex]
+        return (r && r.rich) ? r.rich : null
+    }
+
     property Component queryComponent: Component {
         Process {
             id: queryProc
@@ -621,5 +629,31 @@ PanelWindow {
         }
     }
     } // panelWrap
+
+    // OOP-49: the rich-result card. Sits to the right of the runner box,
+    // top-aligned, only when the highlighted result carries a `rich`
+    // payload — the result list and its navigation are untouched. On a
+    // narrow screen it drops below the box instead of running off-edge.
+    Item {
+        id: richWrap
+        readonly property bool narrow: root.screen && root.screen.width < (root.launcherWidth + width + root.chWidth * 8)
+        width: Math.min(root.chWidth * 46, (root.screen ? root.screen.width : 900) * 0.30)
+        height: richCard.implicitHeight
+        visible: root.atRoot && root.highlightedRich !== null
+
+        anchors.left: narrow ? panelWrap.left : panelWrap.right
+        anchors.leftMargin: narrow ? 0 : root.chWidth * Config.Appearance.space3
+        anchors.top: narrow ? panelWrap.bottom : panelWrap.top
+        anchors.topMargin: narrow ? root.chWidth * Config.Appearance.space2 : 0
+
+        MouseArea { anchors.fill: parent }
+
+        RichResult {
+            id: richCard
+            width: parent.width
+            rich: root.highlightedRich
+            chWidth: root.chWidth
+        }
+    }
     } // fadeRoot
 }
