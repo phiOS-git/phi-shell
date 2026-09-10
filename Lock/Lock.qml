@@ -6,6 +6,11 @@ import Quickshell.Services.Pam
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
+// Same-directory sibling (MatrixRain.qml), reached the way every other
+// multi-file directory in this repo reaches its own — a namespaced
+// relative import, not implicit same-dir resolution (see
+// Panels/tabs/ChatBubble.qml's own note).
+import "." as Local
 
 // phiOS — Lock/Lock.qml (S-34, master plan §8.3 surface 7). The session-
 // stays-locked guarantee comes from the ext-session-lock PROTOCOL, not
@@ -74,6 +79,15 @@ WlSessionLock {
     property int attempts: 0
     property string errorText: ""
 
+    // Set to true ONLY in the PamResult.Success branch below. It is the
+    // conceal fade's trigger and nothing else reads or writes it. `locked`
+    // is never cleared directly any more — the surface's own conceal
+    // animation clears it when the fade finishes (see contentRoot). This
+    // stays fail-closed: the single writer of `locked = false` is still
+    // one deterministic path gated on Success, and if the animation never
+    // finishes the screen stays locked, never the reverse.
+    property bool authenticated: false
+
     // No `id:` on any of these three — a bare id identical to a property
     // name declared on the same object (`root`) is the exact same
     // ambiguity class S-21 already found and fixed once in this repo
@@ -88,7 +102,11 @@ WlSessionLock {
     Component.onCompleted: {
         root.pam.completed.connect((result) => {
             if (result === PamResult.Success) {
-                root.locked = false
+                // Start the conceal fade. contentRoot's concealFade
+                // clears `root.locked` when it finishes — see the
+                // `authenticated` property comment for why the unlock is
+                // routed through the animation rather than done here.
+                root.authenticated = true
                 return
             }
             root.attempts += 1
@@ -200,24 +218,67 @@ WlSessionLock {
             onTriggered: caret.on = !caret.on
         }
 
-        // R3 #6 (PROGRESS, shell-restyle consolidated): the lock content
-        // fades in when the surface appears. The surface's own `color` —
-        // the opaque background — never animates: the ext-session-lock
-        // protocol requires a locked output to stay fully painted, so only
-        // this inner layer carries the fade. Category B, the same timing
-        // as every other panel/drawer transition. Children are left at
-        // their original indentation to keep this a minimal wrap.
+        // R3 #6: the lock content fades in when the surface appears and
+        // fades back out on a successful unlock. The surface's own `color`
+        // (opaque background) never animates — the ext-session-lock
+        // protocol requires a locked output to stay painted — so this
+        // inner layer carries the whole transition. It is a rare emphasis
+        // moment (§6.5 category C: "boot, unlock, first run"), so it runs
+        // at the category-C duration; a crossfade is not one of C's two
+        // named effects (typing, scramble) — a deliberate deviation the
+        // user asked for. Children keep their original indentation to keep
+        // this a minimal wrap.
         Item {
         id: contentRoot
         anchors.fill: parent
-        property bool shown: false
-        opacity: shown ? 1 : 0
-        Component.onCompleted: shown = true
-        Behavior on opacity {
-            NumberAnimation {
-                duration: Config.Appearance.motionBDuration
-                easing.type: Config.Appearance.motionBEasingType
+        opacity: 0
+
+        // Reveal is deferred one turn past completion (Qt.callLater) so the
+        // surface is actually mapped when the animation starts — the same
+        // reason Launcher gates its fade on a callLater flag. Without the
+        // defer the fade ran while the surface was still off-screen and
+        // read as instant (the bug this revision fixes).
+        NumberAnimation {
+            id: revealFade
+            target: contentRoot; property: "opacity"
+            from: 0; to: 1
+            duration: Config.Appearance.motionCScramble
+            easing.type: Easing.InOutQuad
+        }
+        NumberAnimation {
+            id: concealFade
+            target: contentRoot; property: "opacity"
+            to: 0
+            duration: Config.Appearance.motionCScramble
+            easing.type: Easing.InOutQuad
+            // Only ever started from root.authenticated → Success; this is
+            // the one and only place `locked` is cleared.
+            onFinished: root.locked = false
+        }
+        Component.onCompleted: Qt.callLater(function () { revealFade.start() })
+        Connections {
+            target: root
+            function onAuthenticatedChanged() {
+                if (root.authenticated) {
+                    revealFade.stop()
+                    matrixRain.running = false
+                    concealFade.start()
+                }
             }
+        }
+        // Safety: if the deferred reveal never runs, do not leave a locked
+        // screen with invisible (but focus-holding) content.
+        Timer {
+            interval: 1200
+            running: true
+            onTriggered: if (contentRoot.opacity === 0 && !root.authenticated) contentRoot.opacity = 1
+        }
+
+        // OOP-31: falling-glyph backdrop (lavat-style), behind everything.
+        Local.MatrixRain {
+            id: matrixRain
+            anchors.fill: parent
+            z: -1
         }
 
         Column {
