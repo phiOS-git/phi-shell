@@ -170,7 +170,12 @@ PanelWindow {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.top: parent.top
-                    spacing: root.chWidth * Config.Appearance.space1
+                    // panels-ux-rework: the header stacked on one rhythm unit
+                    // and read cramped — the two display toggles, the tab
+                    // strip and the rule were all jammed together. Two units
+                    // between them now, with the tab strip set off by a
+                    // little extra air above.
+                    spacing: root.chWidth * Config.Appearance.space2
 
                     Widgets.StyledText { kind: "title"; text: "Display" }
                     Widgets.ToggleRow {
@@ -186,12 +191,12 @@ PanelWindow {
                         onToggled: (v) => Services.NightShift.setTrueTone(v)
                     }
 
-                    Item { width: 1; height: root.gap }
+                    Item { width: 1; height: root.chWidth * Config.Appearance.space1 }
 
                     Row {
                         id: tabStrip
                         width: parent.width
-                        spacing: root.chWidth * Config.Appearance.space1
+                        spacing: root.chWidth * Config.Appearance.space2
 
                         Repeater {
                             model: root.registryRows
@@ -213,7 +218,7 @@ PanelWindow {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.top: header.bottom
-                    anchors.topMargin: root.chWidth * Config.Appearance.space1
+                    anchors.topMargin: root.chWidth * Config.Appearance.space2
                     anchors.bottom: parent.bottom
 
                     Loader {

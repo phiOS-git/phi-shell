@@ -42,9 +42,9 @@ Column {
     property string pendingVariant: Config.Appearance.variant
     readonly property string testString: "0008 iIlL1 g9qCGQ ~ -+=>"
 
-    // OOP-54: the token key whose ColorChip editor is currently open. One
-    // at a time across every colour sub-group, so the palette stays a grid
-    // of swatches and only the one being edited grows to a full row.
+    // OOP-54 / panels-ux-rework: the token key whose editor panel is open.
+    // One at a time across every colour group, so at most one editor panel
+    // is ever slid open under the grids.
     property string _openColor: ""
 
     function setVariant(v) {
@@ -68,138 +68,230 @@ Column {
 
     // --- reusable rows ---------------------------------------------------
 
-    // OOP-54: one entry in a colour sub-group's Flow. Collapsed it is a
-    // compact swatch + name + hex; tapped (or revealed by search) it grows
-    // to a full-width row carrying the ColorField editor, the contrast
-    // badge and a reset. `root._openColor` keeps exactly one chip open
-    // across every sub-group. Registers its `theme.colors.<key>` optionId
-    // with Services/SettingsPanel like a SettingsRow, so search reveal
-    // still lands on an individual colour.
-    component ColorFlow: Flow {
-        width: parent ? parent.width : 0
-        spacing: root.chWidth
-    }
+    // panels-ux-rework: a colour context is a stable grid of compact
+    // swatches plus ONE editor panel that slides open (category B) directly
+    // beneath the group. Tapping a swatch — or a search reveal / `qs ipc
+    // call settings reveal theme.colors.<key>` — rings it and opens the
+    // editor; `root._openColor` keeps exactly one swatch open across every
+    // colour group. This replaces OOP-54's in-place expand, where the
+    // tapped chip grew to a full-width row and shoved its neighbours around
+    // the Flow (the user's "editing one completely breaks the layout").
+    //
+    // `swatches` is a list of { key, label, contrast }: `key` a design
+    // token name, `contrast` opting the editor into the live `phi theme
+    // contrast` badge.
+    component ColorGroup: SettingsGroup {
+        id: cg
+        property var swatches: []
 
-    component ColorChip: Column {
-        id: chip
-        property string tokenKey: ""
-        property string label: ""
-        property bool showContrast: false
+        // The swatch entry in THIS group that is open, or null. ColorEditor
+        // keeps the last non-null one through the close animation so the
+        // panel does not blank while it collapses.
+        readonly property var _openEntry: {
+            for (var i = 0; i < cg.swatches.length; i++)
+                if (cg.swatches[i].key === root._openColor) return cg.swatches[i]
+            return null
+        }
 
-        readonly property string optionId: "theme.colors." + chip.tokenKey
-        readonly property bool expanded: root._openColor === chip.tokenKey
-        readonly property string _hex: Config.Appearance.tokenValue(chip.tokenKey)
-        readonly property bool _valid: /^#([0-9a-fA-F]{6})$/.test(chip._hex)
-        readonly property bool _overridden: Config.ThemeOverrides.has(chip.tokenKey)
-        readonly property bool _highlighted: Services.SettingsPanel.shown
-            && Services.SettingsPanel.query.length > 0
-            && Options.matches(chip.optionId, Services.SettingsPanel.query)
+        Item { width: 1; height: Math.round(root.chWidth * Config.Appearance.space1) }
 
-        width: chip.expanded && parent ? parent.width : Math.round(root.chWidth * 24)
-        spacing: 4
+        // The swatch grid. Each tile is fixed size — the grid never reflows
+        // on edit. Each registers its `theme.colors.<key>` optionId so a
+        // search selection still lands on an individual colour.
+        Flow {
+            x: root.gap
+            width: parent.width - root.gap * 2
+            spacing: root.chWidth
 
-        Component.onCompleted: Services.SettingsPanel.registerRow(chip.optionId, chip)
-        Component.onDestruction: Services.SettingsPanel.unregisterRow(chip.optionId)
-        function pulse() { root._openColor = chip.tokenKey; pulseAnim.restart() }
-
-        Rectangle {
-            id: chipHeader
-            width: parent.width
-            height: hdr.implicitHeight + root.chWidth
-            radius: Config.Appearance.radiusSmall
-            color: chip.expanded ? Config.Appearance.surface1 : "transparent"
-            Behavior on color {
-                ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
-            }
-
-            Rectangle {
-                anchors.fill: parent
-                radius: parent.radius
-                color: Config.Appearance.accent
-                opacity: chip._highlighted && !chip.expanded ? 0.12 : 0
-                Behavior on opacity {
-                    NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
-                }
-            }
-            Rectangle {
-                id: pulseRect
-                anchors.fill: parent
-                radius: parent.radius
-                color: Config.Appearance.accent
-                opacity: 0
-                SequentialAnimation {
-                    id: pulseAnim
-                    NumberAnimation { target: pulseRect; property: "opacity"; to: 0.28; duration: Config.Appearance.motionBDuration; easing.type: Easing.OutQuad }
-                    NumberAnimation { target: pulseRect; property: "opacity"; to: 0; duration: Config.Appearance.motionBDuration * 3; easing.type: Easing.InQuad }
-                }
-            }
-
-            Row {
-                id: hdr
-                anchors.left: parent.left
-                anchors.leftMargin: root.chWidth
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: root.chWidth
+            Repeater {
+                model: cg.swatches
 
                 Rectangle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: Math.round(Config.Appearance.fontSize2 * 1.4)
-                    height: width
+                    id: sw
+                    required property var modelData
+                    readonly property string tokenKey: sw.modelData ? (sw.modelData.key || "") : ""
+                    readonly property string optionId: "theme.colors." + sw.tokenKey
+                    readonly property string _hex: sw.tokenKey.length > 0 ? Config.Appearance.tokenValue(sw.tokenKey) : ""
+                    readonly property bool _valid: /^#([0-9a-fA-F]{6})$/.test(sw._hex)
+                    readonly property bool _overridden: sw.tokenKey.length > 0 && Config.ThemeOverrides.has(sw.tokenKey)
+                    readonly property bool _open: sw.tokenKey.length > 0 && root._openColor === sw.tokenKey
+                    readonly property bool _highlighted: Services.SettingsPanel.shown
+                        && Services.SettingsPanel.query.length > 0
+                        && sw.tokenKey.length > 0
+                        && Options.matches(sw.optionId, Services.SettingsPanel.query)
+
+                    width: Math.round(root.chWidth * 24)
+                    height: swRow.implicitHeight + Math.round(root.chWidth * Config.Appearance.space1)
                     radius: Config.Appearance.radiusSmall
-                    color: chip._valid ? chip._hex : "transparent"
-                    border.width: Config.Appearance.borderWidth
-                    border.color: Config.Appearance.border
-                }
-
-                Column {
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 1
-                    Widgets.StyledText { text: chip.label }
-                    Widgets.StyledText {
-                        kind: "label"
-                        sizeStep: 0
-                        mono: true
-                        text: chip._hex + (chip._overridden ? "  ·edited" : "")
+                    color: sw._open ? Config.Appearance.surface1 : "transparent"
+                    border.width: sw._open ? Config.Appearance.borderWidth : 0
+                    border.color: sw._open ? Config.Appearance.focusRing : "transparent"
+                    Behavior on color {
+                        ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
                     }
-                }
-            }
 
-            TapHandler {
-                onTapped: root._openColor = chip.expanded ? "" : chip.tokenKey
+                    Component.onCompleted: if (sw.tokenKey.length > 0) Services.SettingsPanel.registerRow(sw.optionId, sw)
+                    Component.onDestruction: if (sw.tokenKey.length > 0) Services.SettingsPanel.unregisterRow(sw.optionId)
+                    function pulse() { root._openColor = sw.tokenKey; pulseAnim.restart() }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: parent.radius
+                        color: Config.Appearance.accent
+                        opacity: sw._highlighted && !sw._open ? 0.12 : 0
+                        Behavior on opacity {
+                            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                        }
+                    }
+                    Rectangle {
+                        id: pulseRect
+                        anchors.fill: parent
+                        radius: parent.radius
+                        color: Config.Appearance.accent
+                        opacity: 0
+                        SequentialAnimation {
+                            id: pulseAnim
+                            NumberAnimation { target: pulseRect; property: "opacity"; to: 0.28; duration: Config.Appearance.motionBDuration; easing.type: Easing.OutQuad }
+                            NumberAnimation { target: pulseRect; property: "opacity"; to: 0; duration: Config.Appearance.motionBDuration * 3; easing.type: Easing.InQuad }
+                        }
+                    }
+
+                    Row {
+                        id: swRow
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.leftMargin: root.chWidth
+                        anchors.rightMargin: root.chWidth
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: root.chWidth
+
+                        Rectangle {
+                            id: swChip
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Math.round(Config.Appearance.fontSize3 * 1.3)
+                            height: width
+                            radius: Config.Appearance.radiusSmall
+                            color: sw._valid ? sw._hex : "transparent"
+                            border.width: Config.Appearance.borderWidth
+                            border.color: Config.Appearance.border
+                        }
+
+                        Column {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: swRow.width - swRow.spacing - swChip.width
+                            spacing: Math.round(root.chWidth * Config.Appearance.space1 * 0.4)
+                            Widgets.StyledText {
+                                width: parent.width
+                                elide: Text.ElideRight
+                                text: sw.modelData ? (sw.modelData.label || "") : ""
+                            }
+                            Widgets.StyledText {
+                                width: parent.width
+                                elide: Text.ElideRight
+                                kind: "label"
+                                sizeStep: 0
+                                mono: true
+                                text: sw._hex + (sw._overridden ? "  ·edited" : "")
+                            }
+                        }
+                    }
+
+                    TapHandler { onTapped: root._openColor = sw._open ? "" : sw.tokenKey }
+                }
             }
         }
 
-        Column {
-            visible: chip.expanded
-            width: parent.width - root.chWidth
-            x: root.chWidth
-            spacing: 6
+        Item { width: 1; height: Math.round(root.chWidth * Config.Appearance.space1) }
 
-            Widgets.ColorField {
-                id: field
+        Widgets.Reveal {
+            shown: cg._openEntry !== null
+            ColorEditor {
+                x: root.gap
+                width: parent.width - root.gap * 2
+                entry: cg._openEntry
+            }
+        }
+
+        Item {
+            width: 1
+            height: cg._openEntry !== null ? Math.round(root.chWidth * Config.Appearance.space1) : 0
+            Behavior on height {
+                NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+            }
+        }
+    }
+
+    // The single editor panel a ColorGroup slides open under its grid.
+    component ColorEditor: Rectangle {
+        id: ce
+        property var entry: null
+        // Hold the last non-null entry so the panel keeps its content while
+        // the Reveal collapses on close.
+        property var _shownEntry: null
+        onEntryChanged: if (ce.entry) ce._shownEntry = ce.entry
+        readonly property string tokenKey: ce._shownEntry ? (ce._shownEntry.key || "") : ""
+        readonly property bool _overridden: ce.tokenKey.length > 0 && Config.ThemeOverrides.has(ce.tokenKey)
+
+        onTokenKeyChanged: edField.reseed()
+
+        width: parent ? parent.width : 0
+        height: ceCol.implicitHeight + root.gap * 2
+        radius: Config.Appearance.radiusSmall
+        color: Config.Appearance.surface1
+        border.width: Config.Appearance.borderWidth
+        border.color: Config.Appearance.border
+
+        Column {
+            id: ceCol
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: root.gap
+            spacing: Math.round(root.chWidth * Config.Appearance.space2)
+
+            Item {
                 width: parent.width
-                value: Config.Appearance.tokenValue(chip.tokenKey)
-                onCommitted: (hex) => Config.ThemeOverrides.setValue(chip.tokenKey, hex)
-                Connections {
-                    target: resetSignal
-                    function onFired() { field.value = Config.Appearance.tokenValue(chip.tokenKey) }
+                height: Math.max(edLabel.implicitHeight, edReset.implicitHeight)
+                Widgets.StyledText {
+                    id: edLabel
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    kind: "label"
+                    sizeStep: 0
+                    text: "EDITING — " + (ce._shownEntry ? String(ce._shownEntry.label || "").toUpperCase() : "")
                 }
-            }
-            ContrastBadge {
-                visible: chip.showContrast
-                hex: field.value
-            }
-            Widgets.StyledText {
-                visible: chip._overridden
-                kind: "label"
-                sizeStep: 0
-                text: "reset to default"
-                TapHandler {
-                    onTapped: {
-                        Config.ThemeOverrides.clear(chip.tokenKey)
-                        field.value = Config.Appearance.tokenValue(chip.tokenKey)
+                Widgets.SmallButton {
+                    id: edReset
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: ce._overridden
+                    label: "reset to default"
+                    onClicked: {
+                        if (ce.tokenKey.length === 0) return
+                        Config.ThemeOverrides.clear(ce.tokenKey)
+                        edField.reseed()
                     }
                 }
+            }
+
+            Widgets.ColorField {
+                id: edField
+                width: parent.width
+                function reseed() {
+                    edField.value = ce.tokenKey.length > 0
+                        ? Config.Appearance.tokenValue(ce.tokenKey) : ""
+                }
+                Component.onCompleted: reseed()
+                onCommitted: (hex) => { if (ce.tokenKey.length > 0) Config.ThemeOverrides.setValue(ce.tokenKey, hex) }
+                Connections {
+                    target: resetSignal
+                    function onFired() { edField.reseed() }
+                }
+            }
+
+            ContrastBadge {
+                visible: !!ce._shownEntry && ce._shownEntry.contrast === true
+                hex: edField.value
             }
         }
     }
@@ -346,48 +438,47 @@ Column {
     }
 
     // --- Colours (first inner section) -------------------------------
-    // OOP-54: grouped by context and laid out as a Flow of swatches, more
-    // than one per row. Editing one grows it to a full-width row in place
-    // (see ColorChip / root._openColor).
-    SettingsGroup {
+    // panels-ux-rework: grouped by context, each a ColorGroup — a stable
+    // swatch grid plus one slide-open editor panel (see the component).
+    ColorGroup {
         title: "Colours — structure"
         caption: "Two structural colours (background, primary text) carry the whole shell; the surfaces step up from the background for stacked panels."
-        ColorFlow {
-            ColorChip { tokenKey: "bg-0"; label: "Background" }
-            ColorChip { tokenKey: "bg-1"; label: "Surface +1" }
-            ColorChip { tokenKey: "bg-2"; label: "Surface +2" }
-            ColorChip { tokenKey: "bg-3"; label: "Surface +3" }
-        }
+        swatches: [
+            { key: "bg-0", label: "Background", contrast: false },
+            { key: "bg-1", label: "Surface +1", contrast: false },
+            { key: "bg-2", label: "Surface +2", contrast: false },
+            { key: "bg-3", label: "Surface +3", contrast: false }
+        ]
     }
 
-    SettingsGroup {
+    ColorGroup {
         title: "Colours — text"
-        ColorFlow {
-            ColorChip { tokenKey: "fg-0"; label: "Text (primary)"; showContrast: true }
-            ColorChip { tokenKey: "fg-1"; label: "Text, secondary"; showContrast: true }
-            ColorChip { tokenKey: "fg-2"; label: "Text, muted"; showContrast: true }
-            ColorChip { tokenKey: "fg-3"; label: "Text, faint" }
-        }
+        swatches: [
+            { key: "fg-0", label: "Text (primary)", contrast: true },
+            { key: "fg-1", label: "Text, secondary", contrast: true },
+            { key: "fg-2", label: "Text, muted", contrast: true },
+            { key: "fg-3", label: "Text, faint", contrast: false }
+        ]
     }
 
-    SettingsGroup {
+    ColorGroup {
         title: "Colours — borders"
-        ColorFlow {
-            ColorChip { tokenKey: "border"; label: "Border" }
-            ColorChip { tokenKey: "border-strong"; label: "Border, strong" }
-        }
+        swatches: [
+            { key: "border", label: "Border", contrast: false },
+            { key: "border-strong", label: "Border, strong", contrast: false }
+        ]
     }
 
-    SettingsGroup {
+    ColorGroup {
         title: "Colours — accent & status"
         caption: "The accent is fine detail only — titles, the keyboard focus ring, the agent's working state. The status colours appear only when a real threshold is crossed."
-        ColorFlow {
-            ColorChip { tokenKey: "accent"; label: "Accent"; showContrast: true }
-            ColorChip { tokenKey: "error"; label: "Error"; showContrast: true }
-            ColorChip { tokenKey: "warn"; label: "Warning"; showContrast: true }
-            ColorChip { tokenKey: "success"; label: "Success"; showContrast: true }
-            ColorChip { tokenKey: "info"; label: "Info"; showContrast: true }
-        }
+        swatches: [
+            { key: "accent", label: "Accent", contrast: true },
+            { key: "error", label: "Error", contrast: true },
+            { key: "warn", label: "Warning", contrast: true },
+            { key: "success", label: "Success", contrast: true },
+            { key: "info", label: "Info", contrast: true }
+        ]
     }
 
     SettingsGroup {
@@ -489,11 +580,6 @@ Column {
         MotionRow { mkey: "motion-d-duration"; title: "D — ambient duration"; seedMs: Config.Appearance.motionDDuration }
     }
 
-    Widgets.StyledButton {
-        label: "Reset all theme overrides"
-        onClicked: { Config.ThemeOverrides.clearAll(); resetSignal.fired() }
-    }
-
     // --- Night shift ---------------------------------------------
     SettingsGroup {
         title: "Night shift"
@@ -557,70 +643,74 @@ Column {
             }
         }
 
-        // dim / flashlight options
-        SettingsRow {
-            title: "Circle size"
-            visible: Services.Spotlight.effect === "dim" || Services.Spotlight.effect === "flashlight"
-            Row {
-                spacing: root.gap
-                Repeater {
-                    model: ["small", "medium", "large"]
-                    Widgets.StyledButton {
-                        required property string modelData
-                        label: modelData
-                        active: Services.Spotlight.size === modelData
-                        onClicked: Services.Spotlight.setSize(modelData)
+        // dim / flashlight options — slide in/out with the effect choice
+        // (panels-ux-rework) rather than the sub-rows popping.
+        Widgets.Reveal {
+            shown: Services.Spotlight.effect === "dim" || Services.Spotlight.effect === "flashlight"
+            SettingsRow {
+                title: "Circle size"
+                Row {
+                    spacing: root.gap
+                    Repeater {
+                        model: ["small", "medium", "large"]
+                        Widgets.StyledButton {
+                            required property string modelData
+                            label: modelData
+                            active: Services.Spotlight.size === modelData
+                            onClicked: Services.Spotlight.setSize(modelData)
+                        }
                     }
                 }
             }
-        }
-        SettingsRow {
-            title: "Dim strength"
-            visible: Services.Spotlight.effect === "dim" || Services.Spotlight.effect === "flashlight"
-            Widgets.NumberField {
-                value: Services.Spotlight.intensity
-                step: 5; suffix: "%"; from: 0; to: 100
-                onCommitted: (v) => Services.Spotlight.setIntensity(v)
+            SettingsRow {
+                title: "Dim strength"
+                Widgets.NumberField {
+                    value: Services.Spotlight.intensity
+                    step: 5; suffix: "%"; from: 0; to: 100
+                    onCommitted: (v) => Services.Spotlight.setIntensity(v)
+                }
             }
         }
 
         // crosshair options
-        SettingsRow {
-            title: "Line thickness"
-            visible: Services.Spotlight.effect === "crosshair"
-            Widgets.NumberField {
-                value: Services.Spotlight.crosshairThickness
-                step: 1; suffix: "px"; from: 1; to: 8
-                onCommitted: (v) => Services.Spotlight.setCrosshairThickness(v)
+        Widgets.Reveal {
+            shown: Services.Spotlight.effect === "crosshair"
+            SettingsRow {
+                title: "Line thickness"
+                Widgets.NumberField {
+                    value: Services.Spotlight.crosshairThickness
+                    step: 1; suffix: "px"; from: 1; to: 8
+                    onCommitted: (v) => Services.Spotlight.setCrosshairThickness(v)
+                }
             }
-        }
-        SettingsRow {
-            title: "Line opacity"
-            visible: Services.Spotlight.effect === "crosshair"
-            Widgets.NumberField {
-                value: Services.Spotlight.crosshairOpacity
-                step: 5; suffix: "%"; from: 5; to: 100
-                onCommitted: (v) => Services.Spotlight.setCrosshairOpacity(v)
+            SettingsRow {
+                title: "Line opacity"
+                Widgets.NumberField {
+                    value: Services.Spotlight.crosshairOpacity
+                    step: 5; suffix: "%"; from: 5; to: 100
+                    onCommitted: (v) => Services.Spotlight.setCrosshairOpacity(v)
+                }
             }
         }
 
         // ring options
-        SettingsRow {
-            title: "Ring radius"
-            visible: Services.Spotlight.effect === "ring"
-            Widgets.NumberField {
-                value: Services.Spotlight.ringRadius
-                step: 5; suffix: "px"; from: 20; to: 240
-                onCommitted: (v) => Services.Spotlight.setRingRadius(v)
+        Widgets.Reveal {
+            shown: Services.Spotlight.effect === "ring"
+            SettingsRow {
+                title: "Ring radius"
+                Widgets.NumberField {
+                    value: Services.Spotlight.ringRadius
+                    step: 5; suffix: "px"; from: 20; to: 240
+                    onCommitted: (v) => Services.Spotlight.setRingRadius(v)
+                }
             }
-        }
-        SettingsRow {
-            title: "Ring thickness"
-            visible: Services.Spotlight.effect === "ring"
-            Widgets.NumberField {
-                value: Services.Spotlight.ringThickness
-                step: 1; suffix: "px"; from: 1; to: 12
-                onCommitted: (v) => Services.Spotlight.setRingThickness(v)
+            SettingsRow {
+                title: "Ring thickness"
+                Widgets.NumberField {
+                    value: Services.Spotlight.ringThickness
+                    step: 1; suffix: "px"; from: 1; to: 12
+                    onCommitted: (v) => Services.Spotlight.setRingThickness(v)
+                }
             }
         }
     }
@@ -851,6 +941,24 @@ Column {
                         mono: true; text: Services.Background.textureIntensity + "%"
                     }
                 }
+            }
+        }
+    }
+
+    // panels-ux-rework: the global "reset every override" is a footer
+    // action at the very bottom of the section now, behind a rule — it used
+    // to sit mid-list between Animations and Night shift, reading as a row
+    // that belonged to neither.
+    Column {
+        width: parent.width
+        spacing: Config.Appearance.space2 * root.chWidth
+        Widgets.Separator { width: parent.width }
+        Row {
+            width: parent.width
+            layoutDirection: Qt.RightToLeft
+            Widgets.StyledButton {
+                label: "Reset all theme overrides"
+                onClicked: { Config.ThemeOverrides.clearAll(); resetSignal.fired() }
             }
         }
     }

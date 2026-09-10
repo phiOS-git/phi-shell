@@ -51,7 +51,13 @@ Item {
         Widgets.StyledText { kind: "title"; text: "Agent offline" }
         Widgets.Panel {
             width: parent.width
+            // panels-ux-rework: these agent-panel cards had no height at
+            // all — the frame collapsed to a hairline and the content
+            // spilled out of it. Height now tracks the content like every
+            // other Widgets.Panel in the shell.
+            height: offlineCol.implicitHeight + padding * 2
             Column {
+                id: offlineCol
                 width: parent.width
                 spacing: root.chWidth * Config.Appearance.space1
                 Widgets.StyledText { width: parent.width; wrapMode: Text.WordWrap
@@ -114,7 +120,9 @@ Item {
             Widgets.Panel {
                 width: parent.width
                 visible: root.agent.switching
+                height: switchRow.implicitHeight + padding * 2
                 Row {
+                    id: switchRow
                     spacing: root.chWidth * Config.Appearance.space1
                     Widgets.StyledText { kind: "label"; text: "Rebuilding the containment for the new project" }
                     Tabs.Dots {}
@@ -163,7 +171,9 @@ Item {
 
             Widgets.Panel {
                 width: parent.width
+                height: composeRow.implicitHeight + padding * 2
                 Row {
+                    id: composeRow
                     width: parent.width
                     spacing: root.chWidth * Config.Appearance.space2
                     Widgets.StyledButton {
@@ -226,7 +236,9 @@ Item {
                 Widgets.Panel {
                     width: parent.width
                     visible: root.agent.pendingPermission !== null
+                    height: permCol.implicitHeight + padding * 2
                     Column {
+                        id: permCol
                         width: parent.width
                         spacing: root.chWidth * Config.Appearance.space1
                         Widgets.StyledText { kind: "label"; text: root.agent.pendingPermission ? root.agent.pendingPermission.title : "" }

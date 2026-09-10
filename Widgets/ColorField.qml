@@ -91,11 +91,14 @@ Column {
         }
     }
 
-    ColorPicker {
-        id: picker
-        visible: root.expanded
-        height: visible ? implicitHeight : 0
-        onPicked: (c) => root._preview = c
-        onCommitted: (hex) => root._accept(hex)
+    // panels-ux-rework: the inline picker slides open/shut (category B)
+    // instead of the row snapping to its full height.
+    Reveal {
+        shown: root.expanded
+        ColorPicker {
+            id: picker
+            onPicked: (c) => root._preview = c
+            onCommitted: (hex) => root._accept(hex)
+        }
     }
 }
