@@ -5,15 +5,19 @@ import qs.Widgets as Widgets
 import "options.js" as Options
 
 // phiOS — Settings/SettingsGroup (Out-of-plan: settings-overhaul batch A;
-// optionId registration added batch B). A titled group of related controls
-// — the shape references/settings-reference.JPG uses (a small caps label —
-// SIZE / POSITION / PILLS — over a bordered card of rows). Built on
-// Widgets/Panel so the frame, radius and border come from the same grammar
-// every other surface uses.
+// optionId registration added batch B; restyled OOP-52). A titled group of
+// related controls: a small-caps label, a full-width hairline directly
+// under it, then the rows stacked flush with no gap (each SettingsRow
+// draws its own top hairline after the first).
+//
+// OOP-52: the bordered Widgets.Panel card is gone — the user's directive
+// was "remove the full border, add a full-width thin line below the group
+// title". Rows now align to the group's own edges (and to the title),
+// rather than being inset inside a card, which is also what removed the
+// left-heavier padding the card produced against the content pane.
 //
 // Settings-panel structure, not a general widget, so it lives here with
-// SettingsRow and assumes its children stack with no gap (each SettingsRow
-// draws its own top hairline after the first).
+// SettingsRow and assumes its children stack with no gap.
 //
 // A group may carry its own `optionId` (a Settings/options.js catalogue
 // entry): it then registers with Services/SettingsPanel like a SettingsRow,
@@ -30,7 +34,7 @@ Column {
     default property alias content: body.data
 
     width: parent ? parent.width : 0
-    spacing: Config.Appearance.space1 * _ch
+    spacing: Config.Appearance.space2 * _ch
 
     TextMetrics {
         id: chMetrics
@@ -54,21 +58,36 @@ Column {
 
     function pulse() { pulseAnim.restart() }
 
-    Widgets.StyledText {
-        visible: root.title.length > 0
-        kind: "label"
-        sizeStep: 0
-        text: root.title.toUpperCase()
+    // --- title + rule -------------------------------------------------
+    Column {
+        width: parent.width
+        spacing: Math.round(root._ch * Config.Appearance.space1 * 0.6)
+
+        Widgets.StyledText {
+            // Indented to line up with the row labels below (SettingsRow's
+            // own _pad inset); the rule under it stays full-width.
+            x: Config.Appearance.space2 * root._ch
+            visible: root.title.length > 0
+            kind: "label"
+            sizeStep: 0
+            text: root.title.toUpperCase()
+        }
+
+        Widgets.Separator {
+            width: parent.width
+            visible: root.title.length > 0
+        }
     }
 
-    Widgets.Panel {
-        id: card
+    // --- rows -------------------------------------------------------
+    Item {
+        id: bodyWrap
         width: parent.width
-        height: body.implicitHeight + padding * 2
+        implicitHeight: body.implicitHeight
 
         Rectangle {
             anchors.fill: parent
-            radius: card.radius
+            radius: Config.Appearance.radiusSmall
             color: Config.Appearance.accent
             opacity: root.highlighted ? 0.10 : 0
             Behavior on opacity {
@@ -78,7 +97,7 @@ Column {
         Rectangle {
             id: pulseRect
             anchors.fill: parent
-            radius: card.radius
+            radius: Config.Appearance.radiusSmall
             color: Config.Appearance.accent
             opacity: 0
             SequentialAnimation {
@@ -96,8 +115,9 @@ Column {
     }
 
     Widgets.StyledText {
+        x: Config.Appearance.space2 * root._ch
         visible: root.caption.length > 0
-        width: parent.width
+        width: parent.width - Config.Appearance.space2 * root._ch * 2
         wrapMode: Text.WordWrap
         kind: "label"
         sizeStep: 0

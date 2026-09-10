@@ -335,8 +335,12 @@ PanelWindow {
             Flickable {
                 id: contentFlick
                 anchors.left: navSep.right
+                // OOP-52: symmetric left/right gutters — the pane used to
+                // have a left margin only, which read as "more space on the
+                // left" once the section cards lost their border.
                 anchors.leftMargin: root.gap
                 anchors.right: parent.right
+                anchors.rightMargin: root.gap
                 anchors.top: topSep.bottom
                 anchors.topMargin: root.gap
                 anchors.bottom: parent.bottom
