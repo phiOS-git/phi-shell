@@ -36,10 +36,13 @@ PanelWindow {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
-    // OOP-20: the bar's real height, published by Bar/Bar.qml — this file
-    // used to keep its own `fontSize1 + space1·ch·2` estimate, which sat
-    // the popout too low (item 4).
-    readonly property real barHeight: Services.BarMetrics.height
+    // OOP-20/OOP-60: where the bar's visible content ends, published by
+    // Bar/Bar.qml — this file used to keep its own `fontSize1 +
+    // space1·ch·2` estimate, which sat the popout too low (item 4). The
+    // content bottom (not the window height) is the anchor: the window
+    // carries ~islandMargin/2 of transparent space below the isles, so the
+    // raw height left a visible gap under the drawn bar.
+    readonly property real barContentBottom: Services.BarMetrics.contentBottom
 
     function _volumePct() { return Math.round(Services.AudioBridge.volume * 100) }
 
@@ -82,7 +85,7 @@ PanelWindow {
             // features-change (item 1): sit right under the bar — the same
             // minimal gap the docks keep (panelGap), not a full rhythm unit
             // (OOP-22 left it "too low").
-            anchors.topMargin: root.barHeight + Config.Appearance.panelGap
+            anchors.topMargin: root.barContentBottom + Config.Appearance.panelGap
             width: root.chWidth * 36
             height: panel.height
 

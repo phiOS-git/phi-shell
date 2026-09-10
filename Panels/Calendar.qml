@@ -65,7 +65,10 @@ PanelWindow {
             anchors.top: parent.top
             anchors.right: parent.right
             // features-change (item 1): the same minimal gap the docks keep.
-            anchors.topMargin: Services.BarMetrics.height + Config.Appearance.panelGap
+            // OOP-60: anchor to the bar's visible content bottom, not the
+            // window height (the window's transparent bottom margin made
+            // the card float visibly below the drawn bar).
+            anchors.topMargin: Services.BarMetrics.contentBottom + Config.Appearance.panelGap
             anchors.rightMargin: Config.Appearance.panelGap
             width: root.chWidth * 34
             height: panel.height

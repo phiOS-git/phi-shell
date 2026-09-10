@@ -78,12 +78,17 @@ PanelWindow {
         leftIsle.implicitHeight, rightIsle.implicitHeight)
         + islandMargin
 
-    // OOP-20: publish the real height so the surfaces that must sit clear
-    // of the bar (the notification / chat docks, the bar popouts, the
-    // calendar) read one number instead of each keeping its own estimate.
-    // This file is the only one that can measure the isle footprints.
-    onHeightChanged: Services.BarMetrics.report(bar.height)
-    Component.onCompleted: Services.BarMetrics.report(bar.height)
+    // OOP-20: publish the real measurements so the surfaces that must sit
+    // clear of the bar (the notification / chat docks, the bar popouts,
+    // the calendar) read one number instead of each keeping its own
+    // estimate. This file is the only one that can measure the isle
+    // footprints. Both the full window height and the visible content
+    // bottom are reported: the isles are vertically centred, so the
+    // window's lowest `islandMargin / 2` is transparent — anchoring a
+    // panel at the raw height leaves a visible gap under the drawn bar
+    // (OOP-60); anchoring at the content bottom + panelGap hugs it.
+    onHeightChanged: Services.BarMetrics.report(bar.height, bar.height - bar.islandMargin / 2)
+    Component.onCompleted: Services.BarMetrics.report(bar.height, bar.height - bar.islandMargin / 2)
 
     property var registryRows: []
 
