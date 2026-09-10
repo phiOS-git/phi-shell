@@ -176,15 +176,49 @@ Singleton {
     // on this one category, always as a ColorAnimation/NumberAnimation
     // Behavior, so there is exactly one place this string-to-curve mapping
     // happens instead of one copy per widget.
-    readonly property int motionAPeriod: _ms(Tokens.motionAPeriod)
+    // OOP: settings-overhaul batch E — the durations and the category-B
+    // curve are per-user editable (the animation section of the Theme
+    // panel), merged over the generated token the same way the palette is.
+    // "All major transitions must have mapped variables to be edited": the
+    // four style-plan categories ARE that mapping — every Behavior in this
+    // shell routes its duration/curve through category B, so making B
+    // editable reaches every panel, drawer, workspace and notification
+    // transition at once.
+    readonly property int motionAPeriod: _ms(_tok("motion-a-period", Tokens.motionAPeriod))
     readonly property string motionAEasing: Tokens.motionAEasing
-    readonly property int motionBDuration: _ms(Tokens.motionBDuration)
+    readonly property int motionBDuration: _ms(_tok("motion-b-duration", Tokens.motionBDuration))
     readonly property string motionBEasing: Tokens.motionBEasing
+    // Kept for any straggler; new code uses motionBCurve. OutQuad is the
+    // enum equivalent of the default bezier below.
     readonly property int motionBEasingType: motionBEasing === "linear" ? Easing.Linear : Easing.OutQuad
-    readonly property int motionCTypeStep: _ms(Tokens.motionCTypeStep)
-    readonly property int motionCScramble: _ms(Tokens.motionCScramble)
+    // The category-B curve as an easing.bezierCurve list: four editable
+    // control points plus the mandatory final (1,1). Default reproduces
+    // Easing.OutQuad, so nothing changes until the user edits it.
+    readonly property var motionBCurve: {
+        var raw = _tok("motion-b-bezier", Tokens.motionBBezier)
+        var p = String(raw || "").split(",").map(function (s) { return parseFloat(s) })
+        if (p.length < 4 || p.some(function (n) { return isNaN(n) })) p = [0.25, 0.46, 0.45, 0.94]
+        return [p[0], p[1], p[2], p[3], 1, 1]
+    }
+    readonly property int motionCTypeStep: _ms(_tok("motion-c-type-step", Tokens.motionCTypeStep))
+    readonly property int motionCScramble: _ms(_tok("motion-c-scramble", Tokens.motionCScramble))
     readonly property string motionCEasing: Tokens.motionCEasing
-    readonly property int motionDDuration: _ms(Tokens.motionDDuration)
+    readonly property int motionDDuration: _ms(_tok("motion-d-duration", Tokens.motionDDuration))
+
+    // --- Wallpaper textures (OOP: settings-overhaul) ----------------------
+    // The catalogue is a design decision (design/tokens.common.sh
+    // PHI_TEXTURE_MODES); the settings panel's wallpaper section reads it
+    // from here rather than hardcoding the list or touching Tokens directly.
+    // Falls back to the known set for the hot-reload window before `phi
+    // theme set` has regenerated Tokens.qml with the new key.
+    readonly property var textureModes: {
+        var s = String(Tokens.textureModes || "").trim()
+        return s.length > 0 ? s.split(/\s+/) : ["grain", "noise", "paper", "leather", "rock", "fabric"]
+    }
+    readonly property int textureIntensityDefault: {
+        var n = parseInt(Tokens.textureIntensityDefault)
+        return isNaN(n) ? 40 : n
+    }
 
     // --- helpers ------------------------------------------------------
     // parseFloat with a fallback. A design-token string always carries its

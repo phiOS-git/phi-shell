@@ -5,38 +5,29 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Settings/sections/Theme (S-40; OOP-08 restyle). The user's
-// directive: "All variables that are reasonable to change should have an
-// editable setting in the theme section... The accent color should be the
-// main one, then fonts, font sizes, spacings, radiuses, color palette."
+// phiOS — Settings/sections/Theme (S-40; OOP-08; Out-of-plan: settings-
+// overhaul batches C/D/E). Every variable that is reasonable to change has
+// an editable control here, grouped by context (the reference's inner-
+// section pattern): Appearance, Colours (first — the user's directive),
+// Typography, Shape & spacing, Animations (batch D), Night shift, Cursor
+// spotlight, Wallpaper (batch E).
 //
 // Every editor writes a per-user override through Config/ThemeOverrides.qml
 // (a flat JSON file in $XDG_STATE_HOME/phi — never the repo: design/ stays
 // the source of the DEFAULTS, I-05). Config/Appearance merges the override
 // over the generated Config/Tokens.qml at read time, so a change here is
-// live everywhere. `phi theme set` regenerating the tokens does not clear
-// the file; the user accepted that an update can supersede an override.
-// `phi theme check`'s contrast verification does NOT see an overridden
-// colour — a development-time trade-off, flagged.
+// live everywhere. Fields commit on Enter / focus-out, not per keystroke.
 //
-// Fields seed from Config.Appearance.tokenValue(key) on load and apply on
-// editingFinished (Enter or focus-out), not per keystroke — a half-typed
-// hex should not repaint the shell. Each row has a reset that clears just
-// that key; "Reset all" clears every override.
-//
-// Variant (dark/light), Night shift, Spotlight and Wallpaper stay here —
-// they are theme state too, and were here before. Night shift / True Tone
-// are also reachable from the notification panel now (OOP-06); both points
-// call the same Services/NightShift.
+// Colours carry a live "phi theme check": ContrastBadge shells out to the
+// new `phi theme contrast <hex> on <bg-0>` verb (batch C) — the one WCAG
+// implementation, not a copy in QML — debounced, and only for the pairs
+// `phi theme check` itself measures (fg-0/1/2, accent, error/warn/success/
+// info vs bg-0).
 
-// OOP-09: a Column, not a Flickable. Every other Settings section is a
-// Column and the panel's own content pane (Settings/Settings.qml) is the
-// Flickable that scrolls them — a Flickable rooted here has implicitHeight
-// 0 inside that outer Loader, which is why this section rendered blank.
 Column {
     id: root
     width: parent ? parent.width : 0
-    spacing: root.gap
+    spacing: Config.Appearance.space3 * chWidth
 
     TextMetrics {
         id: ch
@@ -46,22 +37,15 @@ Column {
     }
     readonly property real chWidth: ch.width
     readonly property real gap: chWidth * Config.Appearance.space2
-    readonly property real labelW: chWidth * 22
-    readonly property real fieldW: chWidth * 20
 
     property string pendingVariant: Config.Appearance.variant
-    property string wallpaperPath: "…"
-
-    Component.onCompleted: {
-        Config.Settings.get("wallpaper.path", (v, code) => root.wallpaperPath = v || "(unset)")
-    }
+    readonly property string testString: "0008 iIlL1 g9qCGQ ~ -+=>"
 
     function setVariant(v) {
         root.pendingVariant = v
         setProc.command = ["phi", "theme", "set", v]
         setProc.running = true
     }
-
     Process {
         id: setProc
         onExited: (exitCode) => {
@@ -70,216 +54,557 @@ Column {
         }
     }
 
-    // Editable token groups. `kind`: "color" shows a swatch, "text" a plain
-    // field (font family / number).
-    readonly property var groupAccent: [
-        { key: "accent", label: "Accent", kind: "color" }
-    ]
-    readonly property var groupPalette: [
-        { key: "bg-0", label: "Background (main)", kind: "color" },
-        { key: "bg-1", label: "Surface +1", kind: "color" },
-        { key: "bg-2", label: "Surface +2", kind: "color" },
-        { key: "bg-3", label: "Surface +3", kind: "color" },
-        { key: "fg-0", label: "Text (opposite)", kind: "color" },
-        { key: "fg-1", label: "Text, secondary", kind: "color" },
-        { key: "fg-2", label: "Text, muted", kind: "color" },
-        { key: "fg-3", label: "Text, faint", kind: "color" },
-        { key: "border", label: "Border", kind: "color" },
-        { key: "border-strong", label: "Border, strong", kind: "color" },
-        { key: "error", label: "Error", kind: "color" },
-        { key: "warn", label: "Warning", kind: "color" },
-        { key: "success", label: "Success", kind: "color" },
-        { key: "info", label: "Info", kind: "color" }
-    ]
-    readonly property var groupType: [
-        { key: "font-mono", label: "Mono font", kind: "text" },
-        { key: "font-reading", label: "Reading font", kind: "text" },
-        { key: "font-ui", label: "UI font", kind: "text" },
-        { key: "font-scale", label: "Font scale (×)", kind: "text" }
-    ]
-    readonly property var groupShape: [
-        { key: "space-scale", label: "Spacing scale (×)", kind: "text" },
-        { key: "radius-base", label: "Radius, base", kind: "text" },
-        { key: "radius-small", label: "Radius, small", kind: "text" },
-        { key: "radius-large", label: "Radius, large (runner)", kind: "text" }
-    ]
+    // Rows listen to this to re-seed their fields after "Reset all".
+    QtObject {
+        id: resetSignal
+        signal fired()
+    }
 
-        // --- Variant ----------------------------------------------------
-        Widgets.StyledText { kind: "title"; sizeStep: 3; text: "Appearance" }
-        Row {
-            spacing: root.gap
-            Widgets.StyledButton {
-                label: "Dark"
-                active: root.pendingVariant === "dark"
-                onClicked: root.setVariant("dark")
-            }
-            Widgets.StyledButton {
-                label: "Light"
-                active: root.pendingVariant === "light"
-                onClicked: root.setVariant("light")
-            }
-        }
+    // --- reusable rows ---------------------------------------------------
+    component TokenColorRow: SettingsRow {
+        id: cr
+        property string tokenKey: ""
+        property bool showContrast: false
+        wide: true
+        optionId: "theme.colors." + tokenKey
+        resettable: Config.ThemeOverrides.has(tokenKey)
+        onReset: { Config.ThemeOverrides.clear(tokenKey); field.value = Config.Appearance.tokenValue(tokenKey) }
 
-        // --- Accent ---------------------------------------------------
-        Widgets.StyledText { kind: "title"; sizeStep: 3; topPadding: root.gap; text: "Accent" }
-        Widgets.StyledText {
-            kind: "label"; sizeStep: 0; width: parent.width; wrapMode: Text.WordWrap
-            text: "The one colour used for fine detail — titles, the focus ring, the agent's working state."
-        }
-        Repeater { model: root.groupAccent; delegate: tokenRow }
-
-        // --- Palette ------------------------------------------------
-        Widgets.StyledText { kind: "title"; sizeStep: 3; topPadding: root.gap; text: "Palette" }
-        Repeater { model: root.groupPalette; delegate: tokenRow }
-
-        // --- Typography -------------------------------------------
-        Widgets.StyledText { kind: "title"; sizeStep: 3; topPadding: root.gap; text: "Typography" }
-        Repeater { model: root.groupType; delegate: tokenRow }
-
-        // --- Shape & spacing --------------------------------------
-        Widgets.StyledText { kind: "title"; sizeStep: 3; topPadding: root.gap; text: "Shape & spacing" }
-        Repeater { model: root.groupShape; delegate: tokenRow }
-
-        Item { width: 1; height: root.gap }
-        Widgets.StyledButton {
-            label: "Reset all overrides"
-            onClicked: {
-                Config.ThemeOverrides.clearAll()
-                resetSignal.fired()
-            }
-        }
-        // Rows listen to this to re-seed their fields after "Reset all".
-        QtObject {
-            id: resetSignal
-            signal fired()
-        }
-
-        // --- Night shift (also in the notification panel) ------------
-        Widgets.StyledText { kind: "title"; sizeStep: 3; topPadding: root.gap; text: "Night shift" }
-        Widgets.ToggleRow {
-            width: parent.width
-            label: "Night shift (warms the display in the evening)"
-            checked: Services.NightShift.enabled
-            onToggled: (v) => Services.NightShift.setEnabled(v)
-        }
-        Widgets.ToggleRow {
-            width: parent.width
-            label: "True Tone (drive from ambient light instead of a fixed temperature)"
-            checked: Services.NightShift.trueTone
-            onToggled: (v) => Services.NightShift.setTrueTone(v)
-        }
-        Widgets.StyledText {
-            visible: !Config.Capabilities.ambientLight
-            kind: "label"; sizeStep: 0
-            text: "No ambient light sensor on this host — True Tone will have nothing to read."
-        }
-        Row {
-            spacing: root.chWidth * Config.Appearance.space2
-            Widgets.StyledText {
-                anchors.verticalCenter: parent.verticalCenter
-                kind: "label"
-                text: "Target temperature (K), used when True Tone is off"
-            }
-            Widgets.StyledButton { label: "−500"; onClicked: Services.NightShift.setTemp(Math.max(2500, Services.NightShift.targetTemp - 500)) }
-            Widgets.StyledText {
-                anchors.verticalCenter: parent.verticalCenter
-                text: Services.NightShift.targetTemp + "K"
-            }
-            Widgets.StyledButton { label: "+500"; onClicked: Services.NightShift.setTemp(Math.min(6500, Services.NightShift.targetTemp + 500)) }
-        }
-
-        // --- Spotlight ----------------------------------------------
-        Widgets.StyledText { kind: "title"; sizeStep: 3; topPadding: root.gap; text: "Cursor spotlight" }
-        Widgets.ToggleRow {
-            width: parent.width
-            label: "Cursor spotlight (hold Super+G elsewhere; click toggles here)"
-            checked: Services.Spotlight.shown
-            onToggled: (v) => (v ? Services.Spotlight.show() : Services.Spotlight.hide())
-        }
-        Row {
-            spacing: root.chWidth * Config.Appearance.space2
-            Widgets.StyledText {
-                anchors.verticalCenter: parent.verticalCenter
-                kind: "label"
-                text: "Size"
-            }
-            Repeater {
-                model: ["small", "medium", "large"]
-                Widgets.StyledButton {
-                    required property string modelData
-                    label: modelData
-                    active: Services.Spotlight.size === modelData
-                    onClicked: Services.Spotlight.setSize(modelData)
-                }
-            }
-        }
-
-        // --- Lock screen ------------------------------------------
-        // OOP-35: the ambient backdrop behind the lock screen. Stored in
-        // Config/LockPrefs.qml ($XDG_STATE_HOME/phi/lock.json), read by
-        // Lock/Lock.qml. Not a design token — runtime UI state, same
-        // category as the spotlight size above.
-        Widgets.StyledText { kind: "title"; sizeStep: 3; topPadding: root.gap; text: "Lock screen effect" }
-        Row {
-            spacing: root.chWidth * Config.Appearance.space2
-            Repeater {
-                model: [
-                    { key: "none", label: "None" },
-                    { key: "lava", label: "Lava lamp" },
-                    { key: "matrix", label: "Matrix" },
-                    { key: "starfield", label: "Starfield" }
-                ]
-                Widgets.StyledButton {
-                    required property var modelData
-                    label: modelData.label
-                    active: Config.LockPrefs.effect === modelData.key
-                    onClicked: Config.LockPrefs.setEffect(modelData.key)
-                }
-            }
-        }
-
-        // --- Wallpaper --------------------------------------------
-        Widgets.StyledText { kind: "title"; sizeStep: 3; topPadding: root.gap; text: "Wallpaper" }
-        Widgets.ListRow {
-            width: parent.width
-            label: "Current wallpaper"
-            value: root.wallpaperPath
-        }
         Column {
             width: parent.width
-            spacing: 0
-            Item {
-                width: parent.width
-                height: wallpaperInput.implicitHeight
-                Widgets.StyledText {
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    visible: wallpaperInput.text.length === 0
-                    kind: "label"
-                    text: "Path to an image…"
-                }
-                TextInput {
-                    id: wallpaperInput
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: Config.Appearance.textPrimary
-                    font.family: Config.Appearance.fontUi
-                    font.pixelSize: Config.Appearance.fontSize1
+            spacing: 4
+            Widgets.ColorField {
+                id: field
+                value: Config.Appearance.tokenValue(cr.tokenKey)
+                onCommitted: (hex) => Config.ThemeOverrides.setValue(cr.tokenKey, hex)
+                Connections {
+                    target: resetSignal
+                    function onFired() { field.value = Config.Appearance.tokenValue(cr.tokenKey) }
                 }
             }
-            Widgets.Separator { width: parent.width }
+            ContrastBadge {
+                visible: cr.showContrast
+                hex: field.value
+            }
         }
-        Widgets.StyledButton {
-            label: "Set"
-            onClicked: root._setWallpaper(wallpaperInput.text)
+    }
+
+    // one motion-duration override row (category period / step / duration)
+    component MotionRow: SettingsRow {
+        id: mr
+        property string mkey: ""
+        property int seedMs: 0
+        resettable: Config.ThemeOverrides.has(mkey)
+        onReset: { Config.ThemeOverrides.clear(mkey); mnum.value = mr.seedMs }
+        Widgets.NumberField {
+            id: mnum
+            value: mr.seedMs
+            step: 20; suffix: "ms"; from: 0; to: 4000
+            onCommitted: (v) => Config.ThemeOverrides.setValue(mr.mkey, Math.round(v) + "ms")
+            Connections { target: resetSignal; function onFired() { mnum.value = mr.seedMs } }
         }
-        Widgets.StyledText {
-            kind: "label"; sizeStep: 0; wrapMode: Text.WordWrap; width: parent.width
-            text: "No native file browser — paste a path. Wireframe/technical grid or flat gradient only (style plan), never photographic."
+    }
+
+    component TokenNumberRow: SettingsRow {
+        id: nr
+        property string tokenKey: ""
+        property real step: 1
+        property int decimals: 0
+        property string suffix: ""
+        property real from: 0
+        property real to: 1e6
+        optionId: "theme.shape." + tokenKey
+        resettable: Config.ThemeOverrides.has(tokenKey)
+        onReset: { Config.ThemeOverrides.clear(tokenKey); num.value = nr._seed() }
+
+        function _seed() {
+            var s = Config.Appearance.tokenValue(nr.tokenKey)
+            var n = parseFloat(s)
+            return isNaN(n) ? 0 : n
         }
 
-    function _setWallpaper(srcPath) {
+        Widgets.NumberField {
+            id: num
+            value: nr._seed()
+            step: nr.step
+            decimals: nr.decimals
+            suffix: nr.suffix
+            from: nr.from
+            to: nr.to
+            onCommitted: (v) => Config.ThemeOverrides.setValue(nr.tokenKey,
+                nr.suffix.length > 0 ? (Number(v).toFixed(nr.decimals) + nr.suffix) : String(Number(v).toFixed(nr.decimals)))
+            Connections {
+                target: resetSignal
+                function onFired() { num.value = nr._seed() }
+            }
+        }
+    }
+
+    component TokenFontRow: SettingsRow {
+        id: fr
+        property string tokenKey: ""
+        property string previewFamily: ""
+        wide: true
+        optionId: "theme.fonts." + tokenKey.replace("font-", "")
+        resettable: Config.ThemeOverrides.has(tokenKey)
+        onReset: { Config.ThemeOverrides.clear(tokenKey); ff.text = Config.Appearance.tokenValue(tokenKey) }
+
+        Column {
+            width: parent.width
+            spacing: 6
+            Widgets.TextField {
+                id: ff
+                width: parent.width
+                mono: false
+                placeholder: "Font family name"
+                Component.onCompleted: text = Config.Appearance.tokenValue(fr.tokenKey)
+                onCommitted: (t) => Config.ThemeOverrides.setValue(fr.tokenKey, t.trim())
+                Connections {
+                    target: resetSignal
+                    function onFired() { ff.text = Config.Appearance.tokenValue(fr.tokenKey) }
+                }
+            }
+            Widgets.StyledText {
+                width: parent.width
+                wrapMode: Text.WrapAnywhere
+                font.family: fr.previewFamily
+                font.pixelSize: Config.Appearance.fontSize2
+                text: root.testString
+            }
+        }
+    }
+
+    component ContrastBadge: Row {
+        id: badge
+        property string hex: ""
+        spacing: 6
+        property string _ratio: ""
+        property string _status: ""
+
+        onHexChanged: debounce.restart()
+        Timer {
+            id: debounce
+            interval: 250
+            onTriggered: {
+                if (!/^#([0-9a-fA-F]{6})$/.test(badge.hex)) { badge._ratio = ""; badge._status = ""; return }
+                contrastProc.command = ["phi", "theme", "contrast", badge.hex, "on",
+                    Config.Appearance.tokenValue("bg-0")]
+                contrastProc.running = true
+            }
+        }
+        Process {
+            id: contrastProc
+            onExited: contrastProc.running = false
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    var parts = this.text.trim().split(/\s+/)
+                    badge._ratio = parts[0] || ""
+                    badge._status = parts[1] || ""
+                }
+            }
+        }
+        Widgets.StyledText {
+            kind: "label"; sizeStep: 0
+            text: badge._ratio.length > 0 ? ("contrast " + badge._ratio + ":1 vs background") : "checking…"
+        }
+        Widgets.StyledText {
+            visible: badge._status.length > 0
+            sizeStep: 0
+            tone: badge._status === "pass" ? "success" : "error"
+            text: badge._status === "pass" ? "AA pass" : "below AA (4.5:1)"
+        }
+    }
+
+    // --- Appearance ----------------------------------------------------
+    SettingsGroup {
+        title: "Appearance"
+        SettingsRow {
+            optionId: "theme.variant"
+            title: "Variant"
+            description: "Dark and light are permanent, independent variants."
+            Row {
+                spacing: root.gap
+                Widgets.StyledButton { label: "Dark"; active: root.pendingVariant === "dark"; onClicked: root.setVariant("dark") }
+                Widgets.StyledButton { label: "Light"; active: root.pendingVariant === "light"; onClicked: root.setVariant("light") }
+            }
+        }
+    }
+
+    // --- Colours (first inner section) -------------------------------
+    SettingsGroup {
+        title: "Colours"
+        caption: "The accent is fine detail only — titles, the keyboard focus ring, the agent's working state. Two structural colours (background, primary text) carry the rest of the shell."
+
+        TokenColorRow { tokenKey: "accent"; title: "Accent"; showContrast: true }
+        TokenColorRow { tokenKey: "bg-0"; title: "Background (main)" }
+        TokenColorRow { tokenKey: "bg-1"; title: "Surface +1" }
+        TokenColorRow { tokenKey: "bg-2"; title: "Surface +2" }
+        TokenColorRow { tokenKey: "bg-3"; title: "Surface +3" }
+        TokenColorRow { tokenKey: "fg-0"; title: "Text (primary)"; showContrast: true }
+        TokenColorRow { tokenKey: "fg-1"; title: "Text, secondary"; showContrast: true }
+        TokenColorRow { tokenKey: "fg-2"; title: "Text, muted"; showContrast: true }
+        TokenColorRow { tokenKey: "fg-3"; title: "Text, faint" }
+        TokenColorRow { tokenKey: "border"; title: "Border" }
+        TokenColorRow { tokenKey: "border-strong"; title: "Border, strong" }
+        TokenColorRow { tokenKey: "error"; title: "Error"; showContrast: true }
+        TokenColorRow { tokenKey: "warn"; title: "Warning"; showContrast: true }
+        TokenColorRow { tokenKey: "success"; title: "Success"; showContrast: true }
+        TokenColorRow { tokenKey: "info"; title: "Info"; showContrast: true }
+    }
+
+    SettingsGroup {
+        title: "Colour preview"
+
+        SettingsRow {
+            wide: true
+            title: "Live preview"
+            description: "Rendered from the current overrides."
+            Column {
+                width: parent.width
+                spacing: root.gap
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledButton { label: "Button" }
+                    Widgets.StyledButton { label: "Active"; active: true }
+                    Widgets.Pill { checked: true }
+                    Widgets.Pill { checked: false }
+                }
+                Widgets.ListRow { width: parent.width; label: "Selected row"; value: "value"; active: true }
+                Widgets.ListRow { width: parent.width; label: "Resting row"; value: "value" }
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledText { tone: "error"; text: "error" }
+                    Widgets.StyledText { tone: "warn"; text: "warning" }
+                    Widgets.StyledText { tone: "success"; text: "success" }
+                    Widgets.StyledText { tone: "info"; text: "info" }
+                }
+            }
+        }
+    }
+
+    // --- Typography --------------------------------------------------
+    SettingsGroup {
+        title: "Typography"
+        TokenFontRow { tokenKey: "font-mono"; title: "Mono font"; previewFamily: Config.Appearance.fontMono
+            description: "Terminal, code, and the whole UI's spacing rhythm (1ch)." }
+        TokenFontRow { tokenKey: "font-reading"; title: "Reading font"; previewFamily: Config.Appearance.fontReading
+            description: "Long-form prose surfaces." }
+        TokenFontRow { tokenKey: "font-ui"; title: "UI font"; previewFamily: Config.Appearance.fontUi
+            description: "Labels, buttons, most interface text." }
+    }
+
+    // --- Shape & spacing -----------------------------------------
+    SettingsGroup {
+        title: "Shape & spacing"
+        caption: "Scales multiply the whole generated set. Sliders are deliberately not used here — a theme value should be set, not swept."
+        TokenNumberRow { tokenKey: "font-scale"; title: "Font scale"; step: 0.05; decimals: 2; from: 0.5; to: 2.0 }
+        TokenNumberRow { tokenKey: "space-scale"; title: "Spacing scale"; step: 0.05; decimals: 2; from: 0.5; to: 2.0 }
+        TokenNumberRow { tokenKey: "radius-base"; title: "Radius, base"; step: 1; suffix: "px"; from: 0; to: 24 }
+        TokenNumberRow { tokenKey: "radius-small"; title: "Radius, small (bar isles)"; step: 1; suffix: "px"; from: 0; to: 24 }
+        TokenNumberRow { tokenKey: "radius-large"; title: "Radius, large (runner)"; step: 1; suffix: "px"; from: 0; to: 24 }
+    }
+
+    // --- Animations --------------------------------------------
+    SettingsGroup {
+        title: "Animations"
+        optionId: "theme.animations"
+        caption: "The four style-plan motion categories. Category B is every state transition — panels, drawers, workspaces, notifications — so its duration and curve reach the whole shell. A is the agent's tracking indicator, C the rare boot/unlock effects, D ambient (off by default)."
+
+        MotionRow { mkey: "motion-b-duration"; title: "B — transition duration"; seedMs: Config.Appearance.motionBDuration }
+
+        SettingsRow {
+            title: "B — transition curve"
+            description: "Drag the handles; the marker loops on the edited curve."
+            wide: true
+            resettable: Config.ThemeOverrides.has("motion-b-bezier")
+            onReset: { Config.ThemeOverrides.clear("motion-b-bezier"); bez.setCurve(
+                Config.Appearance.motionBCurve[0], Config.Appearance.motionBCurve[1],
+                Config.Appearance.motionBCurve[2], Config.Appearance.motionBCurve[3]) }
+            Widgets.BezierEditor {
+                id: bez
+                Component.onCompleted: setCurve(
+                    Config.Appearance.motionBCurve[0], Config.Appearance.motionBCurve[1],
+                    Config.Appearance.motionBCurve[2], Config.Appearance.motionBCurve[3])
+                onCommitted: (a, b, c, d) => Config.ThemeOverrides.setValue("motion-b-bezier",
+                    a.toFixed(3) + "," + b.toFixed(3) + "," + c.toFixed(3) + "," + d.toFixed(3))
+                Connections {
+                    target: resetSignal
+                    function onFired() { bez.setCurve(
+                        Config.Appearance.motionBCurve[0], Config.Appearance.motionBCurve[1],
+                        Config.Appearance.motionBCurve[2], Config.Appearance.motionBCurve[3]) }
+                }
+            }
+        }
+
+        MotionRow { mkey: "motion-a-period"; title: "A — tracking period"; seedMs: Config.Appearance.motionAPeriod }
+        MotionRow { mkey: "motion-c-type-step"; title: "C — typing step"; seedMs: Config.Appearance.motionCTypeStep }
+        MotionRow { mkey: "motion-c-scramble"; title: "C — scramble duration"; seedMs: Config.Appearance.motionCScramble }
+        MotionRow { mkey: "motion-d-duration"; title: "D — ambient duration"; seedMs: Config.Appearance.motionDDuration }
+    }
+
+    Widgets.StyledButton {
+        label: "Reset all theme overrides"
+        onClicked: { Config.ThemeOverrides.clearAll(); resetSignal.fired() }
+    }
+
+    // --- Night shift ---------------------------------------------
+    SettingsGroup {
+        title: "Night shift"
+        SettingsRow {
+            optionId: "theme.nightshift"
+            title: "Night shift"
+            description: "Warms the display in the evening."
+            Widgets.Pill { checked: Services.NightShift.enabled; onToggled: (v) => Services.NightShift.setEnabled(v) }
+        }
+        SettingsRow {
+            title: "True Tone"
+            description: Config.Capabilities.ambientLight
+                ? "Drive colour temperature from ambient light instead of a fixed value."
+                : "No ambient light sensor on this host — True Tone has nothing to read."
+            Widgets.Pill {
+                checked: Services.NightShift.trueTone
+                enabled: Config.Capabilities.ambientLight
+                onToggled: (v) => Services.NightShift.setTrueTone(v)
+            }
+        }
+        SettingsRow {
+            title: "Target temperature"
+            description: "Used when True Tone is off."
+            Widgets.NumberField {
+                value: Services.NightShift.targetTemp
+                step: 250; suffix: "K"; from: 2500; to: 6500
+                onCommitted: (v) => Services.NightShift.setTemp(Math.round(v))
+            }
+        }
+    }
+
+    // --- Cursor spotlight --------------------------------------
+    SettingsGroup {
+        title: "Cursor spotlight"
+        SettingsRow {
+            optionId: "theme.spotlight"
+            title: "Cursor spotlight"
+            description: "A vignette that follows the pointer. Hold Super+G elsewhere; this toggle is sticky."
+            Widgets.Pill {
+                checked: Services.Spotlight.shown
+                onToggled: (v) => (v ? Services.Spotlight.show() : Services.Spotlight.hide())
+            }
+        }
+        SettingsRow {
+            title: "Size"
+            Row {
+                spacing: root.gap
+                Repeater {
+                    model: ["small", "medium", "large"]
+                    Widgets.StyledButton {
+                        required property string modelData
+                        label: modelData
+                        active: Services.Spotlight.size === modelData
+                        onClicked: Services.Spotlight.setSize(modelData)
+                    }
+                }
+            }
+        }
+    }
+
+    // --- Lock screen -----------------------------------------
+    // OOP-35 (auth surfaces): the ambient backdrop behind the lock screen.
+    // Stored in Config/LockPrefs.qml ($XDG_STATE_HOME/phi/lock.json), read
+    // by Lock/Lock.qml. Runtime UI state, not a design token — same
+    // category as the spotlight size above. Ported into the batch-C/D/E
+    // Theme rewrite on merge.
+    SettingsGroup {
+        title: "Lock screen"
+        optionId: "theme.lockscreen"
+        SettingsRow {
+            title: "Ambient effect"
+            description: "The backdrop behind the lock screen."
+            Row {
+                spacing: root.gap
+                Repeater {
+                    model: [
+                        { key: "none", label: "None" },
+                        { key: "lava", label: "Lava lamp" },
+                        { key: "matrix", label: "Matrix" },
+                        { key: "starfield", label: "Starfield" }
+                    ]
+                    Widgets.StyledButton {
+                        required property var modelData
+                        label: modelData.label
+                        active: Config.LockPrefs.effect === modelData.key
+                        onClicked: Config.LockPrefs.setEffect(modelData.key)
+                    }
+                }
+            }
+        }
+    }
+
+    // --- Wallpaper (settings-overhaul batch D) ------------------
+    SettingsGroup {
+        title: "Wallpaper"
+        Component.onCompleted: Services.Background.refreshAvailable()
+
+        SettingsRow {
+            optionId: "theme.wallpaper.color"
+            title: "Solid colour"
+            description: "The base layer — always visible where an image does not cover the screen."
+            wide: true
+            Widgets.ColorField {
+                value: Services.Background.color
+                onCommitted: (hex) => Services.Background.setColor(hex)
+            }
+        }
+
+        SettingsRow {
+            optionId: "theme.wallpaper.image"
+            title: "Image"
+            description: "Pick from the wallpaper folder, or add one from a path (it is copied into the folder and selected). Any image is allowed."
+            wide: true
+            Column {
+                width: parent.width
+                spacing: root.gap
+
+                Flow {
+                    width: parent.width
+                    spacing: 6
+
+                    Rectangle {
+                        width: root.chWidth * 12; height: root.chWidth * 8
+                        radius: Config.Appearance.radiusSmall
+                        color: Config.Appearance.surface1
+                        border.width: Config.Appearance.borderWidth
+                        border.color: Services.Background.image.length === 0
+                            ? Config.Appearance.accent : Config.Appearance.border
+                        Widgets.StyledText { anchors.centerIn: parent; kind: "label"; sizeStep: 0; text: "none" }
+                        TapHandler { onTapped: Services.Background.clearImage() }
+                    }
+
+                    Repeater {
+                        model: Services.Background.available
+                        Rectangle {
+                            required property string modelData
+                            width: root.chWidth * 12; height: root.chWidth * 8
+                            radius: Config.Appearance.radiusSmall
+                            color: Config.Appearance.surface1
+                            clip: true
+                            border.width: Config.Appearance.borderWidth
+                            border.color: Services.Background.image === modelData
+                                ? Config.Appearance.accent : Config.Appearance.border
+                            Image {
+                                anchors.fill: parent
+                                anchors.margins: Config.Appearance.borderWidth
+                                source: "file://" + modelData
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                                sourceSize.width: 256
+                            }
+                            TapHandler { onTapped: Services.Background.setImage(modelData) }
+                        }
+                    }
+                }
+
+                Row {
+                    width: parent.width
+                    spacing: root.gap
+                    Widgets.TextField {
+                        id: wpPath
+                        width: parent.width - addBtn.implicitWidth - openBtn.implicitWidth - root.gap * 2
+                        mono: false
+                        placeholder: "Path to an image…"
+                        onCommitted: root._addWallpaper(text)
+                    }
+                    Widgets.StyledButton { id: addBtn; label: "Add"; onClicked: root._addWallpaper(wpPath.text) }
+                    Widgets.StyledButton {
+                        id: openBtn
+                        label: "Open folder"
+                        onClicked: Quickshell.execDetached(["xdg-open", Config.Paths.wallpaperDir])
+                    }
+                }
+            }
+        }
+
+        SettingsRow {
+            optionId: "theme.wallpaper.mode"
+            title: "Fit mode"
+            enabled: Services.Background.image.length > 0
+            Row {
+                spacing: 6
+                Repeater {
+                    model: ["cover", "contain", "stretch", "repeat"]
+                    Widgets.StyledButton {
+                        required property string modelData
+                        label: modelData
+                        active: Services.Background.mode === modelData
+                        onClicked: Services.Background.setMode(modelData)
+                    }
+                }
+            }
+        }
+
+        SettingsRow {
+            optionId: "theme.wallpaper.scale"
+            title: "Scale"
+            description: "Zoom for contain and repeat; ignored for cover and stretch."
+            enabled: Services.Background.image.length > 0
+                && (Services.Background.mode === "contain" || Services.Background.mode === "repeat")
+            Widgets.NumberField {
+                value: Services.Background.scale
+                step: 0.1; decimals: 1; from: 0.1; to: 4.0
+                onCommitted: (v) => Services.Background.setScale(v)
+            }
+        }
+
+        SettingsRow {
+            optionId: "theme.wallpaper.texture"
+            title: "Texture"
+            description: Services.Background.textureApplies
+                ? "A generated grain added over the solid colour. Generated once, not at runtime."
+                : "Available only when there is no image, or the image is contain / repeat."
+            enabled: Services.Background.textureApplies
+            wide: true
+            Column {
+                width: parent.width
+                spacing: root.gap
+                Flow {
+                    width: parent.width
+                    spacing: 6
+                    Widgets.StyledButton {
+                        label: "none"
+                        active: Services.Background.texture.length === 0
+                        onClicked: Services.Background.setTexture("", Services.Background.textureIntensity)
+                    }
+                    Repeater {
+                        model: Config.Appearance.textureModes
+                        Widgets.StyledButton {
+                            required property string modelData
+                            label: modelData
+                            active: Services.Background.texture === modelData
+                            onClicked: Services.Background.setTexture(modelData, Services.Background.textureIntensity)
+                        }
+                    }
+                }
+                Row {
+                    width: parent.width
+                    spacing: root.gap
+                    visible: Services.Background.texture.length > 0
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Intensity" }
+                    Widgets.Meter {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width - 14 * root.chWidth
+                        interactive: true
+                        value: Services.Background.textureIntensity / 100
+                        onReleased: (v) => Services.Background.setTextureIntensity(Math.round(v * 100))
+                    }
+                    Widgets.StyledText {
+                        anchors.verticalCenter: parent.verticalCenter
+                        mono: true; text: Services.Background.textureIntensity + "%"
+                    }
+                }
+            }
+        }
+    }
+
+    function _addWallpaper(srcPath) {
         let p = (srcPath || "").trim()
         if (p.length === 0) return
         if (p === "~" || p.startsWith("~/")) {
@@ -299,100 +624,8 @@ Column {
             onStreamFinished: {
                 const dest = this.text.trim()
                 if (dest.length === 0) return
-                root.wallpaperPath = dest
-                Services.Background.setPath(dest)
-            }
-        }
-    }
-
-    // --- one editable token row -------------------------------------
-    Component {
-        id: tokenRow
-
-        Item {
-            id: rowItem
-            required property var modelData
-            width: root.width
-            height: Math.max(field.implicitHeight, rowLabel.implicitHeight)
-                + root.chWidth * Config.Appearance.space1
-
-            readonly property bool overridden: Config.ThemeOverrides.has(modelData.key)
-
-            function seed() { field.text = Config.Appearance.tokenValue(rowItem.modelData.key) }
-            Component.onCompleted: seed()
-
-            Connections {
-                target: resetSignal
-                function onFired() { rowItem.seed() }
-            }
-
-            Widgets.StyledText {
-                id: rowLabel
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-                width: root.labelW
-                kind: "label"
-                text: rowItem.modelData.label
-                elide: Text.ElideRight
-            }
-
-            Rectangle {
-                id: swatch
-                visible: rowItem.modelData.kind === "color"
-                anchors.left: rowLabel.right
-                anchors.verticalCenter: parent.verticalCenter
-                width: rowItem.height * 0.6
-                height: width
-                radius: Config.Appearance.radiusSmall
-                border.width: Config.Appearance.borderWidth
-                border.color: Config.Appearance.border
-                color: {
-                    const v = Config.Appearance.tokenValue(rowItem.modelData.key)
-                    return (v && v.length >= 4) ? v : "transparent"
-                }
-            }
-
-            Rectangle {
-                id: fieldBox
-                anchors.left: swatch.visible ? swatch.right : rowLabel.right
-                anchors.leftMargin: root.chWidth
-                anchors.verticalCenter: parent.verticalCenter
-                width: root.fieldW
-                height: field.implicitHeight + root.chWidth
-                radius: Config.Appearance.radiusBase
-                color: "transparent"
-                border.width: Config.Appearance.borderWidth
-                border.color: field.activeFocus ? Config.Appearance.accent : Config.Appearance.border
-
-                TextInput {
-                    id: field
-                    anchors.fill: parent
-                    anchors.leftMargin: root.chWidth / 2
-                    anchors.rightMargin: root.chWidth / 2
-                    verticalAlignment: Text.AlignVCenter
-                    clip: true
-                    font.family: Config.Appearance.fontMono
-                    font.pixelSize: Config.Appearance.fontSize1
-                    color: Config.Appearance.textPrimary
-                    onEditingFinished: Config.ThemeOverrides.setValue(rowItem.modelData.key, text.trim())
-                }
-            }
-
-            Widgets.StyledText {
-                anchors.left: fieldBox.right
-                anchors.leftMargin: root.chWidth
-                anchors.verticalCenter: parent.verticalCenter
-                kind: "label"
-                sizeStep: 0
-                text: rowItem.overridden ? "reset" : ""
-                visible: rowItem.overridden
-
-                TapHandler {
-                    onTapped: {
-                        Config.ThemeOverrides.clear(rowItem.modelData.key)
-                        rowItem.seed()
-                    }
-                }
+                Services.Background.setImage(dest)
+                Services.Background.refreshAvailable()
             }
         }
     }

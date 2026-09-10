@@ -49,7 +49,7 @@ Item {
                 enabled: !root._dragging
                 NumberAnimation {
                     duration: Config.Appearance.motionBDuration
-                    easing.type: Config.Appearance.motionBEasingType
+                    easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve
                 }
             }
         }

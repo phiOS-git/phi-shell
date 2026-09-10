@@ -91,7 +91,7 @@ PanelWindow {
         anchors.fill: parent
         opacity: root.shown ? 1 : 0
         Behavior on opacity {
-            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
         MouseArea { anchors.fill: parent; onClicked: Services.AgentPanel.hide() }
@@ -105,14 +105,14 @@ PanelWindow {
             width: root.targetWidth
             Behavior on width {
                 enabled: root._animReady
-                NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+                NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
             }
 
             transform: Translate {
                 x: root.shown ? 0 : -dock.width
                 Behavior on x {
                     enabled: root._animReady
-                    NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+                    NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
                 }
             }
 

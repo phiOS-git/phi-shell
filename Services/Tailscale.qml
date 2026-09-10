@@ -26,7 +26,24 @@ Singleton {
     property string state: "NoState" // Tailscale's own BackendState values
     property string hostName: ""
 
+    property string lastError: ""
+
     function refresh() { probe.running = true }
+
+    // Out-of-plan: settings-overhaul batch F — the Connectivity section's
+    // Tailscale group and the bar's tailscale+vpn module. `tailscale up` /
+    // `down` may need root unless the tailscale operator is set to this
+    // user; a failure surfaces as lastError, not a silent no-op.
+    function up() { root.lastError = ""; actionProc.command = ["tailscale", "up"]; actionProc.running = true }
+    function down() { root.lastError = ""; actionProc.command = ["tailscale", "down"]; actionProc.running = true }
+
+    Process {
+        id: actionProc
+        onExited: (code) => { actionProc.running = false; root.refresh() }
+        stderr: StdioCollector {
+            onStreamFinished: { var t = this.text.trim(); if (t.length > 0) root.lastError = t }
+        }
+    }
 
     Timer {
         interval: 30000

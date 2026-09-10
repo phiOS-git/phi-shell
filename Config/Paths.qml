@@ -29,6 +29,12 @@ Singleton {
 
     readonly property string notificationsFile: root.stateDir + "/notifications.json"
 
+    // Out-of-plan: settings-overhaul batch I. Per-app notification rules
+    // ({ "<appName>": { mute, hide, priority } }) — a collection, not a
+    // scalar, so a JSON file here rather than `phi state` (same call as
+    // theme-overrides.json / chroma.json). Owned by Services/Notifications.qml.
+    readonly property string notificationRulesFile: root.stateDir + "/notification-rules.json"
+
     // S-32: no manifest file — the capture script (Services/Clipboard.qml)
     // is plain POSIX sh with no JSON writer available, so structure lives
     // in the filesystem instead: one <id>.data + <id>.mime pair per entry,
@@ -53,6 +59,12 @@ Singleton {
     }
     readonly property string wallpaperDir: root.dataDir + "/wallpapers"
 
+    // Out-of-plan: settings-overhaul batch D. Generated wallpaper texture
+    // overlays (`phi wallpaper texture`), cached by "<mode>-<intensity>.png"
+    // — a real generated asset, not disposable state, so $XDG_DATA_HOME like
+    // the wallpapers beside it.
+    readonly property string texturesDir: root.dataDir + "/textures"
+
     // OOP-02 (shell restyle): live, per-user overrides for the design
     // tokens the settings panel's Theme section exposes as editable
     // (accent, palette, font families, the font/spacing scale, radii).
@@ -64,10 +76,19 @@ Singleton {
     // clipboard/pins.json.
     readonly property string themeOverridesFile: root.stateDir + "/theme-overrides.json"
 
-    // OOP-35: the lock screen's ambient-effect choice (none / lava / matrix
-    // / starfield). Runtime UI state, same shape and reasoning as
-    // themeOverridesFile — one flat JSON object, written by the settings
-    // Theme section, read by Lock/Lock.qml. Not `phi state` (its key set is
-    // closed, phi/internal/state/state.go) and not the repo.
+    // OOP-35 (auth surfaces): the lock screen's ambient-effect choice (none
+    // / lava / matrix / starfield). Runtime UI state, same shape and
+    // reasoning as themeOverridesFile — one flat JSON object, written by the
+    // settings Theme section, read by Lock/Lock.qml. Not `phi state` (its
+    // key set is closed, phi/internal/state/state.go) and not the repo.
     readonly property string lockPrefsFile: root.stateDir + "/lock.json"
+
+    // Out-of-plan: settings-overhaul batch G. Chroma's open-ended
+    // configuration — the per-key override map and the integration
+    // enables + their settings. Deliberately NOT `phi state` (S-13's
+    // closed scalar-key contract, same reasoning as theme-overrides.json):
+    // keyOverrides is a map and the integration config is nested. The two
+    // scalar Chroma values that already have `phi state` keys
+    // (toggle.chroma, chroma.color) stay there — one value, one writer.
+    readonly property string chromaConfigFile: root.stateDir + "/chroma.json"
 }

@@ -43,13 +43,32 @@ PanelWindow {
 
     function _volumePct() { return Math.round(Services.AudioBridge.volume * 100) }
 
+    // Out-of-plan: settings-overhaul batch F. Only sample the live network
+    // stats while the wifi card is actually on screen.
+    property bool _netWatched: false
+    onWhichChanged: root._syncNetWatch()
+    onShownChanged: root._syncNetWatch()
+    function _syncNetWatch() {
+        var want = root.shown && root.which === "wifi"
+        if (want && !root._netWatched) { Services.NetStats.watch(); root._netWatched = true }
+        else if (!want && root._netWatched) { Services.NetStats.unwatch(); root._netWatched = false }
+    }
+    function _showInSettings(optionId) {
+        Services.SettingsPanel.reveal(optionId)
+        Services.BarPopout.hide()
+    }
+    function _fmtRate(kbps) {
+        if (kbps >= 1000) return (kbps / 1000).toFixed(1) + " Mb/s"
+        return Math.round(kbps) + " kb/s"
+    }
+
     Item {
         id: fadeRoot
         anchors.fill: parent
         opacity: root.shown ? 1 : 0
 
         Behavior on opacity {
-            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
         MouseArea {
@@ -211,7 +230,8 @@ PanelWindow {
                 }
             }
 
-            // wifi
+            // wifi — SSID, the live flow-style speed graph + stats, and
+            // deep-links (settings-overhaul batch F).
             Column {
                 width: parent.width
                 spacing: root.chWidth * Config.Appearance.space1
@@ -221,9 +241,27 @@ PanelWindow {
                     label: "Network"
                     value: Services.WifiBridge.connected ? Services.WifiBridge.ssid : "not connected"
                 }
+                Widgets.AreaChart {
+                    width: parent.width
+                    height: root.chWidth * 5
+                    values: Services.NetStats.downSamples
+                }
+                Row {
+                    spacing: root.chWidth * Config.Appearance.space2
+                    Widgets.StyledText { kind: "label"; sizeStep: 0
+                        text: "↓ " + root._fmtRate(Services.NetStats.downKbps) }
+                    Widgets.StyledText { kind: "label"; sizeStep: 0
+                        text: "↑ " + root._fmtRate(Services.NetStats.upKbps) }
+                    Widgets.StyledText { kind: "label"; sizeStep: 0
+                        text: "ping " + (Services.NetStats.pingMs >= 0 ? Services.NetStats.pingMs + " ms" : "—") }
+                }
                 Widgets.StyledButton {
                     label: "Manage networks…"
                     onClicked: { Quickshell.execDetached(["kitty", "-e", "nmtui"]); Services.BarPopout.hide() }
+                }
+                Widgets.StyledButton {
+                    label: "Show in settings…"
+                    onClicked: root._showInSettings("connectivity.wifi.speed")
                 }
             }
 
@@ -232,10 +270,11 @@ PanelWindow {
                 width: parent.width
                 spacing: root.chWidth * Config.Appearance.space1
                 visible: root.which === "bluetooth"
-                Widgets.ListRow {
+                Widgets.ToggleRow {
                     width: parent.width
                     label: "Adapter"
-                    value: Services.BluetoothBridge.adapterEnabled ? "on" : "off"
+                    checked: Services.BluetoothBridge.adapterEnabled
+                    onToggled: (v) => Services.BluetoothBridge.setEnabled(v)
                 }
                 Widgets.ListRow {
                     width: parent.width
@@ -247,23 +286,39 @@ PanelWindow {
                     label: "Manage devices…"
                     onClicked: { Quickshell.execDetached(["kitty", "-e", "bluetuith"]); Services.BarPopout.hide() }
                 }
+                Widgets.StyledButton {
+                    label: "Show in settings…"
+                    onClicked: root._showInSettings("connectivity.bluetooth")
+                }
             }
 
-            // network / tailscale
+            // network — tailscale + WireGuard VPN
             Column {
                 width: parent.width
                 spacing: root.chWidth * Config.Appearance.space1
                 visible: root.which === "network"
                 Widgets.ListRow {
                     width: parent.width
-                    label: "State"
-                    value: Services.Tailscale.connected ? "connected" : Services.Tailscale.state
+                    label: "Tailscale"
+                    value: Services.Tailscale.connected ? Services.Tailscale.hostName : Services.Tailscale.state
                 }
-                Widgets.ListRow {
-                    width: parent.width
-                    visible: Services.Tailscale.connected
-                    label: "Overlay name"
-                    value: Services.Tailscale.hostName
+                Repeater {
+                    model: Services.Vpn.tunnels
+                    Widgets.ToggleRow {
+                        required property var modelData
+                        width: parent.width
+                        label: "VPN · " + modelData.name
+                        checked: modelData.up
+                        onToggled: (v) => v ? Services.Vpn.up(modelData.name) : Services.Vpn.down(modelData.name)
+                    }
+                }
+                Widgets.StyledText {
+                    visible: Services.Vpn.tunnels.length === 0
+                    kind: "label"; sizeStep: 0; text: "No WireGuard tunnels configured."
+                }
+                Widgets.StyledButton {
+                    label: "Show in settings…"
+                    onClicked: root._showInSettings("connectivity.vpn")
                 }
             }
 

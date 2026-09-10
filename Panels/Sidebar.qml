@@ -120,7 +120,7 @@ PanelWindow {
         opacity: root.shown ? 1 : 0
 
         Behavior on opacity {
-            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
         // Click anywhere outside the dock closes it.
@@ -150,7 +150,7 @@ PanelWindow {
                 x: root.shown ? 0 : dock.width
                 Behavior on x {
                     enabled: root._animReady
-                    NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+                    NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
                 }
             }
 

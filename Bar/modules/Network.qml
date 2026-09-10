@@ -4,13 +4,14 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../glyphs.js" as Glyphs
 
-// phiOS — Bar/modules/Network.qml (S-23; OOP-11 restyle R2). Tailscale
-// state. Icon + value now (user: "wifi, bluetooth and tailscale buttons
-// should show their values"): a VPN glyph and the overlay hostname when
-// connected, "off" when not. ADR 067 is still enforced structurally —
-// Services.Tailscale never exposes an IP field to read, so the value here
-// can only ever be the overlay name. A click opens the shared bar popout
-// (placeholder).
+// phiOS — Bar/modules/Network.qml (S-23; OOP-11; Out-of-plan: settings-
+// overhaul batch F). Tailscale AND WireGuard VPN, merged: the label reads
+// "<tailscale overlay name> | <vpn tunnel>" with each half shown only when
+// that side is up, and the whole module hides when neither is active (the
+// user's directive). ADR 067 still holds structurally — neither
+// Services.Tailscale nor Services.Vpn exposes an IP, so the label can only
+// ever be an overlay name / a tunnel name. A click opens the shared bar
+// popout ("network").
 
 Widgets.Segment {
     id: root
@@ -19,11 +20,17 @@ Widgets.Segment {
 
     ambient: "isle"
 
-    readonly property bool connected: Services.Tailscale.connected
+    readonly property bool ts: Services.Tailscale.connected
+    readonly property bool vpn: Services.Vpn.anyUp
 
-    glyph: root.connected ? Glyphs.vpn : Glyphs.vpnOff
-    label: root.connected ? Services.Tailscale.hostName : "off"
-    tone: root.connected ? "" : "warn"
+    visible: root.ts || root.vpn
+    glyph: Glyphs.vpn
+    label: {
+        var parts = []
+        if (root.ts) parts.push(Services.Tailscale.hostName)
+        if (root.vpn) parts.push(Services.Vpn.activeName)
+        return parts.join(" | ")
+    }
     active: Services.BarPopout.which === "network"
 
     onActivated: Services.BarPopout.toggle("network", root.rightX())

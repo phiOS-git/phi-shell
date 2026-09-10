@@ -23,6 +23,11 @@ Item {
     property bool active: false
     property bool loading: false
     property bool invalid: false
+    // Out-of-plan: settings-overhaul batch A. A search-match wash, distinct
+    // from `active` (a persisted selection): the settings nav highlights an
+    // entry whose section matches the query without hiding the others.
+    // Additive and default-off — every existing caller is unaffected.
+    property bool highlighted: false
 
     readonly property bool hovered: hoverHandler.hovered
     readonly property bool pressed: tapHandler.pressed
@@ -76,7 +81,17 @@ Item {
         color: root.stateColors.bg
 
         Behavior on color {
-            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+        }
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        radius: Config.Appearance.radiusBase
+        color: Config.Appearance.accent
+        opacity: root.highlighted && root.resolvedState !== "active" ? 0.12 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
     }
 
@@ -129,6 +144,6 @@ Item {
     }
 
     Behavior on opacity {
-        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
     }
 }

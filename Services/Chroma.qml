@@ -1,134 +1,354 @@
 pragma Singleton
 import QtQml
+import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.Config as Config
+import qs.Services as Services
 
-// phiOS — Services/Chroma (S-46, master plan §9.6 razer). Writes directly
-// to the org.razer session-bus DBus service via `busctl`/Quickshell.Io —
-// no razer-cli, no polychromatic (S-46's own AGENT bullet: those are
-// customisation UIs, out of scope), and no Quickshell DBus client type
-// either: this session found none in the services/ directory listing
-// already consulted for Services/Brightness.qml's own C-11 closure, the
-// same "checked, not assumed absent" standard.
+// phiOS — Services/Chroma (S-46; Out-of-plan: settings-overhaul batch G).
+// Writes directly to the org.razer session-bus DBus service via
+// `busctl`/Quickshell.Io — no razer-cli, no polychromatic, no Quickshell
+// DBus client type (none exists in the 0.3.x services/ listing).
 //
-// Every interface/method name below is confirmed against real openrazer
-// daemon source (github.com/openrazer/openrazer,
-// daemon/openrazer_daemon/dbus_services/{service.py,daemon.py,
-// dbus_methods/chroma_keyboard.py}), not guessed: BUS_NAME='org.razer',
-// root OBJECT_PATH='/org/razer' (razer.devices.getDevices -> as, an array
-// of serials), per-device path /org/razer/device/<SERIAL>
-// (razer.device.lighting.chroma.setStatic, in_sig 'yyy' — three raw
-// bytes, NOT a hex string; .setNone takes nothing; .setBlinking, also
-// 'yyy'). SESSION bus (`busctl --user`), matching dbus.SessionBus() in
-// service.py. Unverified end to end: no real org.razer service is
-// reachable from here to call.
+// ============================================================
+// NAMES TO CONFIRM ON HARDWARE. Every interface/method string below is a
+// named constant precisely so a correction after
+//     busctl --user introspect org.razer /org/razer/device/<serial>
+// is a one-line edit, not a hunt. They are taken from openrazer daemon
+// source (dbus_services/dbus_methods/chroma_keyboard.py, misc_methods.py)
+// and python-openrazer's advanced-matrix path, which the USER has confirmed
+// works end to end on this Razer Blade — but no org.razer service is
+// reachable from this machine to call, so this file has never run.
+// ============================================================
 //
-// PANEL SCOPE (S-46's own AGENT bullet, verbatim): "on/off toggle plus an
-// optional static colour picker. NOTHING ELSE." — Settings/sections/
-// Devices.qml (S-40) already has the placeholder rows this file now backs.
+// ARCHITECTURE (batch G rewrite). Five things want to drive one keyboard:
+// the static base colour, the per-key override map, the battery power-key
+// indicator, the notification blink, and the neovim mode tint. They are NOT
+// five writers. Every one of them only sets state; a single _render()
+// composes the current state into one frame, and a single Process pushes
+// it. That is what makes "blink then restore" automatic — the blink flag
+// flips, _render() runs, the timer clears the flag, _render() runs again —
+// rather than a second code path that has to remember what was underneath.
 //
-// BEHAVIOURS BUILT, of the card's full list: static colour on toggle (the
-// base case), and a notification-arrival blink (setBlinking, whole
-// keyboard). The card's own wording is "function-row blink" specifically —
-// that needs PER-KEY addressing (openrazer's setKeyRow), which this
-// session has no confirmation razer's own device id even supports; a
-// whole-keyboard blink is used instead and flagged here, not guessed at a
-// specific key range.
+// A frame is either one setStatic (no per-key content) or N setKeyRow calls
+// plus one setCustom (per-key / an integration that paints specific keys).
+// All of it goes out as ONE `sh -c "busctl … && busctl … && …"`: assigning
+// Process.command in a loop would clobber each call before it ran
+// (Quickshell does not queue command reassignments).
 //
-// BEHAVIOURS DELIBERATELY NOT BUILT, per the task's own "do not guess
-// major decisions, note the question" instruction: power-key colour from
-// battery level (needs Q-F06 — whether the power key is individually
-// addressable at all — still open, the USER's own python-openrazer
-// enumeration task, S-46's own USER block); critical-battery red pulse and
-// Super-held key-availability illumination (both need the same per-key
-// addressing question Q-F06 answers, or a working full-keyboard fallback
-// this step did not design against real behaviour); Neovim mode colour (a
-// Neovim plugin, outside phi-shell entirely); mic-mute indicator (no
-// microphone/source bridge exists anywhere in this shell yet — only
-// AudioBridge's default SINK); red on a blocking error dialog (no such
-// dialog concept exists in this shell to hook).
+// PANEL: Settings/sections/Devices.qml — the toggle, the static colour, the
+// advanced per-key grid (Widgets/KeyboardMap), and the three integrations
+// with their accordion settings.
+//
+// STORAGE: the two scalars that already have `phi state` keys stay there
+// (toggle.chroma, chroma.color — one value, one writer). The open-ended
+// data — the per-key map and the integration config — is one JSON object
+// at Config.Paths.chromaConfigFile, same shape/mechanism as
+// Config/ThemeOverrides.qml's theme-overrides.json.
 
 Singleton {
     id: root
 
+    // --- DBus names (see the header) --------------------------------
+    readonly property string _bus: "org.razer"
+    readonly property string _ifaceChroma: "razer.device.lighting.chroma"
+    readonly property string _ifaceMisc: "razer.device.misc"
+    readonly property string _mStatic: "setStatic"       // in_sig 'yyy'
+    readonly property string _mNone: "setNone"           // in_sig ''
+    readonly property string _mKeyRow: "setKeyRow"       // in_sig 'ay'
+    readonly property string _mCustom: "setCustom"       // in_sig '' — display the pushed frame
+    readonly property string _mMatrixDims: "getMatrixDimensions"
+
+    // --- public state ---------------------------------------------
     readonly property bool present: Config.Capabilities.chroma
     property bool enabled: false
-    property string color: "#d3a0ac" // last-set static colour, hex
+    property string color: "#d3a0ac"          // static base colour, hex
+
+    property bool advanced: false              // per-key override mode
+    property var keyOverrides: ({})            // { "row,col": "#rrggbb" }
+    property var integrations: ({ battery: false, notifications: false, neovim: false })
+    // Per-integration settings. Matrix coordinates default to nothing
+    // sensible-but-wrong: the user reads their real values off the
+    // KeyboardMap grid (click a cell, see which key lights) and sets them
+    // here. -1 means "not configured" — the integration then paints
+    // nothing rather than guessing a position.
+    property var integrationConfig: ({
+        batteryRow: -1, batteryCol: -1, batteryThreshold: 20,
+        notifyRow: 0
+    })
+
+    // --- device matrix (from getMatrixDimensions) --------------
+    property int matrixRows: 6
+    property int matrixCols: 22
+    property bool _matrixResolved: false
+
+    // --- integration runtime state ----------------------------
+    property bool _blinkOn: false
+    property bool _batteryPulseOn: false
+    property string _nvimMode: ""              // "", "n", "i", "v", "r", "c"
 
     property string _serial: ""
     property bool _serialResolved: false
 
+    // Config.Capabilities.chroma resolves from an async probe, and this
+    // singleton may instantiate (and load chroma.json, and first _render())
+    // before it lands. Re-render the moment it does, so a restored per-key
+    // map / integration paints without waiting for the first user action.
+    onPresentChanged: if (root.present) root._render()
+
+    // ==================================================================
+    // setters
+    // ==================================================================
     function setEnabled(v) {
         root.enabled = v
         Config.Settings.set("toggle.chroma", v ? "true" : "false")
-        root._apply()
+        root._render()
     }
 
     function setColor(hex) {
         root.color = hex
         Config.Settings.set("chroma.color", hex)
-        if (root.enabled) root._apply()
+        root._render()
     }
 
-    function _apply() {
-        if (!root.present) return
-        root._withSerial((serial) => {
-            if (!serial) return
-            if (root.enabled) root._call(serial, "razer.device.lighting.chroma", "setStatic", root._hexToRgbBytes(root.color))
-            else root._call(serial, "razer.device.lighting.chroma", "setNone", [])
-        })
+    function setAdvanced(v) {
+        root.advanced = v
+        root._persist()
+        root._render()
     }
 
-    // One-shot blink, whole keyboard, reverting to whatever _apply() would
-    // otherwise show. Intended caller: Services/Notifications.qml on a new
-    // notification — not wired there yet in this step (that file already
-    // has a full, working purpose from S-30; adding a Chroma call to it
-    // belongs to whichever step next touches that file with this in mind,
-    // to avoid a drive-by edit to an already-shipped surface).
-    function blink() {
-        if (!root.present || !root.enabled) return
-        root._withSerial((serial) => {
-            if (!serial) return
-            root._call(serial, "razer.device.lighting.chroma", "setBlinking", root._hexToRgbBytes(root.color))
-            blinkResetTimer.restart()
-        })
+    function setKeyOverride(rowIdx, colIdx, hex) {
+        var next = _copy(root.keyOverrides)
+        var k = rowIdx + "," + colIdx
+        if (!hex || String(hex).length === 0) delete next[k]
+        else next[k] = String(hex)
+        root.keyOverrides = next
+        root._persist()
+        root._render()
+    }
+
+    function clearKeyOverride(rowIdx, colIdx) { root.setKeyOverride(rowIdx, colIdx, "") }
+
+    function clearAllKeyOverrides() {
+        root.keyOverrides = ({})
+        root._persist()
+        root._render()
+    }
+
+    function setIntegration(name, v) {
+        var next = _copy(root.integrations)
+        next[name] = !!v
+        root.integrations = next
+        root._persist()
+        root._render()
+    }
+
+    function setIntegrationConfig(key, val) {
+        var next = _copy(root.integrationConfig)
+        next[key] = val
+        root.integrationConfig = next
+        root._persist()
+        root._render()
+    }
+
+    // Neovim mode, pushed by the nvim autocmd over IPC. "" clears it (nvim
+    // left / lost focus). Only the coarse first letter matters.
+    function setNvimMode(mode) {
+        var m = String(mode || "").charAt(0).toLowerCase()
+        if (root._nvimMode === m) return
+        root._nvimMode = m
+        if (root.integrations.neovim) root._render()
+    }
+
+    // One-shot notification blink of the function row. Caller:
+    // Services/Notifications.qml onNotification, gated on !dnd there.
+    // `present` is not checked here — _render() guards on it, and this can
+    // be called before the async capability probe resolves.
+    function notifyBlink() {
+        if (!root.enabled || root.integrations.notifications !== true) return
+        blinkTimer._count = 0
+        root._blinkOn = true
+        root._render()
+        blinkTimer.restart()
     }
 
     Timer {
-        id: blinkResetTimer
-        interval: 2000
-        onTriggered: root._apply()
-    }
-
-    function _hexToRgbBytes(hex) {
-        const h = (hex || "#000000").replace("#", "")
-        return [parseInt(h.substring(0, 2), 16) || 0, parseInt(h.substring(2, 4), 16) || 0, parseInt(h.substring(4, 6), 16) || 0]
-    }
-
-    function _call(serial, iface, method, byteArgs) {
-        const args = byteArgs.length > 0 ? ["y".repeat(byteArgs.length)].concat(byteArgs.map(String)) : []
-        callProc.command = ["busctl", "--user", "call", "org.razer",
-            "/org/razer/device/" + serial, iface, method].concat(args)
-        callProc.running = true
-    }
-
-    Process {
-        id: callProc
-        onExited: (exitCode) => {
-            callProc.running = false
-            if (exitCode !== 0) console.warn("phi-shell: Chroma busctl call failed, exit " + exitCode)
+        id: blinkTimer
+        property int _count: 0
+        interval: 380
+        repeat: true
+        onTriggered: {
+            root._blinkOn = !root._blinkOn
+            blinkTimer._count++
+            root._render()
+            if (blinkTimer._count >= 6) {
+                blinkTimer.stop()
+                blinkTimer._count = 0
+                root._blinkOn = false
+                root._render()
+            }
         }
     }
 
-    // Resolves the first device serial once and caches it — razer's own
-    // internal keyboard is the only Chroma device this project addresses
-    // (S-46's own scope), so "first serial getDevices reports" is enough;
-    // a second concurrent call to _withSerial before resolution completes
-    // would overwrite this pending callback rather than queue behind it —
-    // acceptable given how infrequently these calls actually fire
-    // (a toggle, a colour pick, an occasional blink), flagged rather than
-    // silently assumed safe.
+    IpcHandler {
+        target: "chroma"
+        // Called by profiles/base/home/.config/nvim/lua/phi_chroma.lua on
+        // ModeChanged / VimLeavePre. `mode` is a Neovim mode string
+        // ("n", "i", "v", "V", "R", "c", …); this shell keeps the first
+        // letter and maps it to a Config.Appearance token — the colour
+        // never leaves the shell, so nvim ships no literal (I-05).
+        function nvimMode(mode: string): void { root.setNvimMode(mode) }
+    }
+
+    // ==================================================================
+    // render — the one composer + the one push
+    // ==================================================================
+    function _render() {
+        if (!root.present) return
+        root._withSerial(function (serial) {
+            if (!serial) return
+
+            if (!root.enabled) {
+                root._push(serial, [[root._ifaceChroma, root._mNone, []]])
+                return
+            }
+
+            var base = root._baseColor()
+            var frameNeeded =
+                (root.advanced && root._hasOverrides())
+                || (root.integrations.battery && root._batteryPaints())
+                || (root.integrations.notifications && root._blinkOn)
+
+            if (!frameNeeded) {
+                root._push(serial, [[root._ifaceChroma, root._mStatic, root._rgb(base)]])
+                return
+            }
+            root._push(serial, root._frameCommands(base))
+        })
+    }
+
+    // The base fill: a neovim non-normal mode tints the whole keyboard;
+    // otherwise the user's static colour.
+    function _baseColor() {
+        if (root.integrations.neovim && root._nvimMode.length > 0 && root._nvimMode !== "n")
+            return root._nvimColor(root._nvimMode)
+        return root.color
+    }
+
+    function _nvimColor(m) {
+        switch (m) {
+        case "i": return Config.Appearance.success   // insert
+        case "v": return Config.Appearance.warn      // visual / V-line / V-block
+        case "r": return Config.Appearance.error     // replace
+        case "c": return Config.Appearance.info      // command-line
+        default:  return root.color
+        }
+    }
+
+    function _batteryColor() {
+        var pct = Services.PowerBridge.percentage * 100
+        if (pct <= 0) return root.color
+        if (pct < _num(root.integrationConfig.batteryThreshold))
+            return root._batteryPulseOn ? Config.Appearance.error : root.color
+        if (pct < 50) return Config.Appearance.warn
+        return Config.Appearance.success
+    }
+
+    function _batteryPaints() {
+        return _num(root.integrationConfig.batteryRow) >= 0
+            && _num(root.integrationConfig.batteryCol) >= 0
+    }
+
+    function _hasOverrides() {
+        for (var k in root.keyOverrides) return true
+        return false
+    }
+
+    // Build [ [iface, method, byteArray], … ] for a full custom frame.
+    function _frameCommands(base) {
+        var cmds = []
+        var baseRgb = root._rgb(base)
+        var battRow = _num(root.integrationConfig.batteryRow)
+        var battCol = _num(root.integrationConfig.batteryCol)
+        var notifyRow = _num(root.integrationConfig.notifyRow)
+        var battRgb = root._rgb(root._batteryColor())
+        var blinkRgb = root._rgb(Config.Appearance.accent)
+
+        for (var r = 0; r < root.matrixRows; r++) {
+            var payload = [r, 0, root.matrixCols - 1]
+            for (var c = 0; c < root.matrixCols; c++) {
+                var px = baseRgb
+                if (root.advanced) {
+                    var ov = root.keyOverrides[r + "," + c]
+                    if (ov) px = root._rgb(ov)
+                }
+                if (root.integrations.battery && root._batteryPaints()
+                        && r === battRow && c === battCol)
+                    px = battRgb
+                if (root.integrations.notifications && root._blinkOn && r === notifyRow)
+                    px = blinkRgb
+                payload = payload.concat(px)
+            }
+            cmds.push([root._ifaceChroma, root._mKeyRow, payload])
+        }
+        cmds.push([root._ifaceChroma, root._mCustom, []])
+        return cmds
+    }
+
+    // One `sh -c` with every busctl call &&-joined. Every token is
+    // [A-Za-z0-9_/.:-] or a decimal integer, so no quoting is needed.
+    // Bursts (blink, pulse, a fast drag) coalesce: a push arriving while
+    // frameProc is still running is held and replayed once on exit, so the
+    // device always ends on the latest frame and the calls never overlap.
+    property var _pendingCmd: null
+    property bool _pushQueued: false
+
+    function _push(serial, cmds) {
+        var lines = []
+        for (var i = 0; i < cmds.length; i++) {
+            var iface = cmds[i][0], method = cmds[i][1], bytes = cmds[i][2]
+            var argv = ["busctl", "--user", "call", root._bus,
+                        "/org/razer/device/" + serial, iface, method]
+            if (bytes.length > 0) {
+                if (method === root._mKeyRow) argv.push("ay", String(bytes.length))
+                else argv.push("y".repeat(bytes.length))
+                for (var b = 0; b < bytes.length; b++) argv.push(String(bytes[b]))
+            }
+            lines.push(argv.join(" "))
+        }
+        root._pendingCmd = ["sh", "-c", lines.join(" && ")]
+        if (frameProc.running) { root._pushQueued = true; return }
+        frameProc.command = root._pendingCmd
+        frameProc.running = true
+    }
+
+    Process {
+        id: frameProc
+        onExited: (exitCode) => {
+            frameProc.running = false
+            if (exitCode !== 0) console.warn("phi-shell: Chroma frame push failed, exit " + exitCode)
+            if (root._pushQueued) {
+                root._pushQueued = false
+                frameProc.command = root._pendingCmd
+                frameProc.running = true
+            }
+        }
+    }
+
+    // rgb triplet 0..255 from a "#rrggbb" string OR a Config.Appearance
+    // colour value (the integration colours come through as the latter).
+    function _rgb(x) {
+        var c = (typeof x === "string") ? Qt.color(x) : x
+        return [Math.round((c.r || 0) * 255), Math.round((c.g || 0) * 255), Math.round((c.b || 0) * 255)]
+    }
+
+    function _num(x) { var n = parseInt(x, 10); return isNaN(n) ? -1 : n }
+    function _copy(o) { var n = {}; for (var k in o) n[k] = o[k]; return n }
+
+    // ==================================================================
+    // serial + matrix resolution
+    // ==================================================================
     function _withSerial(cb) {
         if (root._serialResolved) { cb(root._serial); return }
         serialProc.onFinished = cb
@@ -139,20 +359,120 @@ Singleton {
         id: serialProc
         property var onFinished: null
         onExited: serialProc.running = false
-        command: ["busctl", "--user", "call", "org.razer", "/org/razer", "razer.devices", "getDevices"]
+        command: ["busctl", "--user", "call", root._bus, "/org/razer", "razer.devices", "getDevices"]
         stdout: StdioCollector {
             onStreamFinished: {
-                // busctl's own reply format: `as N "serial1" "serial2" ...`
                 const m = this.text.match(/"([^"]+)"/)
                 root._serial = m ? m[1] : ""
                 root._serialResolved = true
+                if (root._serial.length > 0 && !root._matrixResolved) {
+                    matrixProc.command = ["busctl", "--user", "call", root._bus,
+                        "/org/razer/device/" + root._serial, root._ifaceMisc, root._mMatrixDims]
+                    matrixProc.running = true
+                }
                 if (serialProc.onFinished) serialProc.onFinished(root._serial)
             }
         }
     }
 
+    Process {
+        id: matrixProc
+        onExited: matrixProc.running = false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                // busctl prints the signature then the values, e.g.
+                // "ii 6 22" or "ai 2 6 22". Take the last two integers.
+                var nums = String(this.text).match(/-?\d+/g) || []
+                if (nums.length >= 2) {
+                    var rr = parseInt(nums[nums.length - 2], 10)
+                    var cc = parseInt(nums[nums.length - 1], 10)
+                    if (rr > 0 && rr <= 12 && cc > 0 && cc <= 32) {
+                        root.matrixRows = rr
+                        root.matrixCols = cc
+                    }
+                }
+                root._matrixResolved = true
+                root._render()
+            }
+        }
+    }
+
+    // ==================================================================
+    // battery link — re-render the power key when the level crosses a band
+    // (Services/Idle.qml sets the precedent for a Services singleton
+    // importing qs.Services to read a sibling).
+    // ==================================================================
+    Connections {
+        target: Services.PowerBridge
+        function onPercentageChanged() {
+            if (root.integrations.battery) batteryRerender.restart()
+        }
+    }
+
+    // Debounced: a flurry of UPower updates (PowerBridge samples on a 60s
+    // timer, so this is naturally rare) yields one re-render.
+    Timer {
+        id: batteryRerender
+        interval: 400
+        onTriggered: root._render()
+    }
+
+    // Slow under-threshold pulse. `running` is false in every normal
+    // state, so this is not a category-C effect on a frequent event — it
+    // only ticks while the battery integration is on AND the charge is
+    // genuinely below the user's threshold.
+    Timer {
+        id: batteryPulse
+        interval: 1200
+        repeat: true
+        running: root.enabled && root.integrations.battery
+            && Services.PowerBridge.percentage > 0
+            && Services.PowerBridge.percentage * 100 < root._num(root.integrationConfig.batteryThreshold)
+        onTriggered: { root._batteryPulseOn = !root._batteryPulseOn; root._render() }
+        onRunningChanged: if (!running && root._batteryPulseOn) {
+            root._batteryPulseOn = false
+            root._render()
+        }
+    }
+
+    // ==================================================================
+    // config file (chroma.json)
+    // ==================================================================
+    function _persist() {
+        chromaFile.setText(JSON.stringify({
+            advanced: root.advanced,
+            keyOverrides: root.keyOverrides,
+            integrations: root.integrations,
+            integrationConfig: root.integrationConfig
+        }, null, 2))
+    }
+
+    FileView {
+        id: chromaFile
+        path: Config.Paths.chromaConfigFile
+        onLoaded: {
+            try {
+                var p = JSON.parse(chromaFile.text())
+                if (p && typeof p === "object") {
+                    if (typeof p.advanced === "boolean") root.advanced = p.advanced
+                    if (p.keyOverrides && typeof p.keyOverrides === "object") root.keyOverrides = p.keyOverrides
+                    if (p.integrations && typeof p.integrations === "object")
+                        root.integrations = Object.assign({ battery: false, notifications: false, neovim: false }, p.integrations)
+                    if (p.integrationConfig && typeof p.integrationConfig === "object")
+                        root.integrationConfig = Object.assign(root.integrationConfig, p.integrationConfig)
+                }
+                root._render()
+            } catch (e) {
+                console.warn("phi-shell: chroma.json failed to parse, ignoring: " + e)
+            }
+        }
+        onLoadFailed: (error) => {
+            // FileNotFound before anything is configured is normal.
+        }
+    }
+
     Component.onCompleted: {
-        Config.Settings.get("toggle.chroma", (v, code) => { root.enabled = v === "true"; root._apply() })
+        Config.Settings.get("toggle.chroma", (v, code) => { root.enabled = v === "true"; root._render() })
         Config.Settings.get("chroma.color", (v, code) => { if (v) root.color = v })
     }
 }

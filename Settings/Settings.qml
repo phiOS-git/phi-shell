@@ -6,6 +6,7 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 import "sections" as Sections
+import "sections/options.js" as Options
 
 // phiOS — Settings/Settings (S-40, master plan §8.3 surface 14, §9.12: nine
 // sections, "one canonical place for every runtime option"). Composition is
@@ -15,46 +16,45 @@ import "sections" as Sections
 //
 // Left-hand section list instead of Sidebar's horizontal tab strip: nine
 // entries do not fit a single row at any reasonable width, and a settings
-// panel's own convention (System Settings, GNOME Settings, every OS this
-// project's audience has used) is a vertical list beside the content pane,
-// not tabs across the top — the shape follows the row count, not a
-// deliberate visual departure from Sidebar.
+// panel's own convention (System Settings, GNOME Settings) is a vertical
+// list beside the content pane.
 //
-// RUNTIME STATE ONLY (S-40 AGENT contract, master plan §9.12: "perimetro:
-// solo stato realmente runtime"). Every section below reads Config.Settings
-// (phi state) or a Services/ bridge; none of them write into any repository
-// path. A section with no real backend yet (Security, AI Agent, Updates
-// before S-45, several Devices/Notifications rows before S-46) renders as
-// an explicit placeholder stating what is missing — never a silently inert
-// control that looks wired but does nothing.
+// RUNTIME STATE ONLY (S-40 AGENT contract). Every section reads
+// Config.Settings (phi state) or a Services/ bridge; none write into a
+// repository path.
 //
-// No keybinding existed for this before this step (S-38's own scheme
-// predates the settings panel). Bound to Super+S in this same step's
-// dotfiles commit — "S" was free and is the obvious mnemonic, same
-// low-ceremony choice S-31 made for Super+N/sidebar.
+// Out-of-plan: settings-overhaul (batch A). The search no longer FILTERS
+// the section list — it HIGHLIGHTS matches (nav entries and, once a section
+// adopts Settings/SettingsRow, individual rows) and leaves everything
+// visible. Enter acts on the top-ranked result from Settings/options.js: a
+// whole section selects it, a specific option reveals it (select the
+// section, scroll the content pane to that row, pulse it). The same reveal
+// path is exposed over IPC (`qs ipc call settings reveal <id>`) so a status-
+// bar overlay's "Show in settings" button lands on the exact control.
+//
+// Bound to Super+S in dotfiles (S-40).
 
 PanelWindow {
     id: root
 
-    // OOP-23: shown state lives in Services/SettingsPanel (one owner, so
-    // the bar volume/brightness card's "settings" button and any future
-    // summon point can reach it) — same shape as Services/NotificationPanel.
+    // OOP-23: shown state lives in Services/SettingsPanel (one owner).
     readonly property bool shown: Services.SettingsPanel.shown
     property int activeIndex: 0
+    property var registryRows: []
 
     onShownChanged: {
         if (!root.shown) return
-        root.query = ""
+        Services.SettingsPanel.query = ""
         searchField.text = ""
         Services.SystemInfo.refresh()
         Services.Keybinds.refresh()
         root._applyPendingSection()
+        root._applyPendingReveal()
         Qt.callLater(function () { searchField.forceActiveFocus() })
     }
 
-    // OOP-23: a caller can ask for a specific section (the bar brightness
-    // card → "theme", the volume card → "devices"). Matched by sections.json
-    // `type` or, as a fallback, section title.
+    // OOP-23: a caller can ask for a specific section (bar cards, overlay
+    // "Show in settings" buttons). Matched by sections.json `type` or title.
     function _applyPendingSection() {
         var name = Services.SettingsPanel.pendingSection
         if (!name || name.length === 0) return
@@ -68,32 +68,52 @@ PanelWindow {
         Services.SettingsPanel.pendingSection = ""
     }
 
+    // settings-overhaul: scroll the content pane to the SettingsRow that
+    // registered `pendingReveal` and pulse it. If the section is still
+    // loading, the row's own registration (onRowRegistered below) retries.
+    function _applyPendingReveal() {
+        var id = Services.SettingsPanel.pendingReveal
+        if (!id || id.length === 0) return
+        var item = Services.SettingsPanel.rowItem(id)
+        if (!item) return
+        Qt.callLater(function () {
+            var again = Services.SettingsPanel.rowItem(id)
+            if (!again) return
+            var p = again.mapToItem(contentFlick.contentItem, 0, 0)
+            var target = Math.max(0, Math.min(p.y - root.gap,
+                Math.max(0, contentFlick.contentHeight - contentFlick.height)))
+            scrollAnim.from = contentFlick.contentY
+            scrollAnim.to = target
+            scrollAnim.restart()
+            again.pulse()
+            Services.SettingsPanel.pendingReveal = ""
+        })
+    }
+
     Connections {
         target: Services.SettingsPanel
-        function onPendingSectionChanged() {
-            if (root.shown) root._applyPendingSection()
+        function onPendingSectionChanged() { if (root.shown) root._applyPendingSection() }
+        function onPendingRevealChanged() { if (root.shown) root._applyPendingReveal() }
+        function onRowRegistered(id) {
+            if (root.shown && id === Services.SettingsPanel.pendingReveal) root._applyPendingReveal()
         }
     }
 
-    // OOP-13: when the search hides the active section, jump to the first
-    // section that still matches — so the content pane never shows a
-    // section the filtered nav no longer lists.
-    onQueryChanged: {
-        if (root.query.trim().length === 0) return
-        if (root.sectionMatches(root.registryRows[root.activeIndex])) return
-        for (var i = 0; i < root.registryRows.length; i++) {
-            if (root.sectionMatches(root.registryRows[i])) { root.activeIndex = i; break }
-        }
+    // Nav highlight (not filter): a section entry whose type has a match.
+    function sectionMatches(row) {
+        return Options.sectionMatches(row.type, Services.SettingsPanel.query)
     }
-    property var registryRows: []
-    property string query: ""
 
-    // OOP-07: centred, large. Full-screen transparent window; the panel
-    // box is centred inside fadeRoot and a click outside it closes.
-    // R3 #1: exclusiveZone -1 + the Overlay layer so the full-screen
-    // scrim actually dims the status bar too (with exclusiveZone 0 the
-    // compositor shrank this window out of the bar's reserved strip).
-    // Same guard form as Background/Background.qml.
+    // Enter in the search field acts on the top-ranked catalogue hit.
+    function _acceptTop() {
+        var id = Options.topResult(searchField.text)
+        if (!id || id.length === 0) return
+        if (Options.isSection(id)) Services.SettingsPanel.openSection(id)
+        else Services.SettingsPanel.reveal(id)
+    }
+
+    // OOP-07: centred, large; full-screen transparent window, scrim dims
+    // the bar too (R3 #1: exclusiveZone -1 + Overlay layer).
     anchors { top: true; bottom: true; left: true; right: true }
     exclusiveZone: -1
     color: "transparent"
@@ -114,21 +134,7 @@ PanelWindow {
     readonly property real navW: chWidth * 26
     readonly property real gap: chWidth * Config.Appearance.space3
 
-    // PanelWindow has no `opacity` property — see Panels/Sidebar.qml's
-    // identical note; same fadeRoot treatment here.
     visible: root.shown || fadeRoot.opacity > 0
-
-    // OOP-13: the search matches a section's title AND its keyword list
-    // (Settings/sections.json) — the user's directive that the search
-    // "should look into the sections as well, not just the section title".
-    // A per-setting-row index is a bigger job (every section renders its
-    // own rows); this keyword approximation is flagged as such in PROGRESS.
-    function sectionMatches(row) {
-        const q = root.query.trim().toLowerCase()
-        if (q.length === 0) return true
-        return (row.title || "").toLowerCase().indexOf(q) !== -1
-            || (row.keywords || "").toLowerCase().indexOf(q) !== -1
-    }
 
     Services.LayerFocus { target: root }
 
@@ -137,6 +143,13 @@ PanelWindow {
         function toggle(): void { Services.SettingsPanel.toggle() }
         function open(): void { Services.SettingsPanel.show() }
         function close(): void { Services.SettingsPanel.hide() }
+        // settings-overhaul: jump straight to one control. `id` is a
+        // Settings/options.js option id, e.g. "connectivity.wifi.speed".
+        // First typed-parameter IpcHandler method in this shell — Quickshell
+        // documents `function f(a: string): void` for `qs ipc call`, but no
+        // prior surface here exercised it; flagged for the screenshot pass.
+        function reveal(id: string): void { Services.SettingsPanel.reveal(id) }
+        function section(name: string): void { Services.SettingsPanel.openSection(name) }
     }
 
     FileView {
@@ -152,8 +165,6 @@ PanelWindow {
         }
     }
 
-    // The one place a new section TYPE needs code (ADR 078) — the instance
-    // (title, position) is Settings/sections.json alone.
     function componentFor(type) {
         switch (type) {
         case "general": return generalComponent
@@ -192,7 +203,7 @@ PanelWindow {
         opacity: root.shown ? 1 : 0
 
         Behavior on opacity {
-            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Config.Appearance.motionBEasingType }
+            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
         MouseArea {
@@ -217,8 +228,6 @@ PanelWindow {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: parent.top
-                // OOP-09: tall enough to contain the close control (it was
-                // overflowing the old height).
                 height: Math.max(searchField.implicitHeight, closeBtn.implicitHeight)
                     + root.chWidth * Config.Appearance.space2
 
@@ -244,7 +253,7 @@ PanelWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     kind: "label"
                     mono: true
-                    text: "search settings…"
+                    text: "search settings — enter jumps to the first result"
                     visible: searchField.text.length === 0
                 }
                 TextInput {
@@ -257,13 +266,11 @@ PanelWindow {
                     font.family: Config.Appearance.fontMono
                     font.pixelSize: Config.Appearance.fontSize2
                     color: Config.Appearance.textPrimary
-                    onTextChanged: root.query = text
+                    onTextChanged: Services.SettingsPanel.query = text
+                    onAccepted: root._acceptTop()
                     Keys.onEscapePressed: Services.SettingsPanel.hide()
                 }
 
-                // OOP-09: a compact squared control (× glyph), not the
-                // full-width "close" button, which was oversized and spilled
-                // out of the top bar. Esc and click-outside still close too.
                 Widgets.Segment {
                     id: closeBtn
                     anchors.right: parent.right
@@ -305,9 +312,11 @@ PanelWindow {
                             required property var modelData
                             required property int index
                             width: navCol.width
-                            visible: root.sectionMatches(modelData)
                             label: modelData.title
                             active: index === root.activeIndex
+                            highlighted: root.shown
+                                && Services.SettingsPanel.query.length > 0
+                                && root.sectionMatches(modelData)
                             onActivated: root.activeIndex = index
                         }
                     }
@@ -324,6 +333,7 @@ PanelWindow {
 
             // --- content pane (right ~3/4) ----------------------------
             Flickable {
+                id: contentFlick
                 anchors.left: navSep.right
                 anchors.leftMargin: root.gap
                 anchors.right: parent.right
@@ -333,6 +343,14 @@ PanelWindow {
                 contentWidth: width
                 contentHeight: sectionLoader.item ? sectionLoader.item.implicitHeight : 0
                 clip: true
+
+                NumberAnimation {
+                    id: scrollAnim
+                    target: contentFlick
+                    property: "contentY"
+                    duration: Config.Appearance.motionBDuration * 2
+                    easing.type: Easing.OutQuad
+                }
 
                 Loader {
                     id: sectionLoader
