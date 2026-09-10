@@ -69,4 +69,13 @@ Singleton {
     // the single source of the DEFAULTS). Same runtime-state shape as
     // clipboard/pins.json.
     readonly property string themeOverridesFile: root.stateDir + "/theme-overrides.json"
+
+    // Out-of-plan: settings-overhaul batch G. Chroma's open-ended
+    // configuration — the per-key override map and the integration
+    // enables + their settings. Deliberately NOT `phi state` (S-13's
+    // closed scalar-key contract, same reasoning as theme-overrides.json):
+    // keyOverrides is a map and the integration config is nested. The two
+    // scalar Chroma values that already have `phi state` keys
+    // (toggle.chroma, chroma.color) stay there — one value, one writer.
+    readonly property string chromaConfigFile: root.stateDir + "/chroma.json"
 }

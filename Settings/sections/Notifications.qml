@@ -55,10 +55,20 @@ Column {
         kind: "label"; sizeStep: 3; text: "Chroma"
         visible: Config.Capabilities.chroma
     }
-    Widgets.ListRow {
+    // settings-overhaul batch G wired the arrival blink (Services/
+    // Notifications.qml onNotification → Services.Chroma.notifyBlink(),
+    // gated on !dnd). This mirrors the same toggle the Devices section's
+    // Chroma integrations list owns — one value, Services.Chroma.
+    Widgets.ToggleRow {
         width: parent.width
         visible: Config.Capabilities.chroma
         label: "Keyboard blink on notification"
-        value: "Services.Chroma.blink() exists, not wired to arrival yet (S-46)"
+        checked: Services.Chroma.integrations.notifications === true
+        onToggled: (v) => Services.Chroma.setIntegration("notifications", v)
+    }
+    Widgets.StyledText {
+        visible: Config.Capabilities.chroma
+        kind: "label"; sizeStep: 0
+        text: "Function-row flash on arrival — silent while Do Not Disturb is on. Configure the row in Devices → Chroma."
     }
 }

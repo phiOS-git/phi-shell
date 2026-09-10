@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Notifications
 import qs.Config as Config
+import qs.Services as Services
 
 // phiOS — Services/Notifications (S-30, ADR 073: the shell IS the
 // notification daemon; master plan §8.3 surface 3). NotificationServer
@@ -151,6 +152,14 @@ Singleton {
             if (!root.dnd) {
                 root.toastQueue = root.toastQueue.concat([notification])
                 root._advanceQueue()
+
+                // settings-overhaul batch G: the Chroma "notifications"
+                // integration — a function-row blink on arrival. Gated on
+                // the same !dnd branch (the user's directive: "works only
+                // when notifications are not in DND"); Chroma.notifyBlink()
+                // is itself a no-op unless the integration is enabled and
+                // the keyboard is on.
+                Services.Chroma.notifyBlink()
             }
 
             // Every tracked notification gets a bounded lifetime, DND or
