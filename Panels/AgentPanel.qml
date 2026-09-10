@@ -105,7 +105,9 @@ PanelWindow {
             anchors.top: parent.top
             // features-change (item 2): the same small inset (panelGap) on
             // all four sides — below the bar and off the three screen edges.
-            anchors.topMargin: Services.BarMetrics.height + Config.Appearance.panelGap
+            // OOP-60: below the bar's visible content, not its raw window
+            // height, which left a visible gap under the drawn isles.
+            anchors.topMargin: Services.BarMetrics.contentBottom + Config.Appearance.panelGap
             anchors.bottom: parent.bottom
             anchors.bottomMargin: Config.Appearance.panelGap
             anchors.left: parent.left

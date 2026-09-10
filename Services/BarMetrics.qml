@@ -31,15 +31,29 @@ Singleton {
 
     // Written by Bar/Bar.qml via report(). 0 until the first report.
     property real reported: 0
+    property real reportedContent: 0
 
     // Pre-first-report estimate, deliberately a little generous: a dock
     // inset by this must never briefly show under the bar on the first
     // frame. Replaced by the real value as soon as a bar reports in.
     readonly property real fallback: Config.Appearance.fontSize2 * 2.5
 
+    // The bar WINDOW's full height — everything the bar occupies, including
+    // the ~islandMargin/2 of transparent space below the centred isles.
     readonly property real height: root.reported > 0 ? root.reported : root.fallback
 
-    function report(h) {
+    // OOP-60: where the bar's VISIBLE content ends on screen — the bottom
+    // edge of the isle pills/glyphs (the window's leftover transparent
+    // bottom trimmed off). Surfaces that must sit just under the bar should
+    // anchor at `contentBottom + panelGap`, never at `height`, which leaves
+    // the visible gap (the "too much space" of OOP-60).
+    readonly property real contentBottom: root.reportedContent > 0
+        ? root.reportedContent : root.fallback
+
+    function report(h, contentBottom) {
         if (h > 0 && Math.abs(h - root.reported) > 0.5) root.reported = h
+        if (contentBottom > 0 && Math.abs(contentBottom - root.reportedContent) > 0.5) {
+            root.reportedContent = contentBottom
+        }
     }
 }
