@@ -48,7 +48,8 @@ Item {
     readonly property real _pad: Config.Appearance.space2 * _ch
     readonly property real _resetW: resetLabel.visible ? resetLabel.implicitWidth + _pad : 0
 
-    readonly property bool highlighted: Services.SettingsPanel.query.length > 0
+    readonly property bool highlighted: Services.SettingsPanel.shown
+        && Services.SettingsPanel.query.length > 0
         && root.optionId.length > 0
         && Options.matches(root.optionId, Services.SettingsPanel.query)
 
@@ -124,17 +125,18 @@ Item {
     }
 
     // Control slot. Content-sized and right-aligned by default; full-width
-    // under the label when `wide`. Static bindings (root.wide is set once at
-    // construction), no dynamic anchor clearing.
+    // under the label when `wide`. Only `right` + `top` are anchored — the
+    // width is explicit either way, so nothing ever gets an `undefined`
+    // anchor or an `undefined` (→ NaN) width (the OOP-27 zero-width bug).
+    // `root.wide` is set once at construction, so the ternaries evaluate
+    // once.
     Item {
         id: slot
         anchors.right: parent.right
         anchors.rightMargin: root._pad + (root.wide ? 0 : root._resetW)
-        anchors.left: root.wide ? parent.left : undefined
-        anchors.leftMargin: root.wide ? root._pad : 0
         anchors.top: root.wide ? labelBlock.bottom : parent.top
         anchors.topMargin: root._pad
-        width: root.wide ? undefined : childrenRect.width
+        width: root.wide ? Math.max(0, root.width - root._pad * 2) : childrenRect.width
         height: childrenRect.height
     }
 

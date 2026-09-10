@@ -40,7 +40,8 @@ Column {
     }
     readonly property real _ch: chMetrics.width
 
-    readonly property bool highlighted: Services.SettingsPanel.query.length > 0
+    readonly property bool highlighted: Services.SettingsPanel.shown
+        && Services.SettingsPanel.query.length > 0
         && root.optionId.length > 0
         && Options.matches(root.optionId, Services.SettingsPanel.query)
 

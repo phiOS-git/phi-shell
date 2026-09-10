@@ -314,7 +314,8 @@ PanelWindow {
                             width: navCol.width
                             label: modelData.title
                             active: index === root.activeIndex
-                            highlighted: Services.SettingsPanel.query.length > 0
+                            highlighted: root.shown
+                                && Services.SettingsPanel.query.length > 0
                                 && root.sectionMatches(modelData)
                             onActivated: root.activeIndex = index
                         }
