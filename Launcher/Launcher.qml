@@ -70,13 +70,32 @@ PanelWindow {
     // OOP-12: wider than OOP-05's 25% (user R2: "width should be larger"),
     // with a mono floor so it never collapses on a narrow display.
     readonly property real launcherWidth: Math.max(chWidth * 48, (root.screen ? root.screen.width : 0) * 0.34)
-    // OOP-12: the box is a fixed tall height from the moment it opens
-    // (user: "it should start at the highest height, eg. 20 entries") and
-    // is centred on screen, not top-anchored. rowH is one result line.
+    // OOP-12 opened the box at a fixed tall height always, "so the box
+    // opens at full height and never grows/shrinks as results change."
+    // docs/TODO.md reverses that: "the runner should resize its height
+    // when there are not enough options to fill it (anchored on the
+    // top)." rowH is one result line; visibleRows/maxListBoxHeight are the
+    // unchanged cap OOP-12 set (up to 20 rows, or 62% of the screen,
+    // whichever is smaller) — currentListBoxHeight below is the new part,
+    // shrinking that cap to fit the actual result count. See panelWrap's
+    // own comment for how the box stays centred on screen exactly as
+    // OOP-12 put it, top-anchored only in the sense that the top edge no
+    // longer moves as the box's height changes.
     readonly property real rowH: chMetrics.height + chWidth * Config.Appearance.space1
     readonly property int visibleRows: 20
-    readonly property real listBoxHeight: Math.min(root.rowH * root.visibleRows,
+    readonly property real maxListBoxHeight: Math.min(root.rowH * root.visibleRows,
         (root.screen ? root.screen.height : 1080) * 0.62)
+    // Shrinks to fit resultList's own implicitHeight (n rows, or the
+    // "no results" label's height, or 0 when neither is showing — Column
+    // excludes invisible children from that sum on its own), capped at
+    // maxListBoxHeight so it never grows past what OOP-12 originally set.
+    readonly property real currentListBoxHeight: Math.min(resultList.implicitHeight, root.maxListBoxHeight)
+    // The box's full reserved footprint at maxListBoxHeight — used only by
+    // panelWrap below to compute a height-independent anchor position, not
+    // by panel itself, which always sizes to its own, possibly smaller,
+    // actual content.
+    readonly property real maxPanelHeight: inputRow.height + layout.spacing
+        + root.maxListBoxHeight + panel.padding * 2
 
     // The input prefix and the pixel width it occupies — the result
     // options are indented to start exactly where the typed text does
@@ -393,13 +412,31 @@ PanelWindow {
         anchors.verticalCenter: parent.verticalCenter
         anchors.verticalCenterOffset: -parent.height * 0.06
         width: root.launcherWidth
-        height: panel.height
+        // root.maxPanelHeight, not panel's own (now possibly smaller)
+        // height: this Item draws nothing itself, it only exists to
+        // position panel, so holding its height at the fixed maximum
+        // keeps the vertical-centre calculation above — and so panel's
+        // top edge, since panel sits at panelWrap's origin below — from
+        // moving as panel's actual content shrinks or grows. The
+        // reserved space below a shorter panel simply stays empty and
+        // invisible rather than showing as blank box.
+        height: root.maxPanelHeight
 
-        // Swallow clicks on the box (border included).
-        MouseArea { anchors.fill: parent }
+        // Sized to panel's actual height, not panelWrap's full
+        // reservation above — otherwise a click just below a shrunk
+        // panel would be swallowed here instead of falling through to
+        // fadeRoot's MouseArea, which closes the launcher on a click
+        // outside the (visible) box.
+        MouseArea { anchors.top: parent.top; width: parent.width; height: panel.height }
 
     Widgets.Panel {
         id: panel
+        // Explicit, not just the Item default of (0, 0): panelWrap can now
+        // be taller than panel (it reserves the box's maximum possible
+        // height — see panelWrap's own comment), and panel's top edge
+        // landing on panelWrap's is exactly what keeps the box's top
+        // position fixed as it shrinks or grows.
+        anchors.top: parent.top
         width: parent.width
         height: layout.implicitHeight + panel.padding * 2
         // OOP-05: the runner rounds more than every other panel.
@@ -464,13 +501,13 @@ PanelWindow {
             // R3 #4: no rule between the input and the options — the
             // gap alone separates them.
 
-            // OOP-12: a fixed-height scroll area (~20 rows) so the box
-            // opens at full height and never grows/shrinks as results
-            // change (user directive).
+            // Shrinks to fit the current result count (root.
+            // currentListBoxHeight), capped at the ~20-row maximum OOP-12
+            // originally made this always be.
             Flickable {
                 id: resultFlick
                 width: parent.width
-                height: root.listBoxHeight
+                height: root.currentListBoxHeight
                 visible: root.atRoot
                 clip: true
                 contentWidth: width
@@ -643,8 +680,15 @@ PanelWindow {
 
         anchors.left: narrow ? panelWrap.left : panelWrap.right
         anchors.leftMargin: narrow ? 0 : root.chWidth * Config.Appearance.space3
-        anchors.top: narrow ? panelWrap.bottom : panelWrap.top
-        anchors.topMargin: narrow ? root.chWidth * Config.Appearance.space2 : 0
+        // richWrap is a sibling of panelWrap, not of panel (a grandchild
+        // of panelWrap) — QML only allows anchoring to a parent or a
+        // sibling, so the anchor itself has to stay panelWrap.top; panel's
+        // actual, possibly-smaller-than-reserved height is folded into the
+        // margin instead, since panelWrap now reserves the box's maximum
+        // possible height for positioning (see its own comment), which
+        // would otherwise leave a gap here below a shorter panel.
+        anchors.top: panelWrap.top
+        anchors.topMargin: narrow ? panel.height + root.chWidth * Config.Appearance.space2 : 0
 
         MouseArea { anchors.fill: parent }
 
