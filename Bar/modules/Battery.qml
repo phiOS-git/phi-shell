@@ -28,12 +28,6 @@ import qs.Widgets as Widgets
 // follows. BatteryIcon itself keeps the two as separate properties in
 // case a future caller wants the split; this one does not use it.
 //
-// No click action: no mature tool is named for battery specifically in the
-// three-level disclosure model's own tool list (master plan §8.5 — btop,
-// nmtui, bluetuith, pulsemixer/wiremix cover GPU/system, Wi-Fi, Bluetooth
-// and volume, not battery), so Segment's `activated()` is left unconnected
-// rather than wired to something invented for this step alone.
-
 Widgets.Segment {
     id: root
 
@@ -94,4 +88,6 @@ Widgets.Segment {
             chargingAmount: root.chargingAmount
         }
     }
+
+    onActivated: Services.BarPopout.toggle("battery", root.rightX())
 }
