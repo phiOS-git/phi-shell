@@ -94,12 +94,42 @@ PanelWindow {
     // here (groups does that).
     property var windows: []
 
+    // docs/TODO.md: "It's always the first window to be selected when
+    // opening the overview, not the actual active one." The active-window
+    // lookup below (_applyStartSelection) is asynchronous — clientsProc and
+    // then activeProc each round-trip through hyprctl — while
+    // _selectStartWindow already sets a PROVISIONAL selection (flat[0]) the
+    // instant the snapshot lands, so the surface never opens on nothing.
+    // That gap contains two real races, either of which leaves the
+    // provisional flat[0] as the final answer instead of the
+    // asynchronously-computed "next after active" one:
+    //   - the submap's own "ALT + Tab" bind (still-held Alt, a second Tab
+    //     press) fires _cycle() before activeProc has returned, and the
+    //     late response then overwrites the user's own cycle;
+    //   - Alt is released (confirm) fast enough that _close() runs before
+    //     activeProc returns, so the confirmed window is whatever the
+    //     provisional pick happened to be.
+    // Both races are real and this closes them, but neither requires a
+    // human-speed gesture to lose — a single unhurried tap-then-release is
+    // unlikely to outrun a local hyprctl round-trip — so this may not be
+    // the exact sequence behind the reported symptom; treat it as a real
+    // bug fixed, not a confirmed diagnosis of that report.
+    // _snapshotSeq/_userMoved close both: a response is applied only if it
+    // is for the CURRENT open (not a superseded one) and the user has not
+    // already moved the selection themselves since it was requested — the
+    // same "is this response for the current thing" shape as Launcher.qml's
+    // own queryProc.queryArg === root.queryText stale-response guard.
+    property int _snapshotSeq: 0
+    property bool _userMoved: false
+
     Process {
         id: clientsProc
+        property int forSeq: -1
         command: ["hyprctl", "clients", "-j"]
         onExited: clientsProc.running = false
         stdout: StdioCollector {
             onStreamFinished: {
+                if (clientsProc.forSeq !== root._snapshotSeq) return
                 try {
                     const arr = JSON.parse(this.text)
                     const out = []
@@ -127,10 +157,12 @@ PanelWindow {
 
     Process {
         id: activeProc
+        property int forSeq: -1
         command: ["hyprctl", "activewindow", "-j"]
         onExited: activeProc.running = false
         stdout: StdioCollector {
             onStreamFinished: {
+                if (activeProc.forSeq !== root._snapshotSeq) return
                 let activeAddr = ""
                 try { activeAddr = JSON.parse(this.text).address || "" } catch (e) {}
                 root._applyStartSelection(activeAddr)
@@ -185,12 +217,20 @@ PanelWindow {
     function _open(held) {
         root.heldOpen = held
         root.shown = true
+        root._snapshotSeq++
+        root._userMoved = false
+        clientsProc.forSeq = root._snapshotSeq
         clientsProc.running = true            // snapshot; _selectStartWindow on return
     }
 
     function _close() {
         root.shown = false
         root.heldOpen = false
+        // Cleared, not left stale: otherwise a reopen on the same window
+        // set skips _selectStartWindow's provisional pick below (a valid
+        // match already exists) and briefly shows whatever was selected
+        // last time, until the async active-window lookup corrects it.
+        root.selectedAddress = ""
     }
 
     function _selectStartWindow() {
@@ -201,11 +241,17 @@ PanelWindow {
         // Provisional pick so the surface never opens with nothing selected.
         if (root.selectedFlatIndex < 0)
             root.selectedAddress = root.flat[0].address
+        activeProc.forSeq = root._snapshotSeq
         activeProc.running = true
     }
 
     function _applyStartSelection(activeAddr) {
-        if (!root.shown || root.flat.length === 0) return
+        // root._userMoved: the user has already cycled since this lookup
+        // was requested — applying it now would revert their own input to
+        // wherever hyprctl's activewindow happened to be when _open() was
+        // first called, which is exactly the "always the first window"
+        // (or "always stuck") bug this file's own header explains.
+        if (!root.shown || root.flat.length === 0 || root._userMoved) return
         let start = 0
         if (root.flat.length > 1 && activeAddr.length > 0) {
             for (let i = 0; i < root.flat.length; i++) {
@@ -222,6 +268,7 @@ PanelWindow {
         if (!root.shown) { root._open(true); return }
         const n = root.flat.length
         if (n === 0) return
+        root._userMoved = true
         let i = root.selectedFlatIndex
         if (i < 0) i = 0
         root.selectedAddress = root.flat[(i + delta + n) % n].address
