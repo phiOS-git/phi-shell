@@ -62,7 +62,7 @@ Column {
             title: "Connected devices"
             Column {
                 width: parent.width
-                spacing: 4
+                spacing: root._gap
                 Repeater {
                     model: Services.BluetoothBridge.devices ? Services.BluetoothBridge.devices.values : []
                     Widgets.ListRow {
@@ -199,7 +199,7 @@ Column {
             description: "Copies the .conf into ~/.config/phi/wireguard (0600, outside every repo). The private key stays on this machine."
             Column {
                 width: parent.width
-                spacing: 6
+                spacing: root._gap
                 Row {
                     width: parent.width
                     spacing: root._gap
@@ -341,7 +341,7 @@ Column {
                 : ("Held — the " + Services.Firewall.preset + " preset ignores these; only 'home' applies them.")
             Column {
                 width: parent.width
-                spacing: 6
+                spacing: root._gap
 
                 Repeater {
                     model: Services.Firewall.rules
@@ -415,7 +415,7 @@ Column {
                 title: "Recently blocked"
                 Column {
                     width: parent.width
-                    spacing: 4
+                    spacing: root._gap
                     Row {
                         spacing: root._gap
                         Widgets.StyledButton { label: "Refresh"; onClicked: Services.Firewall.refreshBlocked() }
