@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell.Io
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
@@ -30,6 +31,90 @@ Item {
     property string query: ""
     property int highlightedIndex: 0
 
+    // --- hold/hover preview (docs/TODO.md: "clipboard should show an
+    // overlay with the complete command and extra informations when the
+    // selection is held for a while (or on mouse hover after some time)")
+    //
+    // Read as one dwell mechanism with two triggers, not a press-and-hold
+    // gesture: "the selection" is highlightedIndex (this file's own
+    // header — "the search TextInput always holds focus, the list is
+    // never focused" — so there is no separate focus to "hold" on a row),
+    // and a long-press was deliberately not built instead. TapHandler's
+    // own tapped() signal still fires on release even after longPressed()
+    // has already fired for the same press (confirmed against the
+    // handler's documented behaviour, not assumed) — suppressing that
+    // correctly needs an interaction this file cannot verify without
+    // hardware, where the existing tap-to-copy-and-close is exactly the
+    // wrong thing to risk breaking.
+    property string hoverTargetId: ""
+    property bool previewVisible: false
+
+    // Whichever entry the preview should show once its dwell elapses: the
+    // hovered card while the mouse is over one, else the keyboard
+    // selection — so leaving a card that also happens to be the
+    // highlighted one keeps the same preview up with no flicker.
+    readonly property string dwellTargetId: root.hoverTargetId.length > 0
+        ? root.hoverTargetId
+        : (root.navList[root.highlightedIndex] ? root.navList[root.highlightedIndex].id : "")
+
+    onDwellTargetIdChanged: {
+        root.previewVisible = false
+        previewDwell.restart()
+    }
+
+    // Style plan §6.5's own category B (state transition) covers the
+    // panel's own fade; this dwell length is a placeholder the same way
+    // Tooltip.qml's own `delay: 500` is — no document names a number,
+    // flagged for cheap veto.
+    property int previewDelay: 700
+
+    Timer {
+        id: previewDwell
+        interval: root.previewDelay
+        onTriggered: root.previewVisible = true
+    }
+
+    readonly property var previewEntryData: {
+        for (let i = 0; i < root.navList.length; i++) {
+            if (root.navList[i].id === root.dwellTargetId) return root.navList[i]
+        }
+        return null
+    }
+    readonly property bool previewIsImage: root.previewEntryData !== null
+        && root.previewEntryData.mime === "image/png"
+    readonly property string previewMime: root.previewEntryData !== null ? root.previewEntryData.mime : ""
+    readonly property bool previewPinned: root.previewEntryData !== null
+        && Services.Clipboard.isPinned(root.previewEntryData.id)
+
+    // The full text is on disk, not in Services.Clipboard.entries (this
+    // file's own header: entries carry only `preview`, the first line —
+    // reading the rest is exactly the "per-row FileView" that comment says
+    // filtering does not need; the preview overlay is a different reader,
+    // triggered only once dwelt on). Read imperatively in onLoaded, not a
+    // declarative binding on previewFile.text() — the same shape
+    // pinsFile/registryFile already use elsewhere, since a FileView's
+    // loaded content is not confirmed to be a trackable binding dependency.
+    // Capped: these are raw wl-paste dumps, and an unbounded paste landing
+    // in a Text item is a hang, not a cosmetic overflow.
+    readonly property int previewMaxChars: 4000
+    property string previewFullText: ""
+    property bool previewTruncated: false
+
+    FileView {
+        id: previewFile
+        path: (root.previewEntryData !== null && !root.previewIsImage)
+            ? Services.Clipboard.contentPath(root.previewEntryData.id) : ""
+        onLoaded: {
+            const t = previewFile.text()
+            root.previewFullText = t.length > root.previewMaxChars ? t.slice(0, root.previewMaxChars) : t
+            root.previewTruncated = t.length > root.previewMaxChars
+        }
+        onLoadFailed: (error) => {
+            root.previewFullText = ""
+            root.previewTruncated = false
+        }
+    }
+
     TextMetrics {
         id: chMetrics
         font.family: Config.Appearance.fontMono
@@ -55,6 +140,13 @@ Item {
         field.text = ""
         root.highlightedIndex = 0
         list.contentY = 0
+        // The preview has visible state of its own (docs/TODO.md's hold/
+        // hover overlay, below) — the exact bug class the entry above this
+        // function fixed, so it gets the same explicit reset rather than
+        // trusting dwellTargetId to happen to change on its own.
+        root.hoverTargetId = ""
+        root.previewVisible = false
+        previewDwell.stop()
         // Deferred: the window's Wayland keyboard grab (Services.LayerFocus
         // on Panels/Sidebar) and this component's creation race when the
         // panel opens straight onto this tab — callLater runs after both
@@ -86,6 +178,12 @@ Item {
 
     function fmtTime(ts) {
         return new Date(ts).toLocaleString(Qt.locale(), "ddd d MMM  HH:mm")
+    }
+
+    // The preview overlay's "extra informations" get seconds too — the
+    // card itself stays on fmtTime's minute resolution.
+    function fmtTimeFull(ts) {
+        return new Date(ts).toLocaleString(Qt.locale(), "ddd d MMM yyyy  HH:mm:ss")
     }
 
     function move(delta) {
@@ -207,6 +305,85 @@ Item {
         }
     }
 
+    // The hold/hover preview overlay itself — a later sibling of the
+    // Flickable above, so it paints on top of (not clipped by) the list,
+    // covering its bottom portion while shown. Anchored to root's own
+    // bounds rather than tracking the hovered/highlighted card's actual
+    // scrolled position: the latter needs mapToItem against a moving,
+    // clipped target this file has no way to verify without a compositor,
+    // where Launcher.qml's richWrap (a fixed anchor beside a fixed
+    // reference point, not a per-row floating tooltip) is the closest
+    // already-shipped precedent for "auxiliary detail alongside the main
+    // list," reused here for the same reason.
+    Widgets.Panel {
+        id: preview
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        height: Math.min(previewCol.implicitHeight + padding * 2, root.height * 0.5)
+        radius: Config.Appearance.radiusLarge
+        visible: opacity > 0
+        opacity: (root.previewVisible && root.previewEntryData !== null) ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+        }
+
+        // No click-swallower here (unlike Launcher.qml's panelWrap or
+        // Sidebar.qml's dock): those sit under a modal surface where
+        // nothing beneath should be interactive at all, but a MouseArea
+        // here would also consume hover, so every card the overlay
+        // covers would stop reporting HoverHandler.hovered the moment it
+        // appears — clearing hoverTargetId, which hides the overlay,
+        // which makes the card hoverable again, which can re-show it: a
+        // flicker loop centred on exactly where the feature is used. A
+        // stray click landing on a covered card instead is the smaller
+        // problem, and this Panel already paints opaquely over it.
+
+        Column {
+            id: previewCol
+            width: parent.width
+            spacing: root.gap / 2
+
+            Widgets.StyledText {
+                width: parent.width
+                mono: !root.previewIsImage
+                wrapMode: Text.Wrap
+                maximumLineCount: 14
+                elide: Text.ElideRight
+                color: preview.contentColor
+                text: root.previewIsImage ? "[image]"
+                    : (root.previewFullText.length > 0 ? root.previewFullText : "(empty)")
+            }
+
+            Image {
+                width: parent.width
+                // Not Math.min(implicitHeight, ...): implicitHeight is the
+                // source pixel height, unrelated to the fitted height at
+                // this width — fixing height outright and letting
+                // PreserveAspectFit scale into it is what actually caps
+                // the size.
+                height: root.height * 0.35
+                fillMode: Image.PreserveAspectFit
+                visible: root.previewIsImage && root.previewEntryData !== null
+                source: (root.previewIsImage && root.previewEntryData !== null)
+                    ? "file://" + Services.Clipboard.contentPath(root.previewEntryData.id) : ""
+            }
+
+            Widgets.StyledText {
+                width: parent.width
+                kind: "label"
+                sizeStep: 0
+                color: Config.Appearance.textMuted
+                text: root.previewEntryData !== null
+                    ? (root.fmtTimeFull(root.previewEntryData.timestamp)
+                        + " · " + root.previewMime
+                        + (root.previewPinned ? " · pinned" : "")
+                        + (root.previewTruncated ? " · truncated" : ""))
+                    : ""
+            }
+        }
+    }
+
     Component {
         id: entryCard
 
@@ -276,6 +453,22 @@ Item {
                     root.highlightedIndex = card.flatIndex
                     Services.Clipboard.restore(card.modelData.id, card.modelData.mime)
                     Services.NotificationPanel.hide()
+                }
+            }
+
+            // Drives root.hoverTargetId for the preview overlay (see the
+            // top of this file) — does not itself show anything, purely
+            // observes hover state, so it composes with the TapHandlers
+            // above without contest.
+            HoverHandler {
+                id: hover
+                onHoveredChanged: {
+                    if (hover.hovered) root.hoverTargetId = card.modelData.id
+                    // Only clear if this card is still the one that set
+                    // it — a fast pointer move onto a neighbouring card
+                    // may have already claimed hoverTargetId for itself
+                    // by the time this card's own hover-out arrives.
+                    else if (root.hoverTargetId === card.modelData.id) root.hoverTargetId = ""
                 }
             }
         }
