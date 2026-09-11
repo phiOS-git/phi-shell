@@ -87,8 +87,15 @@ function surfaceColors(appearance, resolvedState, ambient) {
             return { bg: appearance.panelHover, fg: appearance.colorOpposite,
                      border: appearance.barButtonBorder }
         default:
-            return { bg: appearance.barButtonBackground, fg: appearance.colorOpposite,
-                     border: appearance.barButtonBorder }
+            // docs/TODO.md (status-bar rework): "they should not have a
+            // box button but be just icons, with hover and active
+            // states." Resting state is now a bare glyph on the isle's
+            // own background (Widgets/BarIsle.qml), no box, no border —
+            // hover/active/focus/invalid above are unchanged and still
+            // show real feedback; only the DEFAULT case loses its
+            // (formerly always-on) translucent box.
+            return { bg: "transparent", fg: appearance.colorOpposite,
+                     border: "transparent" }
         }
     }
 
@@ -155,6 +162,32 @@ function fontPixelSize(appearance, sizeStep) {
         appearance.fontSize3, appearance.fontSize4, appearance.fontSize5, appearance.fontSize6]
     var i = Math.max(0, Math.min(sizes.length - 1, sizeStep))
     return sizes[i]
+}
+
+// The status-bar rework's hand-drawn Canvas icons (SunMoonIcon, VolumeIcon,
+// WifiIcon, BatteryIcon, GpuIcon) need more legible detail at a given box
+// size than a Nerd Font glyph does: a font glyph is hinted for its own
+// pixel grid, a stroked arc or a rounded-rect body is not. An isle Segment
+// defaults to sizeStep 0 (fontSize0, 11px design/tokens.common.sh) — fine
+// for a font glyph, too small for e.g. BatteryIcon's ~0.44*b-tall pill or
+// WifiIcon's three nested arcs to read as anything but a smudge.
+//
+// Floors the box at fontSize1, not fontSize3: Widgets/Segment.qml floors
+// every isle button's content height against a TextMetrics measurement of
+// the mono "0" glyph AT fontSize1 (chMetrics, OOP-11 — "makes every
+// Segment in an isle the same height regardless of what it holds"), and
+// that measurement is not readable from here (a JS file, no TextMetrics of
+// its own). fontSize1 itself is provably <= that measured height for any
+// real font — a font's line height is never shorter than its own pixel
+// size — so flooring here at fontSize1 keeps every icon-bearing Segment
+// exactly as tall as every label-only one, with no font-metrics assumption
+// needed. A larger floor (fontSize3) would read crisper still but risks
+// growing icon-bearing buttons a pixel or two taller than their neighbours
+// depending on the actual font's line-height ratio, unverifiable without a
+// compositor (phi-shell/CLAUDE.md) — not worth that risk for a few more
+// pixels of stroke width.
+function drawnIconBoxSize(appearance, sizeStep) {
+    return Math.max(fontPixelSize(appearance, sizeStep), appearance.fontSize1)
 }
 
 // design/tokens.common.sh stores space-N in `ch` of font-mono, not px,

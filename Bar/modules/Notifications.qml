@@ -3,26 +3,27 @@ import Quickshell
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "../glyphs.js" as Glyphs
 
-// phiOS — Bar/modules/Notifications.qml (OOP-03; OOP-06 rewire; SF-3 blink).
-// The user's right-isle directive: "notification icon (toggles the
-// notification panel)". A bell glyph in the right isle; a click toggles
-// Panels/Sidebar.qml through Services/NotificationPanel.qml — an in-
-// process property call, not a spawned `qs ipc` (OOP-03 shipped the
-// `qs ipc` stand-in before that singleton existed).
+// phiOS — Bar/modules/Notifications.qml (OOP-03; OOP-06 rewire; SF-3/SF-4
+// blink; status-bar rework 2026-09-11). The user's right-isle directive:
+// "notification icon (toggles the notification panel)". A bell in the
+// right isle; a click toggles Panels/Sidebar.qml through
+// Services/NotificationPanel.qml — an in-process property call, not a
+// spawned `qs ipc` (OOP-03 shipped the `qs ipc` stand-in before that
+// singleton existed).
 //
-// A slashed bell while DND is on; `info` tone when there is at least one
-// live notification waiting — the one discrete state worth showing, per
-// §8.4's icon-for-binary-state rule. Glyph codepoints are Nerd Font
-// symbol-set (U+F0F3 bell, U+F1F6 bell-slash), rendered through
-// font-symbol via StyledIcon — flagged for the screenshot pass.
-//
-// SF-4: a short flash overlay pulses on every recorded, non-muted
-// notification (Services.Notifications.arrived). It is a child Rectangle
-// with its own unbound opacity, so the SequentialAnimation never fights
-// Segment's own `Behavior on opacity`. A notification arrival is a
-// discrete, infrequent event — not category C.
+// docs/TODO.md (status-bar rework: "notifications (DND state as well)"):
+// the glyph + separate flash-overlay Rectangle are both replaced by
+// Widgets/NotificationBellIcon via `iconDelegate` — a real swing on
+// arrival, a DND crossfade+pop instead of an instant glyph swap, and a
+// pending-count badge. This removes the SF-4 flash mechanism outright,
+// not just its symptom: that Rectangle was appended as a child AFTER
+// Widgets/Segment.qml's own internal `layout` (which draws the glyph),
+// so it painted on top of the bell it was meant to highlight, partially
+// obscuring it on every pulse (found while building Widgets/
+// SunMoonIcon.qml earlier this session, not fixed there since that pass
+// wasn't touching this file). NotificationBellIcon's own `arrived()`
+// swings the glyph itself instead — nothing left to sit on top of it.
 
 Widgets.Segment {
     id: root
@@ -31,31 +32,49 @@ Widgets.Segment {
 
     ambient: "isle"
     active: Services.NotificationPanel.shown
-    glyph: Services.Notifications.dnd ? Glyphs.bellOff : Glyphs.bell
-    tone: (!Services.Notifications.dnd && (Services.Notifications.active.values || []).length > 0) ? "info" : ""
+
+    readonly property bool dnd: Services.Notifications.dnd
+    readonly property bool hasPending: !root.dnd && (Services.Notifications.active.values || []).length > 0
+    tone: root.hasPending ? "info" : ""
 
     onActivated: Services.NotificationPanel.toggle()
 
-    Rectangle {
-        id: flash
-        anchors.fill: parent
-        radius: Config.Appearance.radiusBase
-        color: Config.Appearance.accent
-        opacity: 0
-
-        SequentialAnimation {
-            id: flashAnim
-            running: false
-            loops: 3
-            NumberAnimation { target: flash; property: "opacity"; to: 0.45
-                duration: Config.Appearance.motionBDuration; easing.type: Easing.OutQuad }
-            NumberAnimation { target: flash; property: "opacity"; to: 0
-                duration: Config.Appearance.motionBDuration; easing.type: Easing.InQuad }
-        }
+    property real dndAmount: 0
+    Behavior on dndAmount {
+        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+    }
+    property real pendingAmount: 0
+    Behavior on pendingAmount {
+        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
     }
 
-    Connections {
-        target: Services.Notifications
-        function onArrived(entry) { flashAnim.restart() }
+    function _sync() {
+        root.dndAmount = root.dnd ? 1 : 0
+        root.pendingAmount = root.hasPending ? 1 : 0
+    }
+    onDndChanged: root._sync()
+    onHasPendingChanged: root._sync()
+    Component.onCompleted: root._sync()
+
+    iconDelegate: Component {
+        Widgets.NotificationBellIcon {
+            id: bellIcon
+            iconColor: root.contentColor
+            sizeStep: root.sizeStep
+            dndAmount: root.dndAmount
+            pendingAmount: root.pendingAmount
+
+            Connections {
+                target: Services.Notifications
+                function onArrived(entry) { bellIcon.arrived() }
+            }
+            // A genuine one-shot bool flip (`dnd`), not the Behavior-
+            // animated `dndAmount` — see NotificationBellIcon.dndToggled's
+            // own comment for why the pop is keyed off this instead.
+            Connections {
+                target: root
+                function onDndChanged() { bellIcon.dndToggled() }
+            }
+        }
     }
 }

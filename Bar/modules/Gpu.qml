@@ -1,9 +1,9 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "../glyphs.js" as Glyphs
 
 // phiOS — Bar/modules/Gpu.qml (S-23, master plan §8.4: zotac's "GPU
 // anomaly-carrier"). Capability-gated on the new `nvidiaGpu` derived
@@ -29,10 +29,9 @@ Widgets.Segment {
 
     required property ShellScreen screen
 
-    // OOP-03: bar buttons sit on the opposite-coloured islands. (Not in
-    // modules.json after the restyle — the user's right-isle inventory
-    // omits the GPU anomaly-carrier — but re-addable as a data change,
-    // ADR 078.)
+    // OOP-03: bar buttons sit on the opposite-coloured islands. Back in
+    // Bar/modules.json (capability-gated on `nvidiaGpu`, ADR 078) — the
+    // comment that used to say it was omitted is stale, corrected here.
     ambient: "isle"
 
     property real utilThreshold: 70
@@ -44,17 +43,53 @@ Widgets.Segment {
     property var aboveSince: null
 
     readonly property bool tempAnomaly: root.tempC > root.tempThreshold
-    readonly property bool utilAnomaly: root.aboveSince !== null
-        && (Date.now() - root.aboveSince) > root.sustainedMs
+    // Not a `readonly property bool: ... Date.now() - aboveSince > ...`
+    // binding, deliberately — found while wiring the icon's anomaly pulse
+    // below: `aboveSince` is only reassigned at the on/off threshold-cross
+    // edges (see the poll handler), never touched again while usage stays
+    // continuously above threshold, so a binding reading `Date.now()`
+    // against it would only ever re-evaluate at the moment aboveSince
+    // FIRST gets set — when the elapsed time is exactly 0 — and never
+    // again afterwards; `utilAnomaly` could never actually become true.
+    // Recomputed imperatively instead, once per poll (the same 5000ms
+    // cadence `aboveSince` itself updates on), in the Process handler
+    // below.
+    property bool utilAnomaly: false
 
     // OOP-11: icon + value; a click opens the shared bar popout
     // (placeholder).
-    glyph: Glyphs.gpu
+    //
+    // docs/TODO.md (status-bar rework, "all other icons" follow-up): the
+    // static `glyph: Glyphs.gpu` is replaced by Widgets.GpuIcon via
+    // `iconDelegate` — a real utilisation fill instead of a fixed chip
+    // glyph, plus a breathing outline while `utilAnomaly` holds (sustained
+    // high usage), same "ongoing state -> category A" reasoning
+    // BatteryIcon's charging bolt already uses.
     label: Math.round(root.utilPercent) + "%"
     tone: root.tempAnomaly ? "error" : (root.utilAnomaly ? "warn" : "")
     active: Services.BarPopout.which === "gpu"
 
+    property real gpuLevel: 0
+    Behavior on gpuLevel {
+        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+    }
+    property real anomalyAmount: 0
+    Behavior on anomalyAmount {
+        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+    }
+    onUtilPercentChanged: root.gpuLevel = Math.max(0, Math.min(1, root.utilPercent / 100))
+    onUtilAnomalyChanged: root.anomalyAmount = root.utilAnomaly ? 1 : 0
+
     onActivated: Services.BarPopout.toggle("gpu", root.rightX())
+
+    iconDelegate: Component {
+        Widgets.GpuIcon {
+            iconColor: root.contentColor
+            sizeStep: root.sizeStep
+            level: root.gpuLevel
+            anomalyAmount: root.anomalyAmount
+        }
+    }
 
     Timer {
         // A functional constant (how often to poll nvidia-smi), not a
@@ -87,6 +122,8 @@ Widgets.Segment {
                 } else {
                     root.aboveSince = null
                 }
+                root.utilAnomaly = root.aboveSince !== null
+                    && (Date.now() - root.aboveSince) > root.sustainedMs
             }
         }
     }
