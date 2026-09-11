@@ -84,8 +84,19 @@ function surfaceColors(appearance, resolvedState, ambient) {
             return { bg: appearance.barButtonBackground, fg: appearance.colorOpposite,
                      border: appearance.focusRing }
         case "hover":
-            return { bg: appearance.panelHover, fg: appearance.colorOpposite,
-                     border: appearance.barButtonBorder }
+            // Follow-up (user, 2026-09-11): "change the hover effect,
+            // instead of changing the button borders and background,
+            // 'highlight' the text... and change the text color as well.
+            // Do that with a transition left to right." bg/border go
+            // transparent — Widgets/Segment.qml's own new sweep Rectangle
+            // now carries the visual highlight, growing left-to-right
+            // instead of this fading in as a flat fill. `fg` becomes
+            // colorMain, the SAME inverted pair "active" already uses
+            // (bg: colorOpposite, fg: colorMain) — "black on light, white
+            // on dark" is exactly that existing inversion, not a new
+            // colour pair invented for hover specifically.
+            return { bg: "transparent", fg: appearance.colorMain,
+                     border: "transparent" }
         default:
             // docs/TODO.md (status-bar rework): "they should not have a
             // box button but be just icons, with hover and active
