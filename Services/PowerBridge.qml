@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.UPower
+import qs.Config as Config
 
 // phiOS — thin wrapper over Quickshell.Services.UPower (S-23, master plan
 // §8.1/§8.4: razer's battery anomaly-carrier module). The one file outside
@@ -54,7 +55,12 @@ Singleton {
     property string chargeCycles: "unknown"
 
     function refreshCycles() { cyclesProbe.running = true }
-    Component.onCompleted: refreshCycles()
+    Component.onCompleted: {
+        refreshCycles()
+        Config.Settings.get("power.chargingSound", (v, code) => {
+            if (v === "false") root.chargingSoundEnabled = false
+        })
+    }
 
     Process {
         id: cyclesProbe
@@ -105,6 +111,74 @@ Singleton {
             // Keep ~10 minutes of history — enough for a stable per-hour
             // estimate without growing unbounded.
             root.samples = next.slice(Math.max(0, next.length - 10))
+        }
+    }
+
+    // --- charging sound (docs/TODO.md: "add a sound on charging plugged
+    // in") --------------------------------------------------------------
+    // On by default (unlike Services/Notifications.qml's own notification
+    // sound, which defaults off) — this fires once per plug-in event, not
+    // per-notification-burst, and the user asked for it directly rather
+    // than this being a background feature someone would need to opt
+    // into. "power-plug" is a real file in this project's own
+    // sound-theme-freedesktop package — checked against the actual Arch
+    // `extra` package file listing (archlinux.org/packages/extra/any/
+    // sound-theme-freedesktop/files/), not recalled — and that package is
+    // in profiles/desktop/packages.txt, so it is present wherever this
+    // code runs (mini is headless, no phi-shell). Same theme/path
+    // convention Services/Notifications.qml already uses for its own
+    // sound.
+    property bool chargingSoundEnabled: true
+    property string chargingSoundError: ""
+    property bool _chargeSoundInit: false
+    property bool _wasDischarging: false
+
+    function setChargingSoundEnabled(b) {
+        root.chargingSoundEnabled = !!b
+        Config.Settings.set("power.chargingSound", root.chargingSoundEnabled ? "true" : "false")
+    }
+
+    // Plugged-in is detected as a discharging→not-discharging transition,
+    // not a raw device.state read: `discharging` is already the vetted
+    // derived property above (root.present && state === Discharging), so
+    // this reuses it rather than re-deriving a second notion of "on AC"
+    // from device.state directly. `_chargeSoundInit` exists so the FIRST
+    // onDischargingChanged — which fires once UPower's displayDevice
+    // becomes ready/present, regardless of which state it reports — never
+    // itself counts as a transition and fires a spurious sound at shell
+    // startup; it only starts comparing from the second change onward.
+    // The `root.present` check on the trigger matters on real hardware:
+    // `discharging` includes `root.present` in its own definition, so the
+    // device disappearing entirely (a re-enumeration around suspend/
+    // resume — this project has two open, unexplained hibernation bugs on
+    // razer, the exact machine this targets) also reads as a
+    // discharging→false transition. Without this check that would play
+    // the "plugged in" sound on a suspend/resume cycle with no charger
+    // event involved at all.
+    onDischargingChanged: {
+        if (!root._chargeSoundInit) {
+            root._chargeSoundInit = true
+            root._wasDischarging = root.discharging
+            return
+        }
+        if (root._wasDischarging && !root.discharging && root.present) root._playChargingSound()
+        root._wasDischarging = root.discharging
+    }
+
+    function _playChargingSound() {
+        if (!root.chargingSoundEnabled) return
+        if (chargeSoundProc.running) return
+        root.chargingSoundError = ""
+        chargeSoundProc.command = ["pw-play", "/usr/share/sounds/freedesktop/stereo/power-plug.oga"]
+        chargeSoundProc.running = true
+    }
+
+    Process {
+        id: chargeSoundProc
+        onExited: (exitCode) => {
+            chargeSoundProc.running = false
+            if (exitCode !== 0)
+                root.chargingSoundError = "pw-play exited " + exitCode + " (is sound-theme-freedesktop installed?)"
         }
     }
 }
