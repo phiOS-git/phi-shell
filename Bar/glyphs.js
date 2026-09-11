@@ -48,3 +48,4 @@ var console         = _c(0xF018D)   // nf-md-console (scratchpad toggle icon) â€
                                      // above, and the same fix: confirmed against
                                      // nerd-fonts' own glyphnames.json)
 var clipboard       = _c(0xF0147)   // nf-md-clipboard
+var power           = _c(0xF0425)   // nf-md-power (left-isle power icon)

@@ -121,6 +121,7 @@ PanelWindow {
     function componentFor(type) {
         switch (type) {
         case "workspaces": return workspacesComponent
+        case "power": return powerComponent
         case "activeWindow": return activeWindowComponent
         case "clock": return clockComponent
         case "volume": return volumeComponent
@@ -152,6 +153,7 @@ PanelWindow {
     }
 
     Component { id: workspacesComponent; Modules.Workspaces { screen: bar.screen } }
+    Component { id: powerComponent; Modules.Power { screen: bar.screen } }
     Component { id: activeWindowComponent; Modules.ActiveWindow { screen: bar.screen } }
     Component { id: clockComponent; Modules.Clock { screen: bar.screen } }
     // S-23 (master plan §8.4's per-host inventory, ADR 074's capability
