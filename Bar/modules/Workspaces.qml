@@ -32,6 +32,11 @@ import "../glyphs.js" as Glyphs
 // id → glyph map is Bar/workspace-icons.json (ADR 078: data, not code); it
 // replaced the separate SpecialWorkspaces module and its special-workspace
 // toggle, which never worked on real hardware.
+//
+// The scratchpad toggle below is NOT a revival of that module's stateful
+// button: it is a bare dispatch with no highlight, because ADR 134 records
+// that the special workspace and a numeric one can both read as "active" at
+// once — a lit toggle would lie half the time.
 
 Item {
     id: root
@@ -121,6 +126,18 @@ Item {
                 active: modelData.active
                 onActivated: modelData.activate()
             }
+        }
+
+        // Scratchpad toggle (hyprland.lua: MOD+A binds
+        // `togglespecialworkspace scratch`; MOD+SHIFT+A moves the focused
+        // window into it). No `active` state — see the module comment: the
+        // special workspace can read as active alongside a numeric one.
+        Widgets.Segment {
+            ambient: "isle"
+            squared: true
+            glyph: Glyphs.console
+            label: ""
+            onActivated: Services.HyprlandBridge.dispatch("togglespecialworkspace scratch")
         }
     }
 }

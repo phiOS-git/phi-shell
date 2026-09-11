@@ -37,3 +37,4 @@ var bell            = _c(0xF009A)   // nf-md-bell
 var bellOff         = _c(0xF009B)   // nf-md-bell_off
 var monitor         = _c(0xF0A07)   // nf-md-monitor_dashboard (btop workspace icon, ADR 134)
 var steam           = _c(0xF03F7)   // nf-md-steam (Steam workspace icon, ADR 134)
+var console         = _c(0xF0295)   // nf-md-console (scratchpad toggle icon)
