@@ -105,7 +105,22 @@ PanelWindow {
     }
 
     Component { id: notificationsComponent; Tabs.Notifications {} }
-    Component { id: clipboardComponent; Tabs.Clipboard {} }
+    // docs/TODO.md: the clipboard hold/hover preview needs to float outside
+    // the dock's own bounds and clamp against the real screen edges — the
+    // dock's own width/height are just the right-hand strip, not the
+    // screen, so the tab is handed this PanelWindow's actual full-screen
+    // size directly (this `root` is Sidebar's own top-level id, in scope
+    // here since a Component declared inline shares its file's ID
+    // namespace, not a new one). `dockItem: dock` hands over a reference
+    // to the dock Item itself, not a precomputed position: the tab's own
+    // root sits INSET inside dock by the Panel's own padding (Widgets/
+    // Panel.qml wraps its content), so "root's own absolute position"
+    // is NOT "the dock's left edge" — passing the actual Item lets the
+    // tab read the dock's real edge itself, the same one-shot mapToItem
+    // moment it already uses for the target card (see Clipboard.qml's
+    // own _updatePreviewPosition), rather than this file guessing at the
+    // padding value to subtract.
+    Component { id: clipboardComponent; Tabs.Clipboard { screenWidth: root.width; screenHeight: root.height; dockItem: dock } }
 
     // R3 #1: the notification panel gets the same modal backdrop as
     // Settings and the agent panel (it had none before).

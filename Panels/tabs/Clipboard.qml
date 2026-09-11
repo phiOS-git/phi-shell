@@ -28,6 +28,17 @@ import qs.Widgets as Widgets
 Item {
     id: root
 
+    // The real screen size, handed down by Sidebar.qml — this item's own
+    // width/height is just the dock's right-hand strip, not the screen,
+    // and the preview overlay below needs the real thing to clamp against.
+    required property real screenWidth
+    required property real screenHeight
+    // A reference to Sidebar.qml's own dock Item — this tab's root sits
+    // INSET inside it by Widgets/Panel.qml's own padding, so root's own
+    // absolute position is not the dock's visible left edge. See
+    // _updatePreviewPosition below.
+    required property Item dockItem
+
     property string query: ""
     property int highlightedIndex: 0
 
@@ -48,6 +59,25 @@ Item {
     // wrong thing to risk breaking.
     property string hoverTargetId: ""
     property bool previewVisible: false
+
+    // docs/TODO.md: "the clipboard preview should be on the left of the
+    // sidebar, rather than inside... vertically aligned with the relative
+    // entry." Screen-space position, read once (not a continuous binding —
+    // see _updatePreviewPosition below) right before the preview becomes
+    // visible. The preview overlay stays a plain child of root (no
+    // reparenting to the window's own top item), so its own x/y are still
+    // interpreted relative to root, not the screen — previewTargetX/
+    // previewRootY are root's OWN absolute position, kept alongside the
+    // target card's, so the overlay's clamped-to-the-screen x/y can be
+    // computed in absolute terms and then converted back to root-relative
+    // by subtracting these. entryCard delegates below register themselves
+    // here by id as they're created/destroyed (id -> Item), since a
+    // Repeater split across two sections (pinned/rest) has no single flat
+    // index this file can look an id up by directly.
+    property var _cardItems: ({})
+    property real previewTargetX: 0    // root's own absolute X
+    property real previewRootY: 0      // root's own absolute Y
+    property real previewTargetY: 0    // the dwelled card's absolute Y (center)
 
     // Whichever entry the preview should show once its dwell elapses: the
     // hovered card while the mouse is over one, else the keyboard
@@ -71,7 +101,35 @@ Item {
     Timer {
         id: previewDwell
         interval: root.previewDelay
-        onTriggered: root.previewVisible = true
+        onTriggered: {
+            root._updatePreviewPosition()
+            root.previewVisible = true
+        }
+    }
+
+    // One-shot read at the moment the preview is about to show — the same
+    // shape Widgets/Segment.qml's rightX() already uses for the bar
+    // popouts (mapToItem called imperatively from a handler, not left
+    // inside a live declarative binding, which this file's own prior
+    // comment on this exact overlay flagged as unverifiable without a
+    // compositor, and which mapToItem's own C++ implementation does not
+    // register as a trackable binding dependency anyway). previewTargetX
+    // reads dockItem's own absolute left edge, NOT root's own — root sits
+    // inset inside the dock by Widgets/Panel.qml's own padding, so
+    // root.mapToItem would have landed the preview overlapping the dock's
+    // left border by about one padding's worth instead of sitting beside
+    // it (caught in review before this landed). previewRootY is still
+    // root's own absolute Y: the preview panel stays root's own child
+    // (see below), so ITS y needs converting relative to root, not dock.
+    // A missing card (dwellTargetId stale, or the Repeater hasn't created
+    // it yet) leaves the previous target in place rather than snapping to
+    // (0,0).
+    function _updatePreviewPosition() {
+        root.previewRootY = root.mapToItem(null, 0, 0).y
+        root.previewTargetX = root.dockItem.mapToItem(null, 0, 0).x
+        const item = root._cardItems[root.dwellTargetId]
+        if (!item) return
+        root.previewTargetY = item.mapToItem(null, 0, item.height / 2).y
     }
 
     readonly property var previewEntryData: {
@@ -306,27 +364,59 @@ Item {
     }
 
     // The hold/hover preview overlay itself — a later sibling of the
-    // Flickable above, so it paints on top of (not clipped by) the list,
-    // covering its bottom portion while shown. Anchored to root's own
-    // bounds rather than tracking the hovered/highlighted card's actual
-    // scrolled position: the latter needs mapToItem against a moving,
-    // clipped target this file has no way to verify without a compositor,
-    // where Launcher.qml's richWrap (a fixed anchor beside a fixed
-    // reference point, not a per-row floating tooltip) is the closest
-    // already-shipped precedent for "auxiliary detail alongside the main
-    // list," reused here for the same reason.
+    // Flickable above, so it paints on top of (not clipped by) the list.
+    // docs/TODO.md: "should be on the left of the sidebar, rather than
+    // inside. Also it's very low, it should be vertically aligned with the
+    // relative entry (beware of the position in the screen, so that it
+    // does not go out of the screen area)." Previously anchored to root's
+    // own bottom/left/right — a full-width bar docked low inside the
+    // sidebar, not tracking any specific entry, because per-card mapToItem
+    // tracking was flagged as unverifiable without a compositor (see the
+    // comment this replaced). Built properly now, at the user's explicit
+    // request: still a plain child of root (no reparenting to the
+    // window's own top item, which would be the other way to do this), so
+    // its x/y are computed in ABSOLUTE screen terms (clamped to
+    // root.screenWidth/screenHeight so it can never land off-screen), then
+    // converted back to root-relative by subtracting root's own absolute
+    // position (previewTargetX/previewRootY) — see _updatePreviewPosition
+    // above. Still untested against a real compositor (phi-shell/
+    // CLAUDE.md), same caveat as everything else in this file.
     Widgets.Panel {
         id: preview
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        height: Math.min(previewCol.implicitHeight + padding * 2, root.height * 0.5)
+        // Narrower than the dock itself (was root.width, i.e. full dock
+        // width, in an earlier draft): dockWidth is already up to 42% of
+        // the screen, so a same-width preview plus the gap on both sides
+        // leaves only ~16% of screen width for it to sit in before the
+        // left-edge clamp below kicks in — on a narrower output that
+        // clamp wins, and the preview would silently slide UNDER the dock
+        // instead of sitting beside it, rather than erroring. 80% of the
+        // dock's own width keeps it comfortably clear of that edge case
+        // while still reading as "roughly the same size as the sidebar."
+        width: root.width * 0.8
+        height: Math.min(previewCol.implicitHeight + padding * 2, root.screenHeight * 0.5)
         radius: Config.Appearance.radiusLarge
         visible: opacity > 0
         opacity: (root.previewVisible && root.previewEntryData !== null) ? 1 : 0
         Behavior on opacity {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
+
+        // Desired position in ABSOLUTE screen coordinates: just to the
+        // left of root's own current left edge (previewTargetX), vertical
+        // centre on the dwelled card (previewTargetY), each independently
+        // clamped inside [panelGap, screen edge - own size - panelGap] so
+        // neither axis can push the panel off-screen — the TODO's own
+        // explicit ask. Converted to root-relative x/y (what this Item's
+        // own x/y actually mean, since it stays root's child) by
+        // subtracting root's own absolute position.
+        readonly property real _absX: Math.max(Config.Appearance.panelGap,
+            Math.min(root.screenWidth - width - Config.Appearance.panelGap,
+                root.previewTargetX - width - Config.Appearance.panelGap))
+        readonly property real _absY: Math.max(Config.Appearance.panelGap,
+            Math.min(root.screenHeight - height - Config.Appearance.panelGap,
+                root.previewTargetY - height / 2))
+        x: preview._absX - root.previewTargetX
+        y: preview._absY - root.previewRootY
 
         // No click-swallower here (unlike Launcher.qml's panelWrap or
         // Sidebar.qml's dock): those sit under a modal surface where
@@ -399,6 +489,26 @@ Item {
             }
             readonly property bool selected: card.flatIndex === root.highlightedIndex
             readonly property bool isImage: card.modelData.mime === "image/png"
+
+            // Registers this delegate into root._cardItems so the preview
+            // overlay's _updatePreviewPosition can find this card's Item
+            // by id and read its real screen position — a Repeater's own
+            // model index isn't enough, since pinned/rest are two separate
+            // Repeaters. Unregisters itself on destruction, but only if it
+            // is still the one on file for this id — a fast list refresh
+            // recreating this exact id under a different delegate instance
+            // could otherwise have the NEW registration wiped by the OLD
+            // instance's own belated destruction. The id is captured into
+            // its own property rather than read from card.modelData
+            // directly in each handler: modelData on an already-destroyed
+            // Repeater delegate is a known QML footgun (can already be
+            // undefined by the time Component.onDestruction runs), so
+            // onDestruction must not touch it at all.
+            readonly property string _cardId: card.modelData.id
+            Component.onCompleted: root._cardItems[card._cardId] = card
+            Component.onDestruction: {
+                if (root._cardItems[card._cardId] === card) delete root._cardItems[card._cardId]
+            }
 
             width: listCol.width
             height: cardCol.implicitHeight + padding * 2
