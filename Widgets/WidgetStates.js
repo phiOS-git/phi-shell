@@ -75,25 +75,25 @@ function surfaceColors(appearance, resolvedState, ambient) {
     if (ambient === "isle") {
         switch (resolvedState) {
         case "active":
-            // Follow-up (user, 2026-09-12): the hover→active transition
-            // flickered — for one frame the hover sweep (Segment.qml's own
-            // Rectangle, already at full coverage) was visibly shrinking
-            // back out at the same time this case's `bg` was independently
-            // fading IN via the base Rectangle's own Behavior, so neither
-            // rectangle was at full colorOpposite coverage for a moment in
-            // the middle of the crossfade — a torn/dimmer seam. `bg` goes
-            // transparent here too, same as hover: the base Rectangle's
-            // own fade no longer competes with the sweep at all — the
-            // sweep alone now carries the fill for BOTH hover and
-            // "normal" (non-accent) active, so a hover-then-click never
-            // has anything to visually settle, since the sweep was
-            // already at full coverage and just stays there. `border`
-            // stays colorOpposite: PhiAgent's accentWhenActive path never
-            // reaches this case at all (Segment.qml's own `stateColors`
-            // short-circuits to its accent colours before calling this
-            // function), so it is unaffected either way.
-            return { bg: "transparent", fg: appearance.colorMain,
-                     border: appearance.colorOpposite }
+            // Follow-up (user, 2026-09-12): the previous pass (hover and
+            // active sharing one inverted colorOpposite/colorMain sweep,
+            // to fix a flicker on hover-then-click) made the two states
+            // visually IDENTICAL — the user then reported that as broken
+            // in its own right: unhovering an active button looked like
+            // "the highlight wrongly staying applied", because hover and
+            // active could no longer be told apart, plus other artifacts.
+            // Reworked instead of patched: hover and active are now
+            // fully separate mechanisms with no shared state, so they
+            // cannot race or get confused for one another again. Active
+            // no longer draws any bg/border fill at all — "use the accent
+            // colour for the text and icon to show the selected state" —
+            // just the resolved fg. `bg`/`border` transparent, same bare-
+            // icon-on-the-isle look the resting state already has, distinct
+            // from PhiAgent's own `accentWhenActive` full accent FILL
+            // (Segment.qml's `stateColors` short-circuits to that before
+            // ever calling this function — untouched, still its own thing).
+            return { bg: "transparent", fg: appearance.accent,
+                     border: "transparent" }
         case "invalid":
             return { bg: appearance.barButtonBackground, fg: appearance.error,
                      border: appearance.error }
@@ -104,14 +104,15 @@ function surfaceColors(appearance, resolvedState, ambient) {
             // Follow-up (user, 2026-09-11): "change the hover effect,
             // instead of changing the button borders and background,
             // 'highlight' the text... and change the text color as well.
-            // Do that with a transition left to right." bg/border go
-            // transparent — Widgets/Segment.qml's own new sweep Rectangle
-            // now carries the visual highlight, growing left-to-right
-            // instead of this fading in as a flat fill. `fg` becomes
-            // colorMain, the SAME inverted pair "active" already uses
-            // (bg: colorOpposite, fg: colorMain) — "black on light, white
-            // on dark" is exactly that existing inversion, not a new
-            // colour pair invented for hover specifically.
+            // Do that with a transition (quick)." bg/border go transparent
+            // — Widgets/Segment.qml's own sweep Rectangle carries the
+            // visual highlight (direction: top-to-bottom, per a later
+            // follow-up) instead of this fading in as a flat fill. `fg`
+            // becomes colorMain — the full B&W inversion pair, "black on
+            // light, white on dark" — kept exclusive to hover now that
+            // active uses `accent` instead of this same pair (the two no
+            // longer share a colour scheme, by the user's own follow-up
+            // direction).
             return { bg: "transparent", fg: appearance.colorMain,
                      border: "transparent" }
         default:
