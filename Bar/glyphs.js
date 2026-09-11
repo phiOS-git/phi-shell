@@ -41,3 +41,4 @@ var steam           = _c(0xF04D3)   // nf-md-steam (Steam workspace icon, ADR 13
                                      // "steam icon in the status bar is using a phone glyph"),
                                      // confirmed against nerd-fonts' own glyphnames.json
 var console         = _c(0xF0295)   // nf-md-console (scratchpad toggle icon)
+var clipboard       = _c(0xF0147)   // nf-md-clipboard

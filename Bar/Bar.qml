@@ -133,6 +133,7 @@ PanelWindow {
         case "nightMode": return nightModeComponent
         case "phiAgent": return phiAgentComponent
         case "notifications": return notificationsComponent
+        case "clipboard": return clipboardComponent
         case "timer": return timerComponent
         default:
             console.warn("phi-shell: Bar module type not recognized: " + type)
@@ -171,6 +172,7 @@ PanelWindow {
     // module: btop and Steam are plain numbered workspaces now, rendered by
     // Modules.Workspaces itself as a pinned-app glyph (Bar/workspace-icons.json).
     Component { id: notificationsComponent; Modules.Notifications { screen: bar.screen } }
+    Component { id: clipboardComponent; Modules.Clipboard { screen: bar.screen } }
     Component { id: timerComponent; Modules.Timer { screen: bar.screen } }
 
     FileView {
