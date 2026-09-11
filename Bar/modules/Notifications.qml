@@ -7,10 +7,15 @@ import qs.Widgets as Widgets
 // phiOS — Bar/modules/Notifications.qml (OOP-03; OOP-06 rewire; SF-3/SF-4
 // blink; status-bar rework 2026-09-11). The user's right-isle directive:
 // "notification icon (toggles the notification panel)". A bell in the
-// right isle; a click toggles Panels/Sidebar.qml through
-// Services/NotificationPanel.qml — an in-process property call, not a
-// spawned `qs ipc` (OOP-03 shipped the `qs ipc` stand-in before that
-// singleton existed).
+// right isle; a click opens Panels/Sidebar.qml straight onto the
+// Notifications tab (Services/NotificationPanel.qml's tab 0) through
+// `openNotifications()` — an in-process property call, not a spawned
+// `qs ipc` (OOP-03 shipped the `qs ipc` stand-in before that singleton
+// existed). Was `toggle()` until docs/TODO.md ("the notification button
+// ... does not set the tab to notifications"): that left `tab` wherever
+// Clipboard.qml's icon (Bar/modules/Clipboard.qml) had last set it, so
+// `active` below now also checks `tab === 0` — same shape Clipboard.qml
+// already used for its own tab.
 //
 // docs/TODO.md (status-bar rework: "notifications (DND state as well)"):
 // the glyph + separate flash-overlay Rectangle are both replaced by
@@ -31,13 +36,13 @@ Widgets.Segment {
     required property ShellScreen screen
 
     ambient: "isle"
-    active: Services.NotificationPanel.shown
+    active: Services.NotificationPanel.shown && Services.NotificationPanel.tab === 0
 
     readonly property bool dnd: Services.Notifications.dnd
     readonly property bool hasPending: !root.dnd && (Services.Notifications.active.values || []).length > 0
     tone: root.hasPending ? "info" : ""
 
-    onActivated: Services.NotificationPanel.toggle()
+    onActivated: Services.NotificationPanel.openNotifications()
 
     property real dndAmount: 0
     Behavior on dndAmount {
