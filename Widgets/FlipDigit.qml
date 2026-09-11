@@ -23,6 +23,18 @@ import "WidgetStates.js" as WidgetStates
 // B throughout — a discrete value change, the same category every other
 // one-shot transition in this session uses; split into two legs so the
 // TOTAL flip duration is one category-B duration, not two.
+//
+// docs/TODO.md follow-up: "it folds the number from both top and bottom,
+// it should only be the top part folding over the bottom" — the scale
+// origin was the cell's vertical CENTER, so both edges converged inward
+// symmetrically. Moved to the cell's bottom edge instead: the bottom stays
+// pinned in place and only the top collapses down onto it — a single-
+// transform simplification of a real split-flap card's static lower half
+// plus hinged upper flap, in keeping with this file's existing "reads as
+// a flip clearly enough" scope (see above — no true two-piece flap, still
+// one `Scale`). `cardBorder` below is the "thin border" from the same
+// follow-up, a plain static outline OUTSIDE the transformed `cell` so the
+// card frame itself never squashes, only the digit inside it.
 
 Item {
     id: root
@@ -33,8 +45,21 @@ Item {
     property bool mono: true
 
     readonly property real _fontSize: WidgetStates.fontPixelSize(Config.Appearance, root.sizeStep)
-    implicitWidth: label.implicitWidth
-    implicitHeight: label.implicitHeight
+
+    // Card padding for `cardBorder` below — same chToPixels(space-token,
+    // chWidth) pattern Widgets/Panel.qml and Widgets/Segment.qml already
+    // use, so the outline reads as a card around the digit instead of
+    // hugging its glyph edges.
+    TextMetrics {
+        id: chMetrics
+        font.family: Config.Appearance.fontMono
+        font.pixelSize: root._fontSize
+        text: "0"
+    }
+    readonly property real _padding: WidgetStates.chToPixels(Config.Appearance.space1, chMetrics.width)
+
+    implicitWidth: label.implicitWidth + root._padding * 2
+    implicitHeight: label.implicitHeight + root._padding * 2
 
     // What's actually shown — only reassigned at the squashed midpoint of
     // the flip, imperatively (see cellFlip below), not bound directly to
@@ -61,7 +86,10 @@ Item {
         property real squash: 1.0
         transform: Scale {
             origin.x: cell.width / 2
-            origin.y: cell.height / 2
+            // Bottom edge, not the vertical center: only the top half
+            // collapses down onto the (fixed) bottom edge as `squash`
+            // shrinks, instead of both edges converging inward at once.
+            origin.y: cell.height
             xScale: 1.0
             yScale: cell.squash
         }
@@ -74,6 +102,18 @@ Item {
             font.pixelSize: root._fontSize
             color: root.textColor
         }
+    }
+
+    // The static card frame — deliberately a sibling of `cell`, not a
+    // child of it, so the border never squashes with the flip; only the
+    // digit inside it does.
+    Rectangle {
+        id: cardBorder
+        anchors.fill: cell
+        color: "transparent"
+        radius: Config.Appearance.radiusSmall
+        border.width: Config.Appearance.borderWidth
+        border.color: Config.Appearance.border
     }
 
     SequentialAnimation {
