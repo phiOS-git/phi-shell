@@ -49,11 +49,18 @@ Item {
     // Card padding for `cardBorder` below — same chToPixels(space-token,
     // chWidth) pattern Widgets/Panel.qml and Widgets/Segment.qml already
     // use, so the outline reads as a card around the digit instead of
-    // hugging its glyph edges.
+    // hugging its glyph edges. `fontSize1`, not `root._fontSize`: both
+    // existing ch-reference consumers (Widgets/Segment.qml, Panels/
+    // Calendar.qml) deliberately measure against the same fixed
+    // `fontSize1`, not whatever size the widget itself happens to render
+    // at, so a `space-N` token resolves to one consistent physical size
+    // everywhere in the shell. Measuring against this cell's own (much
+    // larger, sizeStep 4) font would have inflated `space1` well past
+    // what "thin border" asked for.
     TextMetrics {
         id: chMetrics
         font.family: Config.Appearance.fontMono
-        font.pixelSize: root._fontSize
+        font.pixelSize: Config.Appearance.fontSize1
         text: "0"
     }
     readonly property real _padding: WidgetStates.chToPixels(Config.Appearance.space1, chMetrics.width)
