@@ -43,5 +43,10 @@ Singleton {
     Connections { target: Services.NotificationPanel; function onShownChanged() { if (Services.NotificationPanel.shown) root._closeIfOpen() } }
     Connections { target: Services.AgentPanel; function onShownChanged() { if (Services.AgentPanel.shown) root._closeIfOpen() } }
     Connections { target: Services.SettingsPanel; function onShownChanged() { if (Services.SettingsPanel.shown) root._closeIfOpen() } }
-    Connections { target: Services.BarPopout; function onShownChanged() { if (Services.BarPopout.shown) root._closeIfOpen() } }
+    // BarPopout.shown is a derived readonly property (`which.length > 0`),
+    // not a plain settable bool like the three above — every other
+    // consumer in this repo binds to it or reads `which` directly, none
+    // attach a Connections handler to its notify signal. Watching the
+    // underlying `which` instead matches that existing usage exactly.
+    Connections { target: Services.BarPopout; function onWhichChanged() { if (Services.BarPopout.which.length > 0) root._closeIfOpen() } }
 }
