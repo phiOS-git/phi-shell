@@ -50,7 +50,14 @@ Item {
 
     Item {
         id: cell
-        anchors.fill: parent
+        // Explicit width/height, not `anchors.fill: parent`: `parent`
+        // here is `root`, whose OWN implicitWidth/Height derive from
+        // `label` inside this very Item — anchors.fill would bind both
+        // dimensions back to a size that traces back through this Item,
+        // a real (if likely Qt-tolerated) binding-loop shape, not worth
+        // risking for a plain fixed-size wrapper.
+        width: root.implicitWidth
+        height: root.implicitHeight
         property real squash: 1.0
         transform: Scale {
             origin.x: cell.width / 2
