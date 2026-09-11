@@ -92,6 +92,20 @@ Item {
         }
     }
 
+    // Same idea, the button's LEFT edge — Bar/modules/Power.qml (the
+    // first left-isle consumer of Panels/BarPopout.qml) anchors the
+    // popout's own left edge to this instead, since right-edge alignment
+    // (rightX() above) would pin the card's far side to a button near the
+    // screen's left edge, pushing almost the whole card off-screen before
+    // Panels/BarPopout.qml's own clamp even applies.
+    function leftX() {
+        try {
+            return root.mapToItem(null, 0, 0).x
+        } catch (e) {
+            return 0
+        }
+    }
+
     readonly property string resolvedState: WidgetStates.resolve({
         enabled: root.enabled, hovered: root.hovered, pressed: root.pressed,
         active: root.active, keyboardFocus: root.keyboardFocus,

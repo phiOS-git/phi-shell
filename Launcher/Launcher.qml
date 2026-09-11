@@ -41,10 +41,15 @@ PanelWindow {
     property int highlightedIndex: 0
 
     // views[0] is implicit (the search field itself); views[1..] are
-    // pushed sub-views. Only one shape exists today: { kind: "command",
-    // command: "..." }.
+    // pushed sub-views. Two shapes: { kind: "command", command: "..." }
+    // (Tab on a "command" result) and { kind: "confirm", action: "..." }
+    // (Enter on a destructive "system" result — docs/TODO.md: "Reboot and
+    // Shutdown should require confirmation", added alongside the command
+    // sub-view rather than as a separate mechanism, since `views` was
+    // already documented as kind-tagged and extensible for exactly this).
     property var views: []
     readonly property bool atRoot: views.length === 0
+    readonly property var currentView: root.views.length > 0 ? root.views[root.views.length - 1] : null
 
     // OOP-05: full-screen transparent window so a click anywhere outside
     // the runner box can close it (same shape as Cheatsheet). The box
@@ -322,46 +327,20 @@ PanelWindow {
             Quickshell.execDetached(["kitty", "--directory", action.data.path])
             break
         case "system":
-            root._performSystemAction(action.data.action)
+            // docs/TODO.md: "Reboot and Shutdown should require
+            // confirmation" — those two push a confirm sub-view instead
+            // of running immediately; the other four (lock/suspend/
+            // hibernate/logout) run straight away, same as before this
+            // entry. Services/PowerActions.qml is the one owner of both
+            // the actual commands and this needsConfirm policy, shared
+            // with Panels/BarPopout.qml's "power" section.
+            if (Services.PowerActions.needsConfirm(action.data.action))
+                root.pushConfirmView(action.data.action)
+            else
+                Services.PowerActions.perform(action.data.action)
             break
         case "pushView":
             root.views = root.views.concat([{ kind: action.data.view, command: "" }])
-            break
-        }
-    }
-
-    // "lock" was originally written against loginctl lock-session, before
-    // Lock/Lock.qml existed (S-34). Updated in that same step to call its
-    // IpcHandler directly instead: unlocking must never have an IPC path
-    // (Lock.qml's own header explains why), but locking is safe from any
-    // same-user process, which is exactly what that handler exposes.
-    // "logout" mirrors hyprland.lua's own Super+M binding exactly, so the
-    // two paths to the same action never disagree.
-    function _performSystemAction(action) {
-        switch (action) {
-        case "lock":
-            // `qs ipc call` needs `-p <path>` here: confirmed by reading
-            // Quickshell's own src/launch/parsecommand.cpp — with no
-            // instance/config selector, `ipc call` targets the "default"
-            // config (`<xdg dir>/quickshell/shell.qml`), and phi-shell is
-            // NOT that config. hyprland.lua launches it as
-            // `qs -p ~/.config/quickshell/phi`, a named path, so every
-            // `ipc call` must repeat a `-p` that resolves to the same
-            // place. `Quickshell.configDir` (core/qmlglobal.hpp, "the full
-            // path to the root directory of your shell") gives that path
-            // at runtime instead of duplicating the literal here. An
-            // earlier version of this line dropped `-p` entirely on the
-            // strength of the docs' worked example, which only covers the
-            // default-config case; corrected once the real launch command
-            // was checked.
-            Quickshell.execDetached(["qs", "-p", Quickshell.configDir, "ipc", "call", "lock", "lock"])
-            break
-        case "suspend":
-            Quickshell.execDetached(["systemctl", "suspend"])
-            break
-        case "logout":
-            Quickshell.execDetached(["sh", "-c",
-                "command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch exit"])
             break
         }
     }
@@ -381,6 +360,10 @@ PanelWindow {
         root.views = root.views.concat([{ kind: "command", command: command }])
         commandField.text = command
         commandField.forceActiveFocus()
+    }
+
+    function pushConfirmView(action) {
+        root.views = root.views.concat([{ kind: "confirm", action: action }])
     }
 
     function popView() {
@@ -611,10 +594,17 @@ PanelWindow {
                 }
             }
 
-            // Level 1: the one concrete sub-view this step builds — an
-            // editable command line reached by Tab on a "command" result
-            // (ADR 022: Tab is an accelerator on the same object, not a
-            // separate feature).
+            // Level 1: two sub-view shapes. "command" — an editable
+            // command line reached by Tab on a "command" result (ADR 022:
+            // Tab is an accelerator on the same object, not a separate
+            // feature). "confirm" — docs/TODO.md's "Reboot and Shutdown
+            // should require confirmation", reached by Enter on either of
+            // those two "system" results (root.pushConfirmView). Both
+            // live in the same Panel/Column so only one height calc is
+            // needed; each block's own `visible` (keyed off
+            // root.currentView.kind) is what a Column positioner already
+            // excludes from `implicitHeight` when false, the same pattern
+            // Panels/BarPopout.qml's per-`which` Columns already use.
             Widgets.Panel {
                 width: parent.width
                 height: subviewLayout.implicitHeight + padding * 2
@@ -625,40 +615,83 @@ PanelWindow {
                     width: parent.width
                     spacing: root.chWidth * Config.Appearance.space1
 
-                    Widgets.StyledText { kind: "label"; text: "Edit command" }
-
-                    // No incoming "text: ..." binding here either (see
-                    // setShown's comment): pushCommandView() sets this
-                    // field's text imperatively at the moment a sub-view
-                    // opens, which is the one time it needs to change from
-                    // outside the field itself.
-                    TextInput {
-                        id: commandField
+                    Column {
                         width: parent.width
-                        font.family: Config.Appearance.fontMono
-                        font.pixelSize: Config.Appearance.fontSize2
-                        color: Config.Appearance.textPrimary
-                        focus: !root.atRoot
+                        spacing: root.chWidth * Config.Appearance.space1
+                        visible: root.currentView && root.currentView.kind === "command"
 
-                        Keys.onEscapePressed: root.popView()
-                        Keys.onReturnPressed: {
-                            root._performAction({ kind: "execTerminal", data: { command: text } })
-                            root.setShown(false)
-                        }
-                    }
+                        Widgets.StyledText { kind: "label"; text: "Edit command" }
 
-                    Row {
-                        spacing: root.chWidth * Config.Appearance.space2
-                        Widgets.StyledButton {
-                            label: "Run"
-                            onClicked: {
-                                root._performAction({ kind: "execTerminal", data: { command: commandField.text } })
+                        // No incoming "text: ..." binding here either (see
+                        // setShown's comment): pushCommandView() sets this
+                        // field's text imperatively at the moment a sub-view
+                        // opens, which is the one time it needs to change from
+                        // outside the field itself.
+                        TextInput {
+                            id: commandField
+                            width: parent.width
+                            font.family: Config.Appearance.fontMono
+                            font.pixelSize: Config.Appearance.fontSize2
+                            color: Config.Appearance.textPrimary
+                            focus: root.currentView && root.currentView.kind === "command"
+
+                            Keys.onEscapePressed: root.popView()
+                            Keys.onReturnPressed: {
+                                root._performAction({ kind: "execTerminal", data: { command: text } })
                                 root.setShown(false)
                             }
                         }
-                        Widgets.StyledButton {
-                            label: "Back"
-                            onClicked: root.popView()
+
+                        Row {
+                            spacing: root.chWidth * Config.Appearance.space2
+                            Widgets.StyledButton {
+                                label: "Run"
+                                onClicked: {
+                                    root._performAction({ kind: "execTerminal", data: { command: commandField.text } })
+                                    root.setShown(false)
+                                }
+                            }
+                            Widgets.StyledButton {
+                                label: "Back"
+                                onClicked: root.popView()
+                            }
+                        }
+                    }
+
+                    Column {
+                        id: confirmSubview
+                        width: parent.width
+                        spacing: root.chWidth * Config.Appearance.space1
+                        visible: root.currentView && root.currentView.kind === "confirm"
+                        readonly property string action: visible ? root.currentView.action : ""
+
+                        focus: root.currentView && root.currentView.kind === "confirm"
+                        Keys.onEscapePressed: root.popView()
+                        Keys.onReturnPressed: {
+                            Services.PowerActions.perform(confirmSubview.action)
+                            root.setShown(false)
+                        }
+
+                        Widgets.StyledText {
+                            kind: "label"
+                            width: parent.width
+                            wrapMode: Text.WordWrap
+                            text: Services.PowerActions.title(confirmSubview.action) + " now? This cannot be undone."
+                        }
+
+                        Row {
+                            spacing: root.chWidth * Config.Appearance.space2
+                            Widgets.StyledButton {
+                                label: Services.PowerActions.title(confirmSubview.action)
+                                onClicked: {
+                                    Services.PowerActions.perform(confirmSubview.action)
+                                    root.setShown(false)
+                                }
+                            }
+                            Widgets.StyledButton {
+                                label: "Cancel"
+                                onClicked: root.popView()
+                            }
                         }
                     }
                 }

@@ -5,9 +5,12 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 
 // phiOS — Panels/BarPopout.qml (OOP-11; R3 #2/#9; OOP-22; OOP-23). The
-// small card that drops below a right-isle button, its right edge aligned
-// to the button's right edge (Services.BarPopout.anchorRightX), one
-// rhythm unit below the bar. One card, per-key sections:
+// small card that drops below the button that opened it — its right edge
+// aligned to that button's right edge (Services.BarPopout.anchorRightX)
+// for every right-isle consumer, or its LEFT edge to the button's left
+// edge (anchorLeftX) for docs/TODO.md's left-isle power button, the one
+// exception — one rhythm unit below the bar either way. One card,
+// per-key sections:
 //   - volume  → a draggable level + a Mute toggle + a "Sound settings"
 //               deep-link (item 3: the bar icon opens the controls; the
 //               volume KEYS get the transient pill in Osd/Osd.qml).
@@ -15,6 +18,10 @@ import qs.Widgets as Widgets
 //               a "Display settings" deep-link.
 //   - wifi / bluetooth / network / battery / gpu → a compact readout,
 //     with a deep-link button where a mature TUI exists.
+//   - power → six plain action buttons (lock/suspend/hibernate/logout/
+//               reboot/shutdown, via Services/PowerActions.qml) plus a
+//               "Settings…" deep-link; reboot/shutdown gate behind an
+//               inline confirm instead of running immediately.
 // No scrim (this window never had one). A full mixer / network list is
 // still a later pass.
 
@@ -46,8 +53,17 @@ PanelWindow {
     // Out-of-plan: settings-overhaul batch F. Only sample the live network
     // stats while the wifi card is actually on screen.
     property bool _netWatched: false
-    onWhichChanged: root._syncNetWatch()
-    onShownChanged: root._syncNetWatch()
+    // docs/TODO.md: "Reboot and Shutdown should require confirmation" —
+    // "" outside a confirm step, else the action name awaiting a second,
+    // explicit click. Reset whenever the power section isn't the one
+    // showing (closing the popout, or switching to a different key), so
+    // reopening the power card never lands mid-confirm from a previous
+    // visit. Folded into the SAME onWhichChanged/onShownChanged handlers
+    // `_syncNetWatch()` already uses — QML does not allow a second
+    // `onXxxChanged:` for the same signal on one object.
+    property string _confirmingAction: ""
+    onWhichChanged: { root._syncNetWatch(); if (root.which !== "power") root._confirmingAction = "" }
+    onShownChanged: { root._syncNetWatch(); if (!root.shown) root._confirmingAction = "" }
     function _syncNetWatch() {
         var want = root.shown && root.which === "wifi"
         if (want && !root._netWatched) { Services.NetStats.watch(); root._netWatched = true }
@@ -60,6 +76,16 @@ PanelWindow {
     function _fmtRate(kbps) {
         if (kbps >= 1000) return (kbps / 1000).toFixed(1) + " Mb/s"
         return Math.round(kbps) + " kb/s"
+    }
+
+    function _requestPowerAction(action) {
+        if (Services.PowerActions.needsConfirm(action)) root._confirmingAction = action
+        else { Services.PowerActions.perform(action); Services.BarPopout.hide() }
+    }
+    function _confirmPowerAction() {
+        Services.PowerActions.perform(root._confirmingAction)
+        root._confirmingAction = ""
+        Services.BarPopout.hide()
     }
 
     Item {
@@ -88,12 +114,21 @@ PanelWindow {
 
             // OOP-22 (item 4): align the card's RIGHT edge to the button's
             // right edge, clamped to the screen; fall back to the right
-            // corner when there is no anchor.
-            x: Services.BarPopout.anchorRightX > 0
+            // corner when there is no anchor. docs/TODO.md's left-isle
+            // power button (Services/BarPopout.qml's anchorEdge) instead
+            // aligns the card's LEFT edge to the button's left edge, same
+            // clamp — right-edge alignment would pin the card's far side
+            // to a button near the screen's left edge, pushing almost the
+            // whole card off-screen before the clamp even applies.
+            x: Services.BarPopout.anchorEdge === "left" && Services.BarPopout.anchorLeftX > 0
                 ? Math.max(Config.Appearance.panelGap,
                     Math.min(parent.width - width - Config.Appearance.panelGap,
-                        Services.BarPopout.anchorRightX - width))
-                : parent.width - width - Config.Appearance.panelGap
+                        Services.BarPopout.anchorLeftX))
+                : Services.BarPopout.anchorRightX > 0
+                    ? Math.max(Config.Appearance.panelGap,
+                        Math.min(parent.width - width - Config.Appearance.panelGap,
+                            Services.BarPopout.anchorRightX - width))
+                    : parent.width - width - Config.Appearance.panelGap
 
             MouseArea { anchors.fill: parent }
 
@@ -364,6 +399,105 @@ PanelWindow {
                 kind: "label"
                 text: "Live utilisation and temperature are shown on the bar. "
                     + "A detailed GPU view is a later pass."
+            }
+
+            // power (docs/TODO.md: "add a power icon to the left isle of
+            // the status bar, it's overlay should have power options
+            // (suspend, logout, shutdown, lock, hibernate, reboot) and
+            // 'settings'"). Six SmallButton rows, the same plain-text
+            // convention every other action/deep-link button in this
+            // card already uses (Sound settings…, Manage networks…, …) —
+            // no per-row icon. Reboot/Shutdown are gated behind
+            // root._confirmingAction (an inline second-click confirm)
+            // instead of running immediately, matching Launcher.qml's own
+            // confirm sub-view for the identical two actions in the
+            // runner bar — same policy (Services.PowerActions.needsConfirm),
+            // different UI shape because this is a card, not a stack of
+            // navigable views.
+            Column {
+                width: parent.width
+                spacing: root.chWidth * Config.Appearance.space1
+                visible: root.which === "power"
+
+                Column {
+                    width: parent.width
+                    spacing: root.chWidth * Config.Appearance.space2
+                    visible: root._confirmingAction.length === 0
+
+                    Widgets.SmallButton {
+                        width: parent.width
+                        label: Services.PowerActions.title("lock")
+                        onClicked: root._requestPowerAction("lock")
+                    }
+                    Widgets.SmallButton {
+                        width: parent.width
+                        label: Services.PowerActions.title("suspend")
+                        onClicked: root._requestPowerAction("suspend")
+                    }
+                    Widgets.SmallButton {
+                        width: parent.width
+                        label: Services.PowerActions.title("hibernate")
+                        onClicked: root._requestPowerAction("hibernate")
+                    }
+                    Widgets.SmallButton {
+                        width: parent.width
+                        label: Services.PowerActions.title("logout")
+                        onClicked: root._requestPowerAction("logout")
+                    }
+                    Widgets.Separator { width: parent.width }
+                    Widgets.SmallButton {
+                        width: parent.width
+                        label: Services.PowerActions.title("reboot")
+                        onClicked: root._requestPowerAction("reboot")
+                    }
+                    Widgets.SmallButton {
+                        width: parent.width
+                        label: Services.PowerActions.title("shutdown")
+                        onClicked: root._requestPowerAction("shutdown")
+                    }
+                    Widgets.Separator { width: parent.width }
+                    Widgets.SmallButton {
+                        width: parent.width
+                        // No dedicated power/suspend settings section
+                        // exists yet (docs/TODO.md: "add suspension/
+                        // hibernation settings in the settings panel" is
+                        // its own, still-open entry) — Devices already
+                        // hosts battery/charging, the closest existing
+                        // home, same reasoning Volume/Brightness above
+                        // use for their own deep-links.
+                        label: "Settings…"
+                        onClicked: {
+                            Services.SettingsPanel.openSection("devices")
+                            Services.BarPopout.hide()
+                        }
+                    }
+                }
+
+                // Inline confirm — replaces the action list above while a
+                // destructive action awaits a second, explicit click.
+                Column {
+                    width: parent.width
+                    spacing: root.chWidth * Config.Appearance.space2
+                    visible: root._confirmingAction.length > 0
+
+                    Widgets.StyledText {
+                        width: parent.width
+                        wrapMode: Text.WordWrap
+                        kind: "label"
+                        text: Services.PowerActions.title(root._confirmingAction) + " now? This cannot be undone."
+                    }
+                    Row {
+                        spacing: root.chWidth * Config.Appearance.space2
+                        Widgets.SmallButton {
+                            label: Services.PowerActions.title(root._confirmingAction)
+                            onClicked: root._confirmPowerAction()
+                        }
+                        Widgets.SmallButton {
+                            label: "Cancel"
+                            onClicked: root._confirmingAction = ""
+                        }
+                    }
+                }
             }
         }
     }
