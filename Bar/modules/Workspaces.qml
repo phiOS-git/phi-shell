@@ -102,6 +102,7 @@ Item {
             model: Services.HyprlandBridge.workspaces
 
             Widgets.Segment {
+                id: wsButton
                 required property var modelData
                 // The resolved pinned-app glyph for this workspace id, or
                 // "" for an ordinary numbered workspace.
@@ -127,6 +128,26 @@ Item {
                     : (modelData.name.length > 0 ? modelData.name : String(modelData.id))
                 active: modelData.active
                 onActivated: modelData.activate()
+
+                // Follow-up (user, 2026-09-11): "change steam, btop and
+                // desktop number animations as well" — clarified via
+                // question to mean a switch transition: the button that
+                // just became active plays a brief scale pop, same
+                // technique (and duration) as every other one-shot pop
+                // this session (NotificationBellIcon's dndPop, NetworkIcon/
+                // ClipboardIcon's pop). Keyed off the discrete `active`
+                // bool directly, not a Behavior-animated float, so it
+                // can't hit the restart-storm bug those two pops originally
+                // had and were fixed for.
+                scale: 1.0
+                onActiveChanged: if (active) wsPop.restart()
+                SequentialAnimation {
+                    id: wsPop
+                    NumberAnimation { target: wsButton; property: "scale"; to: 1.18
+                        duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                    NumberAnimation { target: wsButton; property: "scale"; to: 1.0
+                        duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                }
             }
         }
 
