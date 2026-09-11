@@ -153,18 +153,35 @@ Item {
         }
     }
 
+    // Follow-up (user, 2026-09-11): "invert the order, text before icon" —
+    // scoped to `ambient: "isle"` (the status bar) only, not every Segment
+    // in the app (a panel Segment elsewhere — a settings row, a sidebar
+    // tab — keeps icon-then-label; nothing there was asked to change).
+    readonly property bool labelFirst: root.ambient === "isle"
+
     Item {
         // A plain Item, not a Row: Qt's own Row docs say a child "should
         // not... horizontally anchor itself using left, right,
         // horizontalCenter, fill or centerIn", and icon/text below anchor
-        // horizontally to each other (icon left-edge, text left-of-icon.right).
+        // horizontally to each other. Explicit rounded x/y instead of
+        // `anchors.centerIn: parent` — follow-up (user, 2026-09-11): a
+        // workspace digit read "1px low-right" of true centre. `centerIn`
+        // computes `(parent - child) / 2`, which is fractional whenever
+        // that difference is odd; Math.round pins it to a whole pixel
+        // instead of leaving the sub-pixel remainder for the renderer to
+        // resolve however it does. Applies to every Segment, not just
+        // workspaces — the same rounding gap exists wherever content and
+        // button box sizes differ by an odd number of pixels.
         id: layout
-        anchors.centerIn: parent
         readonly property bool _iconShown: iconGlyph.visible || customIcon.active
         implicitWidth: (iconGlyph.visible ? iconGlyph.implicitWidth : (customIcon.active ? customIcon.implicitWidth : 0))
             + (_iconShown && labelText.visible ? root.gap : 0)
             + (labelText.visible ? labelText.implicitWidth : 0)
         implicitHeight: Math.max(iconGlyph.visible ? iconGlyph.implicitHeight : (customIcon.active ? customIcon.implicitHeight : 0), labelText.visible ? labelText.implicitHeight : 0)
+        width: implicitWidth
+        height: implicitHeight
+        x: Math.round((parent.width - width) / 2)
+        y: Math.round((parent.height - height) / 2)
 
         StyledIcon {
             id: iconGlyph
@@ -172,7 +189,8 @@ Item {
             glyph: root.glyph
             sizeStep: root.sizeStep
             color: root.contentColor
-            anchors.left: parent.left
+            anchors.left: root.labelFirst && labelText.visible ? labelText.right : parent.left
+            anchors.leftMargin: root.labelFirst && labelText.visible ? root.gap : 0
             anchors.verticalCenter: parent.verticalCenter
         }
 
@@ -192,7 +210,8 @@ Item {
             // setImplicitSize(getImplicitWidth(), getImplicitHeight()) —
             // not assumed). A QML binding here would fight that internal
             // C++ write instead of cooperating with it.
-            anchors.left: parent.left
+            anchors.left: root.labelFirst && labelText.visible ? labelText.right : parent.left
+            anchors.leftMargin: root.labelFirst && labelText.visible ? root.gap : 0
             anchors.verticalCenter: parent.verticalCenter
         }
 
@@ -203,8 +222,12 @@ Item {
             mono: root.mono
             sizeStep: root.sizeStep
             color: root.contentColor
-            anchors.left: layout._iconShown ? (iconGlyph.visible ? iconGlyph.right : customIcon.right) : parent.left
-            anchors.leftMargin: layout._iconShown ? root.gap : 0
+            anchors.left: root.labelFirst
+                ? parent.left
+                : (layout._iconShown ? (iconGlyph.visible ? iconGlyph.right : customIcon.right) : parent.left)
+            anchors.leftMargin: root.labelFirst
+                ? 0
+                : (layout._iconShown ? root.gap : 0)
             anchors.verticalCenter: parent.verticalCenter
         }
     }
