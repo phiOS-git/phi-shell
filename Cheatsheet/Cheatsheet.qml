@@ -78,6 +78,19 @@ PanelWindow {
     }
     readonly property var grouped: Services.Keybinds.groups(root.filtered)
 
+    // docs/TODO.md: "the cheathsheet shell should have 2 columns." Groups
+    // alternate between the two (even index left, odd right) rather than a
+    // straight first-half/second-half split: `Services.Keybinds.groups`
+    // gives no guarantee its groups are ordered by size, so a straight
+    // split risks one column ending up visibly taller than the other if
+    // larger groups happen to cluster together in that ordering —
+    // alternating spreads that risk evenly across both columns instead.
+    // Not a true height-balanced (masonry) layout — that needs live
+    // per-group height measurement this file has no established pattern
+    // for — but a reasonable, simple approximation for a read-only sheet.
+    readonly property var groupedLeft: root.grouped.filter((g, i) => i % 2 === 0)
+    readonly property var groupedRight: root.grouped.filter((g, i) => i % 2 === 1)
+
     // OOP-09: spacing goes around the whole combination and its "+"
     // separators, NOT between every character — the per-letter split made
     // long combinations overflow the key column. keyLabel() already joins
@@ -197,6 +210,65 @@ PanelWindow {
                 }
             }
 
+            // docs/TODO.md: "the cheathsheet shell should have 2 columns."
+            // One group's worth of rendering (context header + hairline +
+            // its own Repeater of bind rows), shared by both side-by-side
+            // Repeaters below via root.groupedLeft/groupedRight — `width:
+            // parent.width` (not a specific named Column, unlike this
+            // delegate's own PRE-two-column shape) so the same Component
+            // works correctly regardless of which of the two Columns
+            // instantiates it.
+            Component {
+                id: groupBlock
+
+                Column {
+                    id: groupCol
+                    required property var modelData
+                    width: parent.width
+                    spacing: fadeRoot.chWidth * Config.Appearance.space2
+
+                    // batch H: the context header + a hairline, in
+                    // the same grammar the settings panel uses.
+                    Widgets.StyledText {
+                        topPadding: fadeRoot.chWidth * Config.Appearance.space1
+                        kind: "label"
+                        sizeStep: 0
+                        mono: true
+                        text: String(groupCol.modelData.context).toUpperCase()
+                    }
+                    Widgets.Separator { width: parent.width }
+
+                    Repeater {
+                        model: groupCol.modelData.binds
+
+                        Row {
+                            required property var modelData
+                            width: groupCol.width
+                            spacing: fadeRoot.chWidth * Config.Appearance.space3
+                            readonly property real descW: Math.max(0,
+                                width - fadeRoot.keyColW - arrowText.implicitWidth - spacing * 2)
+
+                            Widgets.StyledText {
+                                width: fadeRoot.keyColW
+                                mono: true
+                                text: root.keyChips(modelData)
+                            }
+                            Widgets.StyledText {
+                                id: arrowText
+                                mono: true
+                                kind: "label"
+                                text: "→"
+                            }
+                            Widgets.StyledText {
+                                width: parent.descW
+                                text: Services.Keybinds.describe(modelData)
+                                elide: Text.ElideRight
+                            }
+                        }
+                    }
+                }
+            }
+
             Flickable {
                 anchors.left: parent.left
                 anchors.right: parent.right
@@ -204,65 +276,40 @@ PanelWindow {
                 anchors.topMargin: fadeRoot.gap
                 anchors.bottom: parent.bottom
                 contentWidth: width
-                contentHeight: column.implicitHeight
+                // Row's own implicitHeight is the taller of its two
+                // children (standard Qt Quick Row behaviour, not
+                // something this project defines) — exactly the extent
+                // the shorter column's own trailing whitespace needs to
+                // match, so nothing here has to compare the two heights
+                // itself.
+                contentHeight: columnsRow.implicitHeight
                 clip: true
 
-                Column {
-                    id: column
+                Row {
+                    id: columnsRow
                     width: parent.width
-                    // OOP-13: more air between rows (user: "spacing should
-                    // be better").
-                    spacing: fadeRoot.chWidth * Config.Appearance.space2
+                    // Wider than the OOP-13 inter-row spacing (reused
+                    // below, inside each column) — a visibly distinct
+                    // gutter between the two columns themselves, not just
+                    // another row gap.
+                    spacing: fadeRoot.chWidth * Config.Appearance.space3
 
-                    Repeater {
-                        model: root.grouped
+                    Column {
+                        id: leftColumn
+                        width: (columnsRow.width - columnsRow.spacing) / 2
+                        // OOP-13: more air between rows (user: "spacing should
+                        // be better").
+                        spacing: fadeRoot.chWidth * Config.Appearance.space2
 
-                        Column {
-                            id: groupCol
-                            required property var modelData
-                            width: column.width
-                            spacing: fadeRoot.chWidth * Config.Appearance.space2
+                        Repeater { model: root.groupedLeft; delegate: groupBlock }
+                    }
 
-                            // batch H: the context header + a hairline, in
-                            // the same grammar the settings panel uses.
-                            Widgets.StyledText {
-                                topPadding: fadeRoot.chWidth * Config.Appearance.space1
-                                kind: "label"
-                                sizeStep: 0
-                                mono: true
-                                text: String(groupCol.modelData.context).toUpperCase()
-                            }
-                            Widgets.Separator { width: parent.width }
+                    Column {
+                        id: rightColumn
+                        width: (columnsRow.width - columnsRow.spacing) / 2
+                        spacing: fadeRoot.chWidth * Config.Appearance.space2
 
-                            Repeater {
-                                model: groupCol.modelData.binds
-
-                                Row {
-                                    required property var modelData
-                                    width: groupCol.width
-                                    spacing: fadeRoot.chWidth * Config.Appearance.space3
-                                    readonly property real descW: Math.max(0,
-                                        width - fadeRoot.keyColW - arrowText.implicitWidth - spacing * 2)
-
-                                    Widgets.StyledText {
-                                        width: fadeRoot.keyColW
-                                        mono: true
-                                        text: root.keyChips(modelData)
-                                    }
-                                    Widgets.StyledText {
-                                        id: arrowText
-                                        mono: true
-                                        kind: "label"
-                                        text: "→"
-                                    }
-                                    Widgets.StyledText {
-                                        width: parent.descW
-                                        text: Services.Keybinds.describe(modelData)
-                                        elide: Text.ElideRight
-                                    }
-                                }
-                            }
-                        }
+                        Repeater { model: root.groupedRight; delegate: groupBlock }
                     }
                 }
             }
