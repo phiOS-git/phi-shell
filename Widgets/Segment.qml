@@ -35,6 +35,15 @@ Item {
     // positioned; every existing glyph/label-only consumer is unaffected
     // since this defaults to null.
     property Component iconDelegate: null
+    // The label-side mirror of `iconDelegate` above: a plain font-symbol /
+    // label-string cannot express rich label content either (docs/TODO.md,
+    // "the clock in the status bar should change like a flip clock").
+    // A caller that needs one sets `labelDelegate` instead of (or alongside,
+    // when labelFirst) `label`: Bar/modules/Clock.qml renders its HH:MM as
+    // four Widgets.FlipDigit cells through this slot. Same interaction as
+    // the icon side — the loaded item positions where the StyledText label
+    // would, and nothing here pushes values into it beyond its own size.
+    property Component labelDelegate: null
     property string tone: "" // "" | "error" | "warn" | "success" | "info" — opt-in, §8.6
     property bool active: false
     property bool loading: false
@@ -265,10 +274,17 @@ Item {
         // button box sizes differ by an odd number of pixels.
         id: layout
         readonly property bool _iconShown: iconGlyph.visible || customIcon.active
+        readonly property bool _labelShown: labelText.visible || customLabel.active
+        readonly property real _labelWidth: customLabel.active
+            ? customLabel.implicitWidth
+            : (labelText.visible ? labelText.implicitWidth : 0)
+        readonly property real _labelHeight: customLabel.active
+            ? customLabel.implicitHeight
+            : (labelText.visible ? labelText.implicitHeight : 0)
         implicitWidth: (iconGlyph.visible ? iconGlyph.implicitWidth : (customIcon.active ? customIcon.implicitWidth : 0))
-            + (_iconShown && labelText.visible ? root.gap : 0)
-            + (labelText.visible ? labelText.implicitWidth : 0)
-        implicitHeight: Math.max(iconGlyph.visible ? iconGlyph.implicitHeight : (customIcon.active ? customIcon.implicitHeight : 0), labelText.visible ? labelText.implicitHeight : 0)
+            + (_iconShown && _labelShown ? root.gap : 0)
+            + _labelWidth
+        implicitHeight: Math.max(iconGlyph.visible ? iconGlyph.implicitHeight : (customIcon.active ? customIcon.implicitHeight : 0), _labelHeight)
         width: implicitWidth
         height: implicitHeight
         x: Math.round((parent.width - width) / 2)
@@ -280,8 +296,8 @@ Item {
             glyph: root.glyph
             sizeStep: root.sizeStep
             color: root.contentColor
-            anchors.left: root.labelFirst && labelText.visible ? labelText.right : parent.left
-            anchors.leftMargin: root.labelFirst && labelText.visible ? root.gap : 0
+            anchors.left: root.labelFirst && layout._labelShown ? (customLabel.active ? customLabel.right : labelText.right) : parent.left
+            anchors.leftMargin: root.labelFirst && layout._labelShown ? root.gap : 0
             anchors.verticalCenter: parent.verticalCenter
         }
 
@@ -301,8 +317,26 @@ Item {
             // setImplicitSize(getImplicitWidth(), getImplicitHeight()) —
             // not assumed). A QML binding here would fight that internal
             // C++ write instead of cooperating with it.
-            anchors.left: root.labelFirst && labelText.visible ? labelText.right : parent.left
-            anchors.leftMargin: root.labelFirst && labelText.visible ? root.gap : 0
+            anchors.left: root.labelFirst && layout._labelShown ? (customLabel.active ? customLabel.right : labelText.right) : parent.left
+            anchors.leftMargin: root.labelFirst && layout._labelShown ? root.gap : 0
+            anchors.verticalCenter: parent.verticalCenter
+        }
+
+        // The label-side mirror of `customIcon` above. A caller that sets
+        // `labelDelegate` owns the whole label slot; the delegate binds
+        // against the enclosing Segment id too (Clock.qml's FlipDigit cells
+        // read `root.sizeStep` / `root.contentColor` out of the file scope).
+        Loader {
+            id: customLabel
+            active: root.labelDelegate !== null
+            visible: active
+            sourceComponent: root.labelDelegate
+            anchors.left: root.labelFirst
+                ? parent.left
+                : (layout._iconShown ? (iconGlyph.visible ? iconGlyph.right : customIcon.right) : parent.left)
+            anchors.leftMargin: root.labelFirst
+                ? 0
+                : (layout._iconShown ? root.gap : 0)
             anchors.verticalCenter: parent.verticalCenter
         }
 
