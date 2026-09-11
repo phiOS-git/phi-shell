@@ -91,10 +91,26 @@ PanelWindow {
                     sizeStep: 3
                     text: Qt.formatDateTime(clockTimer.now, "dddd d MMMM yyyy")
                 }
-                Widgets.StyledText {
-                    mono: true
-                    sizeStep: 4
-                    text: Qt.formatDateTime(clockTimer.now, "HH:mm:ss")
+
+                // Follow-up (user, 2026-09-11): "the calendar overlay...
+                // should have time animating like a flip clock" — six
+                // Widgets.FlipDigit cells (H H : m m : s s), each flipping
+                // independently only when the character it shows actually
+                // changes; the colons are plain static text, they never
+                // change so there's nothing to animate.
+                Row {
+                    readonly property string hh: Qt.formatDateTime(clockTimer.now, "HH")
+                    readonly property string mm: Qt.formatDateTime(clockTimer.now, "mm")
+                    readonly property string ss: Qt.formatDateTime(clockTimer.now, "ss")
+
+                    Widgets.FlipDigit { sizeStep: 4; value: parent.hh.charAt(0) }
+                    Widgets.FlipDigit { sizeStep: 4; value: parent.hh.charAt(1) }
+                    Widgets.StyledText { mono: true; sizeStep: 4; text: ":" }
+                    Widgets.FlipDigit { sizeStep: 4; value: parent.mm.charAt(0) }
+                    Widgets.FlipDigit { sizeStep: 4; value: parent.mm.charAt(1) }
+                    Widgets.StyledText { mono: true; sizeStep: 4; text: ":" }
+                    Widgets.FlipDigit { sizeStep: 4; value: parent.ss.charAt(0) }
+                    Widgets.FlipDigit { sizeStep: 4; value: parent.ss.charAt(1) }
                 }
                 Widgets.Separator { width: parent.width }
                 Widgets.StyledText {
