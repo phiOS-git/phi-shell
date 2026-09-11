@@ -186,10 +186,10 @@ PanelWindow {
             const geometry = Math.round(root.screen.x + selectionRect.x) + ","
                 + Math.round(root.screen.y + selectionRect.y) + " "
                 + Math.round(selectionRect.width) + "x" + Math.round(selectionRect.height)
+            // Evaluated as a plain JS argument here, before _captureGeometry
+            // hides this surface below (root.mode is read NOW, by value —
+            // the function body only sees "idle" afterwards).
             root._captureGeometry(geometry, root.mode)
-            selectionRect.width = 0
-            selectionRect.height = 0
-            root.mode = "idle"
         }
 
         Rectangle {
@@ -238,8 +238,57 @@ PanelWindow {
     }
 
     // --- Capture --------------------------------------------------------
+    //
+    // Every capture path funnels through _prepareCapture: grim (or
+    // wf-recorder, unaffected — it never shows a selection overlay) reads
+    // whatever the compositor currently has composited, and this surface's
+    // OWN UI — the drag-select rectangle, or a leftover OCR/QR result panel
+    // from a previous capture the user never dismissed — is part of that
+    // composited output until the layer surface is actually unmapped. This
+    // is exactly the bug this file was shipping: `_captureGeometry` used to
+    // spawn grim BEFORE even writing `root.mode = "idle"`, so the pink
+    // (Config.Appearance.accent) selection rectangle was captured into
+    // every single area screenshot, unconditionally. Setting the
+    // hide-triggering properties is necessary but not sufficient — Qt Quick
+    // still has to render a frame without them and the compositor still has
+    // to composite and present it, neither of which happens synchronously
+    // with the property write — so `_prepareCapture` also waits one
+    // Category-B state-transition duration (the same token this repo's
+    // panels already use for a hide/show transition, Config/Appearance's
+    // motionBDuration — a real design token, not a bespoke literal, and
+    // §6.5 already spans exactly this class of event) before actually
+    // invoking the capture. That interval is a REASONED DEFAULT, not
+    // hardware-verified: if a capture is still occasionally tinted, this is
+    // the one thing to try raising.
+    function _prepareCapture(fn) {
+        root.mode = "idle"
+        // A stale, undismissed OCR/QR result panel is part of this
+        // surface's own visible UI too (see root.visible's own binding) —
+        // discarding unread text here is deliberate: leaving it up would
+        // let it leak into the NEW capture, the same bug in a second shape.
+        root.resultText = ""
+        selectionRect.width = 0
+        selectionRect.height = 0
+        captureSettle.pending = fn
+        captureSettle.restart()
+    }
+
+    Timer {
+        id: captureSettle
+        interval: Config.Appearance.motionBDuration
+        property var pending: null
+        onTriggered: {
+            const fn = captureSettle.pending
+            captureSettle.pending = null
+            if (fn) fn()
+        }
+    }
 
     function _captureFullscreen() {
+        root._prepareCapture(() => root._doCaptureFullscreen())
+    }
+
+    function _doCaptureFullscreen() {
         const path = root._picturesDir() + "/" + root._timestampName("png")
         captureComponent.createObject(root, {
             captureArgs: ["-o", root.screen.name, path],
@@ -247,7 +296,14 @@ PanelWindow {
         })
     }
 
+    // forMode is captured by value at each call site before this hides
+    // root.mode — see onReleased's own comment and windowQueryComponent
+    // below, the two callers.
     function _captureGeometry(geometry, forMode) {
+        root._prepareCapture(() => root._doCaptureGeometry(geometry, forMode))
+    }
+
+    function _doCaptureGeometry(geometry, forMode) {
         const path = root._picturesDir() + "/" + root._timestampName("png")
         const purpose = forMode === "select-ocr" ? "ocr" : forMode === "select-qr" ? "qr" : "save"
         captureComponent.createObject(root, {
