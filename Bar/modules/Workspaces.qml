@@ -25,7 +25,9 @@ import "../glyphs.js" as Glyphs
 // per-monitor current from the rest either way.
 //
 // ADR 134 (reversing ADR 122): btop and Steam live on plain numbered
-// workspaces (10 and 9, pinned by hyprland.lua). This module renders those
+// workspaces (12 and 11, pinned by hyprland.lua — moved up from 10/9 per
+// docs/TODO.md, "make steam workspace 11 and btop workspace 12", so 9/10
+// are ordinary workspaces again). This module renders those
 // two as a pinned-app glyph instead of their digit — the workspace model is
 // sorted by id, so the two high ids sort to the right end of the strip on
 // their own, and clicking one switches to it like any other workspace. The
