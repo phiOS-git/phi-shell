@@ -39,17 +39,37 @@ Item {
     readonly property real chWidth: chMetrics.width
     readonly property real gap: chWidth * Config.Appearance.space1
 
-    Component.onCompleted: {
+    // Panels/Sidebar.qml's Loader keeps this item alive across a plain
+    // show/hide of the panel — only switching away from the Clipboard tab
+    // and back destroys and recreates it (a new sourceComponent). So
+    // Component.onCompleted alone only resets state the first time this
+    // tab is ever opened; every later reopen of the panel while parked on
+    // this tab left the old search text, selection and scroll position in
+    // place. docs/TODO.md: "clipboard should reset the current selection
+    // every time it's opened, starting back from the top." — reset() below
+    // runs on creation AND whenever Services.NotificationPanel.shown
+    // becomes true.
+    function reset() {
         Services.Clipboard.refresh()
         root.query = ""
         field.text = ""
         root.highlightedIndex = 0
+        list.contentY = 0
         // Deferred: the window's Wayland keyboard grab (Services.LayerFocus
         // on Panels/Sidebar) and this component's creation race when the
         // panel opens straight onto this tab — callLater runs after both
         // settle, the same reason Launcher focuses its field from an event
         // rather than inline.
         Qt.callLater(function() { field.forceActiveFocus() })
+    }
+
+    Component.onCompleted: root.reset()
+
+    Connections {
+        target: Services.NotificationPanel
+        function onShownChanged() {
+            if (Services.NotificationPanel.shown) root.reset()
+        }
     }
 
     function matches(e) {
@@ -147,6 +167,7 @@ Item {
     }
 
     Flickable {
+        id: list
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: searchSep.bottom
