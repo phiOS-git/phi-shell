@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.Config as Config
+import qs.Services as Services
 
 // phiOS — Services/Agent (S-75). The ONE identifiable client point for the
 // AI agent panel (ADR 098): every call to the running A1 opencode service
@@ -35,6 +36,7 @@ Singleton {
 
     // --- surfaced state -----------------------------------------------------
     property bool available: false          // A1 health OK (service-unavailable indication)
+    property bool healthChecked: false      // false until the first health result lands — "unknown", not "down"
     property bool processing: false         // a turn is in flight — drives the bar Φ segment (Role B)
     property bool switching: false          // project switch in progress — panel shows a loading state
     property string activeProject: ""
@@ -83,9 +85,42 @@ Singleton {
     Process {
         id: healthProc
         command: ["curl", "-sf", "-m", "3", root.base + "/global/health"]
-        onExited: (code) => { root.available = (code === 0); healthProc.running = false }
+        onExited: (code) => { root.available = (code === 0); root.healthChecked = true; healthProc.running = false }
     }
     function refreshHealth() { if (!healthProc.running) healthProc.running = true }
+
+    // docs/TODO.md: "phi agent should run automatically as the panel is
+    // opened for the first time (or on startup). It should not waste
+    // resources when not used." Lazy, not eager: nothing here starts the
+    // unit at shell startup (Component.onCompleted above only reads
+    // health, never activates) — only actually opening the panel does,
+    // and only when the service isn't already running. This fires on
+    // EVERY open where the service is down, not literally just the
+    // first — which also means it doubles as recovery if the service
+    // ever dies while the panel stays closed, not only a first-run
+    // convenience. Once `available` is true, later opens simply skip
+    // this (no retry loop, no repeated `systemctl start` calls); the
+    // existing "Start service" button in Panels/tabs/agent/Chat.qml stays
+    // as a manual fallback for whatever this doesn't catch.
+    //
+    // Gated on `healthChecked`, not just `!available`: `available`
+    // defaults to false BEFORE the first health check ever lands, so
+    // without this gate, a panel opened in the brief window right after
+    // shell startup — before Component.onCompleted's first refreshHealth()
+    // call returns — would read "down" and fire an unnecessary
+    // `systemctl start` against a service that may already be running.
+    // Given docs/TODO.md's own still-open, unexplained "ai agent a1
+    // always fails starting" report (second-start address-in-use
+    // symptom), adding a code path that could issue a redundant start
+    // under a timing condition is worth avoiding even though a systemd
+    // `start` on an already-running unit is normally idempotent.
+    Connections {
+        target: Services.AgentPanel
+        function onShownChanged() {
+            if (Services.AgentPanel.shown && root.healthChecked && !root.available)
+                root.setActivated(true)
+        }
+    }
 
     // --- project / personalities (via `phi agent`, not opencode) ---------
 
