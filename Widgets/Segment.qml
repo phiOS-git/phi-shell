@@ -331,6 +331,26 @@ Item {
     TapHandler {
         id: tapHandler
         enabled: root.enabled && !root.loading
+        // docs/TODO.md: "the status bar icon don't always work with
+        // touchscreen: sometimes the highlight effect is triggered but
+        // not the click." The hover and tap areas were never actually
+        // mismatched (both handlers already cover this Item's full
+        // bounds, no explicit sizing on either) — the real cause is
+        // TapHandler's own default `gesturePolicy`, `DragThreshold`
+        // (confirmed against Qt's own qquicktaphandler_p.h and docs):
+        // it cancels the tap — `onTapped` never fires — if the pointer
+        // moves more than ~10px between press and release, which a
+        // finger on a touchscreen crosses far more easily than a mouse
+        // does. `pressed` alone already drives the full inverted "active"
+        // visual (WidgetStates.resolve: `active || pressed`), so the
+        // highlight fires the instant a finger lands and stays lit for
+        // the whole gesture — leaving exactly the reported symptom once
+        // a cancelled tap drops back to no-op on release.
+        // `ReleaseWithinBounds` only cancels if the release itself lands
+        // outside this Item — in-between jitter no longer matters, which
+        // is Qt's own documented recommendation for touch-friendly tap
+        // recognition.
+        gesturePolicy: TapHandler.ReleaseWithinBounds
         onTapped: root.activated()
     }
 
