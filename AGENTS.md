@@ -14,6 +14,12 @@ official Arch packages; the user owns releases, an agent only tags; no
 secrets in a public repo; design tokens are the only source of colour,
 font and size.** Not repeated here.
 
+When your work matches an entry in the workspace's `docs/TODO.md`, claim it
+with `[taken]` and report the result in `docs/VERIFICATION.md` — see *The
+TODO / VERIFICATION loop* in the workspace `AGENTS.md`. A shell change needs
+a screenshot from the user, so its test steps must say exactly what to look
+at and what changed.
+
 ## Running it
 
 Clone to exactly `~/.config/quickshell/phi` (Quickshell keys config by
