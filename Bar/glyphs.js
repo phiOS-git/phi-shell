@@ -36,5 +36,8 @@ var gpu             = _c(0xF08AE)   // nf-md-expansion_card
 var bell            = _c(0xF009A)   // nf-md-bell
 var bellOff         = _c(0xF009B)   // nf-md-bell_off
 var monitor         = _c(0xF0A07)   // nf-md-monitor_dashboard (btop workspace icon, ADR 134)
-var steam           = _c(0xF03F7)   // nf-md-steam (Steam workspace icon, ADR 134)
+var steam           = _c(0xF04D3)   // nf-md-steam (Steam workspace icon, ADR 134) — was 0xF03F7,
+                                     // which is actually nf-md-phone_incoming (docs/TODO.md:
+                                     // "steam icon in the status bar is using a phone glyph"),
+                                     // confirmed against nerd-fonts' own glyphnames.json
 var console         = _c(0xF0295)   // nf-md-console (scratchpad toggle icon)
