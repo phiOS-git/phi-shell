@@ -155,53 +155,74 @@ Item {
 
     // Follow-up (user, 2026-09-11): "change the hover effect, instead of
     // changing the button borders and background, 'highlight' the text...
-    // Do that with a transition left to right (quick)." Isle-only (the
-    // status bar) — a panel Segment (a settings row, a sidebar tab) keeps
-    // its existing flat hover fill untouched, same scoping decision as
-    // `labelFirst` above.
+    // Do that with a transition (quick)." Isle-only (the status bar) — a
+    // panel Segment (a settings row, a sidebar tab) keeps its existing
+    // flat hover fill untouched, same scoping decision as `labelFirst`
+    // above. Direction changed to bottom-to-top per a second follow-up
+    // (user, 2026-09-12) — was left-to-right (width growth, anchored
+    // left) originally, now height growth anchored to the bottom.
     //
-    // `hoverAmount` is driven off `resolvedState`, not the raw `hovered`
-    // flag: resolve() already picks exactly one state by precedence
-    // (active/pressed beats focus beats hover), so a button that is BOTH
-    // keyboard-focused and mouse-hovered should show its focus ring, not
-    // a hover sweep fighting it for the same space — the same precedence
-    // `stateColors` itself already respects.
+    // `_sweepOn` covers BOTH "hover" and "active" (not just hover) —
+    // second follow-up (user, 2026-09-12): clicking a hovered button
+    // flickered, because the sweep (already at full coverage from the
+    // hover) was shrinking back out at the exact moment the OLD active
+    // case's own `bg` was independently fading in via the base Rectangle
+    // below — two different rectangles, two different current values,
+    // neither at full coverage for a moment in the middle of that
+    // crossfade. Since hover and (non-accent) active render pixel-
+    // identical already (WidgetStates.js's isle `hover`/`active` cases
+    // share the same colorOpposite/colorMain pair — confirmed with the
+    // user this identical-strength look is intentional), the fix is to
+    // have them share the SAME rectangle/mechanism instead of two: a
+    // hover-then-click now has nothing to visually settle, because the
+    // sweep was already fully in and just stays there. Excludes
+    // `accentWhenActive`'s active state (PhiAgent) — that path already
+    // renders via its own accent colours on the base Rectangle below,
+    // untouched, so it must not also get a colorOpposite sweep on top.
+    //
+    // Driven off `resolvedState`, not the raw `hovered` flag: resolve()
+    // already picks exactly one state by precedence (active/pressed beats
+    // focus beats hover), so a button that is BOTH keyboard-focused and
+    // mouse-hovered shows its focus ring, not a hover sweep fighting it
+    // for the same space — the same precedence `stateColors` itself
+    // already respects.
     //
     // Deliberately NOT a per-pixel masked reveal of the icon/label
     // content (i.e. not a duplicate icon/text layer clipped to the sweep
-    // width, the way SunMoonIcon/BatteryIcon/GpuIcon's own fills work):
+    // extent, the way SunMoonIcon/BatteryIcon/GpuIcon's own fills work):
     // several of this bar's icons are procedural Canvas drawings, and
     // rendering every `iconDelegate` a second time just to clip it would
     // double each icon's Canvas and its running animations (a real cost —
     // BatteryIcon's charge pulse, WifiIcon's search pulse etc. are all
-    // infinite loops) for a hover micro-interaction. Instead: this
-    // Rectangle alone sweeps left-to-right for the BACKGROUND, and the
-    // foreground colour (`contentColor`, which every icon/label already
-    // reads) just fades to the inverted pair on the same timer via the
-    // Behaviors those already have — `StyledText`/`StyledIcon` both
-    // already carry `Behavior on color`, so the label fades smoothly; a
-    // custom Canvas `iconDelegate` has no such Behavior on its own
-    // `iconColor` (that property is fed by a binding at the call site,
-    // not an imperative assignment — the same binding-vs-Behavior gap
-    // this session hit and documented repeatedly elsewhere, e.g.
-    // Brightness.qml's header), so those icons snap colour instead of
-    // fading. Accepted: the ask was for a QUICK transition, and the
-    // dominant visual (the sweep itself, plus the label) still animates.
+    // infinite loops) for a hover/active micro-interaction. Instead: this
+    // Rectangle alone sweeps for the BACKGROUND, and the foreground
+    // colour (`contentColor`, which every icon/label already reads) just
+    // fades to the inverted pair on the same timer via the Behaviors
+    // those already have — `StyledText`/`StyledIcon` both already carry
+    // `Behavior on color`, so the label fades smoothly; a custom Canvas
+    // `iconDelegate` has no such Behavior on its own `iconColor` (that
+    // property is fed by a binding at the call site, not an imperative
+    // assignment — the same binding-vs-Behavior gap this session hit and
+    // documented repeatedly elsewhere, e.g. Brightness.qml's header), so
+    // those icons snap colour instead of fading.
+    readonly property bool _sweepOn: root.ambient === "isle"
+        && (root.resolvedState === "hover"
+            || (root.resolvedState === "active" && !root.accentWhenActive))
     property real hoverAmount: 0
     Behavior on hoverAmount {
         NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
     }
-    onResolvedStateChanged: root.hoverAmount = (root.resolvedState === "hover") ? 1 : 0
-    Component.onCompleted: root.hoverAmount = (root.resolvedState === "hover") ? 1 : 0
+    onResolvedStateChanged: root.hoverAmount = root._sweepOn ? 1 : 0
+    Component.onCompleted: root.hoverAmount = root._sweepOn ? 1 : 0
 
     Rectangle {
         anchors.left: parent.left
-        anchors.top: parent.top
+        anchors.right: parent.right
         anchors.bottom: parent.bottom
-        width: root.ambient === "isle" ? parent.width * root.hoverAmount : 0
+        height: root.ambient === "isle" ? parent.height * root.hoverAmount : 0
         radius: Config.Appearance.radiusBase
         color: Config.Appearance.colorOpposite
-        visible: root.ambient === "isle" && width > 0.5
+        visible: root.ambient === "isle" && height > 0.5
     }
 
     // Follow-up (user, 2026-09-11): "invert the order, text before icon" —

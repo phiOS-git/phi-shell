@@ -75,7 +75,24 @@ function surfaceColors(appearance, resolvedState, ambient) {
     if (ambient === "isle") {
         switch (resolvedState) {
         case "active":
-            return { bg: appearance.colorOpposite, fg: appearance.colorMain,
+            // Follow-up (user, 2026-09-12): the hover→active transition
+            // flickered — for one frame the hover sweep (Segment.qml's own
+            // Rectangle, already at full coverage) was visibly shrinking
+            // back out at the same time this case's `bg` was independently
+            // fading IN via the base Rectangle's own Behavior, so neither
+            // rectangle was at full colorOpposite coverage for a moment in
+            // the middle of the crossfade — a torn/dimmer seam. `bg` goes
+            // transparent here too, same as hover: the base Rectangle's
+            // own fade no longer competes with the sweep at all — the
+            // sweep alone now carries the fill for BOTH hover and
+            // "normal" (non-accent) active, so a hover-then-click never
+            // has anything to visually settle, since the sweep was
+            // already at full coverage and just stays there. `border`
+            // stays colorOpposite: PhiAgent's accentWhenActive path never
+            // reaches this case at all (Segment.qml's own `stateColors`
+            // short-circuits to its accent colours before calling this
+            // function), so it is unaffected either way.
+            return { bg: "transparent", fg: appearance.colorMain,
                      border: appearance.colorOpposite }
         case "invalid":
             return { bg: appearance.barButtonBackground, fg: appearance.error,
