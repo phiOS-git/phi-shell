@@ -36,6 +36,21 @@ Singleton {
 
     property real _lastRx: -1
     property real _lastTx: -1
+    // docs/TODO.md: "the speedtest feature ... always show 1-5 kb/s" — the
+    // rate formula divided the byte delta by a hardcoded 1000 (ms),
+    // trusting the poll Timer landed exactly 1.000s after the previous
+    // sample. It never actually measures that: `pingProc` below (up to a
+    // full second on packet loss, and DNS resolution for the
+    // "one.one.one.one" fallback is not bounded by `-W1` at all) runs
+    // every tick alongside `devProc`, and Services/Tailscale.qml's own
+    // documented Process-lifecycle landmine (referenced in this file's own
+    // header) means a slow or skipped tick is a real, not hypothetical,
+    // risk here. Any tick that actually lands late spans MORE real time
+    // than the 1000 this divided by, so the reported rate is too LOW by
+    // exactly that ratio — silently, with no way to tell from the number
+    // alone. `_lastSampleT` (Date.now()) makes the elapsed time measured
+    // instead of assumed.
+    property real _lastSampleT: -1
 
     function watch() { root.watchers++ }
     function unwatch() { root.watchers = Math.max(0, root.watchers - 1) }
@@ -62,6 +77,7 @@ Singleton {
     onActiveChanged: if (!root.active) {
         root._lastRx = -1
         root._lastTx = -1
+        root._lastSampleT = -1
     }
 
     // Resolve the interface + gateway of the default route, once.
@@ -101,14 +117,24 @@ Singleton {
                     var rx = parseFloat(parts[1])
                     var tx = parseFloat(parts[9])
                     if (isNaN(rx) || isNaN(tx)) return
-                    if (root._lastRx >= 0) {
-                        root.downKbps = Math.max(0, (rx - root._lastRx) * 8 / 1000)
-                        root.upKbps = Math.max(0, (tx - root._lastTx) * 8 / 1000)
+                    var now = Date.now()
+                    if (root._lastRx >= 0 && root._lastSampleT >= 0) {
+                        // Elapsed since the LAST SUCCESSFUL sample, not the
+                        // nominal 1000ms poll interval — a late or skipped
+                        // tick used to silently under-report the rate by
+                        // whatever multiple the real gap exceeded 1s by.
+                        // Floored at 0.1s so two samples landing back to
+                        // back (near-zero elapsed time) can't spike the
+                        // rate toward infinity.
+                        var elapsedS = Math.max(0.1, (now - root._lastSampleT) / 1000)
+                        root.downKbps = Math.max(0, (rx - root._lastRx) * 8 / 1000 / elapsedS)
+                        root.upKbps = Math.max(0, (tx - root._lastTx) * 8 / 1000 / elapsedS)
                         root.downSamples = root._push(root.downSamples, root.downKbps)
                         root.upSamples = root._push(root.upSamples, root.upKbps)
                     }
                     root._lastRx = rx
                     root._lastTx = tx
+                    root._lastSampleT = now
                     return
                 }
             }
