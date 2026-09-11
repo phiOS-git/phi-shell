@@ -153,6 +153,57 @@ Item {
         }
     }
 
+    // Follow-up (user, 2026-09-11): "change the hover effect, instead of
+    // changing the button borders and background, 'highlight' the text...
+    // Do that with a transition left to right (quick)." Isle-only (the
+    // status bar) — a panel Segment (a settings row, a sidebar tab) keeps
+    // its existing flat hover fill untouched, same scoping decision as
+    // `labelFirst` above.
+    //
+    // `hoverAmount` is driven off `resolvedState`, not the raw `hovered`
+    // flag: resolve() already picks exactly one state by precedence
+    // (active/pressed beats focus beats hover), so a button that is BOTH
+    // keyboard-focused and mouse-hovered should show its focus ring, not
+    // a hover sweep fighting it for the same space — the same precedence
+    // `stateColors` itself already respects.
+    //
+    // Deliberately NOT a per-pixel masked reveal of the icon/label
+    // content (i.e. not a duplicate icon/text layer clipped to the sweep
+    // width, the way SunMoonIcon/BatteryIcon/GpuIcon's own fills work):
+    // several of this bar's icons are procedural Canvas drawings, and
+    // rendering every `iconDelegate` a second time just to clip it would
+    // double each icon's Canvas and its running animations (a real cost —
+    // BatteryIcon's charge pulse, WifiIcon's search pulse etc. are all
+    // infinite loops) for a hover micro-interaction. Instead: this
+    // Rectangle alone sweeps left-to-right for the BACKGROUND, and the
+    // foreground colour (`contentColor`, which every icon/label already
+    // reads) just fades to the inverted pair on the same timer via the
+    // Behaviors those already have — `StyledText`/`StyledIcon` both
+    // already carry `Behavior on color`, so the label fades smoothly; a
+    // custom Canvas `iconDelegate` has no such Behavior on its own
+    // `iconColor` (that property is fed by a binding at the call site,
+    // not an imperative assignment — the same binding-vs-Behavior gap
+    // this session hit and documented repeatedly elsewhere, e.g.
+    // Brightness.qml's header), so those icons snap colour instead of
+    // fading. Accepted: the ask was for a QUICK transition, and the
+    // dominant visual (the sweep itself, plus the label) still animates.
+    property real hoverAmount: 0
+    Behavior on hoverAmount {
+        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+    }
+    onResolvedStateChanged: root.hoverAmount = (root.resolvedState === "hover") ? 1 : 0
+    Component.onCompleted: root.hoverAmount = (root.resolvedState === "hover") ? 1 : 0
+
+    Rectangle {
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: root.ambient === "isle" ? parent.width * root.hoverAmount : 0
+        radius: Config.Appearance.radiusBase
+        color: Config.Appearance.colorOpposite
+        visible: root.ambient === "isle" && width > 0.5
+    }
+
     // Follow-up (user, 2026-09-11): "invert the order, text before icon" —
     // scoped to `ambient: "isle"` (the status bar) only, not every Segment
     // in the app (a panel Segment elsewhere — a settings row, a sidebar
