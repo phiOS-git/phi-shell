@@ -19,6 +19,11 @@ Item {
     readonly property var agent: Services.Agent
 
     signal openChat()
+    // docs/TODO.md ESC task: re-emits Widgets/TextField's `escaped()` from
+    // npInput/searchInput, and ProjectView's own re-emitted `blurred()`,
+    // so AgentPanel's fallback key handler can reclaim focus and make a
+    // second Escape close the panel — see AgentPanel.qml's keyScope.
+    signal blurred()
 
     property string selectedProject: ""
 
@@ -39,6 +44,7 @@ Item {
             projectName: root.selectedProject
             onBack: root.selectedProject = ""
             onStartChat: { root.agent.useProject(root.selectedProject); root.openChat() }
+            onBlurred: root.blurred()
         }
     }
 
@@ -81,6 +87,7 @@ Item {
                     width: parent.width - npCreate.implicitWidth - npCancel.implicitWidth - parent.spacing * 2
                     placeholder: "project name…"
                     invalid: text.length > 0 && !newProjectRow.valid(text)
+                    onEscaped: root.blurred()
                 }
                 Widgets.StyledButton {
                     id: npCreate; label: "Create"
@@ -99,6 +106,7 @@ Item {
                     width: parent.width
                     placeholder: "Search chats — title and content"
                     onEdited: searchDebounce.restart()
+                    onEscaped: root.blurred()
                 }
                 Timer { id: searchDebounce; interval: 220; onTriggered: root.agent.search(searchInput.text) }
 

@@ -20,6 +20,9 @@ Item {
 
     signal back()
     signal startChat()
+    // docs/TODO.md ESC task — re-emitted up to Dashboard, then AgentPanel's
+    // keyScope; see Widgets/TextField.qml's `escaped()`.
+    signal blurred()
 
     TextMetrics { id: ch; font.family: Config.Appearance.fontMono; font.pixelSize: Config.Appearance.fontSize1; text: "0" }
     readonly property real chWidth: ch.width
@@ -42,6 +45,7 @@ Item {
         sourceComponent: PersonalityEditor {
             preselect: root.meta.default_personality || ""
             onClosed: personalityEditor.active = false
+            onBlurred: root.blurred()
         }
     }
 
@@ -77,6 +81,7 @@ Item {
                 text: root.meta.description || ""
                 placeholder: "The main context description the agent uses."
                 onCommit: (v) => root.agent.setProjectDescription(root.projectName, v)
+                onBlurred: root.blurred()
             }
 
             // instructions
@@ -100,6 +105,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     mono: false
                     placeholder: "add an instruction…"
+                    onEscaped: root.blurred()
                 }
                 Widgets.StyledButton {
                     id: insAdd; label: "Add"
@@ -131,6 +137,7 @@ Item {
                     width: parent.width - matAdd.implicitWidth - parent.spacing
                     anchors.verticalCenter: parent.verticalCenter
                     placeholder: "/path/to/file to copy…"
+                    onEscaped: root.blurred()
                 }
                 Widgets.StyledButton {
                     id: matAdd; label: "Copy in"
@@ -162,6 +169,7 @@ Item {
                     width: parent.width - folderAdd.implicitWidth - parent.spacing
                     anchors.verticalCenter: parent.verticalCenter
                     placeholder: "/path/to/directory…"
+                    onEscaped: root.blurred()
                 }
                 Widgets.StyledButton {
                     id: folderAdd; label: "Add folder"
@@ -207,6 +215,12 @@ Item {
         property string text: ""
         property string placeholder: ""
         signal commit(string value)
+        // Inline components (the `component Name: Type {}` syntax) cannot
+        // see the enclosing document's ids, `root` included — this has to
+        // be re-emitted from the instantiation site below, not called
+        // directly, the same reason `et.text`/`et.commit` are used above
+        // instead of reaching into `root`.
+        signal blurred()
         spacing: root.tightGap
         Widgets.Panel {
             width: et.width
@@ -219,6 +233,7 @@ Item {
                 font.pixelSize: Config.Appearance.fontSize1
                 color: Config.Appearance.textPrimary
                 selectByMouse: true
+                Keys.onEscapePressed: { te.focus = false; et.blurred() }
                 Widgets.StyledText { anchors.fill: parent; kind: "label"; text: et.placeholder; visible: te.text.length === 0 }
             }
         }
