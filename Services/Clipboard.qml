@@ -52,6 +52,20 @@ Singleton {
     property var entries: []  // [{id, mime, timestamp, preview}], newest first, rebuilt from disk on refresh()
     property var pinnedIds: [] // array of id strings, persisted to pins.json
 
+    // docs/TODO.md: "add the clipboard icon to the status bar (with
+    // animation for when an element is added)". Bar/modules/Clipboard.qml
+    // is the one consumer. Deliberately NOT fired on every refresh():
+    // refresh() also runs on shell startup (ensureDirs.onExited) and every
+    // time Panels/tabs/Clipboard.qml's own tab becomes visible — neither
+    // is a new clipboard capture, and firing on those would flash the bar
+    // icon for no reason. Fired only from listProcess's own onExited
+    // below, and only when the new top-of-list id was not already
+    // anywhere in the previous entries list (see there for why "not
+    // already present" and not just "differs from the old top" — a
+    // deletion promoting an existing entry to position 0 must not count).
+    signal arrived(var entry)
+    property bool _everLoaded: false
+
     function isPinned(id) {
         return root.pinnedIds.indexOf(id) !== -1
     }
@@ -240,6 +254,18 @@ done
                     }
                 }).filter((e) => e.id && e.id.length > 0)
                 next.sort((a, b) => b.timestamp - a.timestamp)
+
+                // "not already present anywhere in the old list", not
+                // "differs from the old top" — see the `arrived` signal's
+                // own comment above for why: a deletion can promote an
+                // existing entry to position 0 without anything new
+                // having been captured, and that must not fire this.
+                if (root._everLoaded && next.length > 0) {
+                    const prevIds = root.entries.map((e) => e.id)
+                    if (prevIds.indexOf(next[0].id) === -1) root.arrived(next[0])
+                }
+                root._everLoaded = true
+
                 root.entries = next
             }
         }
