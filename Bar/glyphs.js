@@ -40,5 +40,11 @@ var steam           = _c(0xF04D3)   // nf-md-steam (Steam workspace icon, ADR 13
                                      // which is actually nf-md-phone_incoming (docs/TODO.md:
                                      // "steam icon in the status bar is using a phone glyph"),
                                      // confirmed against nerd-fonts' own glyphnames.json
-var console         = _c(0xF0295)   // nf-md-console (scratchpad toggle icon)
+var console         = _c(0xF018D)   // nf-md-console (scratchpad toggle icon) — was
+                                     // 0xF0295, which is actually nf-md-function
+                                     // (docs/TODO.md: "there is an icon 'f' in the
+                                     // status bar ... that does nothing" — same
+                                     // wrong-codepoint mistake as the steam glyph
+                                     // above, and the same fix: confirmed against
+                                     // nerd-fonts' own glyphnames.json)
 var clipboard       = _c(0xF0147)   // nf-md-clipboard
