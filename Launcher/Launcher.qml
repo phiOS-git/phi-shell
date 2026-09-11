@@ -683,6 +683,13 @@ PanelWindow {
                             spacing: root.chWidth * Config.Appearance.space2
                             Widgets.StyledButton {
                                 label: Services.PowerActions.title(confirmSubview.action)
+                                // Explicit per-button Return/Escape: StyledButton has no
+                                // keyboard handling of its own, so without this, tabbing
+                                // to Cancel and pressing Return would fall through to
+                                // confirmSubview's own onReturnPressed below and still
+                                // perform the destructive action.
+                                Keys.onReturnPressed: clicked()
+                                Keys.onEscapePressed: root.popView()
                                 onClicked: {
                                     Services.PowerActions.perform(confirmSubview.action)
                                     root.setShown(false)
@@ -690,6 +697,8 @@ PanelWindow {
                             }
                             Widgets.StyledButton {
                                 label: "Cancel"
+                                Keys.onReturnPressed: clicked()
+                                Keys.onEscapePressed: root.popView()
                                 onClicked: root.popView()
                             }
                         }
