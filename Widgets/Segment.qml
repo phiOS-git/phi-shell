@@ -26,6 +26,15 @@ Item {
 
     property string glyph: ""
     property string label: ""
+    // docs/TODO.md: "Apply SVG animations to icon when changing within
+    // states" (status-bar rework). `glyph` is a plain font-symbol
+    // character — it cannot express a custom animated icon. A caller that
+    // needs one sets `iconDelegate` instead (and leaves `glyph` empty):
+    // Bar/modules/Brightness.qml's sun/moon eclipse icon is the first
+    // consumer. See the `customIcon` Loader below for how it's sized and
+    // positioned; every existing glyph/label-only consumer is unaffected
+    // since this defaults to null.
+    property Component iconDelegate: null
     property string tone: "" // "" | "error" | "warn" | "success" | "info" — opt-in, §8.6
     property bool active: false
     property bool loading: false
@@ -151,10 +160,11 @@ Item {
         // horizontally to each other (icon left-edge, text left-of-icon.right).
         id: layout
         anchors.centerIn: parent
-        implicitWidth: (iconGlyph.visible ? iconGlyph.implicitWidth : 0)
-            + (iconGlyph.visible && labelText.visible ? root.gap : 0)
+        readonly property bool _iconShown: iconGlyph.visible || customIcon.active
+        implicitWidth: (iconGlyph.visible ? iconGlyph.implicitWidth : (customIcon.active ? customIcon.implicitWidth : 0))
+            + (_iconShown && labelText.visible ? root.gap : 0)
             + (labelText.visible ? labelText.implicitWidth : 0)
-        implicitHeight: Math.max(iconGlyph.visible ? iconGlyph.implicitHeight : 0, labelText.visible ? labelText.implicitHeight : 0)
+        implicitHeight: Math.max(iconGlyph.visible ? iconGlyph.implicitHeight : (customIcon.active ? customIcon.implicitHeight : 0), labelText.visible ? labelText.implicitHeight : 0)
 
         StyledIcon {
             id: iconGlyph
@@ -166,6 +176,26 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
         }
 
+        // The delegate binds its own properties declaratively against the
+        // enclosing file's own Segment id (e.g. `color: myIconRoot.
+        // contentColor`) rather than this Loader pushing them in via
+        // onLoaded — a typo in that binding is then a QML load error, not
+        // a silently-ignored no-op.
+        Loader {
+            id: customIcon
+            active: root.iconDelegate !== null
+            visible: active
+            sourceComponent: root.iconDelegate
+            // No explicit implicitWidth/implicitHeight binding: Loader
+            // already forwards the loaded item's implicit size on its own
+            // (confirmed against Qt's own qquickloader.cpp —
+            // setImplicitSize(getImplicitWidth(), getImplicitHeight()) —
+            // not assumed). A QML binding here would fight that internal
+            // C++ write instead of cooperating with it.
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+        }
+
         StyledText {
             id: labelText
             visible: root.label.length > 0
@@ -173,8 +203,8 @@ Item {
             mono: root.mono
             sizeStep: root.sizeStep
             color: root.contentColor
-            anchors.left: iconGlyph.visible ? iconGlyph.right : parent.left
-            anchors.leftMargin: iconGlyph.visible ? root.gap : 0
+            anchors.left: layout._iconShown ? (iconGlyph.visible ? iconGlyph.right : customIcon.right) : parent.left
+            anchors.leftMargin: layout._iconShown ? root.gap : 0
             anchors.verticalCenter: parent.verticalCenter
         }
     }
