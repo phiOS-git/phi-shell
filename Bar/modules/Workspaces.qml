@@ -62,24 +62,45 @@ Item {
     // numbers hyprland.lua pins btop and Steam to.
     property var iconMap: ({})
 
+    // { "<workspace id>": "<shell command>" } — an optional idempotent
+    // "make sure the pinned app is actually there" command, run (detached,
+    // via `sh -c`) every time that workspace's button is clicked, in
+    // addition to the plain workspace switch every button already does.
+    // docs/TODO.md: "if btop is closed in its workspace, the button just
+    // brakes ... should simply set the workspace 12 and open btop if it's
+    // not open" — persistent workspace 12 (hyprland.lua) keeps the button
+    // itself around even with btop closed, per the user's own design
+    // comment there ("its bar icon just switches to that workspace"), but
+    // nothing re-launched btop if the user had closed it mid-session; the
+    // click landed on an empty workspace with no way back short of a
+    // manual relaunch. `ensure` in workspace-icons.json is the exact same
+    // `pgrep -x btop >/dev/null || ...` guard hyprland.lua's own session-
+    // start hook already uses, just re-runnable from a click.
+    property var ensureMap: ({})
+
     FileView {
         id: iconsFile
         path: Qt.resolvedUrl("../workspace-icons.json")
         onLoaded: {
             try {
                 const parsed = JSON.parse(iconsFile.text())
-                const m = ({})
+                const glyphs = ({})
+                const ensures = ({})
                 if (Array.isArray(parsed)) {
                     for (let i = 0; i < parsed.length; i++) {
                         const e = parsed[i]
-                        if (e && e.id !== undefined)
-                            m[String(e.id)] = String(e.glyph || "")
+                        if (e && e.id !== undefined) {
+                            glyphs[String(e.id)] = String(e.glyph || "")
+                            if (e.ensure) ensures[String(e.id)] = String(e.ensure)
+                        }
                     }
                 }
-                root.iconMap = m
+                root.iconMap = glyphs
+                root.ensureMap = ensures
             } catch (e) {
                 console.warn("phi-shell: Bar/workspace-icons.json failed to parse: " + e)
                 root.iconMap = ({})
+                root.ensureMap = ({})
             }
         }
     }
@@ -127,7 +148,11 @@ Item {
                     ? ""
                     : (modelData.name.length > 0 ? modelData.name : String(modelData.id))
                 active: modelData.active
-                onActivated: modelData.activate()
+                onActivated: {
+                    modelData.activate()
+                    const ensureCmd = root.ensureMap[String(modelData.id)]
+                    if (ensureCmd) Quickshell.execDetached(["sh", "-c", ensureCmd])
+                }
 
                 // Follow-up (user, 2026-09-11): "change steam, btop and
                 // desktop number animations as well" — clarified via

@@ -1,4 +1,4 @@
 [
     { "id": 11, "glyph": "steam" },
-    { "id": 12, "glyph": "monitor" }
+    { "id": 12, "glyph": "monitor", "ensure": "pgrep -x btop >/dev/null || kitty --class phios-btop -e btop" }
 ]
