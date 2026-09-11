@@ -43,6 +43,15 @@ Item {
     property color textColor: Config.Appearance.textPrimary
     property int sizeStep: 4
     property bool mono: true
+    // The calendar clock shows each digit as a bordered card ("thin
+    // border" follow-up below). The status-bar clock (Bar/modules/
+    // Clock.qml, docs/TODO.md "the clock in the status bar should change
+    // like a flip clock") is an isle-size glyph — fontSize0, no dice, no
+    // case — where a 13px card per digit would dwarf the rest of the bar.
+    // `showCard: false` drops the frame AND the padding it justified, so
+    // the cell measures exactly its digit and the flip reads as the value
+    // itself snapping over, not as little boxes.
+    property bool showCard: true
 
     readonly property real _fontSize: WidgetStates.fontPixelSize(Config.Appearance, root.sizeStep)
 
@@ -63,7 +72,7 @@ Item {
         font.pixelSize: Config.Appearance.fontSize1
         text: "0"
     }
-    readonly property real _padding: WidgetStates.chToPixels(Config.Appearance.space1, chMetrics.width)
+    readonly property real _padding: root.showCard ? WidgetStates.chToPixels(Config.Appearance.space1, chMetrics.width) : 0
 
     implicitWidth: label.implicitWidth + root._padding * 2
     implicitHeight: label.implicitHeight + root._padding * 2
@@ -121,6 +130,7 @@ Item {
         radius: Config.Appearance.radiusSmall
         border.width: Config.Appearance.borderWidth
         border.color: Config.Appearance.border
+        visible: root.showCard
     }
 
     SequentialAnimation {

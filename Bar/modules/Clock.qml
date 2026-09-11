@@ -14,6 +14,16 @@ import qs.Widgets as Widgets
 // Bar.qml's registry can load (each Component wrapper in Bar.qml binds it
 // unconditionally), even though a clock has no per-monitor behaviour of
 // its own to use it for.
+//
+// Follow-up (user, docs/TODO.md): "the clock in the status bar should
+// change like a flip clock" — the same Widgets.FlipDigit cells the
+// calendar overlay uses, injected through Segment's `labelDelegate` slot
+// (the label-side mirror of `iconDelegate`; see Widgets/Segment.qml) so
+// the existing Segment button box, hover/active colouring and calendar
+// toggle all stay as they are. Bar size: `showCard: false` — at the
+// status-bar's isle sizeStep 0 (fontSize0) each digit is a plain glyph,
+// the bordered "card" version stays on the calendar clock where it shows
+// at sizeStep 4.
 
 Widgets.Segment {
     id: root
@@ -23,7 +33,18 @@ Widgets.Segment {
     // OOP-03: bar buttons sit on the opposite-coloured islands.
     ambient: "isle"
 
-    label: Qt.formatDateTime(clockTimer.now, "hh:mm")
+    labelDelegate: Component {
+        Row {
+            readonly property string hh: Qt.formatDateTime(clockTimer.now, "HH")
+            readonly property string mm: Qt.formatDateTime(clockTimer.now, "mm")
+
+            Widgets.FlipDigit { sizeStep: root.sizeStep; showCard: false; textColor: root.contentColor; value: parent.hh.charAt(0) }
+            Widgets.FlipDigit { sizeStep: root.sizeStep; showCard: false; textColor: root.contentColor; value: parent.hh.charAt(1) }
+            Widgets.StyledText { mono: true; sizeStep: root.sizeStep; text: ":"; color: root.contentColor }
+            Widgets.FlipDigit { sizeStep: root.sizeStep; showCard: false; textColor: root.contentColor; value: parent.mm.charAt(0) }
+            Widgets.FlipDigit { sizeStep: root.sizeStep; showCard: false; textColor: root.contentColor; value: parent.mm.charAt(1) }
+        }
+    }
     active: Services.Calendar.shown
 
     onActivated: Services.Calendar.toggle()
