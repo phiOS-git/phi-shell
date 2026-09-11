@@ -195,16 +195,24 @@ printf '%s' "$id" > "$dir/latest"
     // "list ids, then spawn one mime-reader Process per id" shape.
     //
     // The snippet is the first 200 BYTES of the file (`head -c`), not the
-    // first LINE (`head -n1 | cut -c1-200`, the original shape): `cut -c`
-    // has to buffer an entire line before it can emit anything, so a long
-    // paste with no embedded newline (a big single-line blob) made `cut`
-    // buffer the whole multi-megabyte content before producing 200 chars
-    // of it — slow at best, and plausibly producing no output at all for
-    // a large enough paste (docs/TODO.md: "the clipboard shows '(empty)'
-    // when the content is too long"). `head -c` bounds the read to 200
-    // bytes regardless of line length. Embedded newlines/tabs/NULs are
-    // folded to spaces (not stripped) so a multi-line snippet still reads
-    // as one TSV row.
+    // first LINE (`head -n1 | cut -c1-200`, the original shape). Two
+    // problems with the line-based version, either of which explains
+    // docs/TODO.md's "the clipboard shows '(empty)' when the content is
+    // too long": (1) `head -n1` returns an EMPTY string whenever the
+    // file's first physical line is blank — common for anything copied
+    // with a leading newline (a browser selection, an editor block) — no
+    // matter how much real content follows; (2) `cut -c` has to buffer an
+    // *entire line* before it can emit anything, so a long paste with no
+    // embedded newline at all (one big unbroken line) made `cut` buffer
+    // the whole multi-megabyte line before producing 200 chars of it —
+    // measured directly (this part needs no Hyprland/Quickshell, it's
+    // plain shell) at ~1.9s for a 50MB single line vs. ~10ms for the
+    // `head -c` version below, confirming the cost scales with content
+    // size, though not confirming it ever actually reached zero output.
+    // `head -c` fixes both: it never depends on line structure and reads
+    // exactly 200 bytes regardless of size. Embedded newlines/tabs/NULs
+    // are folded to spaces (not stripped) so a multi-line snippet still
+    // reads as one TSV row.
     Process {
         id: listProcess
         command: ["sh", "-c", `
