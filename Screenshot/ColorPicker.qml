@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import qs.Services as Services
 
 // phiOS — Screenshot/ColorPicker (S-43, master plan §8.3 surface 20:
@@ -25,9 +26,20 @@ PanelWindow {
     property string lastHex: ""
 
     anchors { top: true; bottom: true; left: true; right: true }
-    exclusiveZone: 0
+    // Same gap as Screenshot.qml (docs/TODO.md: "the dim area is trimmed
+    // below the status bar") — this surface never left the default Top
+    // layer either, so the bar's own exclusiveZone reduces its available
+    // region and a click anywhere under/near the bar strip cannot reach
+    // this MouseArea at all. No TODO entry names this file directly, but
+    // it's the identical bug with the identical fix, so it's fixed here
+    // too rather than left for a second report.
+    exclusiveZone: -1
     color: "transparent"
     visible: root.shown
+
+    Component.onCompleted: {
+        if (root.WlrLayershell) root.WlrLayershell.layer = WlrLayer.Overlay
+    }
 
     // For Escape to actually reach this surface — same requirement
     // Panels/Sidebar.qml's AiChat tab already documented for its own text

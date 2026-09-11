@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import qs.Config as Config
 import qs.Widgets as Widgets
 
@@ -47,9 +48,27 @@ PanelWindow {
     readonly property bool selecting: root.mode.startsWith("select-")
 
     anchors { top: true; bottom: true; left: true; right: true }
-    exclusiveZone: 0
+    // docs/TODO.md: "the dim area is trimmed below the status bar." This
+    // surface was never raised off the default Top layer, unlike every
+    // other modal-style overlay in this repo (Settings, Launcher,
+    // Cheatsheet, AltTab, Sidebar, AgentPanel all set WlrLayer.Overlay in
+    // their own Component.onCompleted) — on Top, the bar's own
+    // exclusiveZone (Bar/Bar.qml: `bar.height` while not auto-hidden)
+    // reduces this surface's available region to stop short of the bar
+    // strip, which is exactly what "trimmed" describes: not a z-order
+    // occlusion, the region itself stops there, so neither the Scrim below
+    // nor the selection MouseArea can reach it. `exclusiveZone: -1` paired
+    // with the layer bump is AltTab.qml's own already-hardware-verified
+    // fix for this identical symptom (its header: "raised to
+    // WlrLayer.Overlay + exclusiveZone -1 ... so the dim covers the status
+    // bar too") — same pairing here, not the layer alone.
+    exclusiveZone: -1
     color: "transparent"
     visible: root.selecting || root.resultText.length > 0
+
+    Component.onCompleted: {
+        if (root.WlrLayershell) root.WlrLayershell.layer = WlrLayer.Overlay
+    }
 
     function _picturesDir() {
         const xdg = Quickshell.env("XDG_PICTURES_DIR")
