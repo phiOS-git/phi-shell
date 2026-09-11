@@ -231,6 +231,32 @@ Column {
     }
 
     // ================================================================
+    // Battery (laptop only) — docs/TODO.md: "add a sound on charging
+    // plugged in". Not in Settings/sections/General.qml, which owns the
+    // read-only battery STATS group and explicitly documents itself as
+    // configuring nothing (§9.12 perimeter) — this is the one setting for
+    // that event, so it lives with Devices' other editable device-sound
+    // behaviour instead.
+    // ================================================================
+    SettingsGroup {
+        title: "Battery"
+        optionId: "devices.battery"
+        visible: Config.Capabilities.battery
+        caption: Services.PowerBridge.chargingSoundError.length > 0
+            ? ("Last sound error: " + Services.PowerBridge.chargingSoundError)
+            : "Plays through pw-play (pipewire), same as notification sounds."
+
+        SettingsRow {
+            title: "Play a sound when the charger is plugged in"
+            description: "Fires once per plug-in event."
+            Widgets.Toggle {
+                checked: Services.PowerBridge.chargingSoundEnabled
+                onToggled: (v) => Services.PowerBridge.setChargingSoundEnabled(v)
+            }
+        }
+    }
+
+    // ================================================================
     // Chroma  (razer)
     // ================================================================
     SettingsGroup {
