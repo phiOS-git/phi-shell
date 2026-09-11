@@ -20,6 +20,9 @@ Item {
     property string preselect: ""
 
     signal closed()
+    // docs/TODO.md ESC task — re-emitted up through ProjectView to
+    // AgentPanel's keyScope; see Widgets/TextField.qml's `escaped()`.
+    signal blurred()
 
     TextMetrics { id: ch; font.family: Config.Appearance.fontMono; font.pixelSize: Config.Appearance.fontSize1; text: "0" }
     readonly property real chWidth: ch.width
@@ -95,6 +98,7 @@ Item {
                     readOnly: root.editing !== "+"
                     placeholder: "lower-case-name"
                     invalid: !readOnly && !/^[a-z0-9][a-z0-9._-]{0,63}$/.test(text)
+                    onEscaped: root.blurred()
                 }
             }
 
@@ -115,6 +119,7 @@ Item {
                         font.pixelSize: Config.Appearance.fontSize1
                         color: Config.Appearance.textPrimary
                         selectByMouse: true
+                        Keys.onEscapePressed: { promptArea.focus = false; root.blurred() }
                     }
                 }
             }

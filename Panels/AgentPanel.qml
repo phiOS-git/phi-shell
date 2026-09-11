@@ -62,6 +62,15 @@ PanelWindow {
 
     onShownChanged: {
         if (root.shown) {
+            // Same reason Overview.qml's setShown() calls
+            // grid.forceActiveFocus() imperatively rather than trusting
+            // `focus: root.shown` alone: the focus system writes
+            // `keyScope.focus = false` the moment something else takes
+            // focus, which breaks that binding for good (QML does not
+            // restore it when the something-else later loses focus too).
+            // Without this, closing the panel any other way than Escape
+            // while a field had focus would leave Escape dead on reopen.
+            keyScope.forceActiveFocus()
             root.agent.refreshHealth()
             root.agent.refreshProject()
             root.agent.refreshChats()
@@ -69,6 +78,11 @@ PanelWindow {
             if (root.section === "code") root.agent.refreshCodingSessions()
         }
     }
+    // The nav rail's MouseArea doesn't take keyboard focus, so switching
+    // sections while a field has focus destroys that field (the Loader
+    // swaps sourceComponent) with nothing left to reclaim it — same class
+    // of hazard as above.
+    onSectionChanged: keyScope.forceActiveFocus()
 
     TextMetrics {
         id: chMetrics
@@ -99,6 +113,26 @@ PanelWindow {
         }
 
         MouseArea { anchors.fill: parent; onClicked: Services.AgentPanel.hide() }
+
+        // docs/TODO.md: "ESC ... should only close a panel if nothing is
+        // focused inside them." Mirrors Overview.qml's `grid` — an Item
+        // with `focus: root.shown` holds active focus by default (same
+        // implicit top-level FocusScope every other Keys.onEscapePressed
+        // handler in this repo already relies on, PanelWindow's
+        // contentItem), so Escape closes the panel when nothing else has
+        // claimed focus. A field that grabs focus (click, or TextInput's
+        // own activeFocusOnPress) naturally outranks this while it holds
+        // it; when it later blurs itself on Escape (Widgets/TextField.qml's
+        // `escaped()`, or Chat.qml's own `blurred()` for its raw
+        // TextInput), the section below reclaims focus here explicitly —
+        // QML does not hand focus back to a previous claimant on its own —
+        // so the NEXT Escape reaches this handler and closes the panel.
+        Item {
+            id: keyScope
+            anchors.fill: parent
+            focus: root.shown
+            Keys.onEscapePressed: Services.AgentPanel.hide()
+        }
 
         Item {
             id: dock
@@ -224,8 +258,8 @@ PanelWindow {
                                 }
                             }
                         }
-                        Component { id: dashComp;   Agent.Dashboard { onOpenChat: root.section = "chat" } }
-                        Component { id: chatComp;   Agent.Chat { onRequestSection: (s) => root.section = s } }
+                        Component { id: dashComp;   Agent.Dashboard { onOpenChat: root.section = "chat"; onBlurred: keyScope.forceActiveFocus() } }
+                        Component { id: chatComp;   Agent.Chat { onRequestSection: (s) => root.section = s; onBlurred: keyScope.forceActiveFocus() } }
                         Component { id: codeComp;   Agent.CodingSessions {} }
                         Component { id: memoryComp; Agent.MemoryProposals {} }
                     }

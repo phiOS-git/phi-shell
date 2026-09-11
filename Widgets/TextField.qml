@@ -39,6 +39,13 @@ Item {
 
     signal edited(string text)
     signal committed(string text)
+    // docs/TODO.md: "ESC ... should only close a panel if nothing is
+    // focused inside them" — Escape here blurs the field rather than
+    // reaching whatever the field sits inside (a panel, a dialog, a list
+    // row). A caller that wants a second Escape to then close its own
+    // surface listens for this and re-focuses its own fallback handler,
+    // the same shape Panels/AgentPanel.qml uses for its Dashboard fields.
+    signal escaped()
 
     TextMetrics {
         id: chMetrics
@@ -89,6 +96,16 @@ Item {
         text: root.placeholder
     }
 
+    // Set for the duration of the explicit blur below, and read by
+    // onEditingFinished: Qt's TextInput emits editingFinished on ANY focus
+    // loss, not just Enter — so `input.focus = false` here would otherwise
+    // also fire root.committed(text), turning Escape into a silent commit
+    // of whatever half-typed text is in the field. Escape means cancel,
+    // not commit (a half-typed hex should not reach Config.ThemeOverrides,
+    // this file's own header already says as much about `edited` vs
+    // `committed` — the same principle extends to Escape).
+    property bool _escaping: false
+
     TextInput {
         id: input
         anchors.fill: parent
@@ -104,7 +121,13 @@ Item {
         selectionColor: Config.Appearance.selectionBackground
         selectedTextColor: Config.Appearance.selectionText
         onTextEdited: root.edited(text)
-        onEditingFinished: root.committed(text)
+        onEditingFinished: if (!root._escaping) root.committed(text)
+        Keys.onEscapePressed: {
+            root._escaping = true
+            input.focus = false
+            root._escaping = false
+            root.escaped()
+        }
     }
 
     function forceEditFocus() { input.forceActiveFocus() }

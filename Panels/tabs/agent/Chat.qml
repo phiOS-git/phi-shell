@@ -21,6 +21,10 @@ Item {
     property string personality: ""
 
     signal requestSection(string s)
+    // docs/TODO.md ESC task — see Widgets/TextField.qml's own `escaped()`
+    // for the general shape; `field` here is a raw TextInput (not that
+    // widget) so it re-implements the same blur-then-signal locally.
+    signal blurred()
 
     TextMetrics { id: ch; font.family: Config.Appearance.fontMono; font.pixelSize: Config.Appearance.fontSize1; text: "0" }
     readonly property real chWidth: ch.width
@@ -191,6 +195,7 @@ Item {
                         color: Config.Appearance.textPrimary
                         clip: true
                         onAccepted: root.doSend()
+                        Keys.onEscapePressed: { field.focus = false; root.blurred() }
                         Widgets.StyledText { anchors.fill: parent; kind: "label"; text: "Message the agent…"; visible: field.text.length === 0 }
                     }
                     Widgets.StyledButton { id: sendBtn; label: "Send"; onClicked: root.doSend() }
