@@ -92,14 +92,26 @@ Item {
         ? ({ bg: Config.Appearance.accent, fg: Config.Appearance.accentText, border: Config.Appearance.accent })
         : WidgetStates.surfaceColors(Config.Appearance, root.resolvedState, root.ambient)
 
-    // The label/icon colour: a real threshold tone wins, then invalid, then
-    // the resolved state's own fg (so an inverted active segment inverts
-    // its text too).
+    // The label/icon colour: invalid wins outright, then — follow-up (user,
+    // 2026-09-12): "use the accent colour for the text and icon to show
+    // the selected state" — a plain (non-accentWhenActive) active segment
+    // wins over `tone` too, otherwise a toned button (e.g. battery on a
+    // low-charge `warn`/`error`, a notification bell with a pending `info`)
+    // would show NO visual change at all on selection: active no longer
+    // draws any fill or border of its own (WidgetStates.js's isle "active"
+    // case), so tone winning would leave a selected-but-toned button with
+    // literally nothing marking it selected. `accentWhenActive` (PhiAgent)
+    // is excluded here — its own accent colours already flow through
+    // `stateColors.fg` via the ternary above, this branch would be
+    // redundant for it and is skipped so tone still applies there exactly
+    // as it always did.
     readonly property color contentColor: root.invalid
         ? Config.Appearance.error
-        : (root.tone.length > 0
-            ? WidgetStates.contentColor(Config.Appearance, "value", root.tone, false)
-            : root.stateColors.fg)
+        : ((root.resolvedState === "active" && !root.accentWhenActive)
+            ? Config.Appearance.accent
+            : (root.tone.length > 0
+                ? WidgetStates.contentColor(Config.Appearance, "value", root.tone, false)
+                : root.stateColors.fg))
 
     // design/tokens.common.sh stores space-N in `ch`, not px — see
     // Panel.qml's identical comment.
@@ -158,27 +170,23 @@ Item {
     // Do that with a transition (quick)." Isle-only (the status bar) — a
     // panel Segment (a settings row, a sidebar tab) keeps its existing
     // flat hover fill untouched, same scoping decision as `labelFirst`
-    // above. Direction changed to bottom-to-top per a second follow-up
-    // (user, 2026-09-12) — was left-to-right (width growth, anchored
-    // left) originally, now height growth anchored to the bottom.
+    // above. Direction: top-to-bottom (height growth, anchored to the
+    // top) — went through left-to-right, then bottom-to-top, across two
+    // earlier follow-ups; this is the third and, per the user, correct
+    // direction.
     //
-    // `_sweepOn` covers BOTH "hover" and "active" (not just hover) —
-    // second follow-up (user, 2026-09-12): clicking a hovered button
-    // flickered, because the sweep (already at full coverage from the
-    // hover) was shrinking back out at the exact moment the OLD active
-    // case's own `bg` was independently fading in via the base Rectangle
-    // below — two different rectangles, two different current values,
-    // neither at full coverage for a moment in the middle of that
-    // crossfade. Since hover and (non-accent) active render pixel-
-    // identical already (WidgetStates.js's isle `hover`/`active` cases
-    // share the same colorOpposite/colorMain pair — confirmed with the
-    // user this identical-strength look is intentional), the fix is to
-    // have them share the SAME rectangle/mechanism instead of two: a
-    // hover-then-click now has nothing to visually settle, because the
-    // sweep was already fully in and just stays there. Excludes
-    // `accentWhenActive`'s active state (PhiAgent) — that path already
-    // renders via its own accent colours on the base Rectangle below,
-    // untouched, so it must not also get a colorOpposite sweep on top.
+    // Hover-only again, deliberately NOT shared with "active" any more.
+    // An earlier pass unified the two (same sweep, same colorOpposite/
+    // colorMain pair) specifically to fix a hover-then-click flicker —
+    // but the user then reported THAT as broken in its own right:
+    // un-hovering an active button looked like "the highlight wrongly
+    // staying applied", because hover and active had become impossible
+    // to tell apart by look alone. Reworked instead of patched: active no
+    // longer uses this Rectangle or this Behavior AT ALL (WidgetStates.js
+    // gives it `accent`-coloured text/icon instead, no fill) — the two
+    // states now have zero shared mechanism, so they cannot race or be
+    // confused for one another again, by construction rather than by
+    // careful sequencing.
     //
     // Driven off `resolvedState`, not the raw `hovered` flag: resolve()
     // already picks exactly one state by precedence (active/pressed beats
@@ -194,7 +202,7 @@ Item {
     // rendering every `iconDelegate` a second time just to clip it would
     // double each icon's Canvas and its running animations (a real cost —
     // BatteryIcon's charge pulse, WifiIcon's search pulse etc. are all
-    // infinite loops) for a hover/active micro-interaction. Instead: this
+    // infinite loops) for a hover micro-interaction. Instead: this
     // Rectangle alone sweeps for the BACKGROUND, and the foreground
     // colour (`contentColor`, which every icon/label already reads) just
     // fades to the inverted pair on the same timer via the Behaviors
@@ -205,20 +213,31 @@ Item {
     // assignment — the same binding-vs-Behavior gap this session hit and
     // documented repeatedly elsewhere, e.g. Brightness.qml's header), so
     // those icons snap colour instead of fading.
-    readonly property bool _sweepOn: root.ambient === "isle"
-        && (root.resolvedState === "hover"
-            || (root.resolvedState === "active" && !root.accentWhenActive))
+    // Not routed through a separate `_sweepOn` property read inside the
+    // handler below — found on review: `onResolvedStateChanged` and a
+    // `_sweepOn` binding would both depend on the same `resolvedState`
+    // change, and QML does not guarantee which of two dependents on the
+    // same source re-evaluates first. If the handler ran before
+    // `_sweepOn`'s own binding caught up, it would read a STALE value —
+    // exactly the reported bug ("highlight is applied when hover-out"):
+    // on hover-out (resolvedState "hover"→"default"), a stale-true read
+    // would set hoverAmount to 1 right as the mouse left, and the mirror
+    // on hover-in would silently do nothing. The condition is inlined
+    // directly in the handler instead, so there is nothing else for it to
+    // race against.
     property real hoverAmount: 0
     Behavior on hoverAmount {
         NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
     }
-    onResolvedStateChanged: root.hoverAmount = root._sweepOn ? 1 : 0
-    Component.onCompleted: root.hoverAmount = root._sweepOn ? 1 : 0
+    onResolvedStateChanged: root.hoverAmount =
+        (root.ambient === "isle" && root.resolvedState === "hover") ? 1 : 0
+    Component.onCompleted: root.hoverAmount =
+        (root.ambient === "isle" && root.resolvedState === "hover") ? 1 : 0
 
     Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.bottom: parent.bottom
+        anchors.top: parent.top
         height: root.ambient === "isle" ? parent.height * root.hoverAmount : 0
         radius: Config.Appearance.radiusBase
         color: Config.Appearance.colorOpposite
