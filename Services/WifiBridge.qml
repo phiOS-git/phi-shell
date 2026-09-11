@@ -28,6 +28,16 @@ Singleton {
     readonly property bool present: root.device !== null
     readonly property bool connected: root.present && root.device.connected
     readonly property string ssid: _connectedSsid()
+    // docs/TODO.md: "wifi ... searching" (status-bar rework, animated
+    // icon). `NetworkDevice.state` (ConnectionState enum, real Quickshell
+    // source — src/network/enums.hpp at this project's pinned v0.3.1)
+    // carries a genuine Connecting value distinct from Connected/
+    // Disconnected; this is real device state, not a fabricated
+    // "searching" flag. Signal STRENGTH is not exposed anywhere in this
+    // Quickshell version's Network API (checked network.hpp and
+    // device.hpp directly) — Bar/modules/Wifi.qml's icon deliberately
+    // does not attempt to show a strength gauge it has no real data for.
+    readonly property bool connecting: root.present && root.device.state === ConnectionState.Connecting
 
     function _findWifiDevice() {
         if (Networking.devices === null) return null

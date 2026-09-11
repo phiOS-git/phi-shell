@@ -30,6 +30,12 @@ import "../glyphs.js" as Glyphs
 //
 // UNVERIFIED against the font/compositor — flagged for the screenshot
 // pass, same as every glyph in Bar/glyphs.js.
+//
+// docs/TODO.md (status-bar rework, "all other icons" follow-up): the
+// static `glyph:` is replaced by Widgets.ClipboardIcon via `iconDelegate`
+// — same glyph, rendered by that widget instead of Segment's built-in
+// StyledIcon, so it can also pop on arrival (Widgets.ClipboardIcon's own
+// `arrived()`) on top of the `tone` pulse this file already had.
 
 Widgets.Segment {
     id: root
@@ -38,7 +44,6 @@ Widgets.Segment {
 
     ambient: "isle"
     active: Services.NotificationPanel.shown && Services.NotificationPanel.tab === 1
-    glyph: Glyphs.clipboard
     tone: root._pulse ? "info" : ""
 
     property bool _pulse: false
@@ -51,11 +56,21 @@ Widgets.Segment {
         onTriggered: root._pulse = false
     }
 
-    Connections {
-        target: Services.Clipboard
-        function onArrived(entry) {
-            root._pulse = true
-            pulseOffTimer.restart()
+    iconDelegate: Component {
+        Widgets.ClipboardIcon {
+            id: clipboardIcon
+            iconColor: root.contentColor
+            sizeStep: root.sizeStep
+            glyph: Glyphs.clipboard
+
+            Connections {
+                target: Services.Clipboard
+                function onArrived(entry) {
+                    root._pulse = true
+                    pulseOffTimer.restart()
+                    clipboardIcon.arrived()
+                }
+            }
         }
     }
 }

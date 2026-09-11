@@ -10,6 +10,20 @@ import "WidgetStates.js" as WidgetStates
 // glyphs cross-fading. First consumer of Widgets/Segment.qml's
 // `iconDelegate` slot (its own header comment).
 //
+// Second follow-up (same session): the original build only animated the
+// day/night state and left brightness AMOUNT unrepresented — the user
+// caught this ("the icon does not change with brightness change... it
+// should have both the sun/moon transition and fill animation for the
+// brightness level"). `fillLevel` (0..1, brightness percent/100) now
+// drives a genuine liquid-level fill inside the SAME disc, independent of
+// `dayness`: a low-opacity "track" render of the full disc is always
+// visible (so the disc's size/shape reads even near 0% brightness), with
+// a full-opacity fill clipped to the bottom `fillLevel` fraction drawn on
+// top — the classic gauge/thermometer technique, just applied to a
+// circle instead of a bar. Brightness level and day/night state are
+// orthogonal in real life (either can be high or low regardless of the
+// other), so this does not gate the fill by dayness or vice versa.
+//
 // Technique: two overlapping circles on a Canvas. A solid "body" disc plus
 // a same-size "shadow" disc painted with `globalCompositeOperation =
 // "destination-out"` — a true alpha cutout, independent of whatever sits
@@ -79,8 +93,12 @@ Item {
     // external property — wrap it in a Behavior at the call site, this
     // widget only reacts to whatever value arrives.
     property real dayness: 1.0
+    // 0..1, brightness percent/100. Plain external property, same
+    // contract as `dayness` — wrap it in its own category-B Behavior at
+    // the call site.
+    property real fillLevel: 1.0
 
-    readonly property real _boxSize: WidgetStates.fontPixelSize(Config.Appearance, root.sizeStep)
+    readonly property real _boxSize: WidgetStates.drawnIconBoxSize(Config.Appearance, root.sizeStep)
     implicitWidth: _boxSize
     implicitHeight: _boxSize
     // Explicit, not just implicit: this Item only ever gets positioned by
@@ -123,6 +141,7 @@ Item {
     // for it; Canvas's own first paint already sees the settled value.
     onIconColorChanged: canvas.requestPaint()
     onDaynessChanged: canvas.requestPaint()
+    onFillLevelChanged: canvas.requestPaint()
 
     Canvas {
         id: canvas
@@ -158,11 +177,32 @@ Item {
                 ctx.globalAlpha = 1
             }
 
-            // 2. body disc.
+            // 2. body disc — a dim "track" for the full disc, always
+            // present, then a brighter fill clipped to the bottom
+            // `fillLevel` fraction (a liquid-level gauge, same idea as
+            // Widgets/BatteryIcon.qml's rectangular fill, on a circle).
+            ctx.globalAlpha = 0.25
             ctx.fillStyle = c
             ctx.beginPath()
             ctx.arc(root._cx, root._cy, root._r, 0, 2 * Math.PI)
             ctx.fill()
+            ctx.globalAlpha = 1
+
+            const level = Math.max(0, Math.min(1, root.fillLevel))
+            if (level > 0.001) {
+                const discTop = root._cy - root._r
+                const discBottom = root._cy + root._r
+                const fillTop = discBottom - (discBottom - discTop) * level
+                ctx.save()
+                ctx.beginPath()
+                ctx.rect(root._cx - root._r - 2, fillTop, (root._r + 2) * 2, discBottom - fillTop + 2)
+                ctx.clip()
+                ctx.fillStyle = c
+                ctx.beginPath()
+                ctx.arc(root._cx, root._cy, root._r, 0, 2 * Math.PI)
+                ctx.fill()
+                ctx.restore()
+            }
 
             // 3. eclipse shadow — a true alpha cutout (destination-out),
             // correct against any background this icon sits on, not a
