@@ -188,11 +188,23 @@ printf '%s' "$id" > "$dir/latest"
     }
     function reload() { latestFile.reload() }
 
-    // OOP-06: one shell loop reads every entry's mime AND its first line in
-    // a single pass, emitting `id<TAB>mime<TAB>firstline` — so `entries`
+    // OOP-06: one shell loop reads every entry's mime AND a preview snippet
+    // in a single pass, emitting `id<TAB>mime<TAB>preview` — so `entries`
     // carries a `preview` string the clipboard panel can filter and render
     // synchronously, with no per-entry FileView. Replaces the earlier
     // "list ids, then spawn one mime-reader Process per id" shape.
+    //
+    // The snippet is the first 200 BYTES of the file (`head -c`), not the
+    // first LINE (`head -n1 | cut -c1-200`, the original shape): `cut -c`
+    // has to buffer an entire line before it can emit anything, so a long
+    // paste with no embedded newline (a big single-line blob) made `cut`
+    // buffer the whole multi-megabyte content before producing 200 chars
+    // of it — slow at best, and plausibly producing no output at all for
+    // a large enough paste (docs/TODO.md: "the clipboard shows '(empty)'
+    // when the content is too long"). `head -c` bounds the read to 200
+    // bytes regardless of line length. Embedded newlines/tabs/NULs are
+    // folded to spaces (not stripped) so a multi-line snippet still reads
+    // as one TSV row.
     Process {
         id: listProcess
         command: ["sh", "-c", `
@@ -201,7 +213,7 @@ for m in "$dir"/*.mime; do
   [ -e "$m" ] || continue
   id=$(basename "$m" .mime)
   mime=$(cat "$m" 2>/dev/null)
-  first=$(head -n1 "$dir/$id.data" 2>/dev/null | cut -c1-200 | tr -d '\\000\\r\\t')
+  first=$(head -c 200 "$dir/$id.data" 2>/dev/null | tr '\\n\\r\\t\\000' '    ')
   printf '%s\\t%s\\t%s\\n' "$id" "$mime" "$first"
 done
 `.trim(), "list", Config.Paths.clipboardEntriesDir]
