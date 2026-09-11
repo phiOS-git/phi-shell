@@ -47,7 +47,11 @@ Widgets.Segment {
         root.level = Math.max(0, Math.min(1, Services.AudioBridge.volume))
         root.mutedAmount = Services.AudioBridge.muted ? 1 : 0
     }
-    Connections { target: Services.AudioBridge; function onVolumeChanged() { root._sync() }; function onMutedChanged() { root._sync() } }
+    Connections {
+        target: Services.AudioBridge
+        function onVolumeChanged() { root._sync() }
+        function onMutedChanged() { root._sync() }
+    }
     Component.onCompleted: root._sync()
 
     iconDelegate: Component {
