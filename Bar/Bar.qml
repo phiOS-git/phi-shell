@@ -235,7 +235,13 @@ PanelWindow {
         anchors.left: parent.left
         anchors.leftMargin: bar.islandMargin
         anchors.verticalCenter: parent.verticalCenter
-        spacing: bar.islandGap
+        // docs/TODO.md follow-up (user, 2026-09-11): "remove the space
+        // between icon buttons (keep the padding)" — BarIsle's own Row
+        // `spacing` defaults to 0; this used to override it with
+        // `bar.islandGap` (the same token also used, separately, for the
+        // gap BETWEEN isles at line ~295 — that use is untouched). Each
+        // Segment's own internal padding (paddingH/paddingV) is unrelated
+        // to this and stays exactly as it was.
 
         Repeater {
             model: bar.leftModules
@@ -257,7 +263,7 @@ PanelWindow {
         anchors.right: parent.right
         anchors.rightMargin: bar.islandMargin
         anchors.verticalCenter: parent.verticalCenter
-        spacing: bar.islandGap
+        // See leftIsle's identical comment.
 
         Repeater {
             model: bar.rightModules

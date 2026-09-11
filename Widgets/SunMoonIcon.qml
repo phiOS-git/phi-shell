@@ -113,25 +113,30 @@ Item {
 
     readonly property real _cx: _boxSize / 2
     readonly property real _cy: _boxSize / 2
-    readonly property real _r: _boxSize * 0.28        // body disc radius
+    // Follow-up (user, 2026-09-11): "the moon icon is way too thin and
+    // small" — disc radius up from 0.28 to 0.34·box and ray stroke width
+    // up from 0.06 to 0.08·box. Re-derived the shadow-clearance inequality
+    // below for the new numbers rather than assuming the old constants
+    // still hold — they do, with MORE margin than before (see the comment
+    // on `_shadowOffsetX`), so that formula itself is unchanged.
+    readonly property real _r: _boxSize * 0.34         // body disc radius
     readonly property real _rShadow: _r * 1.05         // shadow disc radius — slightly larger for a clean crescent edge, no thin-ring artifact
-    readonly property real _rayGap: _boxSize * 0.06    // gap between disc edge and ray start
-    readonly property real _rayLen: _boxSize * 0.16    // full ray length at dayness=1
-    readonly property real _rayWidth: Math.max(1, _boxSize * 0.06)
+    readonly property real _rayGap: _boxSize * 0.05    // gap between disc edge and ray start
+    readonly property real _rayLen: _boxSize * 0.17    // full ray length at dayness=1
+    readonly property real _rayWidth: Math.max(1, _boxSize * 0.08)
     // Linear in dayness. The two ends are picked so the shadow disc
     // clears the OUTERMOST thing drawn at each end, not just the body
     // disc — checked by hand, not assumed: at dayness=1 the rays reach
-    // out to R + rayGap + rayLen = 0.28+0.06+0.16 = 0.50·box = 1.786R
-    // from centre, so the shadow's NEAR edge (shadowOffsetX - rShadow)
-    // needs to clear 1.786R for the rays to render whole, not just the
-    // 1.0R the disc alone would need — 2.9R gives that (near edge at
-    // 2.9R - 1.05R = 1.85R, comfortably past 1.786R). At dayness=0 the
-    // offset is 0.55R, same as before: heavy overlap, a crescent left on
-    // the far side. An earlier version of this file used 2.2R for the
-    // sun end, sized only for the disc — that left the shadow clipping
-    // the tip of one ray even in the full-sun state, asymmetric with the
-    // other seven; fixed by widening the sun-end offset instead of
-    // shrinking the rays.
+    // out to R + rayGap + rayLen = 0.34+0.05+0.17 = 0.56·box = 1.647R
+    // from centre (down from 1.786R before the size increase — the disc
+    // grew more than the rays did), so the shadow's NEAR edge
+    // (shadowOffsetX - rShadow) needs to clear 1.647R for the rays to
+    // render whole, not just the 1.0R the disc alone would need — 2.9R
+    // still gives that (near edge at 2.9R - 1.05R = 1.85R, now clearing
+    // by 0.203R, MORE margin than the 0.064R this formula had at the old
+    // proportions), so the constants themselves did not need to change.
+    // At dayness=0 the offset is 0.55R, same as before: heavy overlap, a
+    // crescent left on the far side.
     readonly property real _shadowOffsetX: _r * (0.55 + 2.35 * root.dayness)
 
     // `_boxSize` derives from `sizeStep` and Config.Appearance's font

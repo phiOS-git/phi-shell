@@ -5,18 +5,24 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../glyphs.js" as Glyphs
 
-// phiOS — Bar/modules/Bluetooth.qml (S-23; OOP-11 restyle R2). Icon +
-// value: a bluetooth glyph and the first connected device's name, or "on"
-// when powered with nothing connected, or "off". Capability-gated on
-// `bluetooth` (real detected hardware, ADR 074). A click opens the shared
-// bar popout (placeholder — the device list / bluetuith deep-link lands
-// there later).
+// phiOS — Bar/modules/Bluetooth.qml (S-23; OOP-11 restyle R2). Icon only —
+// the bar button carries no text label (see the rework follow-up note
+// below); the popout (a click away) has the connected device name and
+// full detail. Capability-gated on `bluetooth` (real detected hardware,
+// ADR 074).
 //
 // docs/TODO.md (status-bar rework): the icon is now Widgets/BluetoothIcon
 // via `iconDelegate` — the verified nerd-font rune stays (see that file's
 // own header for why it isn't hand-redrawn), but `poweredAmount` fades it
 // in/out on activation and a small badge breathes while a device is
 // connected, instead of an instant glyph swap between three shapes.
+//
+// Follow-up (user, 2026-09-11): "hide the name of the device, leave the
+// icon only" — the `label` binding (device name / "on" / "off") is gone
+// entirely. The icon's own poweredAmount/connectedAmount animation is now
+// the ONLY on-bar signal for power/connection state; the device name is
+// still available a click away in the popout (Panels/BarPopout.qml's
+// bluetooth section already shows it).
 
 Widgets.Segment {
     id: root
@@ -28,9 +34,6 @@ Widgets.Segment {
     readonly property bool powered: Services.BluetoothBridge.adapterEnabled
     readonly property bool anyConnected: Services.BluetoothBridge.anyConnected
 
-    label: root.anyConnected
-        ? Services.BluetoothBridge.firstConnectedName
-        : (root.powered ? "on" : "off")
     active: Services.BarPopout.which === "bluetooth"
 
     property real poweredAmount: 0
