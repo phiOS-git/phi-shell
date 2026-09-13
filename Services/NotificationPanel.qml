@@ -34,6 +34,11 @@ Singleton {
         Services.AgentPanel.hide()
         Services.SettingsPanel.hide()
         Services.BarPopout.hide()
+        // docs/TODO.md: "opening a panel on a special workspace (11, 12),
+        // should automatically open it in the highest possible [workspace]
+        // up to 10" — see Services/HyprlandBridge.qml's own comment on
+        // this function for the full rationale.
+        Services.HyprlandBridge.leaveReservedWorkspace()
     }
 
     function toggle() { root.shown = !root.shown }

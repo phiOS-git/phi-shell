@@ -52,6 +52,10 @@ Singleton {
         Services.NotificationPanel.hide()
         Services.AgentPanel.hide()
         Services.SettingsPanel.hide()
+        // docs/TODO.md: "opening a panel on a special workspace (11, 12) ...
+        // highest possible up to 10" — see Services/HyprlandBridge.qml's
+        // own comment on this function for the full rationale.
+        Services.HyprlandBridge.leaveReservedWorkspace()
     }
 
     function toggle(key, x, edge) {
