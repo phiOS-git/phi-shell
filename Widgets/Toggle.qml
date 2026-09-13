@@ -22,6 +22,14 @@ import "WidgetStates.js" as WidgetStates
 // property) and flips it from `onToggled`. Assigning `checked` here would
 // drop that binding on the first tap (the bug this file's predecessor
 // carried until S-40).
+//
+// docs/TODO.md follow-up (user): "it's too wide". The track width used
+// `space5` (6ch), against a 2ch (`space2`) height — a 3:1 track, wider
+// than this file's own header comment claims ("a ~5:2 track"): the design
+// scale is non-linear past space4 (1,2,3,4,6,8ch), so `space5` names the
+// FIFTH step, not "5ch" — reading the token name as the literal ch count
+// is the mistake this made. There is no exact 5ch token; `space4` (4ch)
+// is the nearest one that actually narrows the track, giving a 2:1 ratio.
 
 Item {
     id: root
@@ -53,8 +61,8 @@ Item {
     }
     readonly property real chWidth: chMetrics.width
 
-    // Thin and rectangular: a ~5:2 track, half the height the pill had.
-    implicitWidth: WidgetStates.chToPixels(Config.Appearance.space5, chWidth)
+    // Thin and rectangular: a 2:1 track, half the height the pill had.
+    implicitWidth: WidgetStates.chToPixels(Config.Appearance.space4, chWidth)
     implicitHeight: WidgetStates.chToPixels(Config.Appearance.space2, chWidth)
     activeFocusOnTab: true
     opacity: WidgetStates.opacityFor(resolvedState)
@@ -62,6 +70,28 @@ Item {
     readonly property real _inset: Math.max(1, Config.Appearance.borderWidthStrong)
     readonly property real _knob: height - _inset * 2
 
+    // docs/TODO.md follow-up (user): "the color transition is faster then
+    // the switch moving" — investigated 2026-09-13, verified fact only:
+    // every Behavior below (track colour, track border colour, knob
+    // position, knob colour) already reads the identical
+    // `Config.Appearance.motionBDuration` / `motionBCurve` pair — no
+    // mismatched duration/easing token exists in this file to point at,
+    // and this file has exactly one commit in its history (5b85cba, the
+    // pill-to-square restyle), so there is no earlier version with a
+    // different value either. Cause NOT diagnosed — left as-is, only the
+    // TODO's width complaint below was an actual code defect. One theory
+    // (unverified, not established): sRGB colour interpolation often
+    // reads as "arrived" before a `t=1` geometric move does, at the same
+    // eased duration, since the last stretch of a colour lerp is a much
+    // smaller PERCEIVED difference than the same stretch of physical
+    // motion. The discriminating test for next time, on real hardware:
+    // bump `motion-b-duration` in Theme settings (the animation editor
+    // already exposes it live) and watch whether the colour still finishes
+    // noticeably early at the new duration too. If the gap SCALES with the
+    // duration, it is perceptual, matching the theory above; if the colour
+    // keeps finishing after a roughly FIXED, unscaled head start regardless
+    // of the token's value, something is not actually reading
+    // `motion-b-duration` at all and this needs a second look.
     Rectangle {
         id: track
         anchors.fill: parent
