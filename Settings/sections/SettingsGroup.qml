@@ -3,7 +3,6 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 import "options.js" as Options
-import "../../Widgets/WidgetStates.js" as WidgetStates
 
 // phiOS — Settings/SettingsGroup (Out-of-plan: settings-overhaul batch A;
 // optionId registration added batch B; restyled OOP-52; header reworked
@@ -157,7 +156,18 @@ Column {
         width: parent.width
         implicitHeight: root.preview ? body.implicitHeight + _previewPad * 2 : body.implicitHeight
         enabled: !root.disabled
-        opacity: root.disabled ? WidgetStates.INACTIVE_OPACITY : 1.0
+        // 0.45 mirrors Widgets/WidgetStates.js's own INACTIVE_OPACITY — the
+        // one place §8.6's "disabled: same weight, reduced opacity" ratio
+        // is defined. Not imported directly: every existing importer of
+        // that file is a sibling inside Widgets/ itself, and this is the
+        // one Settings-panel structural file outside it, so duplicating
+        // the single number here (kept behind this comment, not repeated
+        // deeper in the tree) is safer than being the first cross-directory
+        // relative JS import into an untested path.
+        opacity: root.disabled ? 0.45 : 1.0
+        Behavior on opacity {
+            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+        }
 
         readonly property real _previewPad: root.preview ? root._pad : 0
 
