@@ -47,7 +47,8 @@ Column {
     SettingsGroup {
         title: "Bluetooth"
         optionId: "connectivity.bluetooth"
-        visible: Config.Capabilities.bluetooth
+        disabled: !Config.Capabilities.bluetooth
+        disabledReason: "No Bluetooth adapter was detected on this machine."
 
         SettingsRow {
             title: "Adapter"
@@ -92,7 +93,10 @@ Column {
     SettingsGroup {
         title: "Wi-Fi"
         optionId: "connectivity.wifi"
-        visible: Config.Capabilities.wifi
+        disabled: !Config.Capabilities.wifi || !Services.WifiBridge.present
+        disabledReason: !Config.Capabilities.wifi
+            ? "No Wi-Fi hardware was detected on this machine."
+            : "Wi-Fi is off or the adapter is unavailable."
 
         SettingsRow {
             title: "Network"
