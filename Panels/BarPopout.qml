@@ -33,7 +33,36 @@ PanelWindow {
     readonly property string which: Services.BarPopout.which
 
     anchors { top: true; right: true; left: true; bottom: true }
-    exclusiveZone: 0
+    // docs/TODO.md: "the status bar overlays ... are still lower that they
+    // should be ... fixed many times but changes never worked ... not an
+    // issue of gap ... probably have a fixed position or a wrong parent
+    // relative position". Root cause found by comparing against every
+    // OTHER overlay surface in this repo (Sidebar, Settings, Launcher,
+    // AltTab, Cheatsheet, ConfirmDialog, Screenshot, ...), which all use
+    // `exclusiveZone: -1` where this file (and Calendar.qml's identical
+    // case) used plain `0`. Screenshot.qml's own comment on its
+    // functionally identical prior bug ("the dim area is trimmed below the
+    // status bar") is the primary evidence for what that difference
+    // actually does, not just a pattern match: on a surface that is NOT
+    // `-1`, "the bar's own exclusiveZone... reduces this surface's
+    // available region to stop short of the bar strip... the region itself
+    // stops there" — i.e. this window's own top-anchored origin already
+    // starts below the bar before any QML-level anchoring runs, confirmed
+    // there against AltTab.qml's own already-hardware-verified fix for the
+    // identical symptom. With that origin already shifted down by
+    // bar.height, `barHeight` below then added bar.height AGAIN on top of
+    // it via `anchors.topMargin` further down — a double-count. Every
+    // previous attempt at this bug (the OOP-20 fix mentioned right below,
+    // replacing a hardcoded height guess with the bar's real measured
+    // height) corrected the VALUE being added but never touched this line,
+    // so the double-count persisted regardless — a plausible explanation
+    // for "fixed many times, never worked", though unlike the Screenshot/
+    // AltTab precedent this specific instance of it is NOT independently
+    // hardware-verified; flag it if the popout ends up unmoved (the origin
+    // shift wasn't the cause here) or now overlapping the bar itself (the
+    // shift was real but in the opposite direction from this model, and
+    // `barHeight` in the topMargin below should be dropped, not kept).
+    exclusiveZone: -1
     color: "transparent"
     visible: root.shown || fadeRoot.opacity > 0
 
@@ -46,7 +75,8 @@ PanelWindow {
     readonly property real chWidth: chMetrics.width
     // OOP-20: the bar's real height, published by Bar/Bar.qml — this file
     // used to keep its own `fontSize1 + space1·ch·2` estimate, which sat
-    // the popout too low (item 4).
+    // the popout too low (item 4). See `exclusiveZone` above for the
+    // SECOND, separate cause of the same symptom, fixed alongside this.
     readonly property real barHeight: Services.BarMetrics.height
 
     function _volumePct() { return Math.round(Services.AudioBridge.volume * 100) }
