@@ -49,4 +49,50 @@ Singleton {
     // the workspace strip switches workspaces through the model's own
     // `activate()` and does not need this.
     function dispatch(request) { Hyprland.dispatch(request) }
+
+    // docs/TODO.md: "opening a panel on a special workspase (11, 12),
+    // should automatiically open it in the highest possible [workspace] up
+    // to 10" — 11 and 12 are Steam's and btop's own dedicated workspaces
+    // (ADR 134, hyprland.lua.tmpl; also duplicated in Bar/workspace-
+    // icons.json, which already documents that these two ids have to be
+    // kept in sync with hyprland.lua by hand, no shared source exists).
+    // These are NOT Hyprland "special:" workspaces — the scratchpad is —
+    // so the Quickshell 0.3.1 "cannot read special-workspace state" gap
+    // Services/Calendar.qml's own history hit does not apply here: ordinary
+    // numbered workspaces are fully readable through `workspaces` above.
+    //
+    // A slight widening of this file's own "thin wrapper" charter: the two
+    // reserved ids are UI policy, not a Hyprland IPC primitive, but the
+    // operation itself never touches anything outside workspaces/dispatch,
+    // and every one of its four callers (Services/NotificationPanel.qml,
+    // Services/AgentPanel.qml, Services/SettingsPanel.qml,
+    // Services/BarPopout.qml) needs the identical scan — worth the one
+    // shared function rather than four copies of it.
+    readonly property var reservedWorkspaceIds: [11, 12]
+
+    // If screens[0] (every one of the four callers above is single-
+    // instance, pinned to screens[0] — see shell.qml) is currently on a
+    // reserved workspace, switches to the highest ordinary workspace
+    // (1-10) that actually exists in Hyprland's own model; falls back to
+    // workspace 1 if none of 1-10 currently has one (a fresh session with
+    // everything closed). A no-op if screens[0] is already on an ordinary
+    // workspace, so every caller can call this unconditionally on open.
+    function leaveReservedWorkspace() {
+        if (Quickshell.screens.length === 0) return
+        const screen0 = Quickshell.screens[0]
+        const values = root.workspaces.values
+        if (!values) return
+
+        let current = null
+        let highest = null
+        for (let i = 0; i < values.length; i++) {
+            const w = values[i]
+            if (w.monitor && w.monitor.name === screen0.name && w.active) current = w
+            if (w.id > 0 && w.id <= 10 && (highest === null || w.id > highest.id)) highest = w
+        }
+        if (!current || root.reservedWorkspaceIds.indexOf(current.id) === -1) return
+
+        if (highest) highest.activate()
+        else root.dispatch("workspace 1")
+    }
 }
