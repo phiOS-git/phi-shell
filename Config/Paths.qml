@@ -122,4 +122,13 @@ Singleton {
     // scalar Chroma values that already have `phi state` keys
     // (toggle.chroma, chroma.color) stay there — one value, one writer.
     readonly property string chromaConfigFile: root.stateDir + "/chroma.json"
+
+    // docs/TODO.md: "add customisation for sounds (battery sound)" —
+    // { enabled, name, volume }, the same nested shape as
+    // notificationPrefsFile's own `sound` object. Was a single `phi state`
+    // scalar (`power.chargingSound`) before this; moved here alongside it
+    // once `name`/`volume` needed adding, since S-13's key set is closed
+    // and a nested/grouped value does not fit it anyway (same reasoning as
+    // every other file below this comment). Owned by Services/PowerBridge.qml.
+    readonly property string powerSoundPrefsFile: root.stateDir + "/power-sound.json"
 }

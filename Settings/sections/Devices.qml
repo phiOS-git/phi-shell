@@ -260,11 +260,13 @@ Column {
 
     // ================================================================
     // Battery (laptop only) — docs/TODO.md: "add a sound on charging
-    // plugged in". Not in Settings/sections/General.qml, which owns the
-    // read-only battery STATS group and explicitly documents itself as
-    // configuring nothing (§9.12 perimeter) — this is the one setting for
-    // that event, so it lives with Devices' other editable device-sound
-    // behaviour instead.
+    // plugged in", extended by "add customisation for sounds (battery
+    // sound)" to the name/volume/test row shape Notifications' own
+    // "Sound & testing" group already established. Not in
+    // Settings/sections/General.qml, which owns the read-only battery
+    // STATS group and explicitly documents itself as configuring nothing
+    // (§9.12 perimeter) — this is the one setting for that event, so it
+    // lives with Devices' other editable device-sound behaviour instead.
     // ================================================================
     SettingsGroup {
         title: "Battery"
@@ -273,7 +275,7 @@ Column {
         disabledReason: "No battery was detected on this machine."
         caption: Services.PowerBridge.chargingSoundError.length > 0
             ? ("Last sound error: " + Services.PowerBridge.chargingSoundError)
-            : "Plays through pw-play (pipewire), same as notification sounds."
+            : "Plays through pw-play (pipewire). The name resolves to /usr/share/sounds/freedesktop/stereo/<name>.oga, or give an absolute path. The freedesktop set needs sound-theme-freedesktop installed."
 
         SettingsRow {
             title: "Play a sound when the charger is plugged in"
@@ -281,6 +283,33 @@ Column {
             Widgets.Toggle {
                 checked: Services.PowerBridge.chargingSoundEnabled
                 onToggled: (v) => Services.PowerBridge.setChargingSoundEnabled(v)
+            }
+        }
+        SettingsRow {
+            title: "Sound"
+            description: "A freedesktop name (power-plug, message, bell…) or an absolute path to an audio file."
+            wide: true
+            Widgets.TextField {
+                width: parent.width
+                mono: false
+                placeholder: "power-plug"
+                Component.onCompleted: text = Services.PowerBridge.chargingSoundName
+                onCommitted: (t) => Services.PowerBridge.setChargingSoundName(t)
+            }
+        }
+        SettingsRow {
+            title: "Volume"
+            Widgets.NumberField {
+                value: Services.PowerBridge.chargingSoundVolume
+                step: 5; suffix: "%"; from: 0; to: 100
+                onCommitted: (v) => Services.PowerBridge.setChargingSoundVolume(v)
+            }
+        }
+        SettingsRow {
+            title: "Test"
+            Widgets.StyledButton {
+                label: "Test sound"
+                onClicked: Services.PowerBridge.playChargingSound(true)
             }
         }
     }

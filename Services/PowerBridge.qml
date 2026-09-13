@@ -55,12 +55,7 @@ Singleton {
     property string chargeCycles: "unknown"
 
     function refreshCycles() { cyclesProbe.running = true }
-    Component.onCompleted: {
-        refreshCycles()
-        Config.Settings.get("power.chargingSound", (v, code) => {
-            if (v === "false") root.chargingSoundEnabled = false
-        })
-    }
+    Component.onCompleted: refreshCycles()
 
     Process {
         id: cyclesProbe
@@ -115,7 +110,8 @@ Singleton {
     }
 
     // --- charging sound (docs/TODO.md: "add a sound on charging plugged
-    // in") --------------------------------------------------------------
+    // in", extended by "add customisation for sounds (battery sound)")
+    // --------------------------------------------------------------------
     // On by default (unlike Services/Notifications.qml's own notification
     // sound, which defaults off) — this fires once per plug-in event, not
     // per-notification-burst, and the user asked for it directly rather
@@ -125,17 +121,80 @@ Singleton {
     // `extra` package file listing (archlinux.org/packages/extra/any/
     // sound-theme-freedesktop/files/), not recalled — and that package is
     // in profiles/desktop/packages.txt, so it is present wherever this
-    // code runs (mini is headless, no phi-shell). Same theme/path
-    // convention Services/Notifications.qml already uses for its own
-    // sound.
+    // code runs (mini is headless, no phi-shell). Same theme/path,
+    // `_soundPath()`/`playSound()` convention Services/Notifications.qml
+    // already uses for its own sound (`name`/`volume`, not just on/off).
+    //
+    // Persistence: a JSON file (Config.Paths.powerSoundPrefsFile), not
+    // `phi state` — see that path's own comment for why a value this
+    // shape doesn't fit `phi state`'s closed scalar-key set. Was a single
+    // `phi state` key (`power.chargingSound`) before `name`/`volume`
+    // needed adding; `_migrateFromPhiState()` below reads that old key
+    // exactly once, only when the new JSON file has never been written at
+    // all, so a real "false" a user already set on a machine survives the
+    // switch instead of silently reverting to the default "true".
     property bool chargingSoundEnabled: true
+    property string chargingSoundName: "power-plug"   // freedesktop theme name, or an absolute path
+    property int chargingSoundVolume: 100               // 0-100
     property string chargingSoundError: ""
     property bool _chargeSoundInit: false
     property bool _wasDischarging: false
 
-    function setChargingSoundEnabled(b) {
-        root.chargingSoundEnabled = !!b
-        Config.Settings.set("power.chargingSound", root.chargingSoundEnabled ? "true" : "false")
+    function setChargingSoundEnabled(b) { root.chargingSoundEnabled = !!b; root._persistSoundPrefs() }
+    function setChargingSoundName(s) { root.chargingSoundName = String(s || "").trim(); root._persistSoundPrefs() }
+    function setChargingSoundVolume(n) { root.chargingSoundVolume = Math.max(0, Math.min(100, Math.round(n))); root._persistSoundPrefs() }
+
+    property bool _soundPrefsWritten: false
+    function _persistSoundPrefs() {
+        root._soundPrefsWritten = true
+        soundPrefsFile.setText(JSON.stringify({
+            enabled: root.chargingSoundEnabled,
+            name: root.chargingSoundName,
+            volume: root.chargingSoundVolume
+        }, null, 2))
+    }
+
+    // Only reached from soundPrefsFile.onLoadFailed (FileNotFound — the
+    // JSON file has never been written), so this never overwrites a real
+    // preference the new file already holds. `Config.Settings.get` shells
+    // out (tens of ms at least), so it's possible for the user to open
+    // Settings and flip the toggle themselves before this callback lands —
+    // the `_soundPrefsWritten` check means that real, fresh write always
+    // wins instead of being silently reverted by a migration that started
+    // first but finished second.
+    function _migrateFromPhiState() {
+        Config.Settings.get("power.chargingSound", (v, code) => {
+            if (v === "false" && !root._soundPrefsWritten) {
+                root.chargingSoundEnabled = false
+                root._persistSoundPrefs()
+            }
+        })
+    }
+
+    Process {
+        id: ensureStateDirProc
+        command: ["mkdir", "-p", Config.Paths.stateDir]
+        running: true
+        onExited: ensureStateDirProc.running = false
+    }
+
+    FileView {
+        id: soundPrefsFile
+        path: Config.Paths.powerSoundPrefsFile
+        watchChanges: false
+        onLoaded: {
+            try {
+                const parsed = JSON.parse(soundPrefsFile.text())
+                if (parsed && typeof parsed === "object") {
+                    if (typeof parsed.enabled === "boolean") root.chargingSoundEnabled = parsed.enabled
+                    if (typeof parsed.name === "string") root.chargingSoundName = parsed.name
+                    if (typeof parsed.volume === "number") root.chargingSoundVolume = parsed.volume
+                }
+            } catch (e) {
+                console.warn("phi-shell: power-sound.json failed to parse, ignoring: " + e)
+            }
+        }
+        onLoadFailed: (error) => root._migrateFromPhiState()
     }
 
     // Plugged-in is detected as a discharging→not-discharging transition,
@@ -161,15 +220,30 @@ Singleton {
             root._wasDischarging = root.discharging
             return
         }
-        if (root._wasDischarging && !root.discharging && root.present) root._playChargingSound()
+        if (root._wasDischarging && !root.discharging && root.present) root.playChargingSound(false)
         root._wasDischarging = root.discharging
     }
 
-    function _playChargingSound() {
-        if (!root.chargingSoundEnabled) return
+    // Resolve chargingSoundName to a filesystem path: an absolute path as
+    // is, else a freedesktop sound-theme basename — same convention
+    // Services/Notifications.qml's own `_soundPath()` uses.
+    function _chargingSoundPath() {
+        var n = root.chargingSoundName
+        if (n.length === 0) return ""
+        if (n.charAt(0) === "/") return n
+        return "/usr/share/sounds/freedesktop/stereo/" + n + ".oga"
+    }
+
+    // `force` is set by the settings "Test sound" button so it plays even
+    // while chargingSoundEnabled is false — same shape as
+    // Services/Notifications.qml's own playSound(force).
+    function playChargingSound(force) {
+        if (!force && !root.chargingSoundEnabled) return
         if (chargeSoundProc.running) return
+        var path = root._chargingSoundPath()
+        if (path.length === 0) { root.chargingSoundError = "no sound file configured"; return }
         root.chargingSoundError = ""
-        chargeSoundProc.command = ["pw-play", "/usr/share/sounds/freedesktop/stereo/power-plug.oga"]
+        chargeSoundProc.command = ["pw-play", "--volume=" + (root.chargingSoundVolume / 100).toFixed(2), path]
         chargeSoundProc.running = true
     }
 
@@ -178,7 +252,7 @@ Singleton {
         onExited: (exitCode) => {
             chargeSoundProc.running = false
             if (exitCode !== 0)
-                root.chargingSoundError = "pw-play exited " + exitCode + " (is sound-theme-freedesktop installed?)"
+                root.chargingSoundError = "pw-play exited " + exitCode + " (is " + root._chargingSoundPath() + " present? sound-theme-freedesktop may not be installed)"
         }
     }
 }
