@@ -106,6 +106,14 @@ Singleton {
     // key set is closed, phi/internal/state/state.go) and not the repo.
     readonly property string lockPrefsFile: root.stateDir + "/lock.json"
 
+    // docs/TODO.md: "add settings for the status bar time... allow to set
+    // the format with day/number/year/second etc." — the bar clock's
+    // hour-12/24, seconds and date-display choice. Same shape and reasoning
+    // as lockPrefsFile: one flat JSON object, written by the settings Theme
+    // section, read by Bar/modules/Clock.qml. Not `phi state` and not the
+    // repo.
+    readonly property string clockPrefsFile: root.stateDir + "/clock.json"
+
     // Out-of-plan: settings-overhaul batch G. Chroma's open-ended
     // configuration — the per-key override map and the integration
     // enables + their settings. Deliberately NOT `phi state` (S-13's

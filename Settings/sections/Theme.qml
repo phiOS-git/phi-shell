@@ -748,6 +748,53 @@ Column {
         }
     }
 
+    // --- Clock ---------------------------------------------------
+    // docs/TODO.md: "add settings for the status bar time in the settings
+    // panel. Allow to set the format with day/number/year/second etc."
+    // Stored in Config/ClockPrefs.qml ($XDG_STATE_HOME/phi/clock.json),
+    // read by Bar/modules/Clock.qml. Same shape and reasoning as the Lock
+    // screen group just below.
+    SettingsGroup {
+        title: "Clock"
+        optionId: "theme.clock"
+
+        SettingsRow {
+            title: "12-hour clock"
+            description: "Show the bar clock as 1-12 with AM/PM instead of 0-23."
+            Widgets.Toggle {
+                checked: Config.ClockPrefs.hour12
+                onToggled: (v) => Config.ClockPrefs.setHour12(v)
+            }
+        }
+        SettingsRow {
+            title: "Show seconds"
+            Widgets.Toggle {
+                checked: Config.ClockPrefs.showSeconds
+                onToggled: (v) => Config.ClockPrefs.setShowSeconds(v)
+            }
+        }
+        SettingsRow {
+            title: "Date"
+            description: "Adds the date before the time in the bar. Short is day/month (13/09); long adds the weekday name and year (Sat 13 Sep 2026)."
+            Row {
+                spacing: root.gap
+                Repeater {
+                    model: [
+                        { key: "off", label: "Off" },
+                        { key: "short", label: "Short" },
+                        { key: "long", label: "Long" }
+                    ]
+                    Widgets.StyledButton {
+                        required property var modelData
+                        label: modelData.label
+                        active: Config.ClockPrefs.dateStyle === modelData.key
+                        onClicked: Config.ClockPrefs.setDateStyle(modelData.key)
+                    }
+                }
+            }
+        }
+    }
+
     // --- Lock screen -----------------------------------------
     // OOP-35 (auth surfaces): the ambient backdrop behind the lock screen.
     // Stored in Config/LockPrefs.qml ($XDG_STATE_HOME/phi/lock.json), read
