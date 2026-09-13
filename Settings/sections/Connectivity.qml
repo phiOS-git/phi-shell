@@ -93,10 +93,8 @@ Column {
     SettingsGroup {
         title: "Wi-Fi"
         optionId: "connectivity.wifi"
-        disabled: !Config.Capabilities.wifi || !Services.WifiBridge.present
-        disabledReason: !Config.Capabilities.wifi
-            ? "No Wi-Fi hardware was detected on this machine."
-            : "Wi-Fi is off or the adapter is unavailable."
+        disabled: !Config.Capabilities.wifi
+        disabledReason: "No Wi-Fi hardware was detected on this machine."
 
         SettingsRow {
             title: "Network"
