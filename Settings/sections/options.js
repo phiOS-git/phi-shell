@@ -97,6 +97,7 @@ var OPTIONS = [
     { id: "devices.audio.input",      title: "Audio input",            keywords: "source microphone mic device select" },
     { id: "devices.monitors",         title: "Monitors",               keywords: "display resolution scale refresh layout" },
     { id: "devices.pointer",          title: "Pointer",                keywords: "mouse trackpad sensitivity acceleration" },
+    { id: "devices.power",            title: "Power",                  keywords: "suspend hibernate sleep lock logout log out reboot restart shutdown power off quick actions" },
     { id: "devices.chroma",           title: "Chroma keyboard",        keywords: "razer rgb lighting backlight on off" },
     { id: "devices.chroma.color",     title: "Chroma static colour",   keywords: "razer rgb solid" },
     { id: "devices.chroma.advanced",  title: "Chroma per-key colours", keywords: "razer rgb advanced individual keycap override map" },

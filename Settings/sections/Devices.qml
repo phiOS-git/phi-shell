@@ -7,7 +7,16 @@ import qs.Widgets as Widgets
 // phiOS — Settings/sections/Devices (S-40; S-46; Out-of-plan: settings-
 // overhaul batch G). Rebuilt onto SettingsGroup / SettingsRow like every
 // other section this round. Groups: Audio output, Audio input, Monitors,
-// Pointer, Chroma.
+// Pointer, Battery, Power, Chroma.
+//
+// Power (docs/TODO.md: "add suspension/hibernation settings in the
+// settings panel"): the same six actions Panels/BarPopout.qml's power
+// card already exposes from the bar, via the same Services/PowerActions.qml
+// + Services/ConfirmDialog.qml the popout uses — see this file's own
+// _requestPowerAction/_confirmAndPerform below, kept in lockstep with the
+// popout's identically-named functions rather than sharing one copy, since
+// there are only the two call sites (CLAUDE.md: "three similar lines is
+// better than a premature abstraction").
 //
 // Audio device SELECTION is now real (batch G): Services/AudioBridge.qml
 // exposes the sink/source node lists and writes Pipewire's
@@ -41,6 +50,25 @@ Column {
     readonly property real gap: chWidth * Config.Appearance.space2
 
     function _pct(v) { return Math.round(v * 100) + "%" }
+
+    // Mirrors Panels/BarPopout.qml's own _requestPowerAction/
+    // _confirmAndPerform exactly — same policy (Services.PowerActions.
+    // needsConfirm: only reboot/shutdown gate behind a confirmation, not
+    // logout, which the bar's own power card also performs immediately
+    // on a plain click), so the two surfaces never disagree about which
+    // of the six actions asks first.
+    function _confirmAndPerform(action) {
+        Services.ConfirmDialog.open({
+            title: Services.PowerActions.title(action),
+            message: "This cannot be undone.",
+            confirmLabel: Services.PowerActions.title(action),
+            onConfirm: () => Services.PowerActions.perform(action)
+        })
+    }
+    function _requestPowerAction(action) {
+        if (Services.PowerActions.needsConfirm(action)) root._confirmAndPerform(action)
+        else Services.PowerActions.perform(action)
+    }
 
     // --- one audio-device list (sink or source) ------------------------
     component DeviceList: Column {
@@ -253,6 +281,57 @@ Column {
             Widgets.Toggle {
                 checked: Services.PowerBridge.chargingSoundEnabled
                 onToggled: (v) => Services.PowerBridge.setChargingSoundEnabled(v)
+            }
+        }
+    }
+
+    // ================================================================
+    // Power — docs/TODO.md: "add suspension/hibernation settings in the
+    // settings panel". Panels/BarPopout.qml's power card already covers
+    // this from the bar; this gives the same six actions a home inside
+    // Settings, the way its own "Settings…" deep-link (now pointed here,
+    // see _showInSettings("devices.power")) already implied one should
+    // exist. No idle-timeout / lid-behaviour policy here: no such policy
+    // is configured anywhere in this project today (hypridle's config is
+    // explicitly deferred, profiles/desktop/packages.txt's own comment on
+    // it) — adding a toggle with nothing real behind it to control would
+    // be a hollow control, not a setting.
+    // ================================================================
+    SettingsGroup {
+        title: "Power"
+        optionId: "devices.power"
+        caption: "Lock, suspend and hibernate run immediately. Log out, reboot and shut down ask for confirmation first."
+
+        SettingsRow {
+            title: "Quick actions"
+            wide: true
+            Flow {
+                width: parent.width
+                spacing: root.gap
+                Widgets.StyledButton {
+                    label: Services.PowerActions.title("lock")
+                    onClicked: root._requestPowerAction("lock")
+                }
+                Widgets.StyledButton {
+                    label: Services.PowerActions.title("suspend")
+                    onClicked: root._requestPowerAction("suspend")
+                }
+                Widgets.StyledButton {
+                    label: Services.PowerActions.title("hibernate")
+                    onClicked: root._requestPowerAction("hibernate")
+                }
+                Widgets.StyledButton {
+                    label: Services.PowerActions.title("logout")
+                    onClicked: root._requestPowerAction("logout")
+                }
+                Widgets.StyledButton {
+                    label: Services.PowerActions.title("reboot")
+                    onClicked: root._requestPowerAction("reboot")
+                }
+                Widgets.StyledButton {
+                    label: Services.PowerActions.title("shutdown")
+                    onClicked: root._requestPowerAction("shutdown")
+                }
             }
         }
     }
