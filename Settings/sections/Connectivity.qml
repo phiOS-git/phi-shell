@@ -183,7 +183,17 @@ Column {
                         visible: modelData.managed
                         label: "Forget"
                         enabled: !Services.Vpn.busy && !modelData.up
-                        onClicked: Services.Vpn.forget(modelData.name)
+                        // docs/TODO.md: "sensible settings (eg. deleting the
+                        // VPN config) should ask confirmation with a
+                        // blocking alert (same fullscreen blocking alert/
+                        // warning used by other systems)" — the TODO's own
+                        // named example.
+                        onClicked: Services.ConfirmDialog.open({
+                            title: "Forget " + modelData.name,
+                            message: "Deletes the imported config from ~/.config/phi/wireguard. This cannot be undone.",
+                            confirmLabel: "Forget",
+                            onConfirm: () => Services.Vpn.forget(modelData.name)
+                        })
                     }
                     Widgets.Toggle {
                         anchors.verticalCenter: parent.verticalCenter
