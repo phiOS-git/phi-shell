@@ -29,6 +29,16 @@ import qs.Services as Services
 // and Spotlight are deliberately not included — Launcher owns no service
 // singleton to watch, and Spotlight's header explicitly documents that it
 // is meant to layer over an open panel, not close it.
+//
+// docs/TODO.md (follow-up report): the four Connections below only ever
+// closed the calendar — opening the calendar never closed any of THEM, so
+// the calendar could sit on top of an already-open notification/agent/
+// settings panel or bar popout instead of replacing it, the one direction
+// every other pair of these surfaces already agrees on for itself (a bar
+// popout replaces another bar popout by construction — one `which` key —
+// and each of the other three is summoned with the others already meant to
+// yield). `onShownChanged` below closes the same four peers back, so the
+// relationship reads the same both ways instead of only one.
 Singleton {
     id: root
 
@@ -39,6 +49,13 @@ Singleton {
     function hide() { root.shown = false }
 
     function _closeIfOpen() { if (root.shown) root.hide() }
+
+    onShownChanged: if (root.shown) {
+        Services.NotificationPanel.hide()
+        Services.AgentPanel.hide()
+        Services.SettingsPanel.hide()
+        Services.BarPopout.hide()
+    }
 
     Connections { target: Services.NotificationPanel; function onShownChanged() { if (Services.NotificationPanel.shown) root._closeIfOpen() } }
     Connections { target: Services.AgentPanel; function onShownChanged() { if (Services.AgentPanel.shown) root._closeIfOpen() } }
