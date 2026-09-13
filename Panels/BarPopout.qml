@@ -20,8 +20,9 @@ import qs.Widgets as Widgets
 //     with a deep-link button where a mature TUI exists.
 //   - power → six plain action buttons (lock/suspend/hibernate/logout/
 //               reboot/shutdown, via Services/PowerActions.qml) plus a
-//               "Settings…" deep-link; reboot/shutdown gate behind an
-//               inline confirm instead of running immediately.
+//               "Settings…" deep-link; reboot/shutdown/logout gate behind
+//               Services/ConfirmDialog.qml's shared centered modal instead
+//               of running immediately.
 // No scrim (this window never had one). A full mixer / network list is
 // still a later pass.
 
@@ -53,44 +54,21 @@ PanelWindow {
     // Out-of-plan: settings-overhaul batch F. Only sample the live network
     // stats while the wifi card is actually on screen.
     property bool _netWatched: false
-    // docs/TODO.md: "Reboot and Shutdown should require confirmation" —
-    // "" outside a confirm step, else the action name awaiting a second,
-    // explicit click. Reset whenever the power section isn't the one
-    // showing (closing the popout, or switching to a different key), so
-    // reopening the power card never lands mid-confirm from a previous
-    // visit. Folded into the SAME onWhichChanged/onShownChanged handlers
-    // `_syncNetWatch()` already uses — QML does not allow a second
-    // `onXxxChanged:` for the same signal on one object.
-    property string _confirmingAction: ""
-    onWhichChanged: { root._syncNetWatch(); if (root.which !== "power") root._confirmingAction = "" }
-    onShownChanged: { root._syncNetWatch(); if (!root.shown) root._confirmingAction = "" }
-
-    // docs/TODO.md ("SUPER+M to close hyprland is problematic: add a
-    // confirmation"): Services.BarPopout.openConfirm() (called from the
-    // "power" IpcHandler below) sets `which` to "power" AND this pending
-    // action in the same call — react to the latter rather than folding it
-    // into onWhichChanged above, since a bare `which` change alone carries
-    // no action to preset (every button-driven open still goes through
-    // `open`/`toggle` with `which` changing and pendingConfirmAction never
-    // touched, so this Connections block simply never fires for those).
-    Connections {
-        target: Services.BarPopout
-        function onPendingConfirmActionChanged() {
-            var action = Services.BarPopout.pendingConfirmAction
-            if (action.length === 0) return
-            root._confirmingAction = action
-            Services.BarPopout.pendingConfirmAction = ""
-        }
-    }
+    onWhichChanged: root._syncNetWatch()
+    onShownChanged: root._syncNetWatch()
 
     // New "power" IPC target — the one entry point docs/TODO.md's request
     // needs: hyprland.lua's Super+M bind now calls this instead of running
     // Services.PowerActions.logout() straight away, so a stray Super+M
-    // lands on the same "Log out now? This cannot be undone." confirm step
+    // lands on the same "Log out now? This cannot be undone." confirmation
     // the reboot/shutdown buttons already use, not an instant session end.
+    // Goes straight to _confirmAndPerform below now — docs/TODO.md:
+    // "confirmation modals ... should be centered in the screen", a
+    // centered modal needs no popout to anchor under, so unlike before
+    // this no longer opens the power popout first.
     IpcHandler {
         target: "power"
-        function confirmLogout(): void { Services.BarPopout.openConfirm("power", "logout") }
+        function confirmLogout(): void { root._confirmAndPerform("logout") }
     }
     function _syncNetWatch() {
         var want = root.shown && root.which === "wifi"
@@ -106,14 +84,29 @@ PanelWindow {
         return Math.round(kbps) + " kb/s"
     }
 
-    function _requestPowerAction(action) {
-        if (Services.PowerActions.needsConfirm(action)) root._confirmingAction = action
-        else { Services.PowerActions.perform(action); Services.BarPopout.hide() }
+    // docs/TODO.md: "confirmation modals (like the one for power options)
+    // should be centered in the screen, with a dim and block the screen
+    // until they are resolved. Also make them a reusable component" —
+    // replaces the old inline confirm (which replaced the action list in
+    // place, inside this same small card, never dimming or blocking
+    // anything else) with the shared Services/ConfirmDialog.qml +
+    // Dialogs/ConfirmDialog.qml surface. Services.BarPopout.hide() only
+    // runs once the action is actually confirmed — cancelling leaves this
+    // popout's action list open underneath, same as the inline version did.
+    function _confirmAndPerform(action) {
+        Services.ConfirmDialog.open({
+            title: Services.PowerActions.title(action),
+            message: "This cannot be undone.",
+            confirmLabel: Services.PowerActions.title(action),
+            onConfirm: () => {
+                Services.PowerActions.perform(action)
+                Services.BarPopout.hide()
+            }
+        })
     }
-    function _confirmPowerAction() {
-        Services.PowerActions.perform(root._confirmingAction)
-        root._confirmingAction = ""
-        Services.BarPopout.hide()
+    function _requestPowerAction(action) {
+        if (Services.PowerActions.needsConfirm(action)) root._confirmAndPerform(action)
+        else { Services.PowerActions.perform(action); Services.BarPopout.hide() }
     }
 
     Item {
@@ -436,12 +429,12 @@ PanelWindow {
             // convention every other action/deep-link button in this
             // card already uses (Sound settings…, Manage networks…, …) —
             // no per-row icon. Reboot/Shutdown are gated behind
-            // root._confirmingAction (an inline second-click confirm)
-            // instead of running immediately, matching Launcher.qml's own
-            // confirm sub-view for the identical two actions in the
-            // runner bar — same policy (Services.PowerActions.needsConfirm),
-            // different UI shape because this is a card, not a stack of
-            // navigable views.
+            // Services/ConfirmDialog.qml's shared centered modal
+            // (root._confirmAndPerform above) instead of running
+            // immediately — same policy (Services.PowerActions.needsConfirm)
+            // as Launcher.qml's own confirm sub-view for the identical two
+            // actions in the runner bar, different UI shape because that
+            // one is a stack of navigable views, not a floating dialog.
             Column {
                 width: parent.width
                 spacing: root.chWidth * Config.Appearance.space1
@@ -450,7 +443,6 @@ PanelWindow {
                 Column {
                     width: parent.width
                     spacing: root.chWidth * Config.Appearance.space2
-                    visible: root._confirmingAction.length === 0
 
                     Widgets.SmallButton {
                         width: parent.width
@@ -497,32 +489,6 @@ PanelWindow {
                         onClicked: {
                             Services.SettingsPanel.openSection("devices")
                             Services.BarPopout.hide()
-                        }
-                    }
-                }
-
-                // Inline confirm — replaces the action list above while a
-                // destructive action awaits a second, explicit click.
-                Column {
-                    width: parent.width
-                    spacing: root.chWidth * Config.Appearance.space2
-                    visible: root._confirmingAction.length > 0
-
-                    Widgets.StyledText {
-                        width: parent.width
-                        wrapMode: Text.WordWrap
-                        kind: "label"
-                        text: Services.PowerActions.title(root._confirmingAction) + " now? This cannot be undone."
-                    }
-                    Row {
-                        spacing: root.chWidth * Config.Appearance.space2
-                        Widgets.SmallButton {
-                            label: Services.PowerActions.title(root._confirmingAction)
-                            onClicked: root._confirmPowerAction()
-                        }
-                        Widgets.SmallButton {
-                            label: "Cancel"
-                            onClicked: root._confirmingAction = ""
                         }
                     }
                 }

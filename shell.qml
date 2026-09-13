@@ -16,6 +16,7 @@ import qs.Lock as Lock
 import qs.Screenshot as Screenshot
 import qs.AltTab as AltTab
 import qs.Cheatsheet as Cheatsheet
+import qs.Dialogs as Dialogs
 
 // phiOS — phi-shell entry point (master plan §8.2).
 //
@@ -187,6 +188,15 @@ ShellRoot {
         screen: Quickshell.screens[0]
     }
     Cheatsheet.Cheatsheet {
+        screen: Quickshell.screens[0]
+    }
+    // docs/TODO.md: "confirmation modals ... should be centered in the
+    // screen, with a dim and block the screen until they are resolved" —
+    // single shared instance, same primary-screen-only reasoning as
+    // Cheatsheet just above; content is entirely driven by
+    // Services/ConfirmDialog.qml, so any caller anywhere just calls
+    // Services.ConfirmDialog.open({...}).
+    Dialogs.ConfirmDialog {
         screen: Quickshell.screens[0]
     }
 
