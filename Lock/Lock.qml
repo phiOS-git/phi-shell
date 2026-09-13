@@ -178,6 +178,9 @@ WlSessionLock {
             // why a stale `true` here would make this lock un-unlockable.
             root.authenticated = false
             root.locked = true
+            // Services/LockState.qml's own header on why the matching
+            // false-write lives in concealFade.onFinished below, not here.
+            Services.LockState.locked = true
             root.pam.start()
         }
     }
@@ -265,7 +268,12 @@ WlSessionLock {
             easing.type: Easing.InOutQuad
             // Only ever started from root.authenticated → Success; this is
             // the one and only place `locked` is cleared.
-            onFinished: root.locked = false
+            onFinished: {
+                root.locked = false
+                // Timed to the fade finishing, not to authentication
+                // succeeding — see Services/LockState.qml's own header.
+                Services.LockState.locked = false
+            }
         }
         Component.onCompleted: Qt.callLater(function () { revealFade.start() })
         Connections {
