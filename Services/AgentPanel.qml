@@ -1,6 +1,7 @@
 pragma Singleton
 import QtQml
 import Quickshell
+import qs.Services as Services
 
 // phiOS — Services/AgentPanel (out-of-plan, 2026-09-09). Owns the shown
 // state of the phi agent panel (Panels/AgentPanel.qml) so every entry
@@ -24,6 +25,16 @@ Singleton {
     id: root
 
     property bool shown: false
+
+    // docs/TODO.md: "opening the notification panel, the agent panel, the
+    // settings panel or a bar popout ... doesn't close whichever of the
+    // others is already open" — see Services/NotificationPanel.qml's own
+    // comment on this same handler for the full rationale.
+    onShownChanged: if (root.shown) {
+        Services.NotificationPanel.hide()
+        Services.SettingsPanel.hide()
+        Services.BarPopout.hide()
+    }
 
     function show() { root.shown = true }
     function hide() { root.shown = false }

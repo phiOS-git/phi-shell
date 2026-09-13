@@ -1,5 +1,6 @@
 pragma Singleton
 import Quickshell
+import qs.Services as Services
 
 // phiOS — Services/NotificationPanel (OOP-06, shell restyle). Owns the
 // shown state AND the active tab of the notification panel
@@ -20,6 +21,20 @@ Singleton {
     property bool shown: false
     // 0 = notifications, 1 = clipboard (Panels/tabs.json order).
     property int tab: 0
+
+    // docs/TODO.md: "opening the notification panel, the agent panel, the
+    // settings panel or a bar popout ... doesn't close whichever of the
+    // others is already open — more than one can be visible at once."
+    // Services/Calendar.qml already closes itself whenever any of these
+    // four opens (and this panel closing Calendar back is handled from
+    // that same file, its one owner) — the four never closed each OTHER,
+    // which is the gap this closes: whichever of them opens hides the
+    // other three.
+    onShownChanged: if (root.shown) {
+        Services.AgentPanel.hide()
+        Services.SettingsPanel.hide()
+        Services.BarPopout.hide()
+    }
 
     function toggle() { root.shown = !root.shown }
     function show() { root.shown = true }

@@ -1,5 +1,6 @@
 pragma Singleton
 import Quickshell
+import qs.Services as Services
 
 // phiOS — Services/BarPopout (OOP-11; R3 #2/#9). Owns the shown state, the
 // identity (`which`) and the on-screen x of the small panel that drops
@@ -39,6 +40,19 @@ Singleton {
     property string anchorEdge: "right" // "right" | "left"
 
     readonly property bool shown: root.which.length > 0
+
+    // docs/TODO.md: "opening the notification panel, the agent panel, the
+    // settings panel or a bar popout ... doesn't close whichever of the
+    // others is already open" — see Services/NotificationPanel.qml's own
+    // comment on this same handler for the full rationale. Watches `which`
+    // rather than the derived `shown` above to match how every external
+    // consumer of this singleton already reads it (see
+    // Services/Calendar.qml's own `onWhichChanged`, which explains why).
+    onWhichChanged: if (root.which.length > 0) {
+        Services.NotificationPanel.hide()
+        Services.AgentPanel.hide()
+        Services.SettingsPanel.hide()
+    }
 
     // Set by openConfirm() below, consumed once by Panels/BarPopout.qml's
     // own Connections and cleared straight back to "" — the same
