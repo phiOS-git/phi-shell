@@ -427,7 +427,16 @@ Column {
                     }
                     Widgets.StyledButton {
                         label: "Clear all keys"
-                        onClicked: Services.Chroma.clearAllKeyOverrides()
+                        // docs/TODO.md: "sensible settings ... should ask
+                        // confirmation with a blocking alert" — a bulk
+                        // clear of every per-key override, unlike the
+                        // single-key button beside it.
+                        onClicked: Services.ConfirmDialog.open({
+                            title: "Clear all keys",
+                            message: "Removes every per-key colour override. This cannot be undone.",
+                            confirmLabel: "Clear all",
+                            onConfirm: () => Services.Chroma.clearAllKeyOverrides()
+                        })
                     }
                 }
             }

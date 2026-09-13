@@ -118,7 +118,15 @@ Column {
             title: "Clear now"
             Widgets.StyledButton {
                 label: "Clear all notifications"
-                onClicked: Services.Notifications.clearAll()
+                // docs/TODO.md: "sensible settings ... should ask
+                // confirmation with a blocking alert" — the whole
+                // notification history, not one entry.
+                onClicked: Services.ConfirmDialog.open({
+                    title: "Clear all notifications",
+                    message: "Deletes the whole notification history now. This cannot be undone.",
+                    confirmLabel: "Clear all",
+                    onConfirm: () => Services.Notifications.clearAll()
+                })
             }
         }
     }
