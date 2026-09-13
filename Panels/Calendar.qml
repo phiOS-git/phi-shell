@@ -23,7 +23,14 @@ PanelWindow {
     readonly property bool shown: Services.Calendar.shown
 
     anchors { top: true; right: true; left: true; bottom: true }
-    exclusiveZone: 0
+    // docs/TODO.md: "the status bar overlays ... are still lower that they
+    // should be" — same bug, same fix, as Panels/BarPopout.qml's own
+    // `exclusiveZone` comment explains in full (including the primary
+    // evidence for the mechanism and the falsifiable cases to watch for):
+    // `0` (not `-1`) let the bar's own reservation already shift this
+    // window's top-anchored origin down before the `anchors.topMargin`
+    // below (bar height + gap) added the SAME height again on top of that.
+    exclusiveZone: -1
     color: "transparent"
     visible: root.shown || fadeRoot.opacity > 0
 
