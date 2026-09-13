@@ -1,6 +1,7 @@
 pragma Singleton
 import QtQml
 import Quickshell
+import qs.Services as Services
 
 // phiOS — Services/SettingsPanel.qml (OOP-23; Out-of-plan: settings-overhaul
 // batch A). Owns the Settings panel's shown state plus everything needed to
@@ -36,6 +37,18 @@ Singleton {
     // Live search text from the panel's search field. "" when the panel is
     // closed or the field is empty.
     property string query: ""
+
+    // docs/TODO.md: "opening the notification panel, the agent panel, the
+    // settings panel or a bar popout ... doesn't close whichever of the
+    // others is already open" — see Services/NotificationPanel.qml's own
+    // comment on this same handler for the full rationale. Reactive on
+    // `shown` rather than added to each setter individually, so it covers
+    // every entry point below (show, openSection, reveal) the same way.
+    onShownChanged: if (root.shown) {
+        Services.NotificationPanel.hide()
+        Services.AgentPanel.hide()
+        Services.BarPopout.hide()
+    }
 
     // id -> the SettingsRow item currently registered for it (only rows in
     // the loaded section are present). Not reactive on purpose: consumers
