@@ -64,6 +64,34 @@ PanelWindow {
     property string _confirmingAction: ""
     onWhichChanged: { root._syncNetWatch(); if (root.which !== "power") root._confirmingAction = "" }
     onShownChanged: { root._syncNetWatch(); if (!root.shown) root._confirmingAction = "" }
+
+    // docs/TODO.md ("SUPER+M to close hyprland is problematic: add a
+    // confirmation"): Services.BarPopout.openConfirm() (called from the
+    // "power" IpcHandler below) sets `which` to "power" AND this pending
+    // action in the same call — react to the latter rather than folding it
+    // into onWhichChanged above, since a bare `which` change alone carries
+    // no action to preset (every button-driven open still goes through
+    // `open`/`toggle` with `which` changing and pendingConfirmAction never
+    // touched, so this Connections block simply never fires for those).
+    Connections {
+        target: Services.BarPopout
+        function onPendingConfirmActionChanged() {
+            var action = Services.BarPopout.pendingConfirmAction
+            if (action.length === 0) return
+            root._confirmingAction = action
+            Services.BarPopout.pendingConfirmAction = ""
+        }
+    }
+
+    // New "power" IPC target — the one entry point docs/TODO.md's request
+    // needs: hyprland.lua's Super+M bind now calls this instead of running
+    // Services.PowerActions.logout() straight away, so a stray Super+M
+    // lands on the same "Log out now? This cannot be undone." confirm step
+    // the reboot/shutdown buttons already use, not an instant session end.
+    IpcHandler {
+        target: "power"
+        function confirmLogout(): void { Services.BarPopout.openConfirm("power", "logout") }
+    }
     function _syncNetWatch() {
         var want = root.shown && root.which === "wifi"
         if (want && !root._netWatched) { Services.NetStats.watch(); root._netWatched = true }
