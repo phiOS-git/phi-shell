@@ -187,6 +187,12 @@ PanelWindow {
                 console.warn("phi-shell: Bar/modules.json failed to parse: " + e)
                 bar.registryRows = []
             }
+            // `startupReveal`'s own comment on why this waits for THIS
+            // signal (not plain Component.onCompleted) and still defers a
+            // further turn: registryRows populating the Repeaters above
+            // still needs at least one more event-loop turn before the
+            // Loaders they create report a real implicitHeight.
+            Qt.callLater(function () { bar.startupReveal = false })
         }
     }
 
@@ -217,6 +223,46 @@ PanelWindow {
         && bar._onThisScreen(bar._activeToplevel)
     readonly property bool autoHidden: bar.activeIsFullscreenHere && !hoverHandler.hovered
 
+    // docs/TODO.md: "add in and out transition for the status bar, to be
+    // triggered on start, lock and unlock" — reuses the exact slide
+    // (`barContent`'s own `y` + Behavior below) the fullscreen auto-hide
+    // case above already has, rather than a second, parallel animation.
+    // `startupReveal` starts true (bar begins off-screen); `registryFile`'s
+    // own `onLoaded` further down flips it false, deferred one more frame
+    // via Qt.callLater (the same deferral Lock/Lock.qml's own reveal fade
+    // uses, and for the same reason: a Behavior that starts running before
+    // the surface is actually mapped reads as instant, not animated). It
+    // has to wait for THAT signal specifically, not plain
+    // Component.onCompleted: `bar.height` derives from the isles' own
+    // implicitHeight, which is empty until registryFile's async load
+    // populates the module Repeaters — flipping any earlier would slide in
+    // from a few-pixel-tall bar that only reaches its real height after
+    // the reveal has already finished, reading as no animation at all.
+    // `Services.LockState.locked` folds the lock/unlock trigger into the
+    // same slide: the bar hides the moment locking starts and reveals
+    // itself again the moment Lock/Lock.qml's own conceal fade finishes
+    // (Services/LockState.qml's own header has the exact timing) — though
+    // in practice only the unlock half of that is independently visible,
+    // since the opaque lock surface covers the bar the same instant
+    // locking starts (Lock/Lock.qml's own header: the protocol requires a
+    // locked output to stay painted). Named `concealed`, not `hidden`: a
+    // `PanelWindow`/`ProxyWindowBase` property of that exact name is not
+    // ruled out from here, and shadowing one silently would not show up
+    // until runtime — not worth the risk for a name with no other claim on
+    // it. Kept separate from `autoHidden` itself (see `exclusiveZone`
+    // above for why) rather than folded into it.
+    property bool startupReveal: true
+    readonly property bool concealed: bar.autoHidden || bar.startupReveal || Services.LockState.locked
+
+    // Deliberately keyed to `autoHidden`, not `concealed` below: the
+    // fullscreen case can safely drop the reserved strip to 0 because the
+    // fullscreen window already covers it, but the lock/startup cases must
+    // NOT — dropping the zone during a lock would un-reserve the bar's
+    // strip and every tiled window on this screen would reflow to fill it,
+    // then reflow back on unlock, a visible layout jump on every lock
+    // cycle. Only `barContent`'s own `y` below reacts to the wider
+    // `concealed` condition; the window itself keeps reserving its space
+    // throughout.
     exclusiveZone: bar.autoHidden ? 0 : bar.height
 
     HoverHandler {
@@ -226,7 +272,7 @@ PanelWindow {
     Item {
         id: barContent
         anchors.fill: parent
-        y: bar.autoHidden ? -bar.height : 0
+        y: bar.concealed ? -bar.height : 0
 
         Behavior on y {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
