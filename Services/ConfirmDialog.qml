@@ -1,5 +1,6 @@
 pragma Singleton
 import Quickshell
+import qs.Services as Services
 
 // phiOS — Services/ConfirmDialog. docs/TODO.md: "confirmation modals (like
 // the one for power options) should be centered in the screen, with a dim
@@ -18,6 +19,27 @@ Singleton {
     id: root
 
     property bool shown: false
+
+    // This dialog and Sidebar/AgentPanel/Settings all raise themselves to
+    // WlrLayer.Overlay and grab keyboard focus (Services/LayerFocus.qml)
+    // while shown — unlike Services/Spotlight.qml, which is deliberately
+    // meant to layer OVER an already-open panel (shell.qml's own header:
+    // "the cursor-locator dim comes up above an already-open settings /
+    // notification / chat panel"), this dialog must be the ONLY such
+    // surface holding focus, or which of two same-layer windows actually
+    // receives a keypress is undefined — dangerous when one of them
+    // defaults Enter to a destructive confirm. "block the screen until
+    // resolved" (the TODO's own words) means exclusive, not layered-over,
+    // so opening this closes every other panel rather than coexisting with
+    // them the way Spotlight does.
+    onShownChanged: if (root.shown) {
+        Services.NotificationPanel.hide()
+        Services.AgentPanel.hide()
+        Services.SettingsPanel.hide()
+        Services.BarPopout.hide()
+        Services.Calendar.hide()
+    }
+
     property string title: ""
     property string message: ""
     property string confirmLabel: "Confirm"
