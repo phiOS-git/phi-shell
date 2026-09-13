@@ -65,8 +65,18 @@ PanelWindow {
             padding: fadeRoot.chWidth * Config.Appearance.space3
 
             focus: root.shown
+            // Escape is a safe blanket default regardless of what inside
+            // this card has focus (Cancel is never destructive). Return is
+            // deliberately NOT defaulted to Confirm here the way
+            // Launcher/Launcher.qml's own confirm subview defaults it —
+            // that view is only ever reached by a user who just Tab-
+            // navigated into it inside the runner bar; this dialog can pop
+            // up from other, less deliberate entry points (Super+M), so an
+            // unfocused stray Return should do nothing rather than run a
+            // destructive action. Each button's own Keys.onReturnPressed
+            // below still confirms/cancels once the user has actually
+            // tabbed to it.
             Keys.onEscapePressed: Services.ConfirmDialog.cancel()
-            Keys.onReturnPressed: Services.ConfirmDialog.confirm()
 
             Column {
                 id: body
@@ -96,12 +106,13 @@ PanelWindow {
                     Widgets.StyledButton {
                         label: Services.ConfirmDialog.confirmLabel
                         active: true
-                        // Same landmine Launcher/Launcher.qml's own confirm
-                        // subview already documents: StyledButton has no
-                        // keyboard handling of its own, so without this,
-                        // tabbing to Cancel and pressing Return would fall
-                        // through to card's onReturnPressed above and still
-                        // confirm.
+                        // StyledButton has no keyboard handling of its own
+                        // (its TapHandler only reacts to pointer input) —
+                        // without this, Tab-ing here and pressing Return
+                        // would do nothing at all, since (unlike Launcher's
+                        // confirm subview) `card` above deliberately has no
+                        // Return handler of its own for this to fall
+                        // through to.
                         Keys.onReturnPressed: clicked()
                         Keys.onEscapePressed: Services.ConfirmDialog.cancel()
                         onClicked: Services.ConfirmDialog.confirm()

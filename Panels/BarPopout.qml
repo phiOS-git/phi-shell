@@ -90,9 +90,18 @@ PanelWindow {
     // replaces the old inline confirm (which replaced the action list in
     // place, inside this same small card, never dimming or blocking
     // anything else) with the shared Services/ConfirmDialog.qml +
-    // Dialogs/ConfirmDialog.qml surface. Services.BarPopout.hide() only
-    // runs once the action is actually confirmed — cancelling leaves this
-    // popout's action list open underneath, same as the inline version did.
+    // Dialogs/ConfirmDialog.qml surface. Unlike the old inline version,
+    // this popout closes the MOMENT the dialog opens, not only once
+    // confirmed: Services/ConfirmDialog.qml closes every other panel
+    // (including this one) as soon as it opens, so it is never fighting
+    // another Overlay-layer surface for keyboard focus — see that file's
+    // own header for why that matters for a destructive confirmation
+    // specifically. Cancelling therefore returns to a closed bar, not a
+    // still-open action list; re-clicking the power icon opens it again.
+    // The explicit hide() below is now redundant in the confirm case (the
+    // dialog already closed it) but still needed for the non-confirm
+    // branch in _requestPowerAction, so it stays here rather than being
+    // split out.
     function _confirmAndPerform(action) {
         Services.ConfirmDialog.open({
             title: Services.PowerActions.title(action),
