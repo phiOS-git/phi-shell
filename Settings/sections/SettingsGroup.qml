@@ -3,6 +3,7 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 import "options.js" as Options
+import "../../Widgets/WidgetStates.js" as WidgetStates
 
 // phiOS — Settings/SettingsGroup (Out-of-plan: settings-overhaul batch A;
 // optionId registration added batch B; restyled OOP-52; header reworked
@@ -42,6 +43,18 @@ Column {
     // a preview never reads as another block of settings.
     property bool preview: false
     default property alias content: body.data
+
+    // No settings module ever collapses out of sight just because a
+    // capability is missing (user directive — a hidden section reads as
+    // "this feature doesn't exist" rather than "this machine doesn't have
+    // it"). A capability-gated group sets `disabled` instead of `visible`:
+    // the title, caption and rule stay put, `disabledReason` explains why
+    // in place of the rows, and the rows themselves stay in the tree —
+    // dimmed to WidgetStates.INACTIVE_OPACITY, the same "same weight,
+    // reduced opacity" affordance every disabled control already uses —
+    // rather than being torn down and losing scroll/search position.
+    property bool disabled: false
+    property string disabledReason: ""
 
     width: parent ? parent.width : 0
     spacing: Config.Appearance.space2 * _ch
@@ -125,6 +138,17 @@ Column {
             width: parent.width
             visible: root.title.length > 0
         }
+
+        Widgets.StyledText {
+            x: root._pad
+            visible: root.disabled && root.disabledReason.length > 0
+            width: parent.width - root._pad * 2
+            wrapMode: Text.WordWrap
+            kind: "label"
+            sizeStep: 0
+            tone: "warn"
+            text: root.disabledReason
+        }
     }
 
     // --- rows -------------------------------------------------------
@@ -132,6 +156,8 @@ Column {
         id: bodyWrap
         width: parent.width
         implicitHeight: root.preview ? body.implicitHeight + _previewPad * 2 : body.implicitHeight
+        enabled: !root.disabled
+        opacity: root.disabled ? WidgetStates.INACTIVE_OPACITY : 1.0
 
         readonly property real _previewPad: root.preview ? root._pad : 0
 

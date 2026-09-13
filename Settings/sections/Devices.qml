@@ -241,7 +241,8 @@ Column {
     SettingsGroup {
         title: "Battery"
         optionId: "devices.battery"
-        visible: Config.Capabilities.battery
+        disabled: !Config.Capabilities.battery
+        disabledReason: "No battery was detected on this machine."
         caption: Services.PowerBridge.chargingSoundError.length > 0
             ? ("Last sound error: " + Services.PowerBridge.chargingSoundError)
             : "Plays through pw-play (pipewire), same as notification sounds."
@@ -262,7 +263,8 @@ Column {
     SettingsGroup {
         title: "Chroma keyboard"
         optionId: "devices.chroma"
-        visible: Config.Capabilities.chroma
+        disabled: !Config.Capabilities.chroma
+        disabledReason: "No Razer Chroma keyboard was detected on this machine."
         caption: "The keyboard is driven by one composed frame — the static colour, the per-key overrides and any active integration are layered together, never fighting each other."
 
         SettingsRow {

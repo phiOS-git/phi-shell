@@ -165,7 +165,8 @@ Column {
     // --- Chroma ---------------------------------------------------
     SettingsGroup {
         title: "Chroma"
-        visible: Config.Capabilities.chroma
+        disabled: !Config.Capabilities.chroma
+        disabledReason: "No Razer Chroma keyboard was detected on this machine."
         caption: "Function-row flash on arrival — silent while Do Not Disturb is on. The row is configured in Devices → Chroma."
 
         SettingsRow {

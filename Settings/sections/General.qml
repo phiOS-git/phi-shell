@@ -93,7 +93,8 @@ Column {
     SettingsGroup {
         title: "Battery"
         optionId: "general.battery"
-        visible: Config.Capabilities.battery
+        disabled: !Config.Capabilities.battery
+        disabledReason: "No battery was detected on this machine."
 
         Column {
             width: parent.width
