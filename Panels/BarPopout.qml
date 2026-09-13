@@ -487,18 +487,13 @@ PanelWindow {
                     Widgets.Separator { width: parent.width }
                     Widgets.SmallButton {
                         width: parent.width
-                        // No dedicated power/suspend settings section
-                        // exists yet (docs/TODO.md: "add suspension/
-                        // hibernation settings in the settings panel" is
-                        // its own, still-open entry) — Devices already
-                        // hosts battery/charging, the closest existing
-                        // home, same reasoning Volume/Brightness above
-                        // use for their own deep-links.
+                        // Settings/sections/Devices.qml's own "Power" group
+                        // (docs/TODO.md: "add suspension/hibernation
+                        // settings in the settings panel") — same
+                        // _showInSettings deep-link pattern Volume/
+                        // Brightness/Wi-Fi/Bluetooth/VPN above already use.
                         label: "Settings…"
-                        onClicked: {
-                            Services.SettingsPanel.openSection("devices")
-                            Services.BarPopout.hide()
-                        }
+                        onClicked: root._showInSettings("devices.power")
                     }
                 }
             }
