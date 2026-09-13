@@ -40,6 +40,16 @@ Singleton {
 
     readonly property bool shown: root.which.length > 0
 
+    // Set by openConfirm() below, consumed once by Panels/BarPopout.qml's
+    // own Connections and cleared straight back to "" — the same
+    // set-once/consume-and-clear shape Services/SettingsPanel.qml's
+    // pendingSection/pendingReveal already use for "open me straight into
+    // a sub-state" callers that have no button to anchor to (a keybind,
+    // not a click). Panels/BarPopout.qml keeps the actual confirm-view
+    // state (`_confirmingAction`) local to itself, same as it already did
+    // before this existed — this is only the one-shot handoff into it.
+    property string pendingConfirmAction: ""
+
     function toggle(key, x, edge) {
         if (root.which === key) {
             root.which = ""
@@ -51,6 +61,16 @@ Singleton {
 
     function open(key, x, edge) { root.which = key; root._setAnchor(x, edge) }
     function hide() { root.which = "" }
+
+    // docs/TODO.md ("SUPER+M to close hyprland is problematic"): a keybind
+    // has no button to anchor a popout under, so this opens at the default
+    // screen-corner position (open()'s own x=0/edge="right" fallback) and
+    // lands straight on the power card's confirm step for `action` instead
+    // of its plain action list.
+    function openConfirm(key, action) {
+        root.open(key, 0, "right")
+        root.pendingConfirmAction = action
+    }
 
     function _setAnchor(x, edge) {
         root.anchorEdge = edge === "left" ? "left" : "right"
