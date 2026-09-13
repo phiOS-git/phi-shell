@@ -64,10 +64,13 @@ Widgets.Segment {
 
             // Qt's date format only switches "hh" to a 1-12 range when the
             // same format string also contains an AM/PM specifier, so both
-            // are read from one combined call and then split apart.
-            readonly property string _hourAmPm: clockRow.hour12 ? Qt.formatDateTime(clockTimer.now, "hhAP") : ""
-            readonly property string hh: clockRow.hour12 ? clockRow._hourAmPm.substring(0, 2) : Qt.formatDateTime(clockTimer.now, "HH")
-            readonly property string ampm: clockRow.hour12 ? clockRow._hourAmPm.substring(2, 4) : ""
+            // are read from one combined call and then split apart on the
+            // literal space — never a fixed substring offset, since "AP"'s
+            // own output length is locale-dependent (not guaranteed to be
+            // exactly "AM"/"PM").
+            readonly property var _hourAmPm: clockRow.hour12 ? Qt.formatDateTime(clockTimer.now, "hh AP").split(" ") : ["", ""]
+            readonly property string hh: clockRow.hour12 ? clockRow._hourAmPm[0] : Qt.formatDateTime(clockTimer.now, "HH")
+            readonly property string ampm: clockRow.hour12 ? clockRow._hourAmPm[1] : ""
             readonly property string mm: Qt.formatDateTime(clockTimer.now, "mm")
             readonly property string ss: Qt.formatDateTime(clockTimer.now, "ss")
             readonly property string dateText:
