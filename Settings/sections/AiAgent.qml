@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
@@ -185,8 +186,15 @@ Column {
     SettingsGroup {
         advanced: true
         title: "Broker & engine"
-        caption: "Read-only. Edit these in ~/.config/phi-agent/ (broker.json, <inst>/opencode/opencode.json, tinyproxy/whitelist) — the key is a separate mode-600 file, never shown. Full specification: phios-agente.md (ADR 084–100)."
+        caption: "The values below are read-only — broker.json / opencode.json / the egress whitelist are versioned config, and editing them from this panel would fight `git pull` (the exact problem a past round hit doing exactly that). The buttons open the real files in a terminal editor instead. The provider key is a separate mode-600 file, never shown here at all. Full specification: phios-agente.md (ADR 084–100)."
 
+        // Style pass 2026-09-14 (docs/TODO.md: "AI agents settings shows
+        // many informations but misses the most important and obvious
+        // settings (change model, change token per service, etc)"). The
+        // two facts anyone actually opening this group wants FIRST — is a
+        // key configured, and which model — now lead it, ahead of the
+        // lower-level broker networking readout (upstream/listen/rate-
+        // limit/auth-header) that used to come before them.
         Widgets.ListRow {
             width: parent ? parent.width : 0
             label: "Provider key (a1)"
@@ -198,6 +206,51 @@ Column {
             label: "Provider key (a2)"
             value: root.infra.keyA2Present ? "present" : "absent"
         }
+        Widgets.ListRow {
+            width: parent ? parent.width : 0
+            label: "Model id (a1)"
+            value: root.infra.modelIdA1.length > 0 ? root.infra.modelIdA1 : "(not configured)"
+            invalid: root.infra.modelIdA1.indexOf("REPLACE-WITH") >= 0
+        }
+
+        // The actual "change model" / "change token per service" path:
+        // these edit real files (a provider key is one of them — see the
+        // group caption, not shown but very much editable this way), just
+        // through a terminal editor rather than a control on this panel,
+        // the one shape that does not fight `git pull`. `$EDITOR` with a
+        // `nvim` fallback — this project is TUI-first (PROGRESS.md's own
+        // guiding constraint) and nvim is what every host here actually
+        // has installed, but a user's own `$EDITOR` still wins when set.
+        SettingsRow {
+            title: "Edit configuration"
+            description: "Opens the real files — model id, provider key, broker settings, the A2 egress whitelist — in a terminal editor. Restart the engine below afterwards for a change to take effect."
+            Row {
+                spacing: root.gap
+                Widgets.StyledButton {
+                    label: "Edit model/provider (a1)…"
+                    onClicked: Quickshell.execDetached(["kitty", "-e", "sh", "-c",
+                        '${EDITOR:-nvim} "$1"', "sh", root.infra.configRoot + "/a1/opencode/opencode.json"])
+                }
+                Widgets.StyledButton {
+                    // Same "Open folder…" convention as Settings/sections/
+                    // Theme.qml's wallpaper picker — xdg-open on a
+                    // directory, the user's own default file manager,
+                    // rather than assuming an editor can browse one.
+                    label: "Open config folder…"
+                    onClicked: Quickshell.execDetached(["xdg-open", root.infra.configRoot])
+                }
+            }
+        }
+        SettingsRow {
+            title: "Apply a configuration change"
+            description: "Restarts phi-agent-a1.service and its credential broker — required after editing the files above, since a running engine does not re-read them on its own."
+            Widgets.StyledButton {
+                label: "Restart A1 engine"
+                loading: root.infra.starting
+                onClicked: root.infra.restartUnits(["phi-agent-broker@a1.service", "phi-agent-a1.service"])
+            }
+        }
+
         Widgets.ListRow {
             width: parent ? parent.width : 0
             label: "Broker upstream (a1)"
@@ -217,12 +270,6 @@ Column {
             width: parent ? parent.width : 0
             label: "Broker auth header (a1)"
             value: root.infra.brokerAuthHeader.length > 0 ? root.infra.brokerAuthHeader : "—"
-        }
-        Widgets.ListRow {
-            width: parent ? parent.width : 0
-            label: "Model id (a1)"
-            value: root.infra.modelIdA1.length > 0 ? root.infra.modelIdA1 : "(not configured)"
-            invalid: root.infra.modelIdA1.indexOf("REPLACE-WITH") >= 0
         }
         Widgets.ListRow {
             width: parent ? parent.width : 0

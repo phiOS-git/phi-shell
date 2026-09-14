@@ -88,6 +88,23 @@ Singleton {
         startProc.running = true
     }
 
+    // Style pass 2026-09-14 (docs/TODO.md: "AI agents settings shows many
+    // informations but misses the most important and obvious settings").
+    // `startUnits` above is a no-op against an already-active unit
+    // (`systemctl start` on a running service does nothing) — after
+    // editing broker.json/opencode.json (see the new "Edit configuration"
+    // buttons in Settings/sections/AiAgent.qml) the unit needs an actual
+    // RESTART to pick the change up, which this project had no button for
+    // at all before this. Same shape as startUnits, reusing the same
+    // `starting` flag (both are exclusive user-triggered actions on this
+    // panel; a caller never fires both at once).
+    function restartUnits(names) {
+        if (startProc.running || !names || names.length === 0) return
+        root.starting = true
+        startProc.command = ["systemctl", "--user", "restart"].concat(names)
+        startProc.running = true
+    }
+
     // status-code-only categorisation — never reads the upstream body (the
     // broker never buffers one to read, V-09).
     function _statusHint(status) {
