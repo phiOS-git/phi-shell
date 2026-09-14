@@ -19,12 +19,16 @@ import qs.Widgets as Widgets
 //               a "Display settings" deep-link.
 //   - wifi / bluetooth / network / battery / gpu → a compact readout,
 //     with a deep-link button where a mature TUI exists.
-//   - power → a single "Settings…" row that opens the settings panel
-//               generally (docs/TODO.md, 2026-09-14: no longer deep-linked
-//               to the Power section, and no longer duplicates the six
-//               lock/suspend/hibernate/logout/reboot/shutdown actions —
-//               those live in Dialogs/PowerMenu.qml's SUPER+L overlay and
-//               Settings/sections/Devices.qml's own "Quick actions" row).
+//   - power → six plain action buttons (lock/suspend/hibernate/logout/
+//               reboot/shutdown, via Services/PowerActions.qml) plus a
+//               "Settings…" row that opens the settings panel generally
+//               (docs/TODO.md, 2026-09-14: no longer deep-linked to the
+//               Power section — see root._showInSettings's replacement
+//               below). The six buttons were briefly removed the same day
+//               as a misreading of that same TODO entry — "the 'quick
+//               action' section should not exist" meant Settings/sections/
+//               Devices.qml's OWN duplicate "Quick actions" row, not this
+//               card's; restored here, Devices.qml's row removed instead.
 // No scrim (this window never had one). A full mixer / network list is
 // still a later pass.
 
@@ -130,16 +134,10 @@ PanelWindow {
     // own header for why that matters for a destructive confirmation
     // specifically. Cancelling therefore returns to a closed bar, not a
     // still-open action list; re-clicking the power icon opens it again.
-    // The explicit hide() below is now redundant (Services.ConfirmDialog
-    // already closes every other panel, this one included, the moment it
-    // opens) but kept for clarity at the call site rather than relying on
-    // that side effect alone.
-    //
-    // docs/TODO.md follow-up (2026-09-14): this used to also be reached by
-    // _requestPowerAction(), called from the card's own six quick-action
-    // buttons (lock/suspend/hibernate/logout/reboot/shutdown) — removed
-    // (see the "power" section below); this function is now reached only
-    // by the confirmLogout IpcHandler above.
+    // The explicit hide() below is now redundant in the confirm case (the
+    // dialog already closed it) but still needed for the non-confirm
+    // branch in _requestPowerAction, so it stays here rather than being
+    // split out.
     function _confirmAndPerform(action) {
         Services.ConfirmDialog.open({
             title: Services.PowerActions.title(action),
@@ -150,6 +148,10 @@ PanelWindow {
                 Services.BarPopout.hide()
             }
         })
+    }
+    function _requestPowerAction(action) {
+        if (Services.PowerActions.needsConfirm(action)) root._confirmAndPerform(action)
+        else { Services.PowerActions.perform(action); Services.BarPopout.hide() }
     }
 
     Item {
@@ -504,29 +506,74 @@ PanelWindow {
             // power (docs/TODO.md: "add a power icon to the left isle of
             // the status bar, it's overlay should have power options
             // (suspend, logout, shutdown, lock, hibernate, reboot) and
-            // 'settings'").
+            // 'settings'"). Six SmallButton rows, the same plain-text
+            // convention every other action/deep-link button in this
+            // card already uses (Sound settings…, Manage networks…, …) —
+            // no per-row icon. Reboot/Shutdown are gated behind
+            // Services/ConfirmDialog.qml's shared centered modal
+            // (root._confirmAndPerform above) instead of running
+            // immediately — same policy (Services.PowerActions.needsConfirm)
+            // as Launcher.qml's own confirm sub-view for the identical two
+            // actions in the runner bar, different UI shape because that
+            // one is a stack of navigable views, not a floating dialog.
             //
             // docs/TODO.md follow-up (2026-09-14): "the 'settings' button
             // ... should simply open the settings panel, not bound to a
-            // specific section. Also the 'quick action' section should not
-            // exist." The six-action button list this card used to show
-            // here (lock/suspend/hibernate/logout/reboot/shutdown) is
-            // removed — it duplicated both Dialogs/PowerMenu.qml's own
-            // SUPER+L overlay and Settings/sections/Devices.qml's "Quick
-            // actions" row. What remains is a single Settings… row, and it
-            // now calls Services.SettingsPanel.show() directly — a plain
-            // open with no target — instead of root._showInSettings's
-            // reveal(optionId), which used to jump straight to the Power
-            // group specifically.
+            // specific section" — it now calls Services.SettingsPanel.show()
+            // directly, a plain open with no target, instead of
+            // root._showInSettings's reveal(optionId) which used to jump
+            // straight to the Power group. The six action buttons below
+            // were briefly removed the same day, misreading that same
+            // entry's "the 'quick action' section should not exist" as
+            // being about this card — it meant Settings/sections/
+            // Devices.qml's own duplicate "Quick actions" row instead
+            // (removed there); restored here.
             Column {
                 width: parent.width
                 spacing: root.chWidth * Config.Appearance.space1
                 visible: root.which === "power"
 
-                Widgets.SmallButton {
+                Column {
                     width: parent.width
-                    label: "Settings…"
-                    onClicked: { Services.SettingsPanel.show(); Services.BarPopout.hide() }
+                    spacing: root.chWidth * Config.Appearance.space2
+
+                    Widgets.SmallButton {
+                        width: parent.width
+                        label: Services.PowerActions.title("lock")
+                        onClicked: root._requestPowerAction("lock")
+                    }
+                    Widgets.SmallButton {
+                        width: parent.width
+                        label: Services.PowerActions.title("suspend")
+                        onClicked: root._requestPowerAction("suspend")
+                    }
+                    Widgets.SmallButton {
+                        width: parent.width
+                        label: Services.PowerActions.title("hibernate")
+                        onClicked: root._requestPowerAction("hibernate")
+                    }
+                    Widgets.SmallButton {
+                        width: parent.width
+                        label: Services.PowerActions.title("logout")
+                        onClicked: root._requestPowerAction("logout")
+                    }
+                    Widgets.Separator { width: parent.width }
+                    Widgets.SmallButton {
+                        width: parent.width
+                        label: Services.PowerActions.title("reboot")
+                        onClicked: root._requestPowerAction("reboot")
+                    }
+                    Widgets.SmallButton {
+                        width: parent.width
+                        label: Services.PowerActions.title("shutdown")
+                        onClicked: root._requestPowerAction("shutdown")
+                    }
+                    Widgets.Separator { width: parent.width }
+                    Widgets.SmallButton {
+                        width: parent.width
+                        label: "Settings…"
+                        onClicked: { Services.SettingsPanel.show(); Services.BarPopout.hide() }
+                    }
                 }
             }
         }
