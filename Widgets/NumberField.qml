@@ -37,6 +37,31 @@ Row {
     }
     readonly property real chWidth: chMetrics.width
 
+    // Style pass 2026-09-14 (docs/TODO.md: "history time setting has a
+    // text filed for a number + time measure ... the content does not fit
+    // the space and overflows"). Every suffix in this shell before " days"
+    // (Notifications.qml's retention field) was 1-3 characters ("%", "px",
+    // "K", "×"); this widget's field was a flat space6 (~8ch), just wide
+    // enough for the SHORT ones, so "365 days" (8 characters) ran right up
+    // against — and, with inset padding eating into that same 8ch, past —
+    // the field's own edge. Measures the widest value this field can
+    // actually show (from/to, at the real decimals/suffix) instead of
+    // guessing a fixed width, so a long suffix simply gets more room
+    // rather than overflowing it.
+    TextMetrics {
+        id: widestMetrics
+        font.family: Config.Appearance.fontMono
+        font.pixelSize: Config.Appearance.fontSize1
+        text: {
+            var a = root._fmt(root.from)
+            var b = root._fmt(root.to)
+            return a.length >= b.length ? a : b
+        }
+    }
+    readonly property real _minFieldWidth: WidgetStates.chToPixels(Config.Appearance.space6, chWidth)
+    readonly property real _fieldWidth: Math.max(root._minFieldWidth,
+        widestMetrics.width + WidgetStates.chToPixels(Config.Appearance.space2, chWidth))
+
     function _fmt(v) {
         var s = Number(v).toFixed(root.decimals)
         return root.suffix.length > 0 ? s + root.suffix : s
@@ -62,7 +87,7 @@ Row {
     TextField {
         id: field
         anchors.verticalCenter: parent.verticalCenter
-        width: WidgetStates.chToPixels(Config.Appearance.space6, root.chWidth)
+        width: root._fieldWidth
         horizontalAlignment: Text.AlignHCenter
         inputMethodHints: Qt.ImhFormattedNumbersOnly
         invalid: text.length > 0 && isNaN(parseFloat(text))

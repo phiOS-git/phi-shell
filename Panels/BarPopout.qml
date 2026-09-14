@@ -120,6 +120,25 @@ PanelWindow {
         return Math.round(kbps) + " kb/s"
     }
 
+    // Live countdown for the "timer" card — only ticks while that specific
+    // card is actually on screen, same gating shape as `_netWatched` above
+    // for the wifi card's own live sampling.
+    property real _timerNow: Date.now()
+    Timer {
+        interval: 1000
+        running: root.shown && root.which === "timer"
+        repeat: true
+        onTriggered: root._timerNow = Date.now()
+    }
+    function _fmtCountdown(targetMs) {
+        const totalSeconds = Math.max(0, Math.ceil((targetMs - root._timerNow) / 1000))
+        const h = Math.floor(totalSeconds / 3600)
+        const m = Math.floor((totalSeconds % 3600) / 60)
+        const s = totalSeconds % 60
+        if (h > 0) return h + "h " + m + "m"
+        return m + ":" + (s < 10 ? "0" : "") + s
+    }
+
     // docs/TODO.md: "confirmation modals (like the one for power options)
     // should be centered in the screen, with a dim and block the screen
     // until they are resolved. Also make them a reusable component" —
@@ -472,6 +491,54 @@ PanelWindow {
                     width: parent.width
                     label: "Show in settings…"
                     onClicked: root._showInSettings("connectivity.vpn")
+                }
+            }
+
+            // timer/alarm — style pass 2026-09-14: the one bar module that
+            // used to skip this shared popout entirely (Bar/modules/
+            // Timer.qml's own header has the full story). Sorted soonest
+            // first; creating a new one is the runner bar's job
+            // ("timer 5m", "alarm 7:30"), documented in the deep-link
+            // below, not duplicated here as a second input form.
+            Column {
+                width: parent.width
+                spacing: root.chWidth * Config.Appearance.space1
+                visible: root.which === "timer"
+
+                readonly property var sorted: Services.Timers.items.slice().sort((a, b) => a.targetMs - b.targetMs)
+
+                Repeater {
+                    model: parent.sorted
+                    Column {
+                        id: itemRow
+                        required property var modelData
+                        width: parent.width
+                        spacing: root.chWidth * Config.Appearance.space1 * 0.5
+                        Widgets.ListRow {
+                            width: parent.width
+                            label: (itemRow.modelData.kind === "alarm" ? "Alarm — " : "Timer — ") + itemRow.modelData.label
+                            value: {
+                                const time = Qt.formatDateTime(new Date(itemRow.modelData.targetMs), "HH:mm")
+                                return itemRow.modelData.kind === "alarm" ? time : root._fmtCountdown(itemRow.modelData.targetMs)
+                            }
+                        }
+                        Widgets.SmallButton {
+                            label: "Cancel"
+                            onClicked: Services.Timers.cancel(itemRow.modelData.id)
+                        }
+                    }
+                }
+                Widgets.StyledText {
+                    visible: Services.Timers.items.length === 0
+                    width: parent.width
+                    kind: "label"; sizeStep: 0
+                    text: "Nothing scheduled. Set one from the runner bar: \"timer 5m\", \"alarm 7:30\"."
+                    wrapMode: Text.WordWrap
+                }
+                Widgets.SmallButton {
+                    width: parent.width
+                    label: "Show in settings…"
+                    onClicked: root._showInSettings("notifications.timers")
                 }
             }
 

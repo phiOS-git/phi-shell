@@ -13,5 +13,6 @@
     { "type": "battery", "island": "right", "position": 55, "source": "internal:upower", "capability": "battery" },
     { "type": "notifications", "island": "right", "position": 60, "source": "internal:notifications", "capability": "" },
     { "type": "clipboard", "island": "right", "position": 65, "source": "internal:clipboard", "capability": "" },
+    { "type": "timer", "island": "right", "position": 95, "source": "internal:timers", "capability": "" },
     { "type": "clock", "island": "right", "position": 100, "source": "internal:clock", "capability": "" }
 ]

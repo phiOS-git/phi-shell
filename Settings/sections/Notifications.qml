@@ -66,14 +66,26 @@ Column {
         }
         SettingsRow {
             title: "Sound"
-            description: "A freedesktop name (message, bell, complete…) or an absolute path to an audio file."
+            description: "Pick an installed sound — tapping one previews it. Or give an absolute path to a custom audio file below."
             wide: true
-            Widgets.TextField {
+            Column {
                 width: parent.width
-                mono: false
-                placeholder: "message"
-                Component.onCompleted: text = Services.Notifications.soundName
-                onCommitted: (t) => Services.Notifications.setSoundName(t)
+                spacing: root.gap
+                Widgets.SoundPicker {
+                    width: parent.width
+                    chWidth: root.chWidth
+                    gap: root.gap
+                    value: Services.Notifications.soundName
+                    onCommitted: (name) => Services.Notifications.setSoundName(name)
+                    onPreviewed: Services.Notifications.playSound(true)
+                }
+                Widgets.TextField {
+                    width: parent.width
+                    mono: false
+                    placeholder: "or an absolute path…"
+                    Component.onCompleted: text = Services.Notifications.soundName
+                    onCommitted: (t) => Services.Notifications.setSoundName(t)
+                }
             }
         }
         SettingsRow {
@@ -106,12 +118,43 @@ Column {
         optionId: "notifications.retention"
 
         SettingsRow {
+            wide: true
             title: "Keep history for"
-            description: "Notifications older than this are cleared automatically, on start and hourly. 0 keeps everything."
-            Widgets.NumberField {
-                value: Services.Notifications.retentionDays
-                step: 1; suffix: " days"; from: 0; to: 365
-                onCommitted: (v) => Services.Notifications.setRetentionDays(v)
+            description: "Notifications older than this are cleared automatically, on start and hourly. Forever keeps everything."
+            Column {
+                width: parent.width
+                spacing: root.gap
+                // Style pass 2026-09-14: was the NumberField alone — a
+                // bare number-of-days entry for a setting almost always
+                // picked from a small set of common spans, the same
+                // "awful UX standard" complaint docs/TODO.md raised about
+                // this exact field. Preset buttons first (this file's own
+                // "Silence for a while" row, just above, already
+                // established this pattern for a duration choice), the
+                // NumberField kept below for anything in between.
+                Row {
+                    spacing: root.gap
+                    Repeater {
+                        model: [
+                            { label: "Forever", days: 0 },
+                            { label: "7 days", days: 7 },
+                            { label: "30 days", days: 30 },
+                            { label: "90 days", days: 90 },
+                            { label: "365 days", days: 365 }
+                        ]
+                        Widgets.StyledButton {
+                            required property var modelData
+                            label: modelData.label
+                            active: Services.Notifications.retentionDays === modelData.days
+                            onClicked: Services.Notifications.setRetentionDays(modelData.days)
+                        }
+                    }
+                }
+                Widgets.NumberField {
+                    value: Services.Notifications.retentionDays
+                    step: 1; suffix: " days"; from: 0; to: 365
+                    onCommitted: (v) => Services.Notifications.setRetentionDays(v)
+                }
             }
         }
         SettingsRow {
@@ -210,14 +253,26 @@ Column {
 
         SettingsRow {
             title: "Ringtone"
-            description: "A freedesktop name (message, bell, complete…) or an absolute path to an audio file. Loops until dismissed."
+            description: "Pick an installed sound — tapping one previews it. Loops until dismissed. Or give an absolute path below."
             wide: true
-            Widgets.TextField {
+            Column {
                 width: parent.width
-                mono: false
-                placeholder: "message"
-                Component.onCompleted: text = Services.Timers.soundName
-                onCommitted: (t) => Services.Timers.setSoundName(t)
+                spacing: root.gap
+                Widgets.SoundPicker {
+                    width: parent.width
+                    chWidth: root.chWidth
+                    gap: root.gap
+                    value: Services.Timers.soundName
+                    onCommitted: (name) => Services.Timers.setSoundName(name)
+                    onPreviewed: Services.Timers.testRingtone()
+                }
+                Widgets.TextField {
+                    width: parent.width
+                    mono: false
+                    placeholder: "or an absolute path…"
+                    Component.onCompleted: text = Services.Timers.soundName
+                    onCommitted: (t) => Services.Timers.setSoundName(t)
+                }
             }
         }
         SettingsRow {

@@ -55,6 +55,14 @@ var powerSleep      = _c(0xF0904)   // nf-md-power_sleep (power menu: Suspend) �
                                      // glyphnames.json (not recalled, not retried-until-it-
                                      // looked-right the way the prior session's live lookups
                                      // did): "power_sleep" is a real, exact-named MDI icon.
+var timer           = _c(0xF051B)   // nf-md-timer_outline (Bar/modules/Timer.qml —
+                                     // covers both timers and alarms, Services/Timers.qml's
+                                     // own single shared mechanism) — confirmed 2026-09-14
+                                     // against a live fetch of nerd-fonts' own
+                                     // glyphnames.json (md-timer_outline: f051b), not
+                                     // recalled, per this file's own standing rule after
+                                     // three past wrong-codepoint incidents (steam,
+                                     // console/function, and the missing hibernate icon).
 var restart         = _c(0xF0709)   // nf-md-restart (power menu: Reboot) — same verification.
                                      // NO exact "hibernate" icon exists anywhere in nerd-fonts'
                                      // own glyph set (checked systematically against a dozen
