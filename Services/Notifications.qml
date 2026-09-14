@@ -51,6 +51,28 @@ Singleton {
     readonly property int historyLimit: 200
     readonly property var active: server.trackedNotifications
 
+    // docs/TODO.md: "the notification icon keeps the same state with the
+    // red dot even when i clear all notifications." Bar/modules/
+    // Notifications.qml's badge used to read `active.values.length`
+    // directly in its own binding — technically reactive (UntypedObjectModel's
+    // `values` does carry a `valuesChanged` NOTIFY, confirmed against the
+    // installed Quickshell's own qmltypes), but that makes the badge's
+    // correctness depend on a distant consumer's binding re-evaluating off
+    // a property-change signal on an object it never directly interacts
+    // with otherwise — exactly the kind of indirection this project has
+    // repeatedly found does not behave as documented on this Quickshell/
+    // Hyprland stack. `activeCount` instead recomputes itself directly off
+    // the model's own insert/remove signals (below), and `clearAll()`
+    // additionally zeroes it immediately rather than waiting on either
+    // mechanism — the literal fix for "even when I clear all notifications"
+    // regardless of which layer the original staleness came from.
+    property int activeCount: root.active ? root.active.values.length : 0
+    Connections {
+        target: root.active
+        function onObjectInsertedPost() { root.activeCount = root.active.values.length }
+        function onObjectRemovedPost() { root.activeCount = root.active.values.length }
+    }
+
     property bool dnd: false
     property var history: []       // plain JS array, newest first, persisted
     property var toastQueue: []    // pending Notification objects awaiting a toast
@@ -135,6 +157,12 @@ Singleton {
         for (var i = 0; i < live.length; i++) {
             try { live[i].dismiss() } catch (e) { live[i].tracked = false }
         }
+        // The user just explicitly cleared everything — the badge goes
+        // dark now, not whenever (or if) the server's own async close
+        // round-trip gets back to updating the model. Harmless even if
+        // dismiss() above turns out to leave something tracked for a
+        // moment: the Connections above will just set it right back.
+        root.activeCount = 0
     }
     function clearApp(appName) {
         root.history = root.history.filter(function (h) {

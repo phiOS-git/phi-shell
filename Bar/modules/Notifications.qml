@@ -39,7 +39,11 @@ Widgets.Segment {
     active: Services.NotificationPanel.shown && Services.NotificationPanel.tab === 0
 
     readonly property bool dnd: Services.Notifications.dnd
-    readonly property bool hasPending: !root.dnd && (Services.Notifications.active.values || []).length > 0
+    // docs/TODO.md: "the notification icon keeps the same state with the
+    // red dot even when i clear all notifications" — reads
+    // Services.Notifications.activeCount (see that file's own header on
+    // why), not active.values.length directly.
+    readonly property bool hasPending: !root.dnd && Services.Notifications.activeCount > 0
     tone: root.hasPending ? "info" : ""
 
     onActivated: Services.NotificationPanel.openNotifications()
