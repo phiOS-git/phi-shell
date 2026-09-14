@@ -41,6 +41,57 @@ Singleton {
         prefsFile.setText(JSON.stringify(root.prefs, null, 2))
     }
 
+    // docs/TODO.md: "ambient effects look great, they should have many
+    // settings: some shared (eg. speed) some specific for the selected
+    // one." Every Lock/*.qml effect already exposed its own `intensity`
+    // property (peak opacity/brightness — a real, working knob, just never
+    // surfaced in Settings) with its own per-effect default; this is the
+    // "specific" half, kept per-effect rather than one shared value, since
+    // the existing defaults already differ enormously by design (0.18 for
+    // MatrixRain's deliberately-faint glyphs vs. 0.9 for Starfield) — one
+    // shared number would either wash out the faint ones or blow out the
+    // bright ones. `speed` is new: a shared multiplier every effect scales
+    // its own per-tick motion by, the literal "some shared" half.
+    readonly property real speed: {
+        var v = root.prefs ? root.prefs.speed : undefined
+        return (typeof v === "number" && v > 0) ? v : 1.0
+    }
+
+    function setSpeed(v) {
+        var next = {}
+        for (var k in root.prefs) next[k] = root.prefs[k]
+        next.speed = Math.max(0.25, Math.min(3.0, v))
+        root.prefs = next
+        prefsFile.setText(JSON.stringify(root.prefs, null, 2))
+    }
+
+    // Each effect's own hardcoded default (Lock/LavaLamp.qml: 0.28,
+    // Lock/MatrixRain.qml: 0.18, Lock/Starfield.qml: 0.9,
+    // Lock/Plasma.qml: 0.85, Lock/Life.qml: 0.85) — read back here so a
+    // key the user has never touched falls back to exactly what shipped
+    // before this setting existed, not a generic guessed number.
+    readonly property var _intensityDefaults: ({
+        lava: 0.28, matrix: 0.18, starfield: 0.9, plasma: 0.85, life: 0.85
+    })
+
+    function intensityFor(key) {
+        var stored = root.prefs && root.prefs.intensity ? root.prefs.intensity[key] : undefined
+        if (typeof stored === "number") return stored
+        return root._intensityDefaults[key] !== undefined ? root._intensityDefaults[key] : 0.5
+    }
+
+    function setIntensity(key, v) {
+        var next = {}
+        for (var k in root.prefs) next[k] = root.prefs[k]
+        var nextIntensity = {}
+        if (root.prefs && root.prefs.intensity)
+            for (var ik in root.prefs.intensity) nextIntensity[ik] = root.prefs.intensity[ik]
+        nextIntensity[key] = Math.max(0.05, Math.min(1.0, v))
+        next.intensity = nextIntensity
+        root.prefs = next
+        prefsFile.setText(JSON.stringify(root.prefs, null, 2))
+    }
+
     FileView {
         id: prefsFile
         path: Paths.lockPrefsFile

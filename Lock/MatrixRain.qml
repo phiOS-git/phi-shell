@@ -39,6 +39,9 @@ Item {
     // Overall wash. Kept low so the clock and the password field layered
     // on top stay legible; the head glyphs still punch through it.
     property real intensity: 0.18
+    // docs/TODO.md: "ambient effects... should have many settings: some
+    // shared (eg. speed)" — see Lock/LavaLamp.qml's own identical comment.
+    property real speed: 1.0
 
     readonly property string glyphs:
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789" +
@@ -86,14 +89,14 @@ Item {
         running: root.running && root.visible && root.width > 0 && root.height > 0
         repeat: true
         onTriggered: {
-            root.band += 0.28 * root.bandDir
+            root.band += 0.28 * root.bandDir * root.speed
             if (root.band > root.rowCount) root.bandDir = -1
             else if (root.band < 0) root.bandDir = 1
 
             var cols = root.columns
             for (var i = 0; i < cols.length; i++) {
                 var c = cols[i]
-                c.head += c.speed
+                c.head += c.speed * root.speed
                 if (c.head - c.len > root.rowCount) {
                     c.head = root._rand(-rowCount * 0.6, 0)
                     c.speed = root._rand(0.20, 0.62)

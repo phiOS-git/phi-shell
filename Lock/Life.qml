@@ -28,10 +28,19 @@ Item {
 
     property bool running: true
     property real intensity: 0.85
+    // docs/TODO.md: "ambient effects... should have many settings: some
+    // shared (eg. speed)" — see Lock/LavaLamp.qml's own identical comment.
+    // Life has no continuous per-tick delta to scale the way every other
+    // effect does (its motion is discrete generation steps, not smooth
+    // motion) — speed instead scales the frame-skip ratio itself,
+    // inversely: doubling speed halves stepEveryTicks, so generations
+    // advance twice as often.
+    property real speed: 1.0
 
     readonly property int cols: 48
     readonly property int rows: 27
-    readonly property int stepEveryTicks: 10 // ~240ms/generation at the 24ms shared tick
+    // ~240ms/generation at the 24ms shared tick, at the default speed 1.0.
+    readonly property int stepEveryTicks: Math.max(1, Math.round(10 / root.speed))
 
     property var cells: []      // bool[cols*rows], current alive state
     property var brightness: [] // real[cols*rows], 0..1, eased toward alive/dead

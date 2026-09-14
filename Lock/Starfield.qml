@@ -16,6 +16,9 @@ Item {
 
     property bool running: true
     property real intensity: 0.9
+    // docs/TODO.md: "ambient effects... should have many settings: some
+    // shared (eg. speed)" — see Lock/LavaLamp.qml's own identical comment.
+    property real speed: 1.0
 
     readonly property int starCount: 140
     property var stars: []
@@ -47,9 +50,9 @@ Item {
             var s = root.stars
             for (var i = 0; i < s.length; i++) {
                 var st = s[i]
-                st.y += 0.00035 * st.z                 // nearer drifts faster
+                st.y += 0.00035 * st.z * root.speed    // nearer drifts faster
                 if (st.y > 1) { st.y = 0; st.x = Math.random() }
-                st.tw += st.twRate
+                st.tw += st.twRate * root.speed
             }
             canvas.requestPaint()
         }
