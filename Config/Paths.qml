@@ -69,6 +69,10 @@ Singleton {
     readonly property string clipboardEntriesDir: root.clipboardDir + "/entries"
     readonly property string clipboardLatestFile: root.clipboardDir + "/latest"
     readonly property string clipboardPinsFile: root.clipboardDir + "/pins.json"
+    // docs/TODO.md: "there is not way to set rules for what should not be
+    // saved in the clipboard history" — same one-piece-of-Quickshell-owned-
+    // structure reasoning as pins.json above.
+    readonly property string clipboardRulesFile: root.clipboardDir + "/rules.json"
 
     // S-44 (master plan §5.6: "le immagini di sfondo sono COPIATE... mai
     // referenziate al percorso originale"). $XDG_DATA_HOME, not

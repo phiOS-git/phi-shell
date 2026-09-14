@@ -266,6 +266,36 @@ Item {
         else Services.Clipboard.pin(e.id)
     }
 
+    // docs/TODO.md: "there is no way to remove elements from the clipboard
+    // history (the context menu might be a good candidate to avoid
+    // crowding the ui)." Delete itself (Services.Clipboard.deleteEntry)
+    // already existed — it was already used internally for the TTL sweep
+    // and was simply never exposed to the UI at all. A single-item delete,
+    // same low-stakes shape "Clear this key" (Settings/sections/
+    // Devices.qml) already established for one small, easily-noticed-if-
+    // wrong item — no confirmation dialog, unlike a bulk "Clear all".
+    //
+    // Wires the existing Widgets/ContextMenu.qml (S-37) — built complete
+    // but deliberately left unwired, by the user's own explicit choice
+    // recorded in that file's own header, until a real usage pattern was
+    // clear. This is that pattern. Item shape is that widget's own real
+    // API ({label, onActivated}), not invented here.
+    function _clipboardMenuItems(entry) {
+        const pinned = Services.Clipboard.isPinned(entry.id)
+        return [
+            { label: "Restore", onActivated: () => {
+                Services.Clipboard.restore(entry.id, entry.mime)
+                Services.NotificationPanel.hide()
+            } },
+            { label: pinned ? "Unpin" : "Pin", onActivated: () => {
+                pinned ? Services.Clipboard.unpin(entry.id) : Services.Clipboard.pin(entry.id)
+            } },
+            { label: "Delete", onActivated: () => {
+                Services.Clipboard.deleteEntry(entry.id)
+            } },
+        ]
+    }
+
     // --- search field (top, pinned) --------------------------------------
     Item {
         id: searchBox
@@ -623,6 +653,22 @@ Item {
                 }
             }
 
+            // docs/TODO.md: "there is no way to remove elements from the
+            // clipboard history (the context menu might be a good
+            // candidate to avoid crowding the ui)." A second, independent
+            // TapHandler rather than branching inside the one above:
+            // PointerHandler's own default acceptedButtons is
+            // Qt.LeftButton, so the existing left-click-to-restore handler
+            // above was never actually reacting to a right-click at all —
+            // this one just adds the button the other never claimed.
+            TapHandler {
+                acceptedButtons: Qt.RightButton
+                onTapped: {
+                    root.highlightedIndex = card.flatIndex
+                    clipboardContextMenu.open(card, root._clipboardMenuItems(card.modelData))
+                }
+            }
+
             // Drives root.hoverTargetId for the preview overlay (see the
             // top of this file) — does not itself show anything, purely
             // observes hover state, so it composes with the TapHandlers
@@ -642,5 +688,13 @@ Item {
                 }
             }
         }
+    }
+
+    // A real Quickshell PopupWindow (Widgets/ContextMenu.qml's own header),
+    // not a plain in-panel Item — its own z-order relative to this tab's
+    // cards is not a concern here, unlike every other floating overlay in
+    // this file (the preview above).
+    Widgets.ContextMenu {
+        id: clipboardContextMenu
     }
 }
