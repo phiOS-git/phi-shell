@@ -103,6 +103,23 @@ PanelWindow {
         Widgets.Panel {
             id: panel
             anchors.fill: parent
+            hovered: toastHover.hovered
+
+            // Style pass 2026-09-14: this surface had NO interaction of any
+            // kind — no click, no hover feedback, nothing — despite being
+            // the very first thing a new notification shows. Clicking it
+            // now opens the sidebar straight onto the Notifications tab,
+            // where the closed design decision this file's own header
+            // quotes ("dettaglio nel pannello") already puts the actual
+            // detail/actions/dismiss controls — this is a shortcut TO that
+            // panel, not new content on the toast itself, so it doesn't
+            // cross the "full detail lives in the sidebar" line. A bare
+            // click does not also dismiss the toast (Services/
+            // Notifications.qml's own centrally-timed expiry, unchanged,
+            // still owns that) — opening the panel to look at something is
+            // not the same gesture as being done with it.
+            HoverHandler { id: toastHover; cursorShape: Qt.PointingHandCursor }
+            TapHandler { onTapped: Services.NotificationPanel.openNotifications() }
 
             Row {
                 id: layout

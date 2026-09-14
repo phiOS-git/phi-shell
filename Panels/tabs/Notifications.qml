@@ -113,7 +113,21 @@ Item {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     label: "Clear all"
-                    onClicked: Services.Notifications.clearAll()
+                    // Style pass 2026-09-14: this called
+                    // Services.Notifications.clearAll() directly, no
+                    // confirmation — the exact same action Settings' own
+                    // "Clear all notifications" button already protects
+                    // with this same ConfirmDialog (docs/TODO.md:
+                    // "sensible settings ... should ask confirmation with
+                    // a blocking alert"). Two entry points to one
+                    // destructive action should not disagree about how
+                    // safe it is to hit by accident.
+                    onClicked: Services.ConfirmDialog.open({
+                        title: "Clear all notifications",
+                        message: "Deletes the whole notification history now. This cannot be undone.",
+                        confirmLabel: "Clear all",
+                        onConfirm: () => Services.Notifications.clearAll()
+                    })
                 }
             }
 

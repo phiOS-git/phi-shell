@@ -34,6 +34,11 @@ PanelWindow {
     color: "transparent"
     visible: root.shown || fadeRoot.opacity > 0
 
+    // Style pass 2026-09-14: no Escape handling existed — click-outside
+    // was the only way to close this panel, unlike its sibling small
+    // corner surfaces (QuickNote already has it).
+    Services.LayerFocus { target: root }
+
     TextMetrics {
         id: chMetrics
         font.family: Config.Appearance.fontMono
@@ -85,6 +90,9 @@ PanelWindow {
             width: parent.width
             radius: Config.Appearance.panelRadius
             height: bodyCol.implicitHeight + padding * 2
+
+            focus: root.shown
+            Keys.onEscapePressed: Services.Calendar.hide()
 
             Column {
                 id: bodyCol

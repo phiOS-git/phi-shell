@@ -95,9 +95,15 @@ Item {
                     id: nameField
                     width: 24 * root.chWidth
                     anchors.verticalCenter: parent.verticalCenter
-                    readOnly: root.editing !== "+"
+                    // Style pass 2026-09-14: this was `readOnly` for every
+                    // existing personality — Services.Agent.personalityRename()
+                    // is a real, complete function (`phi agent personality
+                    // rename <old> <new>`) that had no way to reach it at
+                    // all, since renaming was never actually possible from
+                    // here. Now editable always; Save below detects a
+                    // changed name and renames first.
                     placeholder: "lower-case-name"
-                    invalid: !readOnly && !/^[a-z0-9][a-z0-9._-]{0,63}$/.test(text)
+                    invalid: !/^[a-z0-9][a-z0-9._-]{0,63}$/.test(text)
                     onEscaped: root.blurred()
                 }
             }
@@ -127,20 +133,54 @@ Item {
             Row {
                 width: parent.width
                 spacing: root.gap
+                // Runs the write one settle interval after a rename, never
+                // both in the same tick: personalityRename() and
+                // personalityWrite() are two independent async Processes
+                // (persMiscProc / persWriteProc in Services/Agent.qml) with
+                // no ordering guarantee between them — firing the write for
+                // the NEW name immediately could race the rename's own
+                // `mv`, landing the write before the file exists under its
+                // old name is even gone. A REASONED default (400ms for a
+                // local `phi` CLI call), not hardware-verified — flagged
+                // for cheap veto the same way this codebase flags every
+                // other unverified timing constant.
+                Timer {
+                    id: renameSettle
+                    interval: 400
+                    onTriggered: root.agent.personalityWrite(nameField.text, promptArea.text)
+                }
                 Widgets.StyledButton {
                     label: "Save"
                     onClicked: {
-                        if (/^[a-z0-9][a-z0-9._-]{0,63}$/.test(nameField.text)) {
+                        if (!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(nameField.text)) return
+                        if (root.editing !== "+" && nameField.text !== root.editing) {
+                            root.agent.personalityRename(root.editing, nameField.text)
+                            renameSettle.restart()
+                        } else {
                             root.agent.personalityWrite(nameField.text, promptArea.text)
-                            root.editing = ""
                         }
+                        root.editing = ""
                     }
                 }
                 Widgets.StyledButton {
                     visible: root.editing !== "+"
                     label: "Delete"
                     invalid: true
-                    onClicked: { root.agent.personalityDelete(root.editing); root.editing = "" }
+                    // Style pass 2026-09-14: this deleted a personality (its
+                    // whole system prompt included) on a single click, no
+                    // confirmation at all — the one destructive settings
+                    // action in this shell without it, unlike VPN "Forget",
+                    // "Clear all keys" and "Clear all notifications", all of
+                    // which already go through this same ConfirmDialog per
+                    // docs/TODO.md's own standing directive ("sensible
+                    // settings ... should ask confirmation with a blocking
+                    // alert").
+                    onClicked: Services.ConfirmDialog.open({
+                        title: "Delete personality “" + root.editing + "”",
+                        message: "Deletes its system prompt. This cannot be undone.",
+                        confirmLabel: "Delete",
+                        onConfirm: () => { root.agent.personalityDelete(root.editing); root.editing = "" }
+                    })
                 }
             }
         }

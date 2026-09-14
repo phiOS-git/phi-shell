@@ -191,7 +191,7 @@ Item {
         readonly property string chatId: chatRow.rec.ID || chatRow.rec.id
 
         Widgets.ListRow {
-            width: chatRow.width - pinBtn.implicitWidth - chatRow.spacing
+            width: chatRow.width - pinBtn.implicitWidth - closeBtn.implicitWidth - chatRow.spacing * 2
             label: (chatRow.rec.Title || chatRow.rec.title || chatRow.chatId)
             value: (chatRow.rec.Project && chatRow.rec.Project !== "_unfiled") ? chatRow.rec.Project : ""
             glyph: chatRow.pinned ? "★" : ""
@@ -202,6 +202,25 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             label: chatRow.pinned ? "Unpin" : "Pin"
             onClicked: root.agent.setChatPinned(chatRow.chatId, !chatRow.pinned)
+        }
+        // Style pass 2026-09-14: Services.Agent.closeSession(id) — a real,
+        // fully-built "summarise, archive, then delete" action, its own
+        // comment in Services/Agent.qml flagging it as the least-tested
+        // path in that file — had no caller ANYWHERE in this tree, the
+        // same class of gap setChatPinned/setChatTitle turned out to be.
+        // Confirmed, given it deletes the live session (the archived
+        // summary is not the full transcript) — the same bar every other
+        // irreversible action in this panel already clears.
+        Widgets.SmallButton {
+            id: closeBtn
+            anchors.verticalCenter: parent.verticalCenter
+            label: "Close"
+            onClicked: Services.ConfirmDialog.open({
+                title: "Close “" + (chatRow.rec.Title || chatRow.rec.title || chatRow.chatId) + "”",
+                message: "Summarises and archives the conversation, then deletes the live session. The full transcript is not kept.",
+                confirmLabel: "Close",
+                onConfirm: () => root.agent.closeSession(chatRow.chatId)
+            })
         }
     }
 }

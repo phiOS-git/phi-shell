@@ -72,6 +72,13 @@ PanelWindow {
     color: "transparent"
     visible: root.shown || fadeRoot.opacity > 0
 
+    // Style pass 2026-09-14: this surface had no keyboard focus and no
+    // Escape handling at all — the one way to close it was clicking
+    // outside or re-clicking the same bar icon, unlike virtually every
+    // other overlay in this shell (Settings, Launcher, Cheatsheet, AltTab,
+    // Sidebar, AgentPanel, Screenshot as of last round). Same fix.
+    Services.LayerFocus { target: root }
+
     TextMetrics {
         id: chMetrics
         font.family: Config.Appearance.fontMono
@@ -222,6 +229,9 @@ PanelWindow {
                 width: parent.width
                 radius: Config.Appearance.panelRadius
                 height: bodyLoader.item ? bodyLoader.item.implicitHeight + padding * 2 : 0
+
+                focus: root.shown
+                Keys.onEscapePressed: Services.BarPopout.hide()
 
                 Loader {
                     id: bodyLoader

@@ -210,7 +210,7 @@ Item {
                     readonly property string chatId: chatRow.modelData.ID || chatRow.modelData.id
 
                     Widgets.ListRow {
-                        width: chatRow.width - pinBtn.implicitWidth - chatRow.spacing
+                        width: chatRow.width - pinBtn.implicitWidth - closeBtn.implicitWidth - chatRow.spacing * 2
                         label: (chatRow.modelData.Title || chatRow.modelData.title || chatRow.chatId)
                         glyph: chatRow.pinned ? "★" : ""
                         onActivated: { root.agent.openSession(chatRow.chatId); root.startChat() }
@@ -220,6 +220,19 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         label: chatRow.pinned ? "Unpin" : "Pin"
                         onClicked: root.agent.setChatPinned(chatRow.chatId, !chatRow.pinned)
+                    }
+                    // Style pass 2026-09-14: same Services.Agent.closeSession()
+                    // gap as Dashboard.qml's own ChatRow — see its comment.
+                    Widgets.SmallButton {
+                        id: closeBtn
+                        anchors.verticalCenter: parent.verticalCenter
+                        label: "Close"
+                        onClicked: Services.ConfirmDialog.open({
+                            title: "Close “" + (chatRow.modelData.Title || chatRow.modelData.title || chatRow.chatId) + "”",
+                            message: "Summarises and archives the conversation, then deletes the live session. The full transcript is not kept.",
+                            confirmLabel: "Close",
+                            onConfirm: () => root.agent.closeSession(chatRow.chatId)
+                        })
                     }
                 }
             }
