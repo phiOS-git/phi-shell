@@ -89,6 +89,19 @@ Item {
         onTapped: root.clicked()
     }
 
+    // Style pass 2026-09-14: `activeFocusOnTab: true` above lets a keyboard
+    // user Tab to this button, but a plain QML Item has no built-in
+    // Enter/Space activation the way a real Button control would — without
+    // this, the ONLY way to actually activate a focused button was a mouse
+    // click, a real systemic keyboard-accessibility gap this widget library
+    // shared across every button/toggle/row/segment type in it (checked:
+    // only two call sites anywhere in this shell had ever patched around it
+    // with their own per-instance override — Dialogs/ConfirmDialog.qml and
+    // Dialogs/BatteryAlert.qml — leaving every other instance dead to the
+    // keyboard). Fixed once here instead of at every call site.
+    Keys.onReturnPressed: if (root.enabled && !root.loading) root.clicked()
+    Keys.onSpacePressed: if (root.enabled && !root.loading) root.clicked()
+
     Behavior on opacity {
         NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
     }

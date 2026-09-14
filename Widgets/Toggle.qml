@@ -137,6 +137,12 @@ Item {
         onTapped: root.toggled(!root.checked)
     }
 
+    // Style pass 2026-09-14: see Widgets/StyledButton.qml's identical
+    // comment — a systemic keyboard-activation gap, fixed the same way
+    // here.
+    Keys.onReturnPressed: if (root.enabled && !root.loading) root.toggled(!root.checked)
+    Keys.onSpacePressed: if (root.enabled && !root.loading) root.toggled(!root.checked)
+
     Behavior on opacity {
         NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
     }

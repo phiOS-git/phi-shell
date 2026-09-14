@@ -432,6 +432,14 @@ Item {
         onTapped: root.activated()
     }
 
+    // Style pass 2026-09-14: see Widgets/StyledButton.qml's identical
+    // comment — a systemic keyboard-activation gap, fixed the same way
+    // here. Every consumer of this widget (bar buttons, sidebar/settings
+    // tabs before TabButton existed, workspace pills, firewall presets, …)
+    // inherits this for free.
+    Keys.onReturnPressed: if (root.enabled && !root.loading) root.activated()
+    Keys.onSpacePressed: if (root.enabled && !root.loading) root.activated()
+
     Behavior on opacity {
         NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
     }
