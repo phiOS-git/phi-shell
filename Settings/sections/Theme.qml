@@ -1314,7 +1314,18 @@ Column {
             layoutDirection: Qt.RightToLeft
             Widgets.StyledButton {
                 label: "Reset all theme overrides"
-                onClicked: { Config.ThemeOverrides.clearAll(); resetSignal.fired() }
+                // Style pass 2026-09-14: the same bulk-irreversible-action
+                // gap this section's "Clear all keys" (Devices.qml) and the
+                // notification panel's "Clear all"/per-app "clear" already
+                // got fixed for — every colour, font, size, radius and
+                // motion override the user has made, gone in one click,
+                // with no confirmation at all.
+                onClicked: Services.ConfirmDialog.open({
+                    title: "Reset all theme overrides",
+                    message: "Removes every colour, font, size and motion override you've made and returns to the design defaults. This cannot be undone.",
+                    confirmLabel: "Reset all",
+                    onConfirm: () => { Config.ThemeOverrides.clearAll(); resetSignal.fired() }
+                })
             }
         }
     }
