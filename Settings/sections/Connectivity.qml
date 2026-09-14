@@ -102,6 +102,22 @@ Column {
                 text: Services.WifiBridge.connected ? Services.WifiBridge.ssid : "not connected"
             }
         }
+        // docs/TODO.md: "clicking on the wifi icon should show the list
+        // of available wifi to connect. Same in the settings." — the same
+        // Widgets/WifiNetworkList.qml Panels/BarPopout.qml's wifi card
+        // uses. `active: true` is correct here without wiring it to
+        // anything: this whole section only exists while it's the loaded
+        // Settings section (Settings/Settings.qml's Loader destroys/
+        // recreates sections on navigation), so a scan fires exactly once
+        // per visit — see that widget's own header comment.
+        SettingsRow {
+            wide: true
+            title: "Available networks"
+            Widgets.WifiNetworkList {
+                width: parent.width
+                active: true
+            }
+        }
         SettingsRow {
             title: "Manage networks"
             Widgets.StyledButton {
