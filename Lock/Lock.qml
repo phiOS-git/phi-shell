@@ -295,9 +295,10 @@ WlSessionLock {
         }
 
         // OOP-31/35: the ambient backdrop, behind everything. Which effect
-        // (none / lava / matrix / starfield) is chosen in Settings → Theme
-        // and read from Config.LockPrefs. Every effect exposes `running`,
-        // bound here to freeze it the moment the conceal fade starts.
+        // (none / lava / matrix / starfield / plasma / life) is chosen in
+        // Settings → Theme and read from Config.LockPrefs. Every effect
+        // exposes `running`, bound here to freeze it the moment the
+        // conceal fade starts.
         Loader {
             id: effectLoader
             anchors.fill: parent
@@ -308,6 +309,8 @@ WlSessionLock {
                 case "lava": return lavaFx
                 case "matrix": return matrixFx
                 case "starfield": return starFx
+                case "plasma": return plasmaFx
+                case "life": return lifeFx
                 default: return null
                 }
             }
@@ -316,6 +319,8 @@ WlSessionLock {
         Component { id: lavaFx; Local.LavaLamp {} }
         Component { id: matrixFx; Local.MatrixRain {} }
         Component { id: starFx; Local.Starfield {} }
+        Component { id: plasmaFx; Local.Plasma {} }
+        Component { id: lifeFx; Local.Life {} }
 
         Column {
             anchors.centerIn: parent

@@ -4,6 +4,7 @@ import Quickshell.Io
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
+import qs.Lock as LockFx
 import "options.js" as Options
 
 // phiOS — Settings/sections/Theme (S-40; OOP-08; Out-of-plan: settings-
@@ -814,7 +815,9 @@ Column {
                         { key: "none", label: "None" },
                         { key: "lava", label: "Lava lamp" },
                         { key: "matrix", label: "Matrix" },
-                        { key: "starfield", label: "Starfield" }
+                        { key: "starfield", label: "Starfield" },
+                        { key: "plasma", label: "Plasma" },
+                        { key: "life", label: "Life" }
                     ]
                     Widgets.StyledButton {
                         required property var modelData
@@ -823,6 +826,58 @@ Column {
                         onClicked: Config.LockPrefs.setEffect(modelData.key)
                     }
                 }
+            }
+        }
+    }
+
+    // docs/TODO.md: "add a live preview of the effect in the settings
+    // when one is selected" — same `preview: true` shape as "Colour
+    // preview" above: a real, live instance of the currently-selected
+    // effect, not a static screenshot. Fixed-size box (the effects assume
+    // full-lockscreen dimensions normally; here they just get a smaller
+    // Item to fill instead — every effect already scales its own grid/
+    // point positions off `width`/`height`, so no effect-side change was
+    // needed for this). `running: true` unconditionally, since there's no
+    // lock/authenticated state to freeze against here — the settings
+    // panel is not the lock screen.
+    SettingsGroup {
+        title: "Ambient effect preview"
+        preview: true
+        visible: Config.LockPrefs.effect !== "none"
+
+        SettingsRow {
+            wide: true
+            title: "Live preview"
+            description: "The currently-selected effect, running live."
+            Item {
+                width: parent.width
+                height: root.chWidth * 20
+                clip: true
+
+                Loader {
+                    anchors.fill: parent
+                    // Always active while alive: Settings/Settings.qml's
+                    // own Loader already destroys this whole section (and
+                    // everything in it) the moment another section becomes
+                    // active, so there is no separate "on this page but
+                    // scrolled off" state worth guarding against here.
+                    active: true
+                    sourceComponent: {
+                        switch (Config.LockPrefs.effect) {
+                        case "lava": return lavaPreview
+                        case "matrix": return matrixPreview
+                        case "starfield": return starPreview
+                        case "plasma": return plasmaPreview
+                        case "life": return lifePreview
+                        default: return null
+                        }
+                    }
+                }
+                Component { id: lavaPreview; LockFx.LavaLamp { running: true } }
+                Component { id: matrixPreview; LockFx.MatrixRain { running: true } }
+                Component { id: starPreview; LockFx.Starfield { running: true } }
+                Component { id: plasmaPreview; LockFx.Plasma { running: true } }
+                Component { id: lifePreview; LockFx.Life { running: true } }
             }
         }
     }
