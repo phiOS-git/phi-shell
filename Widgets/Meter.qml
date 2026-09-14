@@ -71,6 +71,9 @@ Item {
         anchors.fill: parent
         enabled: root.interactive
         preventStealing: true
+        // Style pass 2026-09-14: a draggable control deserves the same
+        // cursor affordance a clickable one gets — this had none at all.
+        cursorShape: root.interactive ? Qt.SizeHorCursor : Qt.ArrowCursor
         function frac(x) { return Math.max(0, Math.min(1, x / root.width)) }
         onPressed: (m) => { root._dragFrac = frac(m.x); root._dragging = true; root.moved(root._dragFrac) }
         onPositionChanged: (m) => { if (pressed) { root._dragFrac = frac(m.x); root.moved(root._dragFrac) } }

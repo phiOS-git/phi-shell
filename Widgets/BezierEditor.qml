@@ -110,6 +110,7 @@ Item {
                     id: drag1
                     anchors.fill: parent
                     preventStealing: true
+                    cursorShape: Qt.SizeAllCursor
                     drag.target: h1
                     drag.minimumX: -h1.width / 2
                     drag.maximumX: sq.width - h1.width / 2
@@ -136,6 +137,7 @@ Item {
                     id: drag2
                     anchors.fill: parent
                     preventStealing: true
+                    cursorShape: Qt.SizeAllCursor
                     drag.target: h2
                     drag.minimumX: -h2.width / 2
                     drag.maximumX: sq.width - h2.width / 2

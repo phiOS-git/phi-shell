@@ -114,6 +114,9 @@ Item {
             MouseArea {
                 anchors.fill: parent
                 preventStealing: true
+                // Style pass 2026-09-14: same cursor-affordance gap as
+                // every other drag surface found this pass.
+                cursorShape: Qt.CrossCursor
                 function apply(m) {
                     root._sat = Math.max(0, Math.min(1, m.x / svBox.width))
                     root._val = Math.max(0, Math.min(1, 1 - m.y / svBox.height))
@@ -156,6 +159,7 @@ Item {
             MouseArea {
                 anchors.fill: parent
                 preventStealing: true
+                cursorShape: Qt.SizeVerCursor
                 function apply(m) {
                     root._hue = Math.max(0, Math.min(0.9999, m.y / hueBox.height))
                     root._recompute()
