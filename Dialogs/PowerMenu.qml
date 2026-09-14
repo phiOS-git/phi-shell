@@ -24,20 +24,18 @@ import "../Bar/glyphs.js" as Glyphs
 // BarPopout.qml's own power card already uses (`_confirmAndPerform`) —
 // copied here rather than duplicated with different wording.
 //
-// NOT DONE: per-action icons (see docs/VERIFICATION.md for the full
-// write-up — that red-flagged note belongs there, not here). The TODO
-// asks for icons on every row; only "Shut down" gets one here
-// (Glyphs.power, already shipped and in use for the bar's own power
-// icon). The other four would need new Nerd Font codepoints this session
-// could not verify — Bar/glyphs.js's own history is two separate
-// shipped-wrong-codepoint bugs (Steam, the scratchpad console icon), both
-// user-reported, both from guessing instead of confirming against
-// nerd-fonts' own glyphnames.json. Live lookups this session returned
-// contradictory results (a "not found" that flipped to "found" on retry,
-// and a claim that this project's own already-shipped `nf-md-*` codepoint
-// family doesn't exist in the source file at all) — not something to
-// build on. Every row still shows its full text label regardless, so a
-// missing icon is a missing glyph, not a missing option.
+// Per-action icons (docs/TODO.md, resolved 2026-09-14): Lock, Suspend,
+// Shut down and Reboot each get a real, confirmed `nf-md-*` codepoint
+// (Bar/glyphs.js: lock, powerSleep, power, restart) — fetched a fresh
+// copy of nerd-fonts' own glyphnames.json directly (not summarised, not
+// recalled) and matched by exact icon name, avoiding the guess-then-hope
+// mistake Bar/glyphs.js's own history already made twice (Steam, the
+// scratchpad console icon). Hibernate still has NO icon: no glyph named
+// "hibernate" (or a close enough synonym — sleep, power_standby, moon,
+// bed all exist as their own distinct icons but none reads as
+// "hibernate") exists anywhere in the whole nerd-fonts glyph set, checked
+// systematically rather than guessed around — see docs/TODO.md for the
+// still-open follow-up asking for a deliberate substitute pick.
 PanelWindow {
     id: root
 
@@ -127,11 +125,13 @@ PanelWindow {
                     Widgets.ListRow {
                         width: parent.width
                         label: "Lock"
+                        glyph: Glyphs.lock
                         onActivated: root._choose("lock")
                     }
                     Widgets.ListRow {
                         width: parent.width
                         label: "Suspend"
+                        glyph: Glyphs.powerSleep
                         onActivated: root._choose("suspend")
                     }
                     Widgets.ListRow {
@@ -148,6 +148,7 @@ PanelWindow {
                     Widgets.ListRow {
                         width: parent.width
                         label: "Reboot"
+                        glyph: Glyphs.restart
                         onActivated: root._choose("reboot")
                     }
                 }

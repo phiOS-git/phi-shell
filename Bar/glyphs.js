@@ -49,3 +49,16 @@ var console         = _c(0xF018D)   // nf-md-console (scratchpad toggle icon) �
                                      // nerd-fonts' own glyphnames.json)
 var clipboard       = _c(0xF0147)   // nf-md-clipboard
 var power           = _c(0xF0425)   // nf-md-power (left-isle power icon)
+var lock            = _c(0xF033E)   // nf-md-lock (power menu: Lock)
+var powerSleep      = _c(0xF0904)   // nf-md-power_sleep (power menu: Suspend) — confirmed
+                                     // 2026-09-14 against a fresh copy of nerd-fonts' own
+                                     // glyphnames.json (not recalled, not retried-until-it-
+                                     // looked-right the way the prior session's live lookups
+                                     // did): "power_sleep" is a real, exact-named MDI icon.
+var restart         = _c(0xF0709)   // nf-md-restart (power menu: Reboot) — same verification.
+                                     // NO exact "hibernate" icon exists anywhere in nerd-fonts'
+                                     // own glyph set (checked systematically against a dozen
+                                     // candidate names — sleep, power_standby, moon, bed, etc.
+                                     // all exist but none is named "hibernate"), so the power
+                                     // menu's Hibernate row still has no icon — see
+                                     // docs/TODO.md for the still-open follow-up.
