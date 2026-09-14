@@ -384,6 +384,20 @@ Singleton {
     property bool batterySaverAuto: true
     property bool batterySaverActive: false
     property bool _saverOverrideWhileCharging: false
+    // docs/TODO.md: "battery saving gets automatically toggled on every
+    // time the battery updates and is below 20%. However this should not
+    // happen if i manually turned it off, at least until it hits another
+    // threshold." Without this, turning it off manually while still
+    // discharging and at/under lowPercentThreshold did nothing to the
+    // conditions _evaluateBatterySaver() checks — the very next battery
+    // update (any percentage tick or poll) would find batterySaverActive
+    // false, discharging true, percentage still <= threshold, and
+    // immediately flip it back on, making the manual switch a no-op in
+    // practice. Session-local like _saverOverrideWhileCharging, not
+    // persisted: same reasoning, a fresh startup should re-decide from the
+    // real battery state, not a stale "user silenced this" flag from a
+    // previous session.
+    property bool _saverSuppressedByUser: false
     property int _brightnessBeforeSaver: -1
     property int _brightnessCapSetTo: -1
 
@@ -401,6 +415,16 @@ Singleton {
         b = !!b
         if (b && !root.discharging) root._saverOverrideWhileCharging = true
         if (!b) root._saverOverrideWhileCharging = false
+        // Reuses alertWarnThreshold (this file's own next threshold down,
+        // already user-configurable) as "another threshold": if the user
+        // turns saver off while still at/under lowPercentThreshold, the
+        // suppression holds until either a fresh charge cycle ends this
+        // discharge session, or the battery drops far enough to cross the
+        // more urgent warn threshold — at which point the situation has
+        // changed since the user dismissed it, and automation resumes.
+        if (!b && root.discharging && root.percentage <= root.lowPercentThreshold)
+            root._saverSuppressedByUser = true
+        if (b) root._saverSuppressedByUser = false
         root._applyBatterySaver(b)
     }
 
@@ -441,10 +465,18 @@ Singleton {
         if (!root.discharging) {
             if (root.batterySaverActive && root.percentage > root.lowPercentThreshold && !root._saverOverrideWhileCharging)
                 root._applyBatterySaver(false)
+            // A fresh charge ends the discharge session the suppression
+            // was scoped to — "until it hits another threshold", not
+            // forever; next time it drops under lowPercentThreshold this
+            // counts as a new occurrence.
+            root._saverSuppressedByUser = false
             return
         }
         if (root._saverOverrideWhileCharging) root._saverOverrideWhileCharging = false
-        if (root.batterySaverAuto && !root.batterySaverActive && root.percentage <= root.lowPercentThreshold)
+        if (root._saverSuppressedByUser && root.percentage <= root.alertWarnThreshold)
+            root._saverSuppressedByUser = false
+        if (root.batterySaverAuto && !root.batterySaverActive && root.percentage <= root.lowPercentThreshold
+                && !root._saverSuppressedByUser)
             root._applyBatterySaver(true)
     }
 
