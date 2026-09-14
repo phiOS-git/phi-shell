@@ -27,6 +27,17 @@ Item {
 
     property string selectedProject: ""
 
+    // Style pass 2026-09-15: AgentPanel.qml's own keyScope contract — see
+    // that file's Keys.onEscapePressed for the full reasoning. Having a
+    // project open is this tab's own "one level deeper" state; goBack()
+    // delegates to ProjectView's own hasBack/goBack first, since that view
+    // can itself be one level deeper still (its personality editor).
+    readonly property bool hasBack: root.selectedProject.length > 0
+    function goBack() {
+        if (projectViewLoader.item && projectViewLoader.item.hasBack) projectViewLoader.item.goBack()
+        else root.selectedProject = ""
+    }
+
     TextMetrics { id: ch; font.family: Config.Appearance.fontMono; font.pixelSize: Config.Appearance.fontSize1; text: "0" }
     readonly property real chWidth: ch.width
     readonly property real gap: chWidth * Config.Appearance.space2
@@ -38,6 +49,7 @@ Item {
 
     // A project is open → the project detail view.
     Loader {
+        id: projectViewLoader
         anchors.fill: parent
         active: root.selectedProject.length > 0
         sourceComponent: ProjectView {

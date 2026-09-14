@@ -154,7 +154,22 @@ PanelWindow {
             id: keyScope
             anchors.fill: parent
             focus: root.shown
-            Keys.onEscapePressed: Services.AgentPanel.hide()
+            // Style pass 2026-09-15: Dashboard→ProjectView and the Coding
+            // sessions tab's own transcript view each have a "‹ Back"
+            // button and their own local navigation state, but no
+            // keyboard equivalent — Escape skipped straight past that
+            // state to closing the WHOLE panel, discarding the user's
+            // place instead of backing out one level at a time the way
+            // Escape conventionally does. `hasBack`/`goBack()` are an
+            // opt-in contract (undefined on Chat/MemoryProposals, which
+            // have no such state) checked here before falling through to
+            // the original close-the-panel behaviour.
+            Keys.onEscapePressed: {
+                if (sectionLoader.item && sectionLoader.item.hasBack === true)
+                    sectionLoader.item.goBack()
+                else
+                    Services.AgentPanel.hide()
+            }
         }
 
         Item {
@@ -241,6 +256,7 @@ PanelWindow {
                         clip: true
 
                         Loader {
+                            id: sectionLoader
                             anchors.fill: parent
                             sourceComponent: {
                                 switch (root.section) {
