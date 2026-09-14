@@ -132,7 +132,6 @@ PanelWindow {
         case "battery": return batteryComponent
         case "wifi": return wifiComponent
         case "gpu": return gpuComponent
-        case "nightMode": return nightModeComponent
         case "phiAgent": return phiAgentComponent
         case "notifications": return notificationsComponent
         case "clipboard": return clipboardComponent
@@ -171,7 +170,6 @@ PanelWindow {
     Component { id: batteryComponent; Modules.Battery { screen: bar.screen } }
     Component { id: wifiComponent; Modules.Wifi { screen: bar.screen } }
     Component { id: gpuComponent; Modules.Gpu { screen: bar.screen } }
-    Component { id: nightModeComponent; Modules.NightMode { screen: bar.screen } }
     Component { id: phiAgentComponent; Modules.PhiAgent { screen: bar.screen } }
     // ADR 134 (reversing ADR 122) removed the separate `specialWorkspaces`
     // module: btop and Steam are plain numbered workspaces now, rendered by
