@@ -112,6 +112,7 @@ var OPTIONS = [
     { id: "notifications.sound",       title: "Sound & testing",        keywords: "audio beep chime pw-play freedesktop volume test notification" },
     { id: "notifications.retention",   title: "History retention",      keywords: "keep days auto clear prune old clean all" },
     { id: "notifications.chroma",      title: "Keyboard blink on notification", keywords: "chroma razer function row" },
+    { id: "notifications.timers",      title: "Timers & alarms",        keywords: "timer alarm ringtone runner countdown clock wake" },
 
     // --- Updates --------------------------------------------
     { id: "updates.system",           title: "System state",           keywords: "version phios phi phi-packages" },

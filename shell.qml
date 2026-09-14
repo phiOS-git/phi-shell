@@ -223,6 +223,14 @@ ShellRoot {
         screen: Quickshell.screens[0]
     }
 
+    // docs/TODO.md: "add a timer and alarm feature to phi ... custom
+    // overlay that requires to be turned off" — single shared instance,
+    // same primary-screen-only reasoning as Dialogs.BatteryAlert/PowerMenu
+    // just above (one real clock, not per-monitor ambient state).
+    Dialogs.TimerAlert {
+        screen: Quickshell.screens[0]
+    }
+
     // S-43 / SF-5: per-screen (Services/Spotlight.qml's header on why a
     // primary-only instance defeats the feature). Declared LAST, and it
     // sets WlrLayer.Overlay + only maps its surface while shown (SF-5) — so
