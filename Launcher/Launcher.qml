@@ -784,6 +784,24 @@ PanelWindow {
                                 elide: Text.ElideLeft
                             }
 
+                            // Style pass 2026-09-14: this row had a
+                            // TapHandler and nothing else — no hover
+                            // feedback, no cursor, on the single most-used
+                            // surface in this shell. Hovering moves the
+                            // keyboard highlight to match, the conventional
+                            // behaviour every launcher this shape takes
+                            // after (rofi/wofi/Spotlight/Raycast) already
+                            // uses, so Enter activates whatever the pointer
+                            // is over — deliberately NOT the same choice
+                            // AltTab's own hover fix made (kept separate
+                            // from keyboard selection there), since that is
+                            // a grid a user tabs through independently of
+                            // where the mouse happens to rest, not a single
+                            // flowing list like this one.
+                            HoverHandler {
+                                cursorShape: Qt.PointingHandCursor
+                                onHoveredChanged: if (hovered) root.highlightedIndex = opt.index
+                            }
                             TapHandler { onTapped: root.activate(opt.modelData) }
                         }
                     }
