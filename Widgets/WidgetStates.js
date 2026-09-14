@@ -32,6 +32,20 @@
 // still one number, kept in one place rather than repeated per widget.
 var INACTIVE_OPACITY = 0.45
 
+// Style pass 2026-09-14 (docs/TODO.md: "trigger buttons don't show
+// loading states or result feedback"). Before this, `loading` and
+// `disabled` shared the exact same INACTIVE_OPACITY — a button doing
+// something and a button that will never do anything were visually
+// IDENTICAL, which is its own version of "no loading state" even on the
+// many buttons this pass has since wired a real `loading:` binding onto
+// (Chat's Send, the Wi-Fi/AI-Agent/Timer refresh-and-start actions, …). A
+// distinct, LESS dim ratio — still reads as "not fully interactive right
+// now", but visibly different from "disabled" — needs no new animation
+// mechanism and composes for free with the `Behavior on opacity` every
+// widget already has, so the transition in and out of it already
+// animates smoothly with zero further changes.
+var LOADING_OPACITY = 0.7
+
 // Resolves the seven transverse states to exactly one, in a fixed
 // precedence, so two widgets never disagree about which one wins when more
 // than one flag is true at once: a disabled control never shows a hover
@@ -174,10 +188,13 @@ function surfaceColors(appearance, resolvedState, ambient) {
 }
 
 // §8.6: "interattivo inattivo -> stesso peso del label, opacità ridotta".
-// disabled and loading keep every colour surfaceColors() above returns and
-// only fade — they never change hue or weight.
+// disabled and loading both keep every colour surfaceColors() above
+// returns and only fade — they never change hue or weight — but no longer
+// fade to the SAME degree (see LOADING_OPACITY's own comment above).
 function opacityFor(resolvedState) {
-    return (resolvedState === "disabled" || resolvedState === "loading") ? INACTIVE_OPACITY : 1.0
+    if (resolvedState === "loading") return LOADING_OPACITY
+    if (resolvedState === "disabled") return INACTIVE_OPACITY
+    return 1.0
 }
 
 // §8.6: "label di sistema -> basso contrasto, sempre monocromo" /

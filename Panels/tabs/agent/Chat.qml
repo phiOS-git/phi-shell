@@ -224,7 +224,7 @@ Item {
                     id: switchRow
                     spacing: root.chWidth * Config.Appearance.space1
                     Widgets.StyledText { kind: "label"; text: "Rebuilding the containment for the new project" }
-                    Tabs.Dots {}
+                    Widgets.Dots {}
                 }
             }
 
@@ -338,7 +338,7 @@ Item {
                     visible: root.agent.processing
                     spacing: root.chWidth * Config.Appearance.space1
                     Widgets.StyledText { kind: "label"; text: "Agent is working" }
-                    Tabs.Dots {}
+                    Widgets.Dots {}
                 }
 
                 Widgets.Panel {

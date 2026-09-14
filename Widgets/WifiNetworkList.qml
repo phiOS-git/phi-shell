@@ -58,9 +58,20 @@ Item {
             StyledText {
                 anchors.verticalCenter: parent.verticalCenter
                 kind: "label"
-                text: Services.WifiBridge.scanning
-                    ? "Scanning…"
-                    : (Services.WifiBridge.scannedNetworks.length + (Services.WifiBridge.scannedNetworks.length === 1 ? " network found" : " networks found"))
+                visible: !Services.WifiBridge.scanning
+                text: Services.WifiBridge.scannedNetworks.length + (Services.WifiBridge.scannedNetworks.length === 1 ? " network found" : " networks found")
+            }
+            // Style pass 2026-09-14: a real animated "still working" cue
+            // (Widgets/Dots, promoted from the agent panel this pass) in
+            // place of a static "Scanning…" that never visibly changed —
+            // one more small instance of the same "trigger buttons don't
+            // show loading states" gap, here on the row NEXT TO the
+            // button rather than the button itself.
+            Row {
+                visible: Services.WifiBridge.scanning
+                anchors.verticalCenter: parent.verticalCenter
+                StyledText { kind: "label"; text: "Scanning" }
+                Dots {}
             }
             SmallButton {
                 label: "Refresh"
