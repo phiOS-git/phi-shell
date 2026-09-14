@@ -369,6 +369,7 @@ Column {
         id: fr
         property string tokenKey: ""
         property string previewFamily: ""
+        property bool browsing: false
         wide: true
         optionId: "theme.fonts." + tokenKey.replace("font-", "")
         resettable: Config.ThemeOverrides.has(tokenKey)
@@ -377,16 +378,94 @@ Column {
         Column {
             width: parent.width
             spacing: 6
-            Widgets.TextField {
-                id: ff
+            Row {
                 width: parent.width
-                mono: false
-                placeholder: "Font family name"
-                Component.onCompleted: text = Config.Appearance.tokenValue(fr.tokenKey)
-                onCommitted: (t) => Config.ThemeOverrides.setValue(fr.tokenKey, t.trim())
-                Connections {
-                    target: resetSignal
-                    function onFired() { ff.text = Config.Appearance.tokenValue(fr.tokenKey) }
+                spacing: root.gap
+                Widgets.TextField {
+                    id: ff
+                    // Style pass 2026-09-14 (docs/TODO.md: "options inputs
+                    // in settings like 'ringtone' are text field rather
+                    // then real selection elements" — the exact same
+                    // pattern, just for an installed font name instead of
+                    // a sound name). The field stays — a power user who
+                    // already knows the exact family name can still just
+                    // type it — but "Browse…" reveals every font Qt
+                    // actually has installed (Qt.fontFamilies(), a plain
+                    // Qt API — no subprocess needed at all, unlike
+                    // Widgets/SoundPicker's directory scan), filterable,
+                    // tap to select.
+                    width: parent.width - browseBtn.implicitWidth - parent.spacing
+                    mono: false
+                    placeholder: "Font family name"
+                    Component.onCompleted: text = Config.Appearance.tokenValue(fr.tokenKey)
+                    onCommitted: (t) => Config.ThemeOverrides.setValue(fr.tokenKey, t.trim())
+                    Connections {
+                        target: resetSignal
+                        function onFired() { ff.text = Config.Appearance.tokenValue(fr.tokenKey) }
+                    }
+                }
+                Widgets.SmallButton {
+                    id: browseBtn
+                    anchors.verticalCenter: parent.verticalCenter
+                    label: fr.browsing ? "Hide list" : "Browse…"
+                    onClicked: fr.browsing = !fr.browsing
+                }
+            }
+            Widgets.Reveal {
+                shown: fr.browsing
+                width: parent.width
+                Column {
+                    width: parent.width
+                    spacing: 6
+                    Widgets.TextField {
+                        id: fontFilter
+                        width: parent.width
+                        mono: false
+                        placeholder: "Filter installed fonts…"
+                    }
+                    Widgets.Panel {
+                        id: fontListPanel
+                        width: parent.width
+                        // Enumerated once when the list is first opened, not
+                        // re-queried on every keystroke — Qt.fontFamilies()
+                        // is a real OS font-enumeration call, not a cheap
+                        // constant, and only the FILTER needs to be live.
+                        property var _allFamilies: []
+                        Component.onCompleted: fontListPanel._allFamilies = Qt.fontFamilies()
+                        readonly property var _matches: fontListPanel._allFamilies.filter(
+                            (n) => n.toLowerCase().indexOf(fontFilter.text.toLowerCase()) !== -1)
+                        height: Math.min(fontListCol.implicitHeight + padding * 2, root.chWidth * 22)
+                        Flickable {
+                            anchors.fill: parent
+                            contentWidth: width
+                            contentHeight: fontListCol.implicitHeight
+                            clip: true
+                            Column {
+                                id: fontListCol
+                                width: parent.width
+                                Repeater {
+                                    model: fontListPanel._matches
+                                    Widgets.ListRow {
+                                        required property string modelData
+                                        width: parent.width
+                                        label: modelData
+                                        active: modelData === ff.text
+                                        onActivated: {
+                                            ff.text = modelData
+                                            Config.ThemeOverrides.setValue(fr.tokenKey, modelData)
+                                            fr.browsing = false
+                                        }
+                                    }
+                                }
+                                Widgets.StyledText {
+                                    width: parent.width
+                                    visible: fontListPanel._matches.length === 0
+                                    kind: "label"; sizeStep: 0
+                                    text: "No installed font matches."
+                                }
+                            }
+                        }
+                    }
                 }
             }
             Widgets.StyledText {
