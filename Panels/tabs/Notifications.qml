@@ -300,7 +300,20 @@ Item {
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
                             label: "clear"
-                            onClicked: Services.Notifications.clearApp(grp.modelData.app)
+                            // Style pass 2026-09-14: the same gap the panel's
+                            // own "Clear all" button had (see that button's
+                            // comment above) — this one just clears a single
+                            // app's history instead of everything, but it is
+                            // the same irreversible wipe, one click, no
+                            // confirmation, missed by that earlier fix
+                            // because it targets a different app-group each
+                            // time rather than being one fixed button.
+                            onClicked: Services.ConfirmDialog.open({
+                                title: "Clear notifications",
+                                message: "Deletes all history for \"" + grp.modelData.app + "\" now. This cannot be undone.",
+                                confirmLabel: "Clear",
+                                onConfirm: () => Services.Notifications.clearApp(grp.modelData.app)
+                            })
                         }
                     }
 
