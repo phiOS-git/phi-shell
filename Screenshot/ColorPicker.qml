@@ -93,6 +93,20 @@ PanelWindow {
                     root.lastHex = hex
                     copyProc.command = ["sh", "-c", 'printf "%s" "$1" | wl-copy', "copy", hex]
                     copyProc.running = true
+                    // Style pass 2026-09-14: this file's own header used to
+                    // defend showing no confirmation at all, matched to
+                    // Screenshot.qml's silent image-copy — but there is
+                    // nothing else to look at here either (no swatch, no
+                    // hex shown on screen) the way an image capture at
+                    // least leaves a file/thumbnail behind, so "silent"
+                    // here meant no trace whatsoever that anything
+                    // happened. Routed through the same notify-send path
+                    // Bar/modules/Timer.qml already uses (this shell is the
+                    // notification daemon, ADR 073) rather than building a
+                    // second on-screen result surface just for one hex
+                    // string.
+                    notifyProc.command = ["notify-send", "Colour picked", hex + " copied to clipboard"]
+                    notifyProc.running = true
                 }
                 root.shown = false
             }
@@ -100,6 +114,7 @@ PanelWindow {
     }
 
     Process { id: copyProc; onExited: copyProc.running = false }
+    Process { id: notifyProc; onExited: notifyProc.running = false }
 
     // ImageMagick's own pixel-format output is srgb(R,G,B) or
     // srgba(R,G,B,A) — 0-255 ints, not already hex. A #RRGGBB form
@@ -113,10 +128,4 @@ PanelWindow {
         return "#" + toHex2(m[1]) + toHex2(m[2]) + toHex2(m[3])
     }
 
-    // No completion toast: Screenshot.qml's own clipboard-copy path (S-36)
-    // shows none either for the same action shape (silent copy) — matched
-    // rather than inventing a new confirmation convention for one surface.
-    // A window-level `visible: root.shown` binding could not show one after
-    // shown flips false anyway, the same problem an earlier draft of this
-    // file had before being caught.
 }

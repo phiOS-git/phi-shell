@@ -392,6 +392,14 @@ PanelWindow {
                                 width: root.cellW
                                 height: root.cellH
                                 active: box.modelData.address === root.selectedAddress
+                                // Style pass 2026-09-14: every clickable
+                                // window box had no hover feedback or
+                                // pointer cursor at all — the keyboard
+                                // selection (`active`, above) is the only
+                                // state that ever showed, so a mouse user
+                                // got no indication a box was clickable
+                                // until they clicked it.
+                                hovered: boxHover.hovered
 
                                 readonly property var desktopEntry:
                                     DesktopEntries.heuristicLookup(box.modelData.cls)
@@ -422,6 +430,7 @@ PanelWindow {
                                     }
                                 }
 
+                                HoverHandler { id: boxHover; cursorShape: Qt.PointingHandCursor }
                                 TapHandler {
                                     onTapped: {
                                         root._focusWindow(box.modelData.address)

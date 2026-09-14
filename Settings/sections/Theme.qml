@@ -128,16 +128,25 @@ Column {
                         && Services.SettingsPanel.query.length > 0
                         && sw.tokenKey.length > 0
                         && Options.matches(sw.optionId, Services.SettingsPanel.query)
+                    // Style pass 2026-09-14 (docs/TODO.md: "in the theme
+                    // settings colors have no hover effect"). This tile had
+                    // an open/selected wash, a search-match wash and a
+                    // pulse-on-reveal — every state except the one that
+                    // tells you it is clickable at all before you click.
+                    readonly property bool _hovered: swHover.hovered
 
                     width: Math.round(root.chWidth * 24)
                     height: swRow.implicitHeight + Math.round(root.chWidth * Config.Appearance.space1)
                     radius: Config.Appearance.radiusSmall
-                    color: sw._open ? Config.Appearance.surface1 : "transparent"
+                    color: sw._open ? Config.Appearance.surface1
+                        : (sw._hovered ? Config.Appearance.panelHover : "transparent")
                     border.width: sw._open ? Config.Appearance.borderWidth : 0
                     border.color: sw._open ? Config.Appearance.focusRing : "transparent"
                     Behavior on color {
                         ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
                     }
+
+                    HoverHandler { id: swHover; cursorShape: Qt.PointingHandCursor }
 
                     Component.onCompleted: if (sw.tokenKey.length > 0) Services.SettingsPanel.registerRow(sw.optionId, sw)
                     Component.onDestruction: if (sw.tokenKey.length > 0) Services.SettingsPanel.unregisterRow(sw.optionId)

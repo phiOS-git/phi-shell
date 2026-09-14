@@ -266,14 +266,26 @@ Column {
         }
         SettingsRow {
             title: "Sound"
-            description: "A freedesktop name (power-plug, message, bell…) or an absolute path to an audio file."
+            description: "Pick an installed sound — tapping one previews it. Or give an absolute path below."
             wide: true
-            Widgets.TextField {
+            Column {
                 width: parent.width
-                mono: false
-                placeholder: "power-plug"
-                Component.onCompleted: text = Services.PowerBridge.chargingSoundName
-                onCommitted: (t) => Services.PowerBridge.setChargingSoundName(t)
+                spacing: root.gap
+                Widgets.SoundPicker {
+                    width: parent.width
+                    chWidth: root.chWidth
+                    gap: root.gap
+                    value: Services.PowerBridge.chargingSoundName
+                    onCommitted: (name) => Services.PowerBridge.setChargingSoundName(name)
+                    onPreviewed: Services.PowerBridge.playChargingSound(true)
+                }
+                Widgets.TextField {
+                    width: parent.width
+                    mono: false
+                    placeholder: "or an absolute path…"
+                    Component.onCompleted: text = Services.PowerBridge.chargingSoundName
+                    onCommitted: (t) => Services.PowerBridge.setChargingSoundName(t)
+                }
             }
         }
         SettingsRow {
@@ -401,6 +413,7 @@ Column {
             shown: Services.Chroma.advanced
             SettingsRow {
             wide: true
+            advanced: true
             title: "Key map"
             description: "Grid sized from the keyboard's own matrix. Click a key, then pick its colour. The grid also tells you a key's (row, column) for the integration settings below."
             Column {

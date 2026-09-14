@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.Config as Config
+import qs.Services as Services
 import qs.Widgets as Widgets
 
 // phiOS — Screenshot/Screenshot.qml (S-36, master plan §8.3 surface 9,
@@ -68,6 +69,25 @@ PanelWindow {
 
     Component.onCompleted: {
         if (root.WlrLayershell) root.WlrLayershell.layer = WlrLayer.Overlay
+    }
+
+    // Style pass 2026-09-14: this surface had no keyboard focus and no
+    // Escape handling at all — every other modal-style overlay in this
+    // shell (Settings, Launcher, Cheatsheet, AltTab, Sidebar, AgentPanel)
+    // wires Escape to cancel/close; this one only ever exited a selection
+    // via a near-empty drag (onReleased's own width/height < 4 check,
+    // still there, unchanged) or by actually completing a capture. Escape
+    // is the conventional, expected way to back out of a modal selection
+    // and this shell's own established convention everywhere else.
+    Services.LayerFocus { target: root }
+    Item {
+        id: keyScope
+        anchors.fill: parent
+        focus: root.visible
+        Keys.onEscapePressed: {
+            if (root.resultText.length > 0) root.resultText = ""
+            else if (root.selecting) root.mode = "idle"
+        }
     }
 
     function _picturesDir() {
@@ -203,7 +223,13 @@ PanelWindow {
 
     Widgets.Scrim {
         anchors.fill: parent
-        shown: root.selecting
+        // Style pass 2026-09-14: was `shown: root.selecting` only — but
+        // `_prepareCapture` resets `mode` to "idle" (so `selecting` goes
+        // false) BEFORE the async grim/tesseract/zbarimg run even starts,
+        // meaning the OCR/QR result panel below spent its entire visible
+        // lifetime with no scrim behind it at all, unlike every other
+        // modal-style panel in this shell.
+        shown: root.selecting || root.resultText.length > 0
         // docs/TODO.md, style pass: screenshot selection is one of the
         // "covers the bar" dims — gets the stronger intensity.
         strong: true
@@ -232,6 +258,19 @@ PanelWindow {
                 wrapMode: Text.Wrap
                 mono: true
                 text: root.resultText
+            }
+            // Style pass 2026-09-14: _copyTextToClipboard already runs
+            // silently on every successful OCR/QR read (see _runOcr/_runQr
+            // below) — this panel showed the text but never confirmed the
+            // side effect that actually matters (it's already on the
+            // clipboard, ready to paste), the exact "trigger buttons ...
+            // show ... result feedback" gap docs/TODO.md named generally.
+            Widgets.StyledText {
+                width: parent.width
+                kind: "label"; sizeStep: 0
+                tone: "success"
+                visible: root.resultText.length > 0 && root.resultText !== "(no text found)" && root.resultText !== "(no QR code found)"
+                text: "Copied to clipboard."
             }
             Widgets.StyledButton {
                 label: "Close"
