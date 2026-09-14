@@ -63,10 +63,18 @@ Widgets.Segment {
     Behavior on chargingAmount {
         NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
     }
+    // docs/TODO.md: "the battery icon does not have different states for
+    // battery saving mode" — see Widgets/BatteryIcon.qml's own header on
+    // why this is a hatch pattern, not just another tone colour.
+    property real saverAmount: 0
+    Behavior on saverAmount {
+        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+    }
 
     function _sync() {
         root.level = Math.max(0, Math.min(1, Services.PowerBridge.percentage))
         root.chargingAmount = root.charging ? 1 : 0
+        root.saverAmount = root.saverActive ? 1 : 0
     }
     Connections {
         target: Services.PowerBridge
@@ -77,6 +85,7 @@ Widgets.Segment {
         // resume cycle where UPower re-attaches the device) — catch that
         // transition too rather than leaving level/chargingAmount stale.
         function onPresentChanged() { root._sync() }
+        function onBatterySaverActiveChanged() { root._sync() }
     }
     Component.onCompleted: root._sync()
 
@@ -92,6 +101,7 @@ Widgets.Segment {
             sizeStep: root.sizeStep
             level: root.level
             chargingAmount: root.chargingAmount
+            saverAmount: root.saverAmount
         }
     }
 

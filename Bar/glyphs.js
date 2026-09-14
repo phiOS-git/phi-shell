@@ -63,6 +63,18 @@ var timer           = _c(0xF051B)   // nf-md-timer_outline (Bar/modules/Timer.qm
                                      // recalled, per this file's own standing rule after
                                      // three past wrong-codepoint incidents (steam,
                                      // console/function, and the missing hibernate icon).
+var stopwatch       = _c(0xF13AB)   // nf-md-timer (Bar/modules/Stopwatch.qml) — the FILLED
+                                     // variant of the same base icon `timer` above already
+                                     // uses outlined for the countdown timer/alarm concept;
+                                     // MDI's "timer" (not "-outline") is the analog-stopwatch
+                                     // pictogram, a deliberately related-but-distinct glyph
+                                     // for a related-but-distinct feature. Confirmed 2026-09-14
+                                     // against a live fetch of nerd-fonts' own glyphnames.json
+                                     // (md-timer: f13ab) AND checked present in the installed
+                                     // font's own charset (`fc-query`'s dump for
+                                     // SymbolsNerdFontMono-Regular.ttf covers f0001-f1af0,
+                                     // which contains this codepoint) — this file's standing
+                                     // rule after three past wrong-codepoint incidents.
 var restart         = _c(0xF0709)   // nf-md-restart (power menu: Reboot) — same verification.
                                      // NO exact "hibernate" icon exists anywhere in nerd-fonts'
                                      // own glyph set (checked systematically against a dozen

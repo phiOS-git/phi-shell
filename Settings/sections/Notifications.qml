@@ -233,15 +233,23 @@ Column {
         }
     }
 
-    // --- Timers & alarms --------------------------------------------
+    // --- Timers, alarms & stopwatch -----------------------------------
     // docs/TODO.md: "add a timer and alarm feature to phi ... It should
     // have a ringtone. The two features must be customisable in the
     // settings." Services/Timers.qml owns the state; set up new timers/
     // alarms from the runner bar ("timer 5m", "alarm 7:30 wake up") —
     // this group is ringtone customisation plus managing what is already
     // running, not where a new one is created.
+    //
+    // docs/TODO.md: "the timer, alarm and stopwatch features need to be
+    // implemented... can be called from the runner as well." The
+    // stopwatch (Services/Stopwatch.qml) has no customisable state of its
+    // own — no ringtone, nothing persisted — so it gets no dedicated row
+    // here, only a mention in this group's own caption, the exact spot a
+    // user reading "how do I start one of these from the runner" already
+    // lands on for timer/alarm.
     SettingsGroup {
-        title: "Timers & alarms"
+        title: "Timers, alarms & stopwatch"
         optionId: "notifications.timers"
         // Empty state folded into the caption (Per-app rules group's own
         // shape, just above), not a separate invisible-when-non-empty
@@ -251,7 +259,7 @@ Column {
         caption: Services.Timers.soundError.length > 0
             ? ("Last sound error: " + Services.Timers.soundError)
             : (Services.Timers.items.length === 0 ? "No timers or alarms running. " : "") +
-              "Set one from the runner bar: \"timer 5m\", \"timer 25m tea\", \"alarm 7:30\", \"alarm 19:45 wake up\"."
+              "Set one from the runner bar: \"timer 5m\", \"timer 25m tea\", \"alarm 7:30\", \"alarm 19:45 wake up\", \"stopwatch\", \"stopwatch lap\"."
 
         SettingsRow {
             advanced: true

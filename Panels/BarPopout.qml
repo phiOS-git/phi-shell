@@ -146,6 +146,26 @@ PanelWindow {
         return m + ":" + (s < 10 ? "0" : "") + s
     }
 
+    // Live elapsed readout for the "stopwatch" card — only ticks while
+    // that specific card is on screen AND actually running (a paused
+    // stopwatch's own value is already static, same reasoning Bar/
+    // modules/Stopwatch.qml's own bar-label tick uses).
+    property real _stopwatchNow: Date.now()
+    Timer {
+        interval: 1000
+        running: root.shown && root.which === "stopwatch" && Services.Stopwatch.running
+        repeat: true
+        onTriggered: root._stopwatchNow = Date.now()
+    }
+    function _fmtStopwatch(ms) {
+        const totalSeconds = Math.floor(ms / 1000)
+        const h = Math.floor(totalSeconds / 3600)
+        const m = Math.floor((totalSeconds % 3600) / 60)
+        const s = totalSeconds % 60
+        if (h > 0) return h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s
+        return m + ":" + (s < 10 ? "0" : "") + s
+    }
+
     // docs/TODO.md: "confirmation modals (like the one for power options)
     // should be centered in the screen, with a dim and block the screen
     // until they are resolved. Also make them a reusable component" —
@@ -549,6 +569,55 @@ PanelWindow {
                     width: parent.width
                     label: "Show in settings…"
                     onClicked: root._showInSettings("notifications.timers")
+                }
+            }
+
+            // stopwatch — docs/TODO.md: "the timer, alarm and stopwatch
+            // features need to be implemented: they should appear in the
+            // status bar overlay and can be called from the runner as
+            // well." Services/Stopwatch.qml's own header explains why this
+            // is a separate service/card from timer/alarm above rather
+            // than a third item kind sharing that mechanism.
+            Column {
+                width: parent.width
+                spacing: root.chWidth * Config.Appearance.space1
+                visible: root.which === "stopwatch"
+
+                readonly property real elapsedMs: Services.Stopwatch.elapsedMs(root._stopwatchNow)
+
+                Widgets.StyledText {
+                    width: parent.width
+                    horizontalAlignment: Text.AlignHCenter
+                    kind: "value"; mono: true; sizeStep: 4
+                    text: root._fmtStopwatch(parent.elapsedMs)
+                }
+                Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: root.chWidth * Config.Appearance.space2
+                    Widgets.StyledButton {
+                        label: Services.Stopwatch.running ? "Pause" : (Services.Stopwatch.accumulatedMs > 0 ? "Resume" : "Start")
+                        onClicked: Services.Stopwatch.toggle()
+                    }
+                    Widgets.SmallButton {
+                        label: "Lap"
+                        enabled: Services.Stopwatch.running
+                        onClicked: Services.Stopwatch.lap()
+                    }
+                    Widgets.SmallButton {
+                        label: "Reset"
+                        enabled: Services.Stopwatch.running || Services.Stopwatch.accumulatedMs > 0
+                        onClicked: Services.Stopwatch.reset()
+                    }
+                }
+                Repeater {
+                    model: Services.Stopwatch.laps.slice().reverse()
+                    Widgets.ListRow {
+                        required property var modelData
+                        required property int index
+                        width: parent.width
+                        label: "Lap " + (Services.Stopwatch.laps.length - index)
+                        value: root._fmtStopwatch(modelData.ms)
+                    }
                 }
             }
 

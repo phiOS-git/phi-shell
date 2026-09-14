@@ -34,6 +34,17 @@ Item {
     property int sizeStep: 2
     property real level: 1.0        // 0..1, the caller wraps Behavior (category B)
     property real chargingAmount: 0.0 // 0..1: >0 means "charging", drives the bolt's breathing
+    // docs/TODO.md: "the battery icon does not have different states for
+    // battery saving mode" — before this, saver mode only recoloured the
+    // whole glyph via the caller's `tone` (Bar/modules/Battery.qml's own
+    // "info" tone), the exact same mechanism every OTHER anomaly already
+    // used for a completely different meaning (low charge / high
+    // discharge rate) — a colour-only cue with no shape difference is easy
+    // to miss and easy to confuse with those other tones. 0..1, category B
+    // (a discrete on/off, not an ongoing ambient state the way charging
+    // is) — the caller wraps it in a Behavior the same way it already does
+    // for `level`/`chargingAmount`.
+    property real saverAmount: 0.0
 
     readonly property real _boxSize: WidgetStates.drawnIconBoxSize(Config.Appearance, root.sizeStep)
     implicitWidth: _boxSize
@@ -47,6 +58,7 @@ Item {
     onFillColorChanged: canvas.requestPaint()
     onLevelChanged: canvas.requestPaint()
     onChargingAmountChanged: canvas.requestPaint()
+    onSaverAmountChanged: canvas.requestPaint()
 
     // The breathing loop itself — category A, continuous, only running
     // while actually charging (chargingAmount > 0). `pulseLevel` is a
@@ -118,8 +130,45 @@ Item {
                 ctx.save()
                 _roundRectPath(ctx, innerX, innerY, innerW, innerH, Math.max(0, radius - inset))
                 ctx.clip()
+                // Battery-saver: the base fill fades toward translucent as
+                // saverAmount rises, so the FULL-ALPHA hatch stripes drawn
+                // next actually show up against it. `ink`/`fill` are the
+                // same colour here (the caller passes root.contentColor for
+                // both) — a hatch stroked in `ink` on top of an unfaded,
+                // same-colour, fully-opaque fill would be invisible, drawn
+                // in the exact colour of the pixels beneath it. Contrast
+                // comes from ALPHA, not hue, so it works regardless of
+                // which tone colour is active.
+                ctx.globalAlpha = 1 - root.saverAmount * 0.65
                 ctx.fillStyle = fill
                 ctx.fillRect(innerX, innerY, fillW, innerH)
+                ctx.globalAlpha = 1
+                ctx.restore()
+            }
+
+            // Battery-saver hatching — diagonal stripes drawn over the
+            // now-faded fill above, clipped to the SAME rounded-rect +
+            // current fill width. A texture/shape difference, not just
+            // another colour, so it survives being tiny (a handful of
+            // extra hue values can look near-identical at bar-icon size,
+            // especially against `tone`'s existing anomaly colours;
+            // stripes stay legible at any size since they just get denser,
+            // never vanish into a single flat colour).
+            if (fillW > 0.5 && root.saverAmount > 0.001) {
+                ctx.save()
+                _roundRectPath(ctx, innerX, innerY, fillW, innerH, Math.max(0, radius - inset))
+                ctx.clip()
+                ctx.globalAlpha = root.saverAmount
+                ctx.strokeStyle = ink
+                ctx.lineWidth = Math.max(1, b * 0.05)
+                const step = Math.max(2, b * 0.14)
+                for (let sx = -innerH; sx < fillW + innerH; sx += step) {
+                    ctx.beginPath()
+                    ctx.moveTo(innerX + sx, innerY + innerH)
+                    ctx.lineTo(innerX + sx + innerH, innerY)
+                    ctx.stroke()
+                }
+                ctx.globalAlpha = 1
                 ctx.restore()
             }
 
