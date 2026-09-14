@@ -49,7 +49,10 @@ Item {
         active: root.checked, keyboardFocus: root.keyboardFocus,
         loading: root.loading, invalid: root.invalid
     })
-    readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState)
+    // docs/TODO.md: "switch ui element is not readable... needs to have an
+    // understandable state" — see WidgetStates.js's own "toggle" ambient
+    // branch for why a plain B&W panel inversion wasn't enough here.
+    readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState, "toggle")
 
     // design/tokens.common.sh stores space-N in `ch`, not px — see
     // Panel.qml's identical comment.

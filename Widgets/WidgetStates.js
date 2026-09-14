@@ -86,6 +86,39 @@ function resolve(flags) {
 //     state is unchanged — the same opposite-bg / main-text inversion a
 //     panel uses.
 function surfaceColors(appearance, resolvedState, ambient) {
+    // ambient: "toggle" — Widgets/Toggle's own on/off switch. docs/TODO.md:
+    // "switch ui element is not readable... needs to have an understandable
+    // state" (explicitly not fixable by widening the track). The generic
+    // B&W "inversione piena" every other selectable/active control here
+    // shares (a StyledButton's `active`, a Segment's `active`, a settings
+    // tab) means "this is the current selection" — a different semantic
+    // than a binary preference switch's own "on", and sharing one look for
+    // both made a checked Toggle hard to tell from an unchecked one at a
+    // glance, since the track is only 2:1 and both states drew the exact
+    // same border colour. On now fills solid with `accent` — this shell's
+    // one Tier-2 colour, otherwise reserved for a real semantic threshold,
+    // same reasoning `ambient: "isle"`'s own `active` case below already
+    // gives for reaching for accent over B&W inversion "to show the
+    // selected state" — with the knob in `accentText` (the token already
+    // built to read against accent, ThemeOverrides-aware). Off is a plain
+    // muted outline with NO fill, so on/off is a fill-vs-outline
+    // distinction plus a colour swap, not just a hue swap alone that a
+    // narrow track can shrink to nearly nothing.
+    if (ambient === "toggle") {
+        switch (resolvedState) {
+        case "active":
+            return { bg: appearance.accent, fg: appearance.accentText, border: appearance.accent }
+        case "invalid":
+            return { bg: "transparent", fg: appearance.error, border: appearance.error }
+        case "focus":
+            return { bg: "transparent", fg: appearance.textMuted, border: appearance.focusRing }
+        case "hover":
+            return { bg: "transparent", fg: appearance.colorMain, border: appearance.colorMain }
+        default:
+            return { bg: "transparent", fg: appearance.textMuted, border: appearance.textMuted }
+        }
+    }
+
     if (ambient === "isle") {
         switch (resolvedState) {
         case "active":
