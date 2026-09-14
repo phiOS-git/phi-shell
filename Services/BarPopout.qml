@@ -87,6 +87,7 @@ Singleton {
         case "gpu": return "GPU"
         case "power": return "Power"
         case "timer": return "Timers & Alarms"
+        case "stopwatch": return "Stopwatch"
         }
         return key
     }

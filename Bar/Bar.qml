@@ -137,6 +137,7 @@ PanelWindow {
         case "notifications": return notificationsComponent
         case "clipboard": return clipboardComponent
         case "timer": return timerComponent
+        case "stopwatch": return stopwatchComponent
         default:
             console.warn("phi-shell: Bar module type not recognized: " + type)
             return null
@@ -178,6 +179,7 @@ PanelWindow {
     Component { id: notificationsComponent; Modules.Notifications { screen: bar.screen } }
     Component { id: clipboardComponent; Modules.Clipboard { screen: bar.screen } }
     Component { id: timerComponent; Modules.Timer { screen: bar.screen } }
+    Component { id: stopwatchComponent; Modules.Stopwatch { screen: bar.screen } }
 
     FileView {
         id: registryFile
