@@ -31,6 +31,17 @@ PanelWindow {
     readonly property bool shown: Services.NotificationPanel.shown
     property var registryRows: []
 
+    // Style pass 2026-09-14: `keyScope`'s own `focus: root.shown` binding
+    // (below, inside fadeRoot) is not enough on its own — the same gap
+    // Panels/AgentPanel.qml's own header already documents fixing:
+    // Qt/QML's focus system overwrites `keyScope.focus` to false the
+    // moment something else (the Clipboard tab's search field) takes it,
+    // which breaks that binding for good — QML does not restore it once
+    // the something-else later loses focus too. Without this explicit
+    // reclaim on every open, Escape would go dead on any reopen after the
+    // Clipboard tab's search field had ever been focused once.
+    onShownChanged: if (root.shown) keyScope.forceActiveFocus()
+
     // OOP-09: false until the first frame, so the dock's slide Behavior
     // does not fire while the layer surface is still settling its geometry.
     property bool _animReady: false
@@ -151,6 +162,27 @@ PanelWindow {
         MouseArea {
             anchors.fill: parent
             onClicked: Services.NotificationPanel.hide()
+        }
+
+        // Style pass 2026-09-14: this dock had no Escape fallback of its
+        // own — the Clipboard tab's own search field happens to handle
+        // Escape (it grabs focus on that tab and closes the panel
+        // directly), but the Notifications tab has no text field at all,
+        // so Escape did nothing while it was showing. Same "reclaim focus
+        // on Escape / on switching what's loaded" shape
+        // Panels/AgentPanel.qml's own keyScope already uses: a field that
+        // grabs focus naturally outranks this while it holds it (Qt's
+        // normal focus-chain precedence), and reclaims it back here the
+        // moment that field blurs or the tab changes.
+        Item {
+            id: keyScope
+            anchors.fill: parent
+            focus: root.shown
+            Keys.onEscapePressed: Services.NotificationPanel.hide()
+        }
+        Connections {
+            target: Services.NotificationPanel
+            function onTabChanged() { keyScope.forceActiveFocus() }
         }
 
         Item {
