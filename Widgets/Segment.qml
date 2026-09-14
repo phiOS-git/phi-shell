@@ -399,6 +399,35 @@ Item {
         // is Qt's own documented recommendation for touch-friendly tap
         // recognition.
         gesturePolicy: TapHandler.ReleaseWithinBounds
+        // docs/TODO.md, a later and more specific report than the one
+        // above: "the status bar icons can be touched with touch screen
+        // near their top border, triggering the hover effect but not the
+        // activation." Not the same bug 877955e (above) already fixed —
+        // that one was in-flight jitter between press and release; this is
+        // a genuine boundary case release-outside-bounds itself introduces
+        // for a press that lands, and lifts, right at the Item's edge.
+        // `margin` (confirmed real against Qt's own current source,
+        // qtdeclarative's qquickpointerhandler.cpp: `parentContains()` —
+        // the exact bounds test `ReleaseWithinBounds` itself calls —
+        // returns `localPosition >= -m && <= size + m` once `margin() > 0`,
+        // not merely an activation-only radius) grows that tolerance
+        // uniformly on all four sides. Reused from `paddingV` rather than
+        // a new literal (rule 6): already this Segment's own token-derived
+        // vertical breathing room. Left off `hoverHandler` above
+        // deliberately — the report says hover already fires correctly,
+        // and BarIsle packs Segments with zero spacing (Bar.qml: "remove
+        // the space between icon buttons"), so widening the HOVER region
+        // too would let two adjacent buttons' hover zones overlap at their
+        // shared edge. `margin` on the tap side is symmetric too, so it
+        // widens that same shared edge by a few px on the RELEASE check —
+        // an already-tight zero-spacing tolerance made very slightly
+        // tighter still; `parentContains()` above shows PRESS is margin-
+        // expanded exactly the same way release is, so which handler wins
+        // a press genuinely inside that overlap is Qt's own grab
+        // arbitration, not something this change controls or verifies.
+        // Not gated on `Config.Capabilities.touchscreen`: a more forgiving
+        // release tolerance is correct for a mouse too.
+        margin: root.paddingV
         onTapped: root.activated()
     }
 
