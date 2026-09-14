@@ -114,6 +114,9 @@ var OPTIONS = [
     { id: "notifications.chroma",      title: "Keyboard blink on notification", keywords: "chroma razer function row" },
     { id: "notifications.timers",      title: "Timers, alarms & stopwatch", keywords: "timer alarm stopwatch ringtone runner countdown clock wake lap" },
 
+    // --- Security -------------------------------------------
+    { id: "security.clipboard",        title: "Clipboard history rules", keywords: "clipboard history exclude rule password secret sensitive image don't save" },
+
     // --- Updates --------------------------------------------
     { id: "updates.system",           title: "System state",           keywords: "version phios phi phi-packages" },
     { id: "updates.packages",         title: "Packages",               keywords: "pacman aur npm flatpak appimage phi list manager" }

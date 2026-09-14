@@ -52,6 +52,48 @@ Singleton {
     property var entries: []  // [{id, mime, timestamp, preview}], newest first, rebuilt from disk on refresh()
     property var pinnedIds: [] // array of id strings, persisted to pins.json
 
+    // docs/TODO.md: "there is not way to set rules for what should not be
+    // saved in the clipboard history." The capture script (`watcher`
+    // below) already excludes one thing before it ever touches disk —
+    // KeePassXC's password-manager MIME hint — but that mechanism is a
+    // single hardcoded shell case, not something a user can add to.
+    // Re-templating and restarting the long-lived `wl-paste --watch`
+    // process for a live rule change is real complexity for what a plain
+    // QML-side check achieves just as well for the one thing this project
+    // can actually see rules against (mime type, captured text content):
+    // checked once, the instant an entry is first observed as new (see
+    // listProcess's own onStreamFinished below) — a match is deleted
+    // immediately via the same deleteEntry() a manual delete uses, so it
+    // never even flashes into the visible list, and never retroactively
+    // touches anything captured before the rule existed.
+    property bool excludeImages: false
+    property var excludeRules: [] // lowercase substrings matched against preview text
+
+    function setExcludeImages(b) {
+        root.excludeImages = !!b
+        root._persistRules()
+    }
+
+    function addExcludeRule(pattern) {
+        const p = String(pattern || "").trim().toLowerCase()
+        if (p.length === 0 || root.excludeRules.indexOf(p) !== -1) return
+        root.excludeRules = root.excludeRules.concat([p])
+        root._persistRules()
+    }
+
+    function removeExcludeRule(pattern) {
+        root.excludeRules = root.excludeRules.filter((p) => p !== pattern)
+        root._persistRules()
+    }
+
+    function _matchesExcludeRule(entry) {
+        if (root.excludeImages && entry.mime === "image/png") return true
+        const text = (entry.preview || "").toLowerCase()
+        for (let i = 0; i < root.excludeRules.length; i++)
+            if (text.indexOf(root.excludeRules[i]) !== -1) return true
+        return false
+    }
+
     // docs/TODO.md: "add the clipboard icon to the status bar (with
     // animation for when an element is added)". Bar/modules/Clipboard.qml
     // is the one consumer. Deliberately NOT fired on every refresh():
@@ -255,18 +297,37 @@ done
                 }).filter((e) => e.id && e.id.length > 0)
                 next.sort((a, b) => b.timestamp - a.timestamp)
 
+                // Exclusion rules — only against entries genuinely new
+                // THIS pass (never retroactive to what a rule's own
+                // `_everLoaded` guard already protects, see that
+                // property's own comment above and _matchesExcludeRule's).
+                // A match is deleted immediately and dropped from `next`
+                // before it is ever assigned to root.entries, so it never
+                // flashes into the visible list for even one frame.
+                let filtered = next
+                if (root._everLoaded) {
+                    const prevIdSet = root.entries.map((e) => e.id)
+                    const toDelete = []
+                    filtered = next.filter((e) => {
+                        if (prevIdSet.indexOf(e.id) !== -1) return true
+                        if (root._matchesExcludeRule(e)) { toDelete.push(e.id); return false }
+                        return true
+                    })
+                    for (let i = 0; i < toDelete.length; i++) root.deleteEntry(toDelete[i])
+                }
+
                 // "not already present anywhere in the old list", not
                 // "differs from the old top" — see the `arrived` signal's
                 // own comment above for why: a deletion can promote an
                 // existing entry to position 0 without anything new
                 // having been captured, and that must not fire this.
-                if (root._everLoaded && next.length > 0) {
+                if (root._everLoaded && filtered.length > 0) {
                     const prevIds = root.entries.map((e) => e.id)
-                    if (prevIds.indexOf(next[0].id) === -1) root.arrived(next[0])
+                    if (prevIds.indexOf(filtered[0].id) === -1) root.arrived(filtered[0])
                 }
                 root._everLoaded = true
 
-                root.entries = next
+                root.entries = filtered
             }
         }
     }
@@ -288,6 +349,32 @@ done
         }
         onLoadFailed: (error) => {
             // FileNotFound on first run is expected: nothing pinned yet.
+        }
+    }
+
+    function _persistRules() {
+        rulesFile.setText(JSON.stringify({
+            excludeImages: root.excludeImages,
+            excludeRules: root.excludeRules
+        }, null, 2))
+    }
+
+    FileView {
+        id: rulesFile
+        path: Config.Paths.clipboardRulesFile
+        onLoaded: {
+            try {
+                const parsed = JSON.parse(rulesFile.text())
+                if (parsed && typeof parsed === "object") {
+                    if (typeof parsed.excludeImages === "boolean") root.excludeImages = parsed.excludeImages
+                    if (Array.isArray(parsed.excludeRules)) root.excludeRules = parsed.excludeRules
+                }
+            } catch (e) {
+                console.warn("phi-shell: clipboard rules.json failed to parse: " + e)
+            }
+        }
+        onLoadFailed: (error) => {
+            // FileNotFound on first run is expected: no rules yet.
         }
     }
 
