@@ -405,9 +405,11 @@ PanelWindow {
         root._lastBackspaceAt = 0
         const lead = key + " "
         if (searchField.text.toLowerCase().indexOf(lead) === 0) {
-            const rest = searchField.text.slice(lead.length)
-            searchField.text = rest
-            root.queryText = rest
+            // Imperative, not also "root.queryText = rest": searchField's
+            // own onTextChanged (see its comment) already syncs queryText
+            // out the moment text changes here — a second assignment would
+            // just be setting the same value again.
+            searchField.text = searchField.text.slice(lead.length)
         }
     }
 
@@ -755,7 +757,12 @@ PanelWindow {
                         topPadding: root.chWidth * Config.Appearance.space1
                         kind: "label"
                         text: "no results"
-                        visible: root.queryText.length > 0 && root.results.length === 0
+                        // A locked prefix with nothing typed yet still
+                        // runs no query (root.queryText is the remainder,
+                        // empty) — without lockedPrefix here too, that
+                        // state would show a coloured chip and border
+                        // over a blank list with no explanation at all.
+                        visible: (root.queryText.length > 0 || root.lockedPrefix.length > 0) && root.results.length === 0
                     }
                 }
             }
