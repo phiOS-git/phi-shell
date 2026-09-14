@@ -43,6 +43,14 @@ Column {
     property string pendingVariant: Config.Appearance.variant
     readonly property string testString: "0008 iIlL1 g9qCGQ ~ -+=>"
 
+    // Keeps pendingVariant (the Dark/Light buttons' "active" highlight)
+    // in sync when the variant changes from outside this row's own click
+    // handler — the schedule below can switch it on its own timer.
+    Connections {
+        target: Config.Appearance
+        function onVariantChanged() { root.pendingVariant = Config.Appearance.variant }
+    }
+
     // OOP-54 / panels-ux-rework: the token key whose editor panel is open.
     // One at a time across every colour group, so at most one editor panel
     // is ever slid open under the grids.
@@ -429,11 +437,73 @@ Column {
         SettingsRow {
             optionId: "theme.variant"
             title: "Variant"
-            description: "Dark and light are permanent, independent variants."
+            description: Services.ThemeSchedule.scheduleMode === "off"
+                ? "Dark and light are permanent, independent variants."
+                : "Controlled by the schedule below."
             Row {
                 spacing: root.gap
-                Widgets.StyledButton { label: "Dark"; active: root.pendingVariant === "dark"; onClicked: root.setVariant("dark") }
-                Widgets.StyledButton { label: "Light"; active: root.pendingVariant === "light"; onClicked: root.setVariant("light") }
+                Widgets.StyledButton {
+                    label: "Dark"
+                    active: root.pendingVariant === "dark"
+                    enabled: Services.ThemeSchedule.scheduleMode === "off"
+                    onClicked: root.setVariant("dark")
+                }
+                Widgets.StyledButton {
+                    label: "Light"
+                    active: root.pendingVariant === "light"
+                    enabled: Services.ThemeSchedule.scheduleMode === "off"
+                    onClicked: root.setVariant("light")
+                }
+            }
+        }
+        SettingsRow {
+            optionId: "theme.schedule"
+            title: "Schedule"
+            description: "Switch dark and light automatically instead of by hand."
+            wide: true
+            Row {
+                spacing: root.gap
+                Repeater {
+                    model: [
+                        { key: "off", label: "Off" },
+                        { key: "auto", label: "Automatic" },
+                        { key: "custom", label: "Custom hours" }
+                    ]
+                    Widgets.StyledButton {
+                        required property var modelData
+                        label: modelData.label
+                        active: Services.ThemeSchedule.scheduleMode === modelData.key
+                        onClicked: Services.ThemeSchedule.setScheduleMode(modelData.key)
+                    }
+                }
+            }
+        }
+        Widgets.Reveal {
+            shown: Services.ThemeSchedule.scheduleMode === "auto"
+            SettingsRow {
+                title: "Automatic window"
+                description: "Fixed default — dark from " + Services.ThemeSchedule.autoStartHour + ":00 to "
+                    + Services.ThemeSchedule.autoEndHour + ":00, light the rest of the day. Not location-based: this shell has no source for a real sunset/sunrise time, so it's a sensible fixed evening-to-morning window rather than one computed per day. Use Custom hours to pick your own."
+                wide: true
+            }
+        }
+        Widgets.Reveal {
+            shown: Services.ThemeSchedule.scheduleMode === "custom"
+            SettingsRow {
+                title: "Dark starts at"
+                Widgets.NumberField {
+                    value: Services.ThemeSchedule.scheduleStartHour
+                    step: 1; suffix: ":00"; from: 0; to: 23
+                    onCommitted: (v) => Services.ThemeSchedule.setScheduleStartHour(Math.round(v))
+                }
+            }
+            SettingsRow {
+                title: "Light starts at"
+                Widgets.NumberField {
+                    value: Services.ThemeSchedule.scheduleEndHour
+                    step: 1; suffix: ":00"; from: 0; to: 23
+                    onCommitted: (v) => Services.ThemeSchedule.setScheduleEndHour(Math.round(v))
+                }
             }
         }
     }

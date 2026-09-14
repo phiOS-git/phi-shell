@@ -106,6 +106,15 @@ Singleton {
     // key set is closed, phi/internal/state/state.go) and not the repo.
     readonly property string lockPrefsFile: root.stateDir + "/lock.json"
 
+    // docs/TODO.md: "'theme auto' which changes automatically on evening
+    // time". The schedule mode + hours, same shape and reasoning as
+    // lockPrefsFile — one flat JSON object, written and read by
+    // Services/ThemeSchedule.qml. Not `phi state`: the variant itself is
+    // still recorded there by `phi theme set` (theme.variant, unchanged),
+    // but WHEN to switch is a shell-only preference with no meaning to any
+    // other `phi` consumer, so it needs no phi rebuild to take effect.
+    readonly property string themeSchedulePrefsFile: root.stateDir + "/theme-schedule.json"
+
     // docs/TODO.md: "add settings for the status bar time... allow to set
     // the format with day/number/year/second etc." — the bar clock's
     // hour-12/24, seconds and date-display choice. Same shape and reasoning
