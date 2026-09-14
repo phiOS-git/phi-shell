@@ -248,6 +248,18 @@ PanelWindow {
                     paintCursor: false
                     width: root.screen.width * root.zoom
                     height: root.screen.height * root.zoom
+                    // `width`/`height` above are QQuickItem's own generic
+                    // geometry — confirmed against the real type
+                    // (Quickshell.Wayland._Screencopy's own qmltypes) to
+                    // carry no special meaning for ScreencopyView: it has
+                    // no scaling contract on width/height at all. The
+                    // property that actually controls the rendered content
+                    // size is `constraintSize` (QSizeF, read-write) — never
+                    // set anywhere in this file before now, which is very
+                    // likely the whole bug: content was always painted at
+                    // its native `sourceSize`, unmagnified, regardless of
+                    // width/height or zoom.
+                    constraintSize: Qt.size(root.screen.width * root.zoom, root.screen.height * root.zoom)
                     // Pan so (viewX, viewY) in screen space lands at the
                     // lens centre.
                     x: root.lensSize / 2 - root.viewX * root.zoom

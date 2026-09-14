@@ -1,6 +1,7 @@
 pragma Singleton
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import qs.Services as Services
 
 // phiOS — Services/PowerMenu. docs/TODO.md: "when pressing SUPER+L
