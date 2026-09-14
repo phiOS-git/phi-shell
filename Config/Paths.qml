@@ -155,4 +155,10 @@ Singleton {
     readonly property string documentsDir: Quickshell.env("HOME") + "/Documents"
     readonly property string quickNoteDir: root.documentsDir + "/phiOS Quick Notes"
     readonly property string quickNoteFile: root.quickNoteDir + "/quick-note.md"
+
+    // docs/TODO.md: "add a timer and alarm feature to phi... customisable
+    // in the settings." { items: [...], soundName, soundVolume } — a
+    // collection plus its own small prefs object, one JSON file, same
+    // combined shape as chroma.json. Owned by Services/Timers.qml.
+    readonly property string timersFile: root.stateDir + "/timers.json"
 }

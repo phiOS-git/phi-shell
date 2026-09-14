@@ -187,4 +187,71 @@ Column {
             }
         }
     }
+
+    // --- Timers & alarms --------------------------------------------
+    // docs/TODO.md: "add a timer and alarm feature to phi ... It should
+    // have a ringtone. The two features must be customisable in the
+    // settings." Services/Timers.qml owns the state; set up new timers/
+    // alarms from the runner bar ("timer 5m", "alarm 7:30 wake up") —
+    // this group is ringtone customisation plus managing what is already
+    // running, not where a new one is created.
+    SettingsGroup {
+        title: "Timers & alarms"
+        optionId: "notifications.timers"
+        // Empty state folded into the caption (Per-app rules group's own
+        // shape, just above), not a separate invisible-when-non-empty
+        // SettingsRow: a hidden-but-still-child-0 row would draw the first
+        // real row's separator against nothing above it (SettingsRow's own
+        // `_first` check reads position in `children`, not visibility).
+        caption: Services.Timers.soundError.length > 0
+            ? ("Last sound error: " + Services.Timers.soundError)
+            : (Services.Timers.items.length === 0 ? "No timers or alarms running. " : "") +
+              "Set one from the runner bar: \"timer 5m\", \"timer 25m tea\", \"alarm 7:30\", \"alarm 19:45 wake up\"."
+
+        SettingsRow {
+            title: "Ringtone"
+            description: "A freedesktop name (message, bell, complete…) or an absolute path to an audio file. Loops until dismissed."
+            wide: true
+            Widgets.TextField {
+                width: parent.width
+                mono: false
+                placeholder: "message"
+                Component.onCompleted: text = Services.Timers.soundName
+                onCommitted: (t) => Services.Timers.setSoundName(t)
+            }
+        }
+        SettingsRow {
+            title: "Volume"
+            Widgets.NumberField {
+                value: Services.Timers.soundVolume
+                step: 5; suffix: "%"; from: 0; to: 100
+                onCommitted: (v) => Services.Timers.setSoundVolume(v)
+            }
+        }
+        SettingsRow {
+            title: "Test"
+            Widgets.StyledButton {
+                label: "Test ringtone"
+                onClicked: Services.Timers.testRingtone()
+            }
+        }
+        Repeater {
+            model: Services.Timers.items
+            SettingsRow {
+                required property var modelData
+                wide: true
+                title: (modelData.kind === "alarm" ? "Alarm — " : "Timer — ") + modelData.label
+                description: {
+                    const time = Qt.formatDateTime(new Date(modelData.targetMs), "HH:mm")
+                    return modelData.kind === "alarm"
+                        ? (modelData.repeatDays.length > 0 ? "Repeats, next at " + time : "Once, at " + time)
+                        : "Due at " + time
+                }
+                Widgets.StyledButton {
+                    label: "Cancel"
+                    onClicked: Services.Timers.cancel(modelData.id)
+                }
+            }
+        }
+    }
 }
