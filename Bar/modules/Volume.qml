@@ -6,9 +6,9 @@ import qs.Widgets as Widgets
 
 // phiOS — Bar/modules/Volume.qml (S-23; OOP-11 restyle R2). Icon + value:
 // a speaker icon and the percentage (or "mute"). A click opens the shared
-// bar popout (Services/BarPopout.qml) — the real mixer / mute control
-// lands there in a later pass; until then the popout is a placeholder and
-// the bar value is the readout.
+// bar popout (Services/BarPopout.qml), which owns the real mixer control
+// (a draggable Widgets.Meter) and mute toggle — this bar segment is just
+// the readout.
 //
 // docs/TODO.md (status-bar rework): the glyph is replaced by
 // Widgets/VolumeIcon via Segment's `iconDelegate` — sound-wave arcs whose

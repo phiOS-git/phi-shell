@@ -7,9 +7,10 @@ import qs.Widgets as Widgets
 // phiOS — Bar/modules/Brightness.qml (OOP-03; OOP-11 restyle R2). Icon +
 // value: a brightness icon and the percentage. Capability-gated on
 // `backlight` (modules.json) so it never appears on a desktop with no
-// internal panel. The real control is the XF86MonBrightness keys
-// (hyprland.lua → Services/Brightness IPC); a click here opens the shared
-// bar popout (placeholder — a slider lands there later).
+// internal panel. The XF86MonBrightness keys (hyprland.lua → Services/
+// Brightness IPC) are one way to change it; a click here opens the shared
+// bar popout, which owns a real draggable Widgets.Meter slider plus the
+// night-mode toggle.
 //
 // docs/TODO.md (status-bar rework, brightness clause — the other clauses
 // of that bundled entry are still open, see docs/VERIFICATION.md): the
