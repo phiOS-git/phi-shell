@@ -59,6 +59,11 @@ Item {
     readonly property real gap: chWidth * Config.Appearance.space2
 
     property bool personaOpen: false
+    // Style pass 2026-09-14: Services/Agent.qml's setChatTitle(id, title)
+    // was a fully built, never-called capability — no rename control
+    // existed anywhere in this panel. Session-only view state, the same
+    // shape personaOpen already is.
+    property bool renamingTitle: false
 
     Component.onCompleted: { agent.refreshSessions(); agent.refreshAllProposals() }
 
@@ -134,9 +139,41 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     kind: "title"
                     elide: Text.ElideRight
-                    width: parent.width - newBtn.implicitWidth - settingsBtn.implicitWidth - parent.spacing * 2
+                    visible: !root.renamingTitle
+                    width: parent.width - renameBtn.width - newBtn.implicitWidth - settingsBtn.implicitWidth - parent.spacing * 3
                     text: (root.agent.activeProject.length > 0 ? root.agent.activeProject + " › " : "")
                         + (root.currentTitle().length > 0 ? root.currentTitle() : "new chat")
+                }
+                Widgets.TextField {
+                    id: renameField
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: root.renamingTitle
+                    width: parent.width - renameBtn.width - newBtn.implicitWidth - settingsBtn.implicitWidth - parent.spacing * 3
+                    onCommitted: (t) => {
+                        if (t.trim().length > 0) root.agent.setChatTitle(root.agent.currentSessionId, t.trim())
+                        root.renamingTitle = false
+                    }
+                    onEscaped: root.renamingTitle = false
+                }
+                // Style pass 2026-09-14: Services/Agent.qml's own
+                // setChatTitle(id, title) had no UI path to it anywhere in
+                // this panel at all. Only offered once a real session
+                // exists — nothing to rename in the "new chat" state. A
+                // plain SmallButton, not wrapped: Row already skips an
+                // invisible child when laying out, and `renameBtn.width`
+                // below (the title/field's own width calc) reads the same
+                // either way — visibility does not zero a Item's width.
+                Widgets.SmallButton {
+                    id: renameBtn
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: root.agent.currentSessionId.length > 0
+                    label: root.renamingTitle ? "Cancel" : "Rename"
+                    onClicked: {
+                        if (root.renamingTitle) { root.renamingTitle = false; return }
+                        renameField.text = root.currentTitle()
+                        root.renamingTitle = true
+                        renameField.forceEditFocus()
+                    }
                 }
                 // docs/TODO.md, style pass: "chat panel has no settings
                 // button." A minor, quiet action (SmallButton, not

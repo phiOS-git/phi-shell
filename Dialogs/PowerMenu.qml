@@ -55,6 +55,12 @@ PanelWindow {
     Widgets.Scrim {
         anchors.fill: parent
         shown: root.shown
+        // Style pass 2026-09-14: same reasoning as Dialogs/ConfirmDialog's
+        // own strong scrim — a menu of session-ending actions (including
+        // shutdown/reboot) is the same weight of full-attention blocking
+        // surface, and this and ConfirmDialog should not visibly disagree
+        // about how urgent that class of decision reads.
+        strong: true
     }
 
     function _confirmAndPerform(action) {

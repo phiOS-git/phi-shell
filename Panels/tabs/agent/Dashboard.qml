@@ -172,13 +172,36 @@ Item {
         }
     }
 
-    // one chat row with a pin toggle
-    component ChatRow: Widgets.ListRow {
+    // Style pass 2026-09-14: this component's own name and comment
+    // ("a pin toggle") promised more than it did — the star glyph only
+    // ever DISPLAYED pin state, nothing here ever called the real
+    // Services.Agent.setChatPinned(id, pinned) that already exists and
+    // already drives the Pinned group above. Now a real Row: the ListRow
+    // still opens the chat on tap (unchanged), a small button beside it
+    // actually pins/unpins — ListRow itself has no trailing-action slot to
+    // attach this to directly (Widgets/Accordion gained one this pass;
+    // ListRow has not, since a chat row's "open" tap covers its whole
+    // width, unlike an accordion header's toggle-only region).
+    component ChatRow: Row {
+        id: chatRow
         property var rec
         signal open()
-        label: (rec.Title || rec.title || rec.ID || rec.id)
-        value: (rec.Project && rec.Project !== "_unfiled") ? rec.Project : ""
-        glyph: (rec.Pinned || rec.pinned) ? "★" : ""
-        onActivated: { root.agent.openSession(rec.ID || rec.id); open() }
+        spacing: root.gap
+        readonly property bool pinned: !!(chatRow.rec.Pinned || chatRow.rec.pinned)
+        readonly property string chatId: chatRow.rec.ID || chatRow.rec.id
+
+        Widgets.ListRow {
+            width: chatRow.width - pinBtn.implicitWidth - chatRow.spacing
+            label: (chatRow.rec.Title || chatRow.rec.title || chatRow.chatId)
+            value: (chatRow.rec.Project && chatRow.rec.Project !== "_unfiled") ? chatRow.rec.Project : ""
+            glyph: chatRow.pinned ? "★" : ""
+            onActivated: { root.agent.openSession(chatRow.chatId); chatRow.open() }
+        }
+        Widgets.SmallButton {
+            id: pinBtn
+            anchors.verticalCenter: parent.verticalCenter
+            label: chatRow.pinned ? "Unpin" : "Pin"
+            onClicked: root.agent.setChatPinned(chatRow.chatId, !chatRow.pinned)
+        }
     }
 }

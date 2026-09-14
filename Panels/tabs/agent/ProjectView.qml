@@ -194,16 +194,33 @@ Item {
                 Widgets.StyledButton { label: "Edit / new…"; onClicked: personalityEditor.active = true }
             }
 
-            // project chats
+            // project chats — style pass 2026-09-14: same gap as
+            // Panels/tabs/agent/Dashboard.qml's own ChatRow had (see its
+            // comment) — the star only ever displayed pin state, nothing
+            // here called the real Services.Agent.setChatPinned(). Same fix.
             Widgets.StyledText { kind: "title"; text: "Conversations" }
             Repeater {
                 model: (root.agent.chats || []).filter(function (c) { return (c.Project || c.project) === root.projectName })
-                delegate: Widgets.ListRow {
+                delegate: Row {
+                    id: chatRow
                     required property var modelData
                     width: col.width
-                    label: (modelData.Title || modelData.title || modelData.ID)
-                    glyph: (modelData.Pinned || modelData.pinned) ? "★" : ""
-                    onActivated: { root.agent.openSession(modelData.ID || modelData.id); root.startChat() }
+                    spacing: root.gap
+                    readonly property bool pinned: !!(chatRow.modelData.Pinned || chatRow.modelData.pinned)
+                    readonly property string chatId: chatRow.modelData.ID || chatRow.modelData.id
+
+                    Widgets.ListRow {
+                        width: chatRow.width - pinBtn.implicitWidth - chatRow.spacing
+                        label: (chatRow.modelData.Title || chatRow.modelData.title || chatRow.chatId)
+                        glyph: chatRow.pinned ? "★" : ""
+                        onActivated: { root.agent.openSession(chatRow.chatId); root.startChat() }
+                    }
+                    Widgets.SmallButton {
+                        id: pinBtn
+                        anchors.verticalCenter: parent.verticalCenter
+                        label: chatRow.pinned ? "Unpin" : "Pin"
+                        onClicked: root.agent.setChatPinned(chatRow.chatId, !chatRow.pinned)
+                    }
                 }
             }
         }
