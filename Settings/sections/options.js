@@ -47,6 +47,7 @@ var OPTIONS = [
 
     // --- Theme --------------------------------------------------------
     { id: "theme.variant",            title: "Light / dark variant",   keywords: "appearance theme dark light mode" },
+    { id: "theme.schedule",           title: "Theme schedule",         keywords: "automatic dark light evening morning variant schedule time" },
     { id: "theme.colors.accent",      title: "Accent colour",          keywords: "palette highlight detail focus ring" },
     { id: "theme.colors.check",       title: "phi theme check",        keywords: "contrast wcag accessibility ratio pass fail" },
     { id: "theme.colors.bg-0",        title: "Background (main)",       keywords: "palette surface colour" },
