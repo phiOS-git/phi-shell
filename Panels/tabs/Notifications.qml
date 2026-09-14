@@ -92,6 +92,18 @@ Item {
                 onToggled: (v) => { if (v !== Services.Notifications.dnd) Services.Notifications.toggleDnd() }
             }
 
+            // Style pass 2026-09-14: same gap Settings/sections/Notifications.qml
+            // just fixed — a DND started from Settings' "1 h" button read
+            // identically here to an indefinite one, with no way to tell
+            // which or how much time was left.
+            Widgets.StyledText {
+                width: parent.width
+                visible: Services.Notifications.dndRemainingLabel.length > 0
+                kind: "label"
+                sizeStep: 0
+                text: "Timed session: " + Services.Notifications.dndRemainingLabel
+            }
+
             Widgets.Separator { width: parent.width }
 
             // Active header — the title on the left, the one destructive

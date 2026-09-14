@@ -212,7 +212,14 @@ Singleton {
     }
 
     function toggleDnd() {
+        // Style pass 2026-09-14: any manual flip — on or off — cancels a
+        // pending timed session, so a stale durationTimer from an earlier
+        // "30 min" click can't silently re-disable DND out from under a
+        // session the user just started fresh (see durationTimer.onTriggered's
+        // comment for the other half of this bug).
+        durationTimer.stop()
         root.dnd = !root.dnd
+        root.dndEndsAt = 0
         Config.Settings.set("toggle.dnd", root.dnd ? "true" : "false")
     }
 
@@ -223,7 +230,35 @@ Singleton {
     // it on restart.
     function dndFor(minutes) {
         root.toggleDnd()
-        if (root.dnd) durationTimer.restartFor(minutes)
+        if (root.dnd) {
+            root.dndEndsAt = Date.now() + minutes * 60 * 1000
+            durationTimer.restartFor(minutes)
+        }
+    }
+
+    // Style pass 2026-09-14 (docs/TODO.md's reference shape: state with no
+    // feedback about itself): the on/off toggle read identically whether it
+    // was set indefinitely from the switch or for "1 h" from a duration
+    // button, with nothing anywhere telling the user which — or how much of
+    // a timed session was left. `dndEndsAt` (0 = off, or on indefinitely)
+    // plus `dndRemainingLabel` give both settings and the panel toggle a
+    // live "left" readout for the timed case, for free.
+    property real dndEndsAt: 0
+    property real _dndNow: Date.now()
+    Timer {
+        interval: 1000
+        running: root.dndEndsAt > 0
+        repeat: true
+        onTriggered: root._dndNow = Date.now()
+    }
+    readonly property string dndRemainingLabel: {
+        if (root.dndEndsAt <= 0) return ""
+        const totalSeconds = Math.max(0, Math.ceil((root.dndEndsAt - root._dndNow) / 1000))
+        const h = Math.floor(totalSeconds / 3600)
+        const m = Math.floor((totalSeconds % 3600) / 60)
+        const s = totalSeconds % 60
+        if (h > 0) return h + "h " + m + "m left"
+        return (m + ":" + (s < 10 ? "0" : "") + s) + " left"
     }
 
     function dismissToast() {
@@ -269,7 +304,16 @@ Singleton {
             this.interval = minutes * 60 * 1000
             this.restart()
         }
-        onTriggered: root.dnd = false
+        // Style pass 2026-09-14: was `root.dnd = false` directly, which
+        // flips the live flag but never calls Config.Settings.set — so the
+        // persisted "toggle.dnd" key stayed "true" forever after every
+        // ordinary timed-DND expiry. Component.onCompleted below reads
+        // that same key on the next shell start (or Quickshell restart)
+        // and would resume DND as on, with no timer running and nothing
+        // in the UI to explain why notifications were being silenced.
+        // Routing through toggleDnd() keeps the flag and the persisted
+        // key from ever disagreeing.
+        onTriggered: if (root.dnd) root.toggleDnd()
     }
 
     Component.onCompleted: {
