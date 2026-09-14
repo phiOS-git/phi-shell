@@ -31,7 +31,9 @@ Column {
 
         SettingsRow {
             title: "Do not disturb"
-            description: "Silences toasts. Notifications are still recorded in history."
+            description: Services.Notifications.dndRemainingLabel.length > 0
+                ? "Silences toasts. Notifications are still recorded in history. Timed session: " + Services.Notifications.dndRemainingLabel + "."
+                : "Silences toasts. Notifications are still recorded in history."
             Widgets.Toggle {
                 checked: Services.Notifications.dnd
                 onToggled: Services.Notifications.toggleDnd()
