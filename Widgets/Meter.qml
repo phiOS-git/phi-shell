@@ -18,6 +18,14 @@ Item {
 
     property real value: 0            // 0..1, clamped on read
     property bool interactive: false
+    // Style pass 2026-09-15: this is the volume/brightness bar popouts'
+    // real slider, and had no keyboard path at all — drag-only, unlike
+    // every discrete control in this shell (StyledButton, Toggle, …),
+    // which all got a systemic Enter/Space fix earlier this pass. Arrow
+    // keys nudge by this fraction; each press is one atomic commit (no
+    // "drag" concept applies to a single key press), so it fires `moved`
+    // then `released` immediately rather than tracking `_dragging`.
+    property real keyStep: 0.05
     // features-change (item 4): the fill is the ink colour, never accent
     // (overlay-reference.png); the track is a faint wash of the same ink so
     // it reads on any surface the meter sits on. Both still overridable.
@@ -43,6 +51,19 @@ Item {
     implicitHeight: Config.Appearance.fontSize1
     implicitWidth: Config.Appearance.fontSize1 * 14
 
+    activeFocusOnTab: root.interactive
+
+    function _nudge(delta) {
+        if (!root.interactive) return
+        var v = Math.max(0, Math.min(1, root._v + delta))
+        root.moved(v)
+        root.released(v)
+    }
+    Keys.onLeftPressed: root._nudge(-root.keyStep)
+    Keys.onDownPressed: root._nudge(-root.keyStep)
+    Keys.onRightPressed: root._nudge(root.keyStep)
+    Keys.onUpPressed: root._nudge(root.keyStep)
+
     Rectangle {
         id: track
         anchors.left: parent.left
@@ -67,6 +88,20 @@ Item {
         }
     }
 
+    // Keyboard-focus ring — the same token every other focusable control's
+    // "focus" state already borders itself with (WidgetStates.js's
+    // surfaceColors()), just applied directly here since this widget has
+    // no seven-state resolvedState machinery of its own to hook into.
+    Rectangle {
+        anchors.fill: track
+        anchors.margins: -Config.Appearance.borderWidthStrong
+        radius: track.radius + Config.Appearance.borderWidthStrong
+        color: "transparent"
+        border.width: Config.Appearance.borderWidthStrong
+        border.color: Config.Appearance.focusRing
+        visible: root.interactive && root.activeFocus
+    }
+
     MouseArea {
         anchors.fill: parent
         enabled: root.interactive
@@ -75,7 +110,7 @@ Item {
         // cursor affordance a clickable one gets — this had none at all.
         cursorShape: root.interactive ? Qt.SizeHorCursor : Qt.ArrowCursor
         function frac(x) { return Math.max(0, Math.min(1, x / root.width)) }
-        onPressed: (m) => { root._dragFrac = frac(m.x); root._dragging = true; root.moved(root._dragFrac) }
+        onPressed: (m) => { root.forceActiveFocus(); root._dragFrac = frac(m.x); root._dragging = true; root.moved(root._dragFrac) }
         onPositionChanged: (m) => { if (pressed) { root._dragFrac = frac(m.x); root.moved(root._dragFrac) } }
         onReleased: (m) => { root._dragFrac = frac(m.x); root._dragging = false; root.released(root._dragFrac) }
     }
