@@ -105,19 +105,32 @@ PanelWindow {
                 // independently only when the character it shows actually
                 // changes; the colons are plain static text, they never
                 // change so there's nothing to animate.
+                //
+                // docs/TODO.md follow-up (2026-09-14): "the ':' not
+                // vertically aligned, also remove the borders" — both from
+                // the same cause. `showCard: true` (the default) pads each
+                // FlipDigit cell above and below its glyph for the card
+                // frame/seam (Widgets/FlipDigit.qml's own `_padding`); the
+                // plain colon Text has no such padding. A QtQuick Row
+                // top-aligns children at y:0, so the taller, padded digit
+                // cells sat visibly lower than the un-padded colon glyph.
+                // `showCard: false` drops the frame, the seam and the
+                // padding, leaving every cell the same height as a plain
+                // Text at this font/size — the same colon glyph the digits
+                // already reuse internally — so the row aligns without it.
                 Row {
                     readonly property string hh: Qt.formatDateTime(clockTimer.now, "HH")
                     readonly property string mm: Qt.formatDateTime(clockTimer.now, "mm")
                     readonly property string ss: Qt.formatDateTime(clockTimer.now, "ss")
 
-                    Widgets.FlipDigit { sizeStep: 4; value: parent.hh.charAt(0) }
-                    Widgets.FlipDigit { sizeStep: 4; value: parent.hh.charAt(1) }
+                    Widgets.FlipDigit { sizeStep: 4; showCard: false; value: parent.hh.charAt(0) }
+                    Widgets.FlipDigit { sizeStep: 4; showCard: false; value: parent.hh.charAt(1) }
                     Widgets.StyledText { mono: true; sizeStep: 4; text: ":" }
-                    Widgets.FlipDigit { sizeStep: 4; value: parent.mm.charAt(0) }
-                    Widgets.FlipDigit { sizeStep: 4; value: parent.mm.charAt(1) }
+                    Widgets.FlipDigit { sizeStep: 4; showCard: false; value: parent.mm.charAt(0) }
+                    Widgets.FlipDigit { sizeStep: 4; showCard: false; value: parent.mm.charAt(1) }
                     Widgets.StyledText { mono: true; sizeStep: 4; text: ":" }
-                    Widgets.FlipDigit { sizeStep: 4; value: parent.ss.charAt(0) }
-                    Widgets.FlipDigit { sizeStep: 4; value: parent.ss.charAt(1) }
+                    Widgets.FlipDigit { sizeStep: 4; showCard: false; value: parent.ss.charAt(0) }
+                    Widgets.FlipDigit { sizeStep: 4; showCard: false; value: parent.ss.charAt(1) }
                 }
                 Widgets.Separator { width: parent.width }
                 Widgets.StyledText {
