@@ -24,6 +24,18 @@ Item {
     // keyScope; see Widgets/TextField.qml's `escaped()`.
     signal blurred()
 
+    // Style pass 2026-09-15: AgentPanel.qml's own keyScope contract. Always
+    // true while this view is the active section (Dashboard delegates to
+    // it whenever a project is open) — goBack() itself picks which of the
+    // two nested levels (the personality editor, or this view itself) to
+    // step back out of, the same shape PersonalityEditor's own "‹" button
+    // already uses for ITS two levels.
+    readonly property bool hasBack: true
+    function goBack() {
+        if (personalityEditor.active && personalityEditor.item) personalityEditor.item.goBack()
+        else root.back()
+    }
+
     TextMetrics { id: ch; font.family: Config.Appearance.fontMono; font.pixelSize: Config.Appearance.fontSize1; text: "0" }
     readonly property real chWidth: ch.width
     readonly property real gap: chWidth * Config.Appearance.space2

@@ -31,6 +31,14 @@ Item {
 
     property string editing: ""   // "" = list; a name = editing that one; "+" = new
 
+    // Style pass 2026-09-15: AgentPanel.qml's own keyScope contract (see
+    // that file's Keys.onEscapePressed). Always true while this editor is
+    // the active overlay — mirrors the "‹" button's own two-case logic
+    // exactly (line below): back out of an in-progress edit first, then
+    // close the whole editor on the next press.
+    readonly property bool hasBack: true
+    function goBack() { root.editing.length === 0 ? root.closed() : (root.editing = "") }
+
     Component.onCompleted: {
         agent.refreshProject()
         if (preselect.length > 0) open(preselect)

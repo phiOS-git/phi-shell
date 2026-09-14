@@ -20,6 +20,12 @@ Item {
     property var openRec: null
     property string openTranscript: ""
 
+    // Style pass 2026-09-15: AgentPanel.qml's own keyScope contract — see
+    // that file's Keys.onEscapePressed for the full reasoning. Having a
+    // transcript open is this tab's own "one level deeper" state.
+    readonly property bool hasBack: root.openRec !== null
+    function goBack() { root.openRec = null; root.openTranscript = "" }
+
     // Out-of-plan: a coding session used to spawn a terminal blind — if A2's
     // support services weren't running, phi-agent-contain's socat bridge
     // never found its socket and the failure happened invisibly inside that
@@ -148,7 +154,12 @@ Item {
                             text: "started " + String(modelData.started || modelData.Started || "").slice(0, 16).replace("T", " ") }
                         Row {
                             spacing: root.gap
-                            Widgets.StyledButton { label: "Open chat view"; onClicked: { root.openRec = modelData; root.openTranscript = ""; root.agent.loadCodingTranscript(modelData) } }
+                            // Style pass 2026-09-15: was "Open chat view" —
+                            // this opens the mirrored TRANSCRIPT (read-only,
+                            // per this file's own header), not a live chat;
+                            // the old label read as if it opened something
+                            // interactive.
+                            Widgets.StyledButton { label: "View transcript"; onClicked: { root.openRec = modelData; root.openTranscript = ""; root.agent.loadCodingTranscript(modelData) } }
                             Widgets.StyledButton {
                                 label: "Focus terminal"
                                 enabled: (modelData.status || modelData.Status) === "active" && (modelData.window_addr || modelData.WindowAddr || "").length > 0
