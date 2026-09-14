@@ -242,19 +242,44 @@ Singleton {
                 try {
                     const arr = JSON.parse(this.text)
                     const out = []
+                    let sawError = false
                     for (const entry of arr) {
                         const info = entry.info || {}
                         const parts = entry.parts || []
                         let text = ""
                         for (const p of parts) if (p.type === "text" && p.text) text += p.text
-                        if (text.length > 0)
+                        if (text.length > 0) {
                             out.push({ role: info.role || "assistant", text: text.trim() })
+                            continue
+                        }
+                        // A turn that failed upstream (provider billing/auth/
+                        // rate-limit rejection, ...) comes back from opencode
+                        // with an empty parts array and info.error populated
+                        // — server.txt. Used to be dropped silently here,
+                        // which made a rejected turn indistinguishable from a
+                        // hang; surface it as its own bubble instead.
+                        if (info.error) {
+                            out.push({ role: "error", text: root._describeOpencodeError(info.error) })
+                            sawError = true
+                        }
                     }
                     root.messages = out
+                    // Defensive: don't rely solely on the /event idle signal
+                    // to clear the spinner — an errored turn still completed.
+                    if (sawError) root.processing = false
                 } catch (e) {}
             }
         }
         onExited: msgProc.running = false
+    }
+    // Mirrors phi's internal/agent.extractAssistantError so the CLI and the
+    // panel describe the same failure the same way.
+    function _describeOpencodeError(err) {
+        const msg = err && err.data && err.data.message
+        if (msg && String(msg).trim().length > 0) return String(msg).trim()
+        const name = err && err.name
+        if (name && String(name).trim().length > 0) return String(name).trim()
+        return "the agent's reply failed"
     }
     function refreshMessages() {
         if (!root.available || root.currentSessionId.length === 0 || msgProc.running) return

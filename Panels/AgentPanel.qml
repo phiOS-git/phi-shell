@@ -75,6 +75,7 @@ PanelWindow {
             root.agent.refreshProject()
             root.agent.refreshChats()
             root.agent.refreshAllProposals()
+            Services.AgentInfra.refresh()
             if (root.section === "code") root.agent.refreshCodingSessions()
         }
     }

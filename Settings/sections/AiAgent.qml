@@ -155,6 +155,18 @@ Column {
         title: "Services"
         caption: "All phi-agent units are declared and never auto-enabled (phios-agente.md). Start/stop and enable them with `systemctl --user`. The A2 remote surface is status-only here — starting phi-agent-a2-remote* is how a session is declared remote (§10.3)."
 
+        SettingsRow {
+            title: "A2 support services"
+            description: "phi-agent-broker@a2, phi-agent-proxy, phi-agent-net-bridge — required before `phi agent code` / a coding session can reach the network."
+            Widgets.StyledButton {
+                label: "Start A2 services"
+                loading: root.infra.starting
+                onClicked: root.infra.startUnits([
+                    "phi-agent-broker@a2.service", "phi-agent-proxy.service", "phi-agent-net-bridge.service"
+                ])
+            }
+        }
+
         Repeater {
             model: root.infra.units
             Widgets.ListRow {
@@ -213,6 +225,24 @@ Column {
             width: parent ? parent.width : 0
             label: "Broker requests metered (a1)"
             value: root.infra.meterRequests >= 0 ? String(root.infra.meterRequests) : "no meter file"
+        }
+        Widgets.ListRow {
+            width: parent ? parent.width : 0
+            label: "Last request (a1)"
+            value: root.infra.lastRequestA1
+                ? (root.infra.lastRequestA1.status + " " + root.infra.lastRequestA1.hint
+                    + (root.infra.lastRequestA1.model ? " · " + root.infra.lastRequestA1.model : ""))
+                : "no request yet"
+            invalid: root.infra.lastRequestA1 && root.infra.lastRequestA1.status >= 400
+        }
+        Widgets.ListRow {
+            width: parent ? parent.width : 0
+            label: "Last request (a2)"
+            value: root.infra.lastRequestA2
+                ? (root.infra.lastRequestA2.status + " " + root.infra.lastRequestA2.hint
+                    + (root.infra.lastRequestA2.model ? " · " + root.infra.lastRequestA2.model : ""))
+                : "no request yet"
+            invalid: root.infra.lastRequestA2 && root.infra.lastRequestA2.status >= 400
         }
         Widgets.ListRow {
             width: parent ? parent.width : 0
