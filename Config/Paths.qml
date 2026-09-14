@@ -139,4 +139,20 @@ Singleton {
     // key reasoning as every file above: two related values, not one
     // scalar. Owned by Services/PowerBridge.qml.
     readonly property string batteryAlertPrefsFile: root.stateDir + "/battery-alert.json"
+
+    // docs/TODO.md: "add a quick note ... save it in a specific folder in
+    // Documents." A real asset the user writes on purpose, so it belongs
+    // under Documents itself, not $XDG_*_HOME like every path above —
+    // this is the one path in this file that is not XDG-base-dir rooted.
+    // Deliberately just `$HOME/Documents`, not an XDG user-dirs lookup
+    // (`~/.config/user-dirs.dirs`, `XDG_DOCUMENTS_DIR`): resolving a
+    // relocated Documents folder would need either a new package
+    // dependency (`xdg-user-dirs`, not currently declared anywhere in
+    // phios-dotfiles) or async file parsing this file's own header says
+    // it deliberately avoids ("Quickshell.env() ... resolves at first
+    // read with no async race"). Good enough for the common case; a
+    // genuinely relocated Documents folder is a real but narrow gap.
+    readonly property string documentsDir: Quickshell.env("HOME") + "/Documents"
+    readonly property string quickNoteDir: root.documentsDir + "/phiOS Quick Notes"
+    readonly property string quickNoteFile: root.quickNoteDir + "/quick-note.md"
 }
