@@ -125,6 +125,13 @@ Column {
                         : "not reported by this hardware"
                 }
                 StatTile { label: "Charge cycles"; value: "" + Services.PowerBridge.chargeCycles }
+                // Style pass 2026-09-15: this section's whole purpose is
+                // read-only reporting of the machine's current state —
+                // battery-saver had no presence here at all despite being
+                // exactly that kind of state, and this round already made
+                // its status visible elsewhere (the bar icon's own hatch
+                // pattern, docs/VERIFICATION.md).
+                StatTile { label: "Battery saver"; value: Services.PowerBridge.batterySaverActive ? "on" : "off" }
             }
 
             StatTile {
