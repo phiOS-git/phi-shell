@@ -12,15 +12,17 @@ import Quickshell.Io
 // needs no `phi` rebuild) and NOT the repository (runtime UI state, not
 // configuration).
 //
-// `effect` is one of: "none" | "lava" | "matrix" | "starfield". The
-// default is "lava" — the lava lamp is what the user asked for; the other
-// three (including plain "none") are opt-in from the settings Theme
-// section.
+// `effect` is one of: "none" | "lava" | "matrix" | "starfield" | "plasma"
+// | "life". The default is "lava" — the lava lamp is what the user asked
+// for; the rest (including plain "none") are opt-in from the settings
+// Theme section. "plasma" and "life" (Lock/Plasma.qml, Lock/Life.qml)
+// added for docs/TODO.md: "add more [ambient effect] types ... taking
+// inspirations by cool terminal effects or screensavers".
 
 Singleton {
     id: root
 
-    readonly property var _known: ["none", "lava", "matrix", "starfield"]
+    readonly property var _known: ["none", "lava", "matrix", "starfield", "plasma", "life"]
     readonly property string _default: "lava"
 
     property var prefs: ({})

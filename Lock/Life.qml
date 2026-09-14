@@ -1,0 +1,151 @@
+import QtQuick
+import qs.Config as Config
+
+// phiOS — Lock/Life. docs/TODO.md: "add more [ambient effect] types to
+// pick, taking inspirations by cool terminal effects or screensavers" —
+// Conway's Game of Life, a genuinely classic terminal-screensaver effect
+// (cgol, life, and similar tools). Same from-scratch-Canvas approach
+// every existing effect uses (I-01: no package), same `running`/
+// `intensity`/Timer-at-`motionCTypeStep` contract as Lock/Starfield.qml.
+//
+// The shared `motionCTypeStep` token (24ms, the same tick every other
+// lock effect redraws on) is far too fast for a generation step — Life
+// would look like flicker, not a recognisable pattern. Rather than invent
+// a second ad-hoc duration (rule 6: motion timing comes from the token
+// set, nothing hardcoded outside it), this file keeps the SAME shared
+// tick for its Timer and instead only advances the simulation every
+// `stepEveryTicks` ticks (a frame-skip ratio, not a duration) — the
+// Canvas still redraws every tick so cells can fade smoothly between
+// generations rather than snapping instantly on/off.
+//
+// Toroidal (wraparound) neighbour counting, standard B3/S23 rules. A
+// board that dies out completely (a real, common Life outcome) re-seeds
+// itself rather than leaving a blank lock screen indefinitely — expected
+// behaviour for an ambient screensaver-style effect, not a bug workaround.
+
+Item {
+    id: root
+
+    property bool running: true
+    property real intensity: 0.85
+
+    readonly property int cols: 48
+    readonly property int rows: 27
+    readonly property int stepEveryTicks: 10 // ~240ms/generation at the 24ms shared tick
+
+    property var cells: []      // bool[cols*rows], current alive state
+    property var brightness: [] // real[cols*rows], 0..1, eased toward alive/dead
+    property int _tickCount: 0
+
+    function _idx(x, y) { return y * root.cols + x }
+
+    function seed() {
+        var c = new Array(root.cols * root.rows)
+        var b = new Array(root.cols * root.rows)
+        for (var i = 0; i < c.length; i++) {
+            c[i] = Math.random() < 0.28
+            b[i] = c[i] ? 1 : 0
+        }
+        root.cells = c
+        root.brightness = b
+    }
+
+    function _neighbors(x, y) {
+        var n = 0
+        for (var dy = -1; dy <= 1; dy++) {
+            for (var dx = -1; dx <= 1; dx++) {
+                if (dx === 0 && dy === 0) continue
+                var nx = (x + dx + root.cols) % root.cols
+                var ny = (y + dy + root.rows) % root.rows
+                if (root.cells[root._idx(nx, ny)]) n++
+            }
+        }
+        return n
+    }
+
+    function step() {
+        var next = new Array(root.cols * root.rows)
+        var alive = 0
+        for (var y = 0; y < root.rows; y++) {
+            for (var x = 0; x < root.cols; x++) {
+                var i = root._idx(x, y)
+                var n = root._neighbors(x, y)
+                var willLive = root.cells[i] ? (n === 2 || n === 3) : (n === 3)
+                next[i] = willLive
+                if (willLive) alive++
+            }
+        }
+        root.cells = next
+        if (alive === 0) root.seed() // dead board — start a fresh pattern
+    }
+
+    // Builds a fresh array rather than mutating root.brightness in place
+    // and reassigning it to itself — an in-place mutation followed by a
+    // self-assignment is the same object, so QML's change notification
+    // would not reliably fire were anything ever bound to `brightness`
+    // (nothing is today — onPaint reads it directly and this file always
+    // calls requestPaint() itself — but a fresh array costs nothing here
+    // and removes the trap for whenever that stops being true).
+    function _fade() {
+        var next = new Array(root.brightness.length)
+        for (var i = 0; i < next.length; i++) {
+            var target = root.cells[i] ? 1 : 0
+            next[i] = root.brightness[i] + (target - root.brightness[i]) * 0.35
+        }
+        root.brightness = next
+    }
+
+    onWidthChanged: if (cells.length === 0) seed()
+    Component.onCompleted: seed()
+
+    Timer {
+        interval: Config.Appearance.motionCTypeStep
+        running: root.running && root.visible && root.width > 0 && root.height > 0
+        repeat: true
+        onTriggered: {
+            root._tickCount++
+            if (root._tickCount >= root.stepEveryTicks) {
+                root._tickCount = 0
+                root.step()
+            }
+            root._fade()
+            canvas.requestPaint()
+        }
+    }
+
+    function _mix(a, c, tt) {
+        tt = Math.max(0, Math.min(1, tt))
+        return Qt.rgba(a.r + (c.r - a.r) * tt, a.g + (c.g - a.g) * tt,
+                       a.b + (c.b - a.b) * tt, 1)
+    }
+
+    Canvas {
+        id: canvas
+        anchors.fill: parent
+        renderTarget: Canvas.FramebufferObject
+        renderStrategy: Canvas.Cooperative
+
+        onPaint: {
+            var ctx = getContext("2d")
+            ctx.clearRect(0, 0, width, height)
+            if (!root.running || root.cells.length === 0) return
+
+            var dim = Config.Appearance.textFaint
+            var lit = Config.Appearance.accent
+
+            var cw = width / root.cols
+            var ch = height / root.rows
+            for (var y = 0; y < root.rows; y++) {
+                for (var x = 0; x < root.cols; x++) {
+                    var i = root._idx(x, y)
+                    var b = root.brightness[i]
+                    if (b < 0.02) continue
+                    ctx.globalAlpha = Math.max(0, Math.min(1, b * root.intensity))
+                    ctx.fillStyle = root._mix(dim, lit, b)
+                    ctx.fillRect(x * cw + 1, y * ch + 1, Math.max(1, cw - 2), Math.max(1, ch - 2))
+                }
+            }
+            ctx.globalAlpha = 1
+        }
+    }
+}
