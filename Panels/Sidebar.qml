@@ -124,8 +124,17 @@ PanelWindow {
 
     // R3 #1: the notification panel gets the same modal backdrop as
     // Settings and the agent panel (it had none before).
+    // Style pass 2026-09-14 (docs/TODO.md's dim-coverage split) — see
+    // Panels/AgentPanel.qml's own Scrim for the full reasoning: inset from
+    // the top by the bar's real height instead of a risky per-surface
+    // Wayland layer change, so the bar stays visibly undimmed while this
+    // dock is open.
     Widgets.Scrim {
-        anchors.fill: parent
+        anchors.top: parent.top
+        anchors.topMargin: Services.BarMetrics.height
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
         shown: root.shown
     }
 

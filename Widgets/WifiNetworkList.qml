@@ -84,6 +84,19 @@ Item {
             text: Services.WifiBridge.connectError
         }
 
+        // Style pass 2026-09-14 (docs/TODO.md: "a reusable loading-skeleton
+        // placeholder for async lists"). Only for the FIRST scan (nothing
+        // to show yet) — a rescan that already has a result list keeps
+        // showing it while it refreshes (the Refresh button's own
+        // `loading` already covers that case); replacing a real, useful
+        // list with a skeleton on every rescan would be a regression, not
+        // an improvement.
+        Skeleton {
+            width: parent.width
+            visible: Services.WifiBridge.scanning && Services.WifiBridge.scannedNetworks.length === 0
+            count: 3
+        }
+
         Repeater {
             model: Services.WifiBridge.scannedNetworks
 

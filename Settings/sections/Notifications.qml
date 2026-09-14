@@ -252,6 +252,7 @@ Column {
               "Set one from the runner bar: \"timer 5m\", \"timer 25m tea\", \"alarm 7:30\", \"alarm 19:45 wake up\"."
 
         SettingsRow {
+            advanced: true
             title: "Ringtone"
             description: "Pick an installed sound — tapping one previews it. Loops until dismissed. Or give an absolute path below."
             wide: true
@@ -276,6 +277,7 @@ Column {
             }
         }
         SettingsRow {
+            advanced: true
             title: "Volume"
             Widgets.NumberField {
                 value: Services.Timers.soundVolume
@@ -284,6 +286,7 @@ Column {
             }
         }
         SettingsRow {
+            advanced: true
             title: "Test"
             Widgets.StyledButton {
                 label: "Test ringtone"

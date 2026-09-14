@@ -120,6 +120,14 @@ Column {
         optionId: "updates.system"
         caption: root.loading ? "Reading versions…" : "phi is baked in at build; phios-dotfiles is `git describe`; the rest is pacman."
 
+        // Style pass 2026-09-14 (docs/TODO.md: "a reusable loading-skeleton
+        // placeholder for async lists ... the updates check").
+        Widgets.Skeleton {
+            width: parent ? parent.width : 0
+            visible: root.loading && root.components.length === 0
+            count: 3
+        }
+
         Repeater {
             model: root.components
             Widgets.ListRow {
@@ -140,6 +148,7 @@ Column {
     // Packages
     // ================================================================
     SettingsGroup {
+        advanced: true
         title: "Packages"
         optionId: "updates.packages"
         caption: "Read-only. See available updates with `phi pkg check` in a terminal; apply them with `phi update`."

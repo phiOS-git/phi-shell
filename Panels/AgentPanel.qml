@@ -103,7 +103,29 @@ PanelWindow {
     readonly property real targetWidth:
         (root.section === "memory" && root.agent.totalPendingProposals > 0) ? wideWidth : baseWidth
 
-    Widgets.Scrim { anchors.fill: parent; shown: root.shown }
+    // Style pass 2026-09-14 (docs/TODO.md's dim-coverage split): the chat
+    // panel's dim should not visually cover the status bar. Every dim
+    // surface in this shell is `WlrLayer.Overlay`, which Wayland's
+    // layer-shell protocol always stacks above the bar's own
+    // `WlrLayer.Top` regardless of anything drawn in QML — so a per-
+    // surface LAYER change was the wrong lever (same-layer stacking order
+    // between several Top-layer surfaces at once is not something this
+    // project can verify without a compositor, and getting it wrong risks
+    // this whole panel rendering under the bar, not just its dim). This
+    // needs no layer change at all: the scrim is a plain child Rectangle
+    // of this SAME Overlay-layer window, so simply not extending it into
+    // the bar's own screen strip (inset from the top by the bar's real
+    // published height, Services.BarMetrics — the same value `dock`'s own
+    // topMargin below already uses) leaves the bar visibly undimmed,
+    // with zero cross-layer risk.
+    Widgets.Scrim {
+        anchors.top: parent.top
+        anchors.topMargin: Services.BarMetrics.height
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        shown: root.shown
+    }
 
     Item {
         id: fadeRoot
