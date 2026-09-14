@@ -49,6 +49,23 @@ Singleton {
     // a general passthrough for any surface that needs to send a dispatch;
     // the workspace strip switches workspaces through the model's own
     // `activate()` and does not need this.
+    //
+    // The `<dispatcher> <args>` string this comment used to describe as
+    // the whole contract is NOT enough on its own any more — confirmed
+    // 2026-09-14 against a live Hyprland session (the scratchpad bug,
+    // docs/TODO.md): this Hyprland build's Lua config repurposes the
+    // socket's `dispatch` command to EVALUATE its argument as Lua, so the
+    // traditional two-token form (`"togglespecialworkspace scratch"`,
+    // even a single bare word with no args at all) fails with
+    // "hl.dispatch: expected a dispatcher" — confirmed by sending the
+    // identical raw request directly over the IPC socket, bypassing both
+    // `hyprctl` and this function, so it's Hyprland itself doing this, not
+    // a `hyprctl`-only quirk `dispatch()` could route around. Every
+    // `request` string passed here now needs the Lua-call form instead,
+    // e.g. `'hl.dsp.workspace.toggle_special("scratch")'` — see
+    // Bar/modules/Workspaces.qml's own scratchpad button for the confirmed
+    // example, and phios-dotfiles' hyprland.lua.tmpl for the same fix
+    // applied to the compositor-side keybinds that hit this identically.
     function dispatch(request) { Hyprland.dispatch(request) }
 
     // docs/TODO.md: "opening a panel on a special workspase (11, 12),
@@ -129,6 +146,13 @@ Singleton {
         if (!current || root.reservedWorkspaceIds.indexOf(current.id) === -1) return
 
         if (highest) highest.activate()
-        else root.dispatch("workspace 1")
+        // 2026-09-14: was the traditional dispatcher-string form
+        // ("workspace 1"), which this exact Hyprland build's Lua config
+        // rejects — see dispatch()'s own updated comment above. This
+        // fallback path (every ordinary workspace 1-10 empty on screen0)
+        // is rare enough that it was never reported broken on its own,
+        // but it shares the identical bug the scratchpad button was
+        // reported for, so it gets the identical fix.
+        else root.dispatch("hl.dsp.focus({ workspace = 1 })")
     }
 }

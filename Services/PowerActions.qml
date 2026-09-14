@@ -35,8 +35,21 @@ Singleton {
     function suspend() { Quickshell.execDetached(["systemctl", "suspend"]) }
     function hibernate() { Quickshell.execDetached(["systemctl", "hibernate"]) }
     function logout() {
+        // 2026-09-14: the `hyprctl dispatch exit` fallback was silently
+        // broken on every host — confirmed `hyprshutdown` is not installed
+        // (so the fallback always runs, never the primary), and this
+        // exact Hyprland build's Lua config rejects the traditional
+        // dispatcher-string form entirely (confirmed against a live
+        // session by testing the equally-broken `togglespecialworkspace
+        // scratch`/`workspace m-1` forms elsewhere — same mechanism, this
+        // exact command was never itself dispatched live, on purpose:
+        // that would end the session being used to test it). Corrected to
+        // the Lua-call form, `hl.dsp.exit()`, matching hyprland.lua.tmpl's
+        // own SHIFT+M fallback and Hyprland's own bundled example config
+        // (`/usr/share/hypr/hyprland.lua`) which uses this identical line
+        // verbatim.
         Quickshell.execDetached(["sh", "-c",
-            "command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch exit"])
+            "command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch \"hl.dsp.exit()\""])
     }
     function reboot() { Quickshell.execDetached(["systemctl", "reboot"]) }
     function shutdown() { Quickshell.execDetached(["systemctl", "poweroff"]) }

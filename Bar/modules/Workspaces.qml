@@ -177,15 +177,33 @@ Item {
         }
 
         // Scratchpad toggle (hyprland.lua: MOD+A binds
-        // `togglespecialworkspace scratch`; MOD+SHIFT+A moves the focused
-        // window into it). No `active` state — see the module comment: the
-        // special workspace can read as active alongside a numeric one.
+        // `workspace.toggle_special("scratch")`; MOD+SHIFT+A moves the
+        // focused window into it). No `active` state — see the module
+        // comment: the special workspace can read as active alongside a
+        // numeric one.
+        //
+        // docs/TODO.md: "the scratchpad icon does not call the scratchpad
+        // ... it's broken" — confirmed 2026-09-14 against a live Hyprland
+        // session: this install's Lua config repurposes the `dispatch`
+        // socket command HyprlandBridge.dispatch() sends over to EVALUATE
+        // its argument as Lua, so the traditional dispatcher-string form
+        // this used to send (`togglespecialworkspace scratch`) failed
+        // with "hl.dispatch: expected a dispatcher" every time, silently
+        // (Quickshell's Hyprland.dispatch() has no return value this file
+        // reads) — confirmed by sending the identical raw request
+        // directly over `.socket.sock`, bypassing both `hyprctl` and
+        // Quickshell entirely, so this is Hyprland itself, not either
+        // client. `hl.dsp.workspace.toggle_special("scratch")` — the exact
+        // Lua-call form hyprland.lua.tmpl's own MOD+A bind already uses —
+        // is the fix, sent as a plain string the same way; round-tripped
+        // live twice (workspace list gained, then lost, `-98 special:
+        // scratch`) to confirm it actually toggles both ways.
         Widgets.Segment {
             ambient: "isle"
             squared: true
             glyph: Glyphs.console
             label: ""
-            onActivated: Services.HyprlandBridge.dispatch("togglespecialworkspace scratch")
+            onActivated: Services.HyprlandBridge.dispatch('hl.dsp.workspace.toggle_special("scratch")')
         }
     }
 }
