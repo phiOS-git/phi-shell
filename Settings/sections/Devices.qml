@@ -355,6 +355,27 @@ Column {
                 }
             }
         }
+
+        // docs/TODO.md: "have a battery saving mode, it automatically
+        // kicks in when not in charge and lower then 20% battery
+        // (automation can be toggled in the settings ...), configurable
+        // in the settings panel." Reuses the same "Warn threshold"'s
+        // sibling lowPercentThreshold (this group's own bar-anomaly 20%
+        // default above it) rather than a second, separate percentage —
+        // this entry's own wording never asks for its own settable
+        // number, only for the automation switch itself. The manual
+        // on/off switch lives on the battery bar overlay instead (the
+        // entry's own explicit "the battery overlay ... must have the
+        // switch"), not duplicated here.
+        SettingsRow {
+            title: "Battery saver"
+            description: "Automatically turns on below " + Math.round(Services.PowerBridge.lowPercentThreshold * 100)
+                + "% while unplugged (dims the screen, turns off the lock screen's ambient effect), and off again once charged past that or plugged in — unless you turned it on by hand while charging."
+            Widgets.Toggle {
+                checked: Services.PowerBridge.batterySaverAuto
+                onToggled: (v) => Services.PowerBridge.setBatterySaverAuto(v)
+            }
+        }
     }
 
     // ================================================================

@@ -140,6 +140,13 @@ Singleton {
     // scalar. Owned by Services/PowerBridge.qml.
     readonly property string batteryAlertPrefsFile: root.stateDir + "/battery-alert.json"
 
+    // docs/TODO.md: "have a battery saving mode ... automation can be
+    // toggled in the settings." One scalar ({ auto }) — a dedicated file
+    // rather than folding into batteryAlertPrefsFile above, same one-
+    // concern-per-file granularity every prefs file here already keeps.
+    // Owned by Services/PowerBridge.qml.
+    readonly property string batterySaverPrefsFile: root.stateDir + "/battery-saver.json"
+
     // docs/TODO.md: "add a quick note ... save it in a specific folder in
     // Documents." A real asset the user writes on purpose, so it belongs
     // under Documents itself, not $XDG_*_HOME like every path above —

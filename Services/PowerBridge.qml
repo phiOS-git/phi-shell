@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.UPower
 import qs.Config as Config
+import qs.Services as Services
 
 // phiOS — thin wrapper over Quickshell.Services.UPower (S-23, master plan
 // §8.1/§8.4: razer's battery anomaly-carrier module). The one file outside
@@ -222,7 +223,9 @@ Singleton {
         }
         if (root._wasDischarging && !root.discharging && root.present) root.playChargingSound(false)
         root._wasDischarging = root.discharging
+        root._evaluateBatterySaver()
     }
+    onPercentageChanged: root._evaluateBatterySaver()
 
     // Resolve chargingSoundName to a filesystem path: an absolute path as
     // is, else a freedesktop sound-theme basename — same convention
@@ -340,5 +343,134 @@ Singleton {
 
     onAlertLevelChanged: {
         if (root.alertLevel === "none") root.dismissedLevel = "none"
+    }
+
+    // --- battery saving mode (docs/TODO.md: "have a battery saving mode,
+    // it automatically kicks in when not in charge and lower then 20%
+    // battery ... automatically disabled when plugged in and over the
+    // threshold (if the user activates while it's charging, it should not
+    // disable automatically, this flag is cleared once the charge is
+    // plugged off again)") -------------------------------------------
+    //
+    // Reuses lowPercentThreshold (0.20 default, already this file's own
+    // "<20% remaining" anomaly threshold above) rather than a second,
+    // separate percentage field — the entry states this feature's own
+    // threshold as a literal "20%" with no mention of it being settable,
+    // unlike alertWarnThreshold/alertDangerThreshold above, which the
+    // OTHER entry explicitly asked to be configurable; "configurable in
+    // the settings panel" in THIS entry's own text reads as the
+    // automation on/off switch below, not a second threshold field.
+    //
+    // Only batterySaverAuto (the automation switch) is persisted.
+    // batterySaverActive and the charging-override flag are deliberately
+    // session-local, recomputed fresh by _evaluateBatterySaver() every
+    // time this singleton starts (called once the prefs file below
+    // resolves) — a saved "was active" surviving a shell restart would
+    // need to fabricate a reason it was on, when the real battery state at
+    // the new startup already answers that question correctly on its own.
+    //
+    // The real saving actions: brightness is capped at 40%
+    // (Services/Brightness.qml), restored to whatever it was the instant
+    // saver turns off — never persisted anywhere, brightness is expected-
+    // to-move hardware state, not a saved preference, so there is nothing
+    // to lose across a restart. The lock screen's ambient effect is
+    // suppressed as a READ-SIDE override: Lock/Lock.qml's effectLoader
+    // gates on Services.PowerBridge.batterySaverActive directly, rather
+    // than this file calling Config.LockPrefs.setEffect("none") — writing
+    // through LockPrefs would permanently overwrite the user's actual
+    // chosen effect in lock.json the moment a shell restart happened to
+    // land while saver was active, with no reliable record left to
+    // restore it from. Reading leaves the user's real choice untouched.
+    property bool batterySaverAuto: true
+    property bool batterySaverActive: false
+    property bool _saverOverrideWhileCharging: false
+    property int _brightnessBeforeSaver: -1
+    property int _brightnessCapSetTo: -1
+
+    function setBatterySaverAuto(b) {
+        root.batterySaverAuto = !!b
+        root._persistBatterySaverPrefs()
+        root._evaluateBatterySaver()
+    }
+
+    // The manual switch — Panels/BarPopout.qml's battery card and the
+    // settings panel both call this; nothing assigns batterySaverActive
+    // directly, the same controlled-component shape every toggle in this
+    // repo already follows.
+    function setBatterySaverActive(b) {
+        b = !!b
+        if (b && !root.discharging) root._saverOverrideWhileCharging = true
+        if (!b) root._saverOverrideWhileCharging = false
+        root._applyBatterySaver(b)
+    }
+
+    function _applyBatterySaver(active) {
+        if (active === root.batterySaverActive) return
+        root.batterySaverActive = active
+        if (active) {
+            if (Services.Brightness.present) {
+                root._brightnessBeforeSaver = Services.Brightness.percent
+                root._brightnessCapSetTo = Math.min(Services.Brightness.percent, 40)
+                Services.Brightness.set(root._brightnessCapSetTo)
+            }
+        } else {
+            // Restore only if nothing has touched brightness since saver
+            // capped it (brightness keys, the OSD and settings all go
+            // through Services.Brightness.set(), the same setter this file
+            // itself calls, so `percent` reflects any of them) — the user
+            // may have deliberately raised or lowered it while saver was
+            // active, and that choice must win, not be silently
+            // overwritten back to whatever it was before saver started.
+            if (root._brightnessBeforeSaver >= 0 && Services.Brightness.present
+                    && Services.Brightness.percent === root._brightnessCapSetTo)
+                Services.Brightness.set(root._brightnessBeforeSaver)
+            root._brightnessBeforeSaver = -1
+            root._brightnessCapSetTo = -1
+        }
+    }
+
+    // Matches the entry's own state machine: auto-ON only while
+    // discharging and at/under the threshold; auto-OFF only once plugged
+    // in and over the threshold, UNLESS this activation was itself a
+    // manual override made while charging — cleared the moment a real
+    // discharge cycle starts (the entry's own "this flag is cleared once
+    // the charge is plugged off again"), so the exemption only ever
+    // protects the specific charging session it was set during.
+    function _evaluateBatterySaver() {
+        if (!root.present) return
+        if (!root.discharging) {
+            if (root.batterySaverActive && root.percentage > root.lowPercentThreshold && !root._saverOverrideWhileCharging)
+                root._applyBatterySaver(false)
+            return
+        }
+        if (root._saverOverrideWhileCharging) root._saverOverrideWhileCharging = false
+        if (root.batterySaverAuto && !root.batterySaverActive && root.percentage <= root.lowPercentThreshold)
+            root._applyBatterySaver(true)
+    }
+
+    // No _written guard like soundPrefsFile's own above: that one exists
+    // because a phi-state migration can race a fresh write to the same
+    // file. This file has no migration path (a net-new preference, same
+    // as batteryAlertPrefsFile just above), so there is nothing for a
+    // guard to arbitrate.
+    function _persistBatterySaverPrefs() {
+        batterySaverPrefsFile.setText(JSON.stringify({ auto: root.batterySaverAuto }, null, 2))
+    }
+
+    FileView {
+        id: batterySaverPrefsFile
+        path: Config.Paths.batterySaverPrefsFile
+        watchChanges: false
+        onLoaded: {
+            try {
+                const parsed = JSON.parse(batterySaverPrefsFile.text())
+                if (parsed && typeof parsed === "object" && typeof parsed.auto === "boolean")
+                    root.batterySaverAuto = parsed.auto
+            } catch (e) {
+                console.warn("phi-shell: battery-saver.json failed to parse, ignoring: " + e)
+            }
+            root._evaluateBatterySaver()
+        }
+        onLoadFailed: (error) => root._evaluateBatterySaver()
     }
 }
