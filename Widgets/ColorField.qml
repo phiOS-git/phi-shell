@@ -68,6 +68,13 @@ Column {
             color: root._preview
             border.width: Config.Appearance.borderWidth
             border.color: Config.Appearance.border
+            // Cursor/hover only, not a keyboard path of its own: this
+            // swatch is a mouse-only shortcut for exactly what the
+            // "pick"/"done" SmallButton right next to it already does
+            // (and that button is keyboard-reachable, the shared-widget
+            // fix this same pass made everywhere) — no functionality
+            // would be unreachable without one here too.
+            HoverHandler { cursorShape: Qt.PointingHandCursor }
             TapHandler { onTapped: root.expanded = !root.expanded }
         }
 

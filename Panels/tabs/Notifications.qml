@@ -230,7 +230,7 @@ Item {
                             anchors.rightMargin: root.gap
                             anchors.verticalCenter: parent.verticalCenter
                             height: parent.height
-                            readonly property bool hovered: groupToggleHover.hovered
+                            readonly property bool hovered: groupToggleHover.hovered || groupToggle.activeFocus
 
                             // Style pass 2026-09-14: same hover-wash grammar
                             // Widgets/Accordion's header uses — this header
@@ -273,6 +273,15 @@ Item {
                             }
                             HoverHandler { id: groupToggleHover; cursorShape: Qt.PointingHandCursor }
                             TapHandler { onTapped: root.toggleGroup(grp.modelData.app) }
+                            // Style pass 2026-09-14: expanding/collapsing a
+                            // notification group had no keyboard path at
+                            // all — a raw Item+TapHandler with no
+                            // `activeFocusOnTab`, unlike the shared widgets
+                            // (now keyboard-activatable end to end, a
+                            // separate fix this same pass).
+                            activeFocusOnTab: true
+                            Keys.onReturnPressed: root.toggleGroup(grp.modelData.app)
+                            Keys.onSpacePressed: root.toggleGroup(grp.modelData.app)
                         }
                         Widgets.SmallButton {
                             id: clearGroup

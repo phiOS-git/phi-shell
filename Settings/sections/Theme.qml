@@ -133,15 +133,15 @@ Column {
                     // an open/selected wash, a search-match wash and a
                     // pulse-on-reveal — every state except the one that
                     // tells you it is clickable at all before you click.
-                    readonly property bool _hovered: swHover.hovered
+                    readonly property bool _hovered: swHover.hovered || sw.activeFocus
 
                     width: Math.round(root.chWidth * 24)
                     height: swRow.implicitHeight + Math.round(root.chWidth * Config.Appearance.space1)
                     radius: Config.Appearance.radiusSmall
                     color: sw._open ? Config.Appearance.surface1
                         : (sw._hovered ? Config.Appearance.panelHover : "transparent")
-                    border.width: sw._open ? Config.Appearance.borderWidth : 0
-                    border.color: sw._open ? Config.Appearance.focusRing : "transparent"
+                    border.width: (sw._open || sw.activeFocus) ? Config.Appearance.borderWidth : 0
+                    border.color: (sw._open || sw.activeFocus) ? Config.Appearance.focusRing : "transparent"
                     Behavior on color {
                         ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
                     }
@@ -215,6 +215,19 @@ Column {
                     }
 
                     TapHandler { onTapped: root._openColor = sw._open ? "" : sw.tokenKey }
+
+                    // Style pass 2026-09-14: this tile had no
+                    // `activeFocusOnTab` at all — unlike every shared
+                    // Widgets/ control (now keyboard-activatable end to
+                    // end, a separate fix this same pass), a raw
+                    // Rectangle+TapHandler composition like this one was
+                    // not just dead to Enter/Space, it could not even
+                    // receive Tab focus in the first place, so keyboard
+                    // navigation through Settings → Theme silently
+                    // skipped the whole colour swatch grid.
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: root._openColor = sw._open ? "" : sw.tokenKey
+                    Keys.onSpacePressed: root._openColor = sw._open ? "" : sw.tokenKey
                 }
             }
         }
@@ -1137,13 +1150,19 @@ Column {
                         // never read as the same thing.
                         border.color: Services.Background.image.length === 0
                             ? Config.Appearance.accent
-                            : (noneHover.hovered ? Config.Appearance.borderStrong : Config.Appearance.border)
+                            : ((noneHover.hovered || noneTile.activeFocus) ? Config.Appearance.borderStrong : Config.Appearance.border)
                         Behavior on border.color {
                             ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
                         }
                         Widgets.StyledText { anchors.centerIn: parent; kind: "label"; sizeStep: 0; text: "none" }
                         HoverHandler { id: noneHover; cursorShape: Qt.PointingHandCursor }
                         TapHandler { onTapped: Services.Background.clearImage() }
+                        // Style pass 2026-09-14: same "not even Tab-
+                        // reachable" gap as the colour swatches above —
+                        // see that fix's own comment.
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: Services.Background.clearImage()
+                        Keys.onSpacePressed: Services.Background.clearImage()
                     }
 
                     Repeater {
@@ -1158,7 +1177,7 @@ Column {
                             border.width: Config.Appearance.borderWidth
                             border.color: Services.Background.image === modelData
                                 ? Config.Appearance.accent
-                                : (wpHover.hovered ? Config.Appearance.borderStrong : Config.Appearance.border)
+                                : ((wpHover.hovered || wpTile.activeFocus) ? Config.Appearance.borderStrong : Config.Appearance.border)
                             Behavior on border.color {
                                 ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
                             }
@@ -1172,6 +1191,11 @@ Column {
                             }
                             HoverHandler { id: wpHover; cursorShape: Qt.PointingHandCursor }
                             TapHandler { onTapped: Services.Background.setImage(modelData) }
+                            // Style pass 2026-09-14: same fix as the
+                            // colour swatches / "none" tile above.
+                            activeFocusOnTab: true
+                            Keys.onReturnPressed: Services.Background.setImage(modelData)
+                            Keys.onSpacePressed: Services.Background.setImage(modelData)
                         }
                     }
                 }

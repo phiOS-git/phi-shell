@@ -71,11 +71,19 @@ Column {
             anchors.rightMargin: header._trailingW > 0 ? header._trailingW + root._ch : 0
             anchors.verticalCenter: parent.verticalCenter
             height: parent.height
-            readonly property bool hovered: hover.hovered
+            readonly property bool hovered: hover.hovered || toggleArea.activeFocus
             readonly property bool pressed: tap.pressed
 
             HoverHandler { id: hover; enabled: root.enabled; cursorShape: Qt.PointingHandCursor }
             TapHandler { id: tap; enabled: root.enabled; onTapped: root.expanded = !root.expanded }
+            // Style pass 2026-09-14: a shared, reused widget (Devices'
+            // Chroma integrations, Updates' package lists) with no
+            // keyboard path to its own only action — see Widgets/
+            // StyledButton.qml's identical comment for the general gap
+            // this pass found and fixed across every shared widget type.
+            activeFocusOnTab: true
+            Keys.onReturnPressed: if (root.enabled) root.expanded = !root.expanded
+            Keys.onSpacePressed: if (root.enabled) root.expanded = !root.expanded
 
             Rectangle {
                 anchors.fill: parent
