@@ -293,7 +293,15 @@ Item {
                         Keys.onEscapePressed: { field.focus = false; root.blurred() }
                         Widgets.StyledText { anchors.fill: parent; kind: "label"; text: "Message the agent…"; visible: field.text.length === 0 }
                     }
-                    Widgets.StyledButton { id: sendBtn; label: "Send"; onClicked: root.doSend() }
+                    Widgets.StyledButton {
+                        id: sendBtn
+                        label: "Send"
+                        // Matches doSend()'s own guard — a spinner instead
+                        // of a button that visually invites a click doing
+                        // nothing while a turn is already in flight.
+                        loading: root.agent.processing
+                        onClicked: root.doSend()
+                    }
                 }
             }
         }
@@ -364,8 +372,18 @@ Item {
         }
     }
 
+    // Style pass 2026-09-14: this used to clear the field UNCONDITIONALLY
+    // after calling agent.send() — but Services.Agent.send() itself no-ops
+    // while a turn is already in flight (`if (sendProc.running ...) return`,
+    // by design, correctly preventing a real double-send race at the
+    // backend). The UI side of that guard was missing entirely: pressing
+    // Enter/Send while waiting for a reply silently ERASED whatever was
+    // typed, with nothing actually sent — real, silent data loss, not just
+    // a missing loading indicator. Now a no-op the same way the backend
+    // already is: nothing is cleared, nothing is lost, and the message is
+    // still sitting there ready to send the moment the turn finishes.
     function doSend() {
-        if (field.text.trim().length === 0) return
+        if (root.agent.processing || field.text.trim().length === 0) return
         root.agent.send(field.text, root.personality)
         field.text = ""
     }
