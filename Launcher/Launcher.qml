@@ -5,6 +5,7 @@ import Quickshell.Wayland
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
+import "prefixes.js" as Prefixes
 
 // phiOS — Launcher/Launcher.qml (S-33, master plan §8.3 surface 6, ADR 018:
 // ranking and providers live in `phi query` — internal/query, this file
@@ -39,6 +40,27 @@ PanelWindow {
     property string queryText: ""
     property var results: []
     property int highlightedIndex: 0
+
+    // docs/TODO.md's runner-bar prefix feature: the keyword Tab has
+    // "locked" (empty when nothing is locked). Once set, queryText no
+    // longer holds the keyword itself — locking strips it from the visible
+    // field, leaving only the remainder being typed; _runQuery()
+    // reconstructs "key + remainder" for the actual `phi query` argv (see
+    // its own comment) and adds --prefix key so only that category's
+    // provider(s) answer (phi/internal/query/query.go's Run()).
+    property string lockedPrefix: ""
+    // Backspace-to-cancel timing: an input threshold, not a design token
+    // (rule 6 only covers colour/font/size/radius/motion) — same
+    // documented-functional-constant precedent as Services/PowerBridge.qml's
+    // sampling interval and Services/Timers.qml's tick. Two genuine,
+    // distinct backspace presses within this window cancel the lock; see
+    // searchField's Keys.onPressed for why isAutoRepeat is what actually
+    // keeps a HELD key from doing this on its own, this window only bounds
+    // how far apart the two real presses may be.
+    readonly property int backspaceCancelWindowMs: 500
+    property real _lastBackspaceAt: 0
+
+    onLockedPrefixChanged: queryDebounce.restart()
 
     // views[0] is implicit (the search field itself); views[1..] are
     // pushed sub-views. Two shapes: { kind: "command", command: "..." }
@@ -155,6 +177,8 @@ PanelWindow {
             root.results = []
             root.views = []
             root.highlightedIndex = 0
+            root.lockedPrefix = ""
+            root._lastBackspaceAt = 0
         }
     }
 
@@ -191,7 +215,7 @@ PanelWindow {
             root.highlightedIndex = 0
             return
         }
-        queryComponent.createObject(root, { queryArg: root.queryText })
+        queryComponent.createObject(root, { queryArg: root.queryText, prefixArg: root.lockedPrefix })
     }
 
     // OOP-12: with nothing typed, browse the installed applications
@@ -220,8 +244,12 @@ PanelWindow {
     }
 
     // What the list and the keyboard navigation actually read: the browse
-    // list when nothing is typed, the ranked `phi query` results otherwise.
-    readonly property var displayResults: root.queryText.trim().length === 0
+    // list when nothing is typed and no prefix is locked, the ranked `phi
+    // query` results otherwise. A locked prefix never falls back to the
+    // browse list even with an empty remainder — docs/TODO.md: "while a
+    // prefix word is selected, the only results shown will be determined
+    // by the prefix," which the unfiltered app-browse list is not.
+    readonly property var displayResults: (root.lockedPrefix.length === 0 && root.queryText.trim().length === 0)
         ? root.browseResults : root.results
 
     // OOP-49: the `rich` payload of the currently highlighted result, if it
@@ -236,7 +264,18 @@ PanelWindow {
         Process {
             id: queryProc
             property string queryArg: ""
-            command: ["phi", "query", queryArg]
+            // docs/TODO.md's runner-bar prefix feature: the locked keyword
+            // at the moment this Process was spawned. When set, --prefix
+            // restricts phi to that keyword's provider(s)
+            // (internal/query/query.go's Run()), and queryArg (the visible
+            // remainder, keyword already stripped by _lockPrefix()) has the
+            // keyword put back in front for the actual argv — every routed
+            // provider expects to see its own keyword leading the text it
+            // strips itself (see phi's own prefixProviders comment).
+            property string prefixArg: ""
+            command: prefixArg.length > 0
+                ? ["phi", "query", "--prefix", prefixArg, prefixArg + " " + queryArg]
+                : ["phi", "query", queryArg]
             running: true
             onExited: queryProc.running = false
             stdout: StdioCollector {
@@ -245,13 +284,14 @@ PanelWindow {
                         const parsed = JSON.parse(this.text)
                         if (Array.isArray(parsed)) {
                             // Stale response guard: this Process was
-                            // spawned for queryProc.queryArg, but the user
-                            // may have kept typing since — root.queryText
-                            // is the CURRENT text. Applying an old
-                            // response over a newer query's own (possibly
-                            // already-arrived) results would flash stale
-                            // data.
-                            if (queryProc.queryArg === root.queryText) {
+                            // spawned for queryProc.queryArg/prefixArg, but
+                            // the user may have kept typing — or locked/
+                            // unlocked a prefix — since. root.queryText and
+                            // root.lockedPrefix are the CURRENT state; both
+                            // must still match, not just the text, or a
+                            // response computed before a lock (or after an
+                            // unlock) could render into the wrong UI state.
+                            if (queryProc.queryArg === root.queryText && queryProc.prefixArg === root.lockedPrefix) {
                                 root.results = parsed
                                 root.highlightedIndex = 0
                                 const stillLoading = parsed.some((r) => r.action && r.action.kind === "loading")
@@ -356,6 +396,30 @@ PanelWindow {
         root.highlightedIndex = next
     }
 
+    // docs/TODO.md's runner-bar prefix feature: Tab "locks" the keyword
+    // currently leading the typed text — strips it from the visible field
+    // (it becomes the chip instead) and restricts results to that
+    // category (queryComponent above puts it back for the actual query).
+    function _lockPrefix(key) {
+        root.lockedPrefix = key
+        root._lastBackspaceAt = 0
+        const lead = key + " "
+        if (searchField.text.toLowerCase().indexOf(lead) === 0) {
+            const rest = searchField.text.slice(lead.length)
+            searchField.text = rest
+            root.queryText = rest
+        }
+    }
+
+    // The two cancel paths docs/TODO.md names: clicking the chip's "×"
+    // calls this directly; searchField's Keys.onPressed calls it only
+    // after two genuine backspace presses on an already-empty field (see
+    // that handler's own comment).
+    function _cancelPrefix() {
+        root.lockedPrefix = ""
+        root._lastBackspaceAt = 0
+    }
+
     function pushCommandView(command) {
         root.views = root.views.concat([{ kind: "command", command: command }])
         commandField.text = command
@@ -451,20 +515,89 @@ PanelWindow {
                     sizeStep: 2
                     text: root.inputPrefix
                 }
+
+                // docs/TODO.md's runner-bar prefix feature: the locked
+                // keyword's chip — "gets background (like the highlighted
+                // option)" (the same filled-rounded-rect shape the result
+                // list's own selection highlight uses, radiusSmall
+                // included) coloured per-prefix instead of the generic
+                // selectionBackground, plus a "×" to remove it (reusing
+                // Settings.qml's own established close-glyph, not a
+                // guessed Nerd Font codepoint — this repo has shipped two
+                // wrong ones before, Bar/glyphs.js's own history).
+                Item {
+                    id: prefixChip
+                    visible: root.lockedPrefix.length > 0
+                    anchors.left: prefixLabel.right
+                    anchors.leftMargin: visible ? root.chWidth * Config.Appearance.space2 : 0
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: visible ? chipBg.width : 0
+                    height: chipBg.height
+                    clip: true
+
+                    Behavior on width {
+                        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                    }
+
+                    Rectangle {
+                        id: chipBg
+                        width: chipRow.implicitWidth + root.chWidth * 1.4
+                        height: chipRow.implicitHeight + root.chWidth * Config.Appearance.space1
+                        radius: Config.Appearance.radiusSmall
+                        color: root.lockedPrefix.length > 0 ? Prefixes.color(Config.Appearance, root.lockedPrefix) : "transparent"
+
+                        Behavior on color {
+                            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                        }
+
+                        Row {
+                            id: chipRow
+                            anchors.centerIn: parent
+                            spacing: root.chWidth * 0.7
+
+                            Widgets.StyledText {
+                                mono: true
+                                sizeStep: 2
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: {
+                                    const meta = Prefixes.find(root.lockedPrefix)
+                                    return meta ? meta.label : root.lockedPrefix
+                                }
+                                color: Prefixes.textColor(Config.Appearance, root.lockedPrefix)
+                            }
+                            Widgets.StyledText {
+                                mono: true
+                                sizeStep: 2
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "×"
+                                color: Prefixes.textColor(Config.Appearance, root.lockedPrefix)
+                                TapHandler { onTapped: root._cancelPrefix() }
+                            }
+                        }
+                    }
+                }
+
                 TextInput {
                     id: searchField
                     anchors.left: parent.left
-                    anchors.leftMargin: root.inputPrefixWidth
+                    anchors.leftMargin: root.inputPrefixWidth + (prefixChip.visible ? prefixChip.width + prefixChip.anchors.leftMargin : 0)
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     font.family: Config.Appearance.fontMono
                     font.pixelSize: Config.Appearance.fontSize2
                     color: Config.Appearance.textPrimary
+
+                    Behavior on anchors.leftMargin {
+                        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                    }
+
                     // One-way sync out only (see setShown's own comment):
                     // this field's initial text is empty and stays that
                     // way until the user types, so no incoming binding is
                     // needed at all — root.queryText always just follows
-                    // whatever the user has actually typed.
+                    // whatever the user has actually typed. _lockPrefix()
+                    // below writes it imperatively for the one case that
+                    // needs to change it from outside the field.
                     onTextChanged: root.queryText = text
                     focus: root.atRoot
 
@@ -472,11 +605,44 @@ PanelWindow {
                     Keys.onUpPressed: root.moveHighlight(-1)
                     Keys.onEscapePressed: root.setShown(false)
                     Keys.onReturnPressed: root.activate(root.displayResults[root.highlightedIndex])
+                    // docs/TODO.md: "if TAB is pressed after the prefix,
+                    // the prefix will be 'locked'". Only meaningful once,
+                    // from the unlocked state — the keyword is stripped
+                    // from the field the moment it locks, so there is
+                    // never a leading keyword left to detect a second time.
                     Keys.onTabPressed: {
-                        const r = root.displayResults[root.highlightedIndex]
-                        if (r && r.action.kind === "command") {
-                            root.pushCommandView(r.action.data.command)
+                        if (root.lockedPrefix.length === 0) {
+                            const detected = Prefixes.detect(root.queryText)
+                            if (detected) root._lockPrefix(detected)
                         }
+                    }
+                    // docs/TODO.md: cancelling the lock "requires a double
+                    // click of backspace (to prevent removing it when
+                    // holding down backspace)". event.isAutoRepeat is what
+                    // actually satisfies "holding down" — Qt's own
+                    // mechanism for telling a held key's synthetic repeat
+                    // stream apart from a genuine second press, which a
+                    // press-timestamp window alone cannot do (a held key's
+                    // repeats land inside any window short enough to still
+                    // feel like a deliberate double-tap). Only armed when
+                    // the field is already empty: backspace still deletes
+                    // normally otherwise, exactly as before this feature.
+                    Keys.onPressed: (event) => {
+                        if (event.key !== Qt.Key_Backspace || root.lockedPrefix.length === 0 || searchField.text.length > 0) {
+                            root._lastBackspaceAt = 0
+                            return
+                        }
+                        if (event.isAutoRepeat) {
+                            event.accepted = true
+                            return
+                        }
+                        const now = Date.now()
+                        if (root._lastBackspaceAt > 0 && (now - root._lastBackspaceAt) < root.backspaceCancelWindowMs) {
+                            root._cancelPrefix()
+                        } else {
+                            root._lastBackspaceAt = now
+                        }
+                        event.accepted = true
                     }
                 }
             }
@@ -705,6 +871,33 @@ PanelWindow {
                     }
                 }
             }
+        }
+    }
+
+    // docs/TODO.md's runner-bar prefix feature: "the runner bar will
+    // transition to that color for the borders when a prefix is active"
+    // (active = locked, same "active" the chip's own background text
+    // describes two sentences earlier). A separate overlay rather than a
+    // new override property on Widgets.Panel itself — Panel's border
+    // colour is entirely computed from its own hover/active/focus state
+    // machine (Widgets/WidgetStates.js's surfaceColors()), shared by every
+    // consumer in the shell; adding an arbitrary-colour override there
+    // would be a shared-component change this one feature does not need,
+    // when a same-geometry sibling drawn on top does the same job with no
+    // risk to any other Panel user.
+    Rectangle {
+        anchors.fill: panel
+        radius: panel.radius
+        color: "transparent"
+        border.width: Config.Appearance.borderWidthStrong
+        border.color: root.lockedPrefix.length > 0 ? Prefixes.color(Config.Appearance, root.lockedPrefix) : Config.Appearance.panelBorder
+        opacity: root.lockedPrefix.length > 0 ? 1 : 0
+
+        Behavior on border.color {
+            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+        }
+        Behavior on opacity {
+            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
     }
     } // panelWrap
