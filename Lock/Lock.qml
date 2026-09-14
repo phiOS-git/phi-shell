@@ -363,11 +363,15 @@ WlSessionLock {
             }
             onLoaded: if (item) item.running = Qt.binding(function () { return !root.authenticated })
         }
-        Component { id: lavaFx; Local.LavaLamp {} }
-        Component { id: matrixFx; Local.MatrixRain {} }
-        Component { id: starFx; Local.Starfield {} }
-        Component { id: plasmaFx; Local.Plasma {} }
-        Component { id: lifeFx; Local.Life {} }
+        // docs/TODO.md: "ambient effects... should have many settings:
+        // some shared (eg. speed) some specific for the selected one" —
+        // speed is shared across every effect; intensityFor(key) is each
+        // effect's own per-key value (Config/LockPrefs.qml's own header).
+        Component { id: lavaFx; Local.LavaLamp { speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("lava") } }
+        Component { id: matrixFx; Local.MatrixRain { speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("matrix") } }
+        Component { id: starFx; Local.Starfield { speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("starfield") } }
+        Component { id: plasmaFx; Local.Plasma { speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("plasma") } }
+        Component { id: lifeFx; Local.Life { speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("life") } }
 
         Column {
             anchors.centerIn: parent

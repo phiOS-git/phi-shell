@@ -29,6 +29,13 @@ Item {
     // Peak opacity of a blob centre. Low, so the clock / password field on
     // top stay readable.
     property real intensity: 0.28
+    // docs/TODO.md: "ambient effects... should have many settings: some
+    // shared (eg. speed)" — a plain multiplier on every per-tick motion
+    // delta below, not a second timer interval: changing `interval`
+    // instead would also change how often the colour phase and gradient
+    // repaint happen, coupling "how fast it moves" to "how smooth it
+    // looks" for no reason.
+    property real speed: 1.0
 
     readonly property int blobCount: 7
     property var blobs: []
@@ -61,13 +68,13 @@ Item {
         running: root.running && root.visible && root.width > 0 && root.height > 0
         repeat: true
         onTriggered: {
-            root.phase += 0.006
+            root.phase += 0.006 * root.speed
             var b = root.blobs
             for (var i = 0; i < b.length; i++) {
                 var blob = b[i]
-                blob.wob += blob.wobRate
-                blob.y += blob.vy
-                blob.x += Math.sin(blob.wob) * 0.0012
+                blob.wob += blob.wobRate * root.speed
+                blob.y += blob.vy * root.speed
+                blob.x += Math.sin(blob.wob) * 0.0012 * root.speed
                 // wrap softly top/bottom
                 if (blob.y < -0.4) blob.y = 1.4
                 else if (blob.y > 1.4) blob.y = -0.4

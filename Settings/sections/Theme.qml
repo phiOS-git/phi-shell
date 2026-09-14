@@ -1054,6 +1054,45 @@ Column {
                 }
             }
         }
+
+        // docs/TODO.md: "ambient effects look great, they should have many
+        // settings: some shared (eg. speed) some specific for the selected
+        // one." Speed applies to whichever effect is picked above (one
+        // multiplier every Lock/*.qml effect already scales its own motion
+        // by — see Config/LockPrefs.qml's own header); Intensity is scoped
+        // to the CURRENTLY selected effect specifically, each with its own
+        // stored value and its own pre-existing default.
+        SettingsRow {
+            visible: Config.LockPrefs.effect !== "none"
+            title: "Speed"
+            description: "Applies to whichever ambient effect is selected above."
+            Widgets.NumberField {
+                value: Config.LockPrefs.speed
+                from: 0.25; to: 3.0; step: 0.25; decimals: 2
+                suffix: "×"
+                onCommitted: (v) => Config.LockPrefs.setSpeed(v)
+            }
+        }
+        SettingsRow {
+            visible: Config.LockPrefs.effect !== "none"
+            title: "Intensity"
+            description: "Specific to the currently-selected effect — Matrix and Lava lamp are deliberately faint by default, Starfield and Plasma are not."
+            Widgets.NumberField {
+                // Plain binding, no extra re-seed mechanism needed: this
+                // reads Config.LockPrefs.effect directly (as the function
+                // argument) and Config.LockPrefs.prefs indirectly (inside
+                // intensityFor() itself) — QML's dependency tracker follows
+                // property reads through a called function just as it
+                // would a direct property access, so this already
+                // re-evaluates correctly on either changing. NumberField's
+                // own onValueChanged (Widgets/NumberField.qml) re-syncs its
+                // displayed text whenever `value` changes externally like
+                // this, as long as the field isn't mid-edit.
+                value: Config.LockPrefs.intensityFor(Config.LockPrefs.effect)
+                from: 0.05; to: 1.0; step: 0.05; decimals: 2
+                onCommitted: (v) => Config.LockPrefs.setIntensity(Config.LockPrefs.effect, v)
+            }
+        }
     }
 
     // docs/TODO.md: "add a live preview of the effect in the settings
@@ -1063,47 +1102,89 @@ Column {
     // full-lockscreen dimensions normally; here they just get a smaller
     // Item to fill instead — every effect already scales its own grid/
     // point positions off `width`/`height`, so no effect-side change was
-    // needed for this). `running: true` unconditionally, since there's no
-    // lock/authenticated state to freeze against here — the settings
-    // panel is not the lock screen.
+    // needed for this).
+    //
+    // docs/TODO.md (style pass): "the settings panel now can be laggy
+    // especially with live previews. Make them toggable and hidden by
+    // default (should be toggled on when their relative option like
+    // ambient effect change)." This ran `active: true` unconditionally —
+    // Life (a real Conway's-game-of-life simulation) and MatrixRain in
+    // particular are genuinely expensive continuous Canvas repaints, and
+    // this box sat there running for the ENTIRE time Theme was the open
+    // settings section, whether or not the user was even looking at this
+    // part of the page. `_previewLive` now starts false (hidden by
+    // default, matching the entry's own wording) and the Loader is gated
+    // on it; picking a different effect above sets it back to true (also
+    // per the entry's own wording — a changed selection is exactly the
+    // moment a live look is actually wanted), and a small toggle lets the
+    // user turn it off again (or back on) whenever they like.
     SettingsGroup {
+        id: ambientPreviewGroup
         title: "Ambient effect preview"
         preview: true
         visible: Config.LockPrefs.effect !== "none"
 
+        property bool previewLive: false
+        // Auto-shows the preview the moment the selection actually
+        // changes. Explicit id reference, not a bare `parent` — Connections
+        // is a plain QtObject, not an Item, so its own `parent` is not
+        // reliably the enclosing SettingsGroup the way an Item's would be
+        // (the same class of gotcha Widgets/Panel.qml's own header already
+        // flags for a *different* parent-vs-contentItem indirection).
+        Connections {
+            target: Config.LockPrefs
+            function onEffectChanged() { ambientPreviewGroup.previewLive = true }
+        }
+
         SettingsRow {
             wide: true
             title: "Live preview"
-            description: "The currently-selected effect, running live."
-            Item {
+            description: ambientPreviewGroup.previewLive
+                ? "The currently-selected effect, running live."
+                : "Hidden by default — some effects are expensive to render continuously. Pick a different effect above, or show it manually."
+            Column {
                 width: parent.width
-                height: root.chWidth * 20
-                clip: true
+                spacing: root.gap
+                Widgets.StyledButton {
+                    label: ambientPreviewGroup.previewLive ? "Hide preview" : "Show preview"
+                    onClicked: ambientPreviewGroup.previewLive = !ambientPreviewGroup.previewLive
+                }
+                Item {
+                    width: parent.width
+                    height: root.chWidth * 20
+                    clip: true
+                    visible: ambientPreviewGroup.previewLive
 
-                Loader {
-                    anchors.fill: parent
-                    // Always active while alive: Settings/Settings.qml's
-                    // own Loader already destroys this whole section (and
-                    // everything in it) the moment another section becomes
-                    // active, so there is no separate "on this page but
-                    // scrolled off" state worth guarding against here.
-                    active: true
-                    sourceComponent: {
-                        switch (Config.LockPrefs.effect) {
-                        case "lava": return lavaPreview
-                        case "matrix": return matrixPreview
-                        case "starfield": return starPreview
-                        case "plasma": return plasmaPreview
-                        case "life": return lifePreview
-                        default: return null
+                    Loader {
+                        anchors.fill: parent
+                        // Settings/Settings.qml's own Loader already
+                        // destroys this whole section (and everything in
+                        // it) the moment another section becomes active,
+                        // so there is no separate "on this page but
+                        // scrolled off" state worth guarding against here
+                        // beyond previewLive itself.
+                        active: ambientPreviewGroup.previewLive
+                        sourceComponent: {
+                            switch (Config.LockPrefs.effect) {
+                            case "lava": return lavaPreview
+                            case "matrix": return matrixPreview
+                            case "starfield": return starPreview
+                            case "plasma": return plasmaPreview
+                            case "life": return lifePreview
+                            default: return null
+                            }
                         }
                     }
+                    // Speed/intensity bindings so the preview actually
+                    // shows what the Speed/Intensity fields above are set
+                    // to, live, matching what Lock/Lock.qml itself will
+                    // use at the next real lock.
+                    Component { id: lavaPreview; LockFx.LavaLamp { running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("lava") } }
+                    Component { id: matrixPreview; LockFx.MatrixRain { running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("matrix") } }
+                    Component { id: starPreview; LockFx.Starfield { running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("starfield") } }
+                    Component { id: plasmaPreview; LockFx.Plasma { running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("plasma") } }
+                    Component { id: lifePreview; LockFx.Life { running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("life") } }
                 }
-                Component { id: lavaPreview; LockFx.LavaLamp { running: true } }
-                Component { id: matrixPreview; LockFx.MatrixRain { running: true } }
-                Component { id: starPreview; LockFx.Starfield { running: true } }
-                Component { id: plasmaPreview; LockFx.Plasma { running: true } }
-                Component { id: lifePreview; LockFx.Life { running: true } }
             }
         }
     }

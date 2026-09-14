@@ -23,6 +23,9 @@ Item {
 
     property bool running: true
     property real intensity: 0.85
+    // docs/TODO.md: "ambient effects... should have many settings: some
+    // shared (eg. speed)" — see Lock/LavaLamp.qml's own identical comment.
+    property real speed: 1.0
 
     readonly property int cols: 32
     readonly property int rows: 18
@@ -33,7 +36,7 @@ Item {
         running: root.running && root.visible && root.width > 0 && root.height > 0
         repeat: true
         onTriggered: {
-            root.t += 0.035
+            root.t += 0.035 * root.speed
             canvas.requestPaint()
         }
     }
