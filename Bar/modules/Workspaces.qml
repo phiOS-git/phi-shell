@@ -180,12 +180,27 @@ Item {
         // `togglespecialworkspace scratch`; MOD+SHIFT+A moves the focused
         // window into it). No `active` state — see the module comment: the
         // special workspace can read as active alongside a numeric one.
+        //
+        // docs/TODO.md: "the scratchpad icon does not call the scratchpad".
+        // This used to go through Services.HyprlandBridge.dispatch()
+        // (Hyprland.dispatch(), Quickshell's own IPC call, no `hyprctl`
+        // subprocess) — the SAME mechanism the old, deleted
+        // Bar/modules/SpecialWorkspaces.qml used for its own scratchpad-
+        // style toggles, which ADR 134 (this file's own header) already
+        // records as "never worked on real hardware". Every OTHER
+        // Hyprland-triggering action in this repo instead shells out via
+        // `hyprctl dispatch` (Launcher.qml, AltTab.qml, Services/Agent.qml,
+        // Services/PowerActions.qml, Services/NightShift.qml) —
+        // HyprlandBridge.qml's own dispatch() comment admits it has never
+        // been proven, since the workspace strip switches through the
+        // model's own activate() instead and never needed it. Switched to
+        // the proven pattern.
         Widgets.Segment {
             ambient: "isle"
             squared: true
             glyph: Glyphs.console
             label: ""
-            onActivated: Services.HyprlandBridge.dispatch("togglespecialworkspace scratch")
+            onActivated: Quickshell.execDetached(["hyprctl", "dispatch", "togglespecialworkspace", "scratch"])
         }
     }
 }
