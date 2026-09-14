@@ -587,8 +587,63 @@ Column {
         SettingsRow {
             optionId: "theme.nightshift"
             title: "Night shift"
-            description: "Warms the display in the evening."
-            Widgets.Toggle { checked: Services.NightShift.enabled; onToggled: (v) => Services.NightShift.setEnabled(v) }
+            description: Services.NightShift.scheduleMode === "off"
+                ? "Warms the display in the evening."
+                : "Controlled by the schedule below."
+            Widgets.Toggle {
+                checked: Services.NightShift.enabled
+                enabled: Services.NightShift.scheduleMode === "off"
+                onToggled: (v) => Services.NightShift.setEnabled(v)
+            }
+        }
+        SettingsRow {
+            title: "Schedule"
+            description: "Turn night shift on and off automatically instead of by hand."
+            wide: true
+            Row {
+                spacing: root.gap
+                Repeater {
+                    model: [
+                        { key: "off", label: "Off" },
+                        { key: "auto", label: "Automatic" },
+                        { key: "custom", label: "Custom hours" }
+                    ]
+                    Widgets.StyledButton {
+                        required property var modelData
+                        label: modelData.label
+                        active: Services.NightShift.scheduleMode === modelData.key
+                        onClicked: Services.NightShift.setScheduleMode(modelData.key)
+                    }
+                }
+            }
+        }
+        Widgets.Reveal {
+            shown: Services.NightShift.scheduleMode === "auto"
+            SettingsRow {
+                title: "Automatic window"
+                description: "Fixed default — " + Services.NightShift.autoStartHour + ":00 to "
+                    + Services.NightShift.autoEndHour + ":00. Not location-based: this shell has no source for a real sunset/sunrise time, so it's a sensible fixed evening-to-morning window rather than one computed per day. Use Custom hours to pick your own."
+                wide: true
+            }
+        }
+        Widgets.Reveal {
+            shown: Services.NightShift.scheduleMode === "custom"
+            SettingsRow {
+                title: "Starts at"
+                Widgets.NumberField {
+                    value: Services.NightShift.scheduleStartHour
+                    step: 1; suffix: ":00"; from: 0; to: 23
+                    onCommitted: (v) => Services.NightShift.setScheduleStartHour(Math.round(v))
+                }
+            }
+            SettingsRow {
+                title: "Ends at"
+                Widgets.NumberField {
+                    value: Services.NightShift.scheduleEndHour
+                    step: 1; suffix: ":00"; from: 0; to: 23
+                    onCommitted: (v) => Services.NightShift.setScheduleEndHour(Math.round(v))
+                }
+            }
         }
         SettingsRow {
             title: "True Tone"
