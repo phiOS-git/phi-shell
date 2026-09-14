@@ -43,10 +43,16 @@ Widgets.Segment {
     readonly property bool lowPercent: Services.PowerBridge.percentage < Services.PowerBridge.lowPercentThreshold
     readonly property bool anomaly: Services.PowerBridge.anomaly
     readonly property bool charging: root.present && !Services.PowerBridge.discharging
+    readonly property bool saverActive: Services.PowerBridge.batterySaverActive
 
     visible: root.present
     label: root.percent + "%"
-    tone: !root.anomaly ? "" : (root.lowPercent ? "error" : "warn")
+    // docs/TODO.md: "have a battery saving mode ... must have visual
+    // feedback on the battery in the status bar." anomaly still wins when
+    // both apply — a critically low or high-discharge-rate battery stays
+    // urgent (error/warn) even while saver is also active, rather than a
+    // calmer "info" tone masking it.
+    tone: root.anomaly ? (root.lowPercent ? "error" : "warn") : (root.saverActive ? "info" : "")
     active: Services.BarPopout.which === "battery"
 
     property real level: 1

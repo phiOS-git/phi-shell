@@ -458,6 +458,14 @@ PanelWindow {
                     value: Math.round(Services.PowerBridge.timeToEmpty / 3600) + "h "
                         + (Math.round(Services.PowerBridge.timeToEmpty / 60) % 60) + "m"
                 }
+                // docs/TODO.md: "have a battery saving mode ... The battery
+                // overlay (from the status bar) must have the switch."
+                Widgets.ToggleRow {
+                    width: parent.width
+                    label: "Battery saver"
+                    checked: Services.PowerBridge.batterySaverActive
+                    onToggled: (v) => Services.PowerBridge.setBatterySaverActive(v)
+                }
             }
 
             // gpu — the live util/temp readout is on the bar button

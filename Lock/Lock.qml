@@ -299,11 +299,17 @@ WlSessionLock {
         // Settings → Theme and read from Config.LockPrefs. Every effect
         // exposes `running`, bound here to freeze it the moment the
         // conceal fade starts.
+        //
+        // docs/TODO.md: "have a battery saving mode" — suppressed while
+        // Services.PowerBridge.batterySaverActive, a READ-SIDE override
+        // only: the user's actual Config.LockPrefs.effect choice is never
+        // written to or touched, so it is exactly what it was before the
+        // instant saver turns back off, with nothing to restore.
         Loader {
             id: effectLoader
             anchors.fill: parent
             z: -1
-            active: Config.LockPrefs.effect !== "none"
+            active: Config.LockPrefs.effect !== "none" && !Services.PowerBridge.batterySaverActive
             sourceComponent: {
                 switch (Config.LockPrefs.effect) {
                 case "lava": return lavaFx
