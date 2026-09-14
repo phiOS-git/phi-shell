@@ -341,6 +341,16 @@ PanelWindow {
                     label: "Network"
                     value: Services.WifiBridge.connected ? Services.WifiBridge.ssid : "not connected"
                 }
+                // docs/TODO.md: "clicking on the wifi icon should show the
+                // list of available wifi to connect" — Widgets/
+                // WifiNetworkList.qml, shared with Settings/sections/
+                // Connectivity.qml below. `active` ties the scan to this
+                // card actually being the open one, not shell startup —
+                // see that widget's own header for why.
+                Widgets.WifiNetworkList {
+                    width: parent.width
+                    active: root.which === "wifi"
+                }
                 Widgets.AreaChart {
                     width: parent.width
                     height: root.chWidth * 5
