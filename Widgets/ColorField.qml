@@ -77,6 +77,8 @@ Column {
             width: WidgetStates.chToPixels(Config.Appearance.space6, root.chWidth) * 1.4
             placeholder: "#rrggbb"
             invalid: text.length > 0 && !/^#([0-9a-fA-F]{6})$/.test(text)
+            // Narrow hex field — same reasoning as NumberField.
+            clearable: false
             onCommitted: (t) => root._accept(t)
         }
 

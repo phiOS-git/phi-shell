@@ -42,6 +42,9 @@ PanelWindow {
     Widgets.Scrim {
         anchors.fill: parent
         shown: root.shown
+        // docs/TODO.md, style pass: same "warning/alert" bucket as
+        // BatteryAlert — gets the stronger intensity.
+        strong: true
     }
 
     Item {

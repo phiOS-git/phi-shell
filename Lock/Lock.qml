@@ -79,6 +79,38 @@ WlSessionLock {
     property int attempts: 0
     property string errorText: ""
 
+    // Style pass 2026-09-14 (docs/TODO.md: "lock screen has no 'locked'
+    // state/timer after too many failed attempts, and no wrong-password
+    // visual feedback"). Purely additive, on top of the fail-closed switch
+    // below — it never touches the PamResult.Success branch, and every
+    // branch it DOES touch already led to "stay locked" before this; the
+    // only behaviour change is that enough consecutive failures now also
+    // disables the field and shows a countdown, rather than letting
+    // retryTimer immediately open a fresh PAM conversation every time.
+    // Thresholds are a plain, common-OS-convention choice (5 attempts, a
+    // 30s cooldown) — there is no design-token or prior directive naming
+    // either number.
+    readonly property int lockoutThreshold: 5
+    readonly property int lockoutSeconds: 30
+    property bool lockedOut: false
+    property int lockoutRemaining: 0
+
+    Timer {
+        id: lockoutCountdown
+        interval: 1000
+        repeat: true
+        running: root.lockedOut
+        onTriggered: {
+            root.lockoutRemaining -= 1
+            if (root.lockoutRemaining <= 0) {
+                root.lockedOut = false
+                root.attempts = 0
+                root.errorText = ""
+                if (root.locked) root.pam.start()
+            }
+        }
+    }
+
     // Set to true ONLY in the PamResult.Success branch below, and reset to
     // false at the start of every lock (lockIpc.lock()). It is the conceal
     // fade's trigger and nothing else reads or writes it. `locked` is never
@@ -120,7 +152,14 @@ WlSessionLock {
             }
             root.attempts += 1
             root.errorText = PamResult.toString(result)
-            if (root.locked) root.retryTimer.restart()
+            if (root.attempts >= root.lockoutThreshold) {
+                root.lockedOut = true
+                root.lockoutRemaining = root.lockoutSeconds
+                // No retryTimer restart here — a fresh PAM conversation
+                // only starts again once the countdown above reaches zero.
+            } else if (root.locked) {
+                root.retryTimer.restart()
+            }
         })
         // Found the hard way on real hardware: with no retry here, a
         // start-time failure (StartFailed -- e.g. the required /etc/pam.d
@@ -174,6 +213,8 @@ WlSessionLock {
         function lock(): void {
             root.attempts = 0
             root.errorText = ""
+            root.lockedOut = false
+            root.lockoutRemaining = 0
             // Per-lock reset — see the `authenticated` property comment for
             // why a stale `true` here would make this lock un-unlockable.
             root.authenticated = false
@@ -391,10 +432,35 @@ WlSessionLock {
                 // A terminal input has a hard edge, not a rounded card —
                 // the sharpest radius the grammar carries.
                 radius: Config.Appearance.radiusSmall
+                // invalid alone is enough here — WidgetStates.resolve()
+                // already gives invalid precedence over loading, so a
+                // `loading: root.lockedOut` alongside this would be a
+                // silent no-op, not a second real effect.
+                invalid: root.errorText.length > 0 || root.lockedOut
+
+                // Style pass: a short, deliberate shake on every failed
+                // attempt — category C (a rare, emphatic single event, the
+                // same bucket unlock's own crossfade uses), triggered once
+                // per errorText change rather than continuously, so it
+                // never fires on ordinary typing.
+                transform: Translate { id: shakeT; x: 0 }
+                SequentialAnimation {
+                    id: shakeAnim
+                    loops: 1
+                    NumberAnimation { target: shakeT; property: "x"; to: -fieldCell.width * 0.6; duration: 45 }
+                    NumberAnimation { target: shakeT; property: "x"; to: fieldCell.width * 0.6; duration: 90 }
+                    NumberAnimation { target: shakeT; property: "x"; to: -fieldCell.width * 0.4; duration: 90 }
+                    NumberAnimation { target: shakeT; property: "x"; to: 0; duration: 60 }
+                }
+                Connections {
+                    target: root
+                    function onErrorTextChanged() { if (root.errorText.length > 0) shakeAnim.restart() }
+                }
 
                 TextInput {
                     id: passwordField
                     width: parent.width
+                    enabled: !root.lockedOut
                     // Old-terminal input: the monospace role, a solid
                     // block caret (cursorDelegate), and `*` for every
                     // masked character — the same bullet the Plymouth
@@ -445,7 +511,7 @@ WlSessionLock {
                     // just inert.
 
                     Keys.onReturnPressed: {
-                        if (root.pam.responseRequired) root.pam.respond(text)
+                        if (!root.lockedOut && root.pam.responseRequired) root.pam.respond(text)
                         text = ""
                     }
                 }
@@ -454,8 +520,10 @@ WlSessionLock {
             Widgets.StyledText {
                 anchors.horizontalCenter: parent.horizontalCenter
                 tone: "error"
-                invalid: root.errorText.length > 0
-                text: root.errorText.length > 0 ? root.errorText : (root.pam.message.length > 0 ? root.pam.message : " ")
+                invalid: root.errorText.length > 0 || root.lockedOut
+                text: root.lockedOut
+                    ? ("Too many attempts — try again in " + root.lockoutRemaining + "s")
+                    : (root.errorText.length > 0 ? root.errorText : (root.pam.message.length > 0 ? root.pam.message : " "))
             }
 
             Column {

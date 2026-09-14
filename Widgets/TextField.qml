@@ -34,6 +34,12 @@ Item {
     property alias inputMethodHints: input.inputMethodHints
     property alias horizontalAlignment: input.horizontalAlignment
     property alias readOnly: input.readOnly
+    // docs/TODO.md, style pass: "no clear/clean button for searchbars." Any
+    // TextField can opt in — on by default, since every real caller of this
+    // widget so far is either a search/filter field or a short value entry
+    // where clearing in one tap is welcome either way; a caller that truly
+    // never wants it (a secrets field, say) can turn it off.
+    property bool clearable: true
 
     readonly property bool keyboardFocus: input.activeFocus
 
@@ -58,6 +64,8 @@ Item {
     // features-change: the shared field/button height, so a TextField and a
     // StyledButton in the same Row match instead of the button towering.
     readonly property real _controlHeight: WidgetStates.controlHeight(Config.Appearance, chWidth)
+    readonly property bool _showClear: root.clearable && input.text.length > 0 && !root.readOnly
+    readonly property real _clearSlot: _showClear ? (_controlHeight * 0.8 + padH) : 0
 
     readonly property string resolvedState: WidgetStates.resolve({
         enabled: root.enabled, hovered: false, pressed: false,
@@ -96,6 +104,38 @@ Item {
         text: root.placeholder
     }
 
+    // The clear affordance: a muted "×" that brightens on hover, the same
+    // low-key weight Widgets/SmallButton uses for a minor action — clearing
+    // a field is common enough to deserve one tap, not a select-all-delete.
+    Item {
+        id: clearBtn
+        visible: root._showClear
+        anchors.right: parent.right
+        anchors.rightMargin: root.padH * 0.5
+        anchors.verticalCenter: parent.verticalCenter
+        width: root._controlHeight * 0.8
+        height: width
+
+        StyledIcon {
+            anchors.centerIn: parent
+            glyph: "×"
+            sizeStep: 1
+            color: clearHover.hovered ? Config.Appearance.textPrimary : Config.Appearance.textMuted
+            Behavior on color {
+                ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+            }
+        }
+        HoverHandler { id: clearHover; cursorShape: Qt.PointingHandCursor }
+        TapHandler {
+            onTapped: {
+                input.text = ""
+                root.edited("")
+                root.committed("")
+                input.forceActiveFocus()
+            }
+        }
+    }
+
     // Set for the duration of the explicit blur below, and read by
     // onEditingFinished: Qt's TextInput emits editingFinished on ANY focus
     // loss, not just Enter — so `input.focus = false` here would otherwise
@@ -110,7 +150,7 @@ Item {
         id: input
         anchors.fill: parent
         anchors.leftMargin: root.padH
-        anchors.rightMargin: root.padH
+        anchors.rightMargin: root.padH + root._clearSlot
         verticalAlignment: Text.AlignVCenter
         clip: true
         activeFocusOnTab: true

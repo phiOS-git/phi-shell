@@ -50,6 +50,11 @@ Singleton {
     readonly property color border: _color(_tok("border", Tokens.border))
     readonly property color borderStrong: _color(_tok("border-strong", Tokens.borderStrong))
     readonly property color overlayScrim: _color(Tokens.overlayScrim)
+    // Style pass 2026-09-14 (docs/TODO.md's dim-intensity split): for the
+    // small set of full-attention blocking surfaces (screenshot selection,
+    // Alt-Tab/overview, battery/timer alerts, a destructive confirmation).
+    // Same non-overridable treatment as overlayScrim itself.
+    readonly property color overlayScrimStrong: _color(Tokens.overlayScrimStrong)
 
     // --- Accent and semantic state ------------------------------------------
     readonly property color accent: _color(_tok("accent", Tokens.accent))

@@ -445,12 +445,23 @@ PanelWindow {
                         onToggled: (v) => v ? Services.Vpn.up(modelData.name) : Services.Vpn.down(modelData.name)
                     }
                 }
-                Widgets.ToggleRow {
+                // Style pass 2026-09-14 (docs/TODO.md: "the VPN switch looks
+                // on and transparent when no available configs are there,
+                // that makes no sense, if it's not available it should not
+                // show"). A disabled-but-visible switch is right for the
+                // Settings page, where there is room to explain WHY it is
+                // off (Settings/sections/Connectivity.qml keeps that
+                // pattern, unchanged, per its own on-file user directive) —
+                // but this compact popout has no room for an explanation,
+                // so a switch that can never be flipped just reads as a
+                // broken control. Plain status text instead; the deep-link
+                // below already offers the one real next action (import a
+                // config in Settings).
+                Widgets.StyledText {
                     visible: Services.Vpn.tunnels.length === 0
                     width: parent.width
-                    enabled: false
-                    label: "VPN · no tunnels"
-                    checked: false
+                    kind: "label"; sizeStep: 0
+                    text: "VPN — no tunnels configured"
                 }
                 Widgets.SmallButton {
                     width: parent.width

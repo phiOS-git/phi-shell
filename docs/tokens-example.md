@@ -45,6 +45,7 @@ Singleton {
     readonly property string border: "#242320"
     readonly property string borderStrong: "#3e3d3a"
     readonly property string overlayScrim: "#00000099"
+    readonly property string overlayScrimStrong: "#000000cc"
 
     // --- Tier 1: accent --------------------------------------------------
     readonly property string accent: "#d3a0ac"

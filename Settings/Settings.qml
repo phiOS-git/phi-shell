@@ -320,11 +320,58 @@ PanelWindow {
                             text: "search settings — Enter cycles the matches"
                             visible: searchField.text.length === 0
                         }
+                        // docs/TODO.md, style pass: references/settings-
+                        // layout-reference.PNG's "advanced options switch to
+                        // simplify navigation" — spirit only (that reference
+                        // is a different shell's own skin, not something to
+                        // copy pixel-for-pixel), same row as the search field
+                        // the way the reference places it. A row opts in with
+                        // SettingsRow's own `advanced: true`; this just
+                        // exposes the switch that gates them.
+                        Row {
+                            id: advancedRow
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: root.chWidth * Config.Appearance.space2
+                            Widgets.StyledText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                kind: "label"; sizeStep: 0
+                                text: "Advanced"
+                            }
+                            Widgets.Toggle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                checked: Services.SettingsPanel.showAdvanced
+                                onToggled: (v) => Services.SettingsPanel.setShowAdvanced(v)
+                            }
+                        }
+                        // docs/TODO.md, style pass: "no clear/clean button
+                        // for searchbars" — same grammar as Launcher's own.
+                        Widgets.StyledIcon {
+                            id: searchClearGlyph
+                            visible: searchField.text.length > 0
+                            glyph: "×"
+                            sizeStep: 2
+                            anchors.right: advancedRow.left
+                            anchors.rightMargin: root.chWidth * Config.Appearance.space2
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: searchClearHover.hovered ? Config.Appearance.textPrimary : Config.Appearance.textMuted
+                            Behavior on color {
+                                ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                            }
+                            HoverHandler { id: searchClearHover; cursorShape: Qt.PointingHandCursor }
+                            TapHandler {
+                                onTapped: {
+                                    searchField.text = ""
+                                    searchField.forceActiveFocus()
+                                }
+                            }
+                        }
                         TextInput {
                             id: searchField
                             anchors.left: searchPrompt.right
                             anchors.leftMargin: root.chWidth
-                            anchors.right: parent.right
+                            anchors.right: searchClearGlyph.visible ? searchClearGlyph.left : advancedRow.left
+                            anchors.rightMargin: searchClearGlyph.visible ? root.chWidth * Config.Appearance.space1 : root.chWidth * Config.Appearance.space2
                             anchors.verticalCenter: parent.verticalCenter
                             font.family: Config.Appearance.fontMono
                             font.pixelSize: Config.Appearance.fontSize2

@@ -204,6 +204,9 @@ PanelWindow {
     Widgets.Scrim {
         anchors.fill: parent
         shown: root.selecting
+        // docs/TODO.md, style pass: screenshot selection is one of the
+        // "covers the bar" dims — gets the stronger intensity.
+        strong: true
     }
 
     // --- Result panel (OCR/QR text) ---------------------------------------

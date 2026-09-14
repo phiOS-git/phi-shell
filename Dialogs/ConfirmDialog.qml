@@ -38,6 +38,13 @@ PanelWindow {
     Widgets.Scrim {
         anchors.fill: parent
         shown: root.shown
+        // docs/TODO.md's style pass names screenshot/overview/battery-alert
+        // as the "covers the bar, stronger dim" bucket specifically; a
+        // destructive confirmation (reboot, forget a VPN config, …) is the
+        // same weight of full-attention blocking surface, so it gets the
+        // same treatment — a judgment call, not something the entry named
+        // by id.
+        strong: true
     }
 
     Item {

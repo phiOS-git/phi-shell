@@ -580,8 +580,37 @@ PanelWindow {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: "×"
                                 color: Prefixes.textColor(Config.Appearance, root.lockedPrefix)
+                                HoverHandler { cursorShape: Qt.PointingHandCursor }
                                 TapHandler { onTapped: root._cancelPrefix() }
                             }
+                        }
+                    }
+                }
+
+                // docs/TODO.md, style pass: "no clear/clean button for
+                // searchbars." Same muted-till-hovered "×" grammar
+                // Widgets/TextField's own clear button now uses, kept as a
+                // separate glyph here rather than migrating this field to
+                // TextField — this input's arrow-key/Tab/Escape wiring
+                // above is load-bearing launcher behaviour TextField does
+                // not forward, and re-plumbing it is a bigger, riskier
+                // change than this entry asks for.
+                Widgets.StyledIcon {
+                    id: clearGlyph
+                    visible: searchField.text.length > 0
+                    glyph: "×"
+                    sizeStep: 2
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: clearHover.hovered ? Config.Appearance.textPrimary : Config.Appearance.textMuted
+                    Behavior on color {
+                        ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                    }
+                    HoverHandler { id: clearHover; cursorShape: Qt.PointingHandCursor }
+                    TapHandler {
+                        onTapped: {
+                            searchField.text = ""
+                            searchField.forceActiveFocus()
                         }
                     }
                 }
@@ -590,7 +619,8 @@ PanelWindow {
                     id: searchField
                     anchors.left: parent.left
                     anchors.leftMargin: root.inputPrefixWidth + (prefixChip.visible ? prefixChip.width + prefixChip.anchors.leftMargin : 0)
-                    anchors.right: parent.right
+                    anchors.right: clearGlyph.visible ? clearGlyph.left : parent.right
+                    anchors.rightMargin: clearGlyph.visible ? root.chWidth * Config.Appearance.space1 : 0
                     anchors.verticalCenter: parent.verticalCenter
                     font.family: Config.Appearance.fontMono
                     font.pixelSize: Config.Appearance.fontSize2

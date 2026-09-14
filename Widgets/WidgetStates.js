@@ -128,6 +128,28 @@ function surfaceColors(appearance, resolvedState, ambient) {
         }
     }
 
+    // `ambient: "tab"` — a section-switcher grammar, deliberately distinct
+    // from a "panel" push button's full inversion: a tab never reads as a
+    // button being pressed, since selecting it is a navigation state, not a
+    // momentary action. No resting box, a hover wash (same recipe an
+    // Accordion header uses), and the current tab marked by accent text —
+    // the indicator bar itself is drawn by Widgets/TabButton.qml, since its
+    // edge depends on the strip's orientation, which this file cannot know.
+    if (ambient === "tab") {
+        switch (resolvedState) {
+        case "active":
+            return { bg: "transparent", fg: appearance.accent, border: "transparent" }
+        case "invalid":
+            return { bg: "transparent", fg: appearance.error, border: "transparent" }
+        case "focus":
+            return { bg: "transparent", fg: appearance.colorOpposite, border: appearance.focusRing }
+        case "hover":
+            return { bg: appearance.panelHover, fg: appearance.colorOpposite, border: "transparent" }
+        default:
+            return { bg: "transparent", fg: appearance.textMuted, border: "transparent" }
+        }
+    }
+
     var surface = appearance.panelBackground
     var contrast = appearance.colorOpposite
     var hoverBg = appearance.panelHover

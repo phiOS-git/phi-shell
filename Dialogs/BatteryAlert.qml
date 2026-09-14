@@ -54,6 +54,9 @@ PanelWindow {
     Widgets.Scrim {
         anchors.fill: parent
         shown: root.shown
+        // docs/TODO.md, style pass: a battery/warning alert is one of the
+        // "covers the bar" dims — gets the stronger intensity.
+        strong: true
     }
 
     Item {

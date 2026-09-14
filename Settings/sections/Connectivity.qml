@@ -363,6 +363,7 @@ Column {
 
         SettingsRow {
             wide: true
+            advanced: true
             title: "Open ports"
             description: Services.Firewall.preset === "home"
                 ? "Allowed inbound while the firewall is on."
@@ -440,6 +441,7 @@ Column {
             shown: Services.Firewall.logging
             SettingsRow {
                 wide: true
+                advanced: true
                 title: "Recently blocked"
                 Column {
                     width: parent.width

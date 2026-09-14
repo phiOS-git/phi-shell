@@ -1037,19 +1037,31 @@ Column {
                     spacing: 6
 
                     Rectangle {
+                        id: noneTile
                         width: root.chWidth * 12; height: root.chWidth * 8
                         radius: Config.Appearance.radiusSmall
                         color: Config.Appearance.surface1
                         border.width: Config.Appearance.borderWidth
+                        // Style pass: thumbnails had no hover affordance at
+                        // all — a hairline brightens on hover, distinct from
+                        // the (unchanged) accent border that marks the
+                        // CURRENT selection, so "hovering" and "selected"
+                        // never read as the same thing.
                         border.color: Services.Background.image.length === 0
-                            ? Config.Appearance.accent : Config.Appearance.border
+                            ? Config.Appearance.accent
+                            : (noneHover.hovered ? Config.Appearance.borderStrong : Config.Appearance.border)
+                        Behavior on border.color {
+                            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                        }
                         Widgets.StyledText { anchors.centerIn: parent; kind: "label"; sizeStep: 0; text: "none" }
+                        HoverHandler { id: noneHover; cursorShape: Qt.PointingHandCursor }
                         TapHandler { onTapped: Services.Background.clearImage() }
                     }
 
                     Repeater {
                         model: Services.Background.available
                         Rectangle {
+                            id: wpTile
                             required property string modelData
                             width: root.chWidth * 12; height: root.chWidth * 8
                             radius: Config.Appearance.radiusSmall
@@ -1057,7 +1069,11 @@ Column {
                             clip: true
                             border.width: Config.Appearance.borderWidth
                             border.color: Services.Background.image === modelData
-                                ? Config.Appearance.accent : Config.Appearance.border
+                                ? Config.Appearance.accent
+                                : (wpHover.hovered ? Config.Appearance.borderStrong : Config.Appearance.border)
+                            Behavior on border.color {
+                                ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                            }
                             Image {
                                 anchors.fill: parent
                                 anchors.margins: Config.Appearance.borderWidth
@@ -1066,6 +1082,7 @@ Column {
                                 asynchronous: true
                                 sourceSize.width: 256
                             }
+                            HoverHandler { id: wpHover; cursorShape: Qt.PointingHandCursor }
                             TapHandler { onTapped: Services.Background.setImage(modelData) }
                         }
                     }

@@ -216,10 +216,11 @@ PanelWindow {
                         Repeater {
                             model: root.registryRows
 
-                            Widgets.Segment {
+                            Widgets.TabButton {
                                 required property var modelData
                                 required property int index
                                 label: modelData.title
+                                indicatorEdge: "bottom"
                                 active: index === Services.NotificationPanel.tab
                                 onActivated: Services.NotificationPanel.tab = index
                             }

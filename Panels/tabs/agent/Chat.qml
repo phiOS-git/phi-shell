@@ -107,8 +107,8 @@ Item {
                 }
                 Row {
                     spacing: root.gap
-                    Widgets.StyledButton { label: "Start service"; loading: false; onClicked: root.agent.setActivated(true) }
-                    Widgets.StyledButton { label: "Recheck"; loading: false
+                    Widgets.StyledButton { label: "Start service"; loading: root.agent.activating; onClicked: root.agent.setActivated(true) }
+                    Widgets.StyledButton { label: "Recheck"; loading: root.agent.checkingHealth
                         onClicked: { root.agent.refreshHealth(); root.infra.refresh() } }
                 }
             }
@@ -134,9 +134,23 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     kind: "title"
                     elide: Text.ElideRight
-                    width: parent.width - newBtn.implicitWidth - parent.spacing
+                    width: parent.width - newBtn.implicitWidth - settingsBtn.implicitWidth - parent.spacing * 2
                     text: (root.agent.activeProject.length > 0 ? root.agent.activeProject + " › " : "")
                         + (root.currentTitle().length > 0 ? root.currentTitle() : "new chat")
+                }
+                // docs/TODO.md, style pass: "chat panel has no settings
+                // button." A minor, quiet action (SmallButton, not
+                // StyledButton — the "New" chat button is the primary
+                // action here) that deep-links to the shell Settings panel's
+                // own AI Agent section — activation, broker, model/provider,
+                // egress whitelist — the same "Show in settings…" pattern
+                // every bar popout already uses, rather than duplicating
+                // those controls inline in a chat surface.
+                Widgets.SmallButton {
+                    id: settingsBtn
+                    anchors.verticalCenter: parent.verticalCenter
+                    label: "Settings"
+                    onClicked: Services.SettingsPanel.openSection("aiAgent")
                 }
                 Widgets.StyledButton { id: newBtn; label: "New"; onClicked: root.agent.newSession() }
             }

@@ -289,11 +289,32 @@ Item {
             text: "filter clipboard…"
             visible: field.text.length === 0
         }
+        // docs/TODO.md, style pass: "no clear/clean button for searchbars."
+        Widgets.StyledIcon {
+            id: clipClearGlyph
+            visible: field.text.length > 0
+            glyph: "×"
+            sizeStep: 2
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            color: clipClearHover.hovered ? Config.Appearance.textPrimary : Config.Appearance.textMuted
+            Behavior on color {
+                ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+            }
+            HoverHandler { id: clipClearHover; cursorShape: Qt.PointingHandCursor }
+            TapHandler {
+                onTapped: {
+                    field.text = ""
+                    field.forceActiveFocus()
+                }
+            }
+        }
         TextInput {
             id: field
             anchors.left: searchPrompt.right
             anchors.leftMargin: root.chWidth
-            anchors.right: parent.right
+            anchors.right: clipClearGlyph.visible ? clipClearGlyph.left : parent.right
+            anchors.rightMargin: clipClearGlyph.visible ? root.chWidth * Config.Appearance.space1 : 0
             anchors.verticalCenter: parent.verticalCenter
             font.family: Config.Appearance.fontMono
             font.pixelSize: Config.Appearance.fontSize2
@@ -477,7 +498,20 @@ Item {
     Component {
         id: entryCard
 
-        Widgets.Panel {
+        // Style pass 2026-09-14 (docs/TODO.md: "the clipboard looks clunky
+        // and awful, it is not minimal, thin and modern as expected"). Was
+        // a Widgets.Panel per entry — a fully bordered, filled card, the
+        // widget this shell otherwise reserves for a standalone framed
+        // surface (a settings preview block, a popout body) — stacked once
+        // per clipboard entry with only a rhythm unit of gap between them,
+        // so the list read as a dense pile of boxes rather than a list.
+        // Now a flat row: no border, no persistent fill, a hover wash and a
+        // full-invert selection — the exact same recipe Widgets/ListRow
+        // already uses everywhere else a list of things lives in this
+        // shell (Settings' bluetooth/wifi/firewall lists, the launcher's
+        // own results). At rest its background matches the dock's own
+        // panelBackground exactly, so it reads as ambient, not as a card.
+        Item {
             id: card
             required property var modelData
             required property int index
@@ -489,6 +523,12 @@ Item {
             }
             readonly property bool selected: card.flatIndex === root.highlightedIndex
             readonly property bool isImage: card.modelData.mime === "image/png"
+            readonly property bool hovered: hover.hovered
+            readonly property color _bg: card.selected ? Config.Appearance.colorOpposite
+                : (card.hovered ? Config.Appearance.panelHover : Config.Appearance.panelBackground)
+            readonly property color contentColor: card.selected ? Config.Appearance.panelBackground
+                : Config.Appearance.colorOpposite
+            readonly property real padding: root.gap
 
             // Registers this delegate into root._cardItems so the preview
             // overlay's _updatePreviewPosition can find this card's Item
@@ -511,50 +551,67 @@ Item {
             }
 
             width: listCol.width
-            height: cardCol.implicitHeight + padding * 2
-            active: card.selected
+            height: content.implicitHeight + card.padding * 2
 
-            Column {
-                id: cardCol
-                width: parent.width
-                spacing: root.gap / 2
-
-                Widgets.StyledText {
-                    width: parent.width - pinBtn.width - root.chWidth
-                    mono: !card.isImage
-                    elide: Text.ElideRight
-                    maximumLineCount: 2
-                    wrapMode: Text.Wrap
-                    color: card.contentColor
-                    text: card.isImage ? "[image]"
-                        : (card.modelData.preview && card.modelData.preview.length > 0
-                            ? card.modelData.preview : "(empty)")
-                }
-                Widgets.StyledText {
-                    width: parent.width
-                    horizontalAlignment: Text.AlignRight
-                    kind: "label"
-                    sizeStep: 0
-                    color: card.selected ? card.contentColor : Config.Appearance.textMuted
-                    text: root.fmtTime(card.modelData.timestamp)
+            Rectangle {
+                id: bg
+                anchors.fill: parent
+                radius: Config.Appearance.radiusBase
+                color: card._bg
+                Behavior on color {
+                    ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
                 }
             }
 
-            // Pin control, top-right corner.
-            Widgets.StyledText {
-                id: pinBtn
-                anchors.top: parent.top
-                anchors.right: parent.right
-                mono: true
-                color: Services.Clipboard.isPinned(card.modelData.id)
-                    ? Config.Appearance.accent
-                    : (card.selected ? card.contentColor : Config.Appearance.textMuted)
-                text: Services.Clipboard.isPinned(card.modelData.id) ? "*" : "+"
+            Item {
+                id: content
+                anchors.fill: parent
+                anchors.margins: card.padding
+                implicitHeight: cardCol.implicitHeight
 
-                TapHandler {
-                    onTapped: Services.Clipboard.isPinned(card.modelData.id)
-                        ? Services.Clipboard.unpin(card.modelData.id)
-                        : Services.Clipboard.pin(card.modelData.id)
+                Column {
+                    id: cardCol
+                    width: parent.width
+                    spacing: root.gap / 2
+
+                    Widgets.StyledText {
+                        width: parent.width - pinBtn.width - root.chWidth
+                        mono: !card.isImage
+                        elide: Text.ElideRight
+                        maximumLineCount: 2
+                        wrapMode: Text.Wrap
+                        color: card.contentColor
+                        text: card.isImage ? "[image]"
+                            : (card.modelData.preview && card.modelData.preview.length > 0
+                                ? card.modelData.preview : "(empty)")
+                    }
+                    Widgets.StyledText {
+                        width: parent.width
+                        horizontalAlignment: Text.AlignRight
+                        kind: "label"
+                        sizeStep: 0
+                        color: card.selected ? card.contentColor : Config.Appearance.textMuted
+                        text: root.fmtTime(card.modelData.timestamp)
+                    }
+                }
+
+                // Pin control, top-right corner.
+                Widgets.StyledText {
+                    id: pinBtn
+                    anchors.top: parent.top
+                    anchors.right: parent.right
+                    mono: true
+                    color: Services.Clipboard.isPinned(card.modelData.id)
+                        ? Config.Appearance.accent
+                        : (card.selected ? card.contentColor : Config.Appearance.textMuted)
+                    text: Services.Clipboard.isPinned(card.modelData.id) ? "*" : "+"
+
+                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                    TapHandler {
+                        onTapped: Services.Clipboard.isPinned(card.modelData.id)
+                            ? Services.Clipboard.unpin(card.modelData.id)
+                            : Services.Clipboard.pin(card.modelData.id)
+                    }
                 }
             }
 
@@ -569,9 +626,12 @@ Item {
             // Drives root.hoverTargetId for the preview overlay (see the
             // top of this file) — does not itself show anything, purely
             // observes hover state, so it composes with the TapHandlers
-            // above without contest.
+            // above without contest. Also drives the card's own hover wash
+            // now that it is a flat row, and the pointer affordance every
+            // clickable row in this shell carries.
             HoverHandler {
                 id: hover
+                cursorShape: Qt.PointingHandCursor
                 onHoveredChanged: {
                     if (hover.hovered) root.hoverTargetId = card.modelData.id
                     // Only clear if this card is still the one that set

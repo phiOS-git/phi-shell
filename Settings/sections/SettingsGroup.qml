@@ -54,8 +54,16 @@ Column {
     // rather than being torn down and losing scroll/search position.
     property bool disabled: false
     property string disabledReason: ""
+    // docs/TODO.md, style pass: the same "advanced" gate SettingsRow.qml
+    // carries, at whole-group granularity — for a group that is ENTIRELY
+    // power-user detail (raw broker/engine readouts, a glob blocklist
+    // editor), rather than one row inside an otherwise-ordinary group.
+    // Same rule: hidden unless Services.SettingsPanel.showAdvanced, unless
+    // a live search already matches the group.
+    property bool advanced: false
 
     width: parent ? parent.width : 0
+    visible: !root.advanced || Services.SettingsPanel.showAdvanced || root.highlighted
     spacing: Config.Appearance.space2 * _ch
 
     TextMetrics {

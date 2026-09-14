@@ -185,11 +185,33 @@ PanelWindow {
                         text: "filter shortcuts…"
                         visible: searchField.text.length === 0
                     }
+                    // docs/TODO.md, style pass: "no clear/clean button for
+                    // searchbars."
+                    Widgets.StyledIcon {
+                        id: cheatClearGlyph
+                        visible: searchField.text.length > 0
+                        glyph: "×"
+                        sizeStep: 2
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: cheatClearHover.hovered ? Config.Appearance.textPrimary : Config.Appearance.textMuted
+                        Behavior on color {
+                            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                        }
+                        HoverHandler { id: cheatClearHover; cursorShape: Qt.PointingHandCursor }
+                        TapHandler {
+                            onTapped: {
+                                searchField.text = ""
+                                searchField.forceActiveFocus()
+                            }
+                        }
+                    }
                     TextInput {
                         id: searchField
                         anchors.left: prompt.right
                         anchors.leftMargin: fadeRoot.chWidth
-                        anchors.right: parent.right
+                        anchors.right: cheatClearGlyph.visible ? cheatClearGlyph.left : parent.right
+                        anchors.rightMargin: cheatClearGlyph.visible ? fadeRoot.chWidth * Config.Appearance.space1 : 0
                         anchors.verticalCenter: parent.verticalCenter
                         font.family: Config.Appearance.fontMono
                         font.pixelSize: Config.Appearance.fontSize2

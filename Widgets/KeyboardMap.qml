@@ -71,7 +71,7 @@ Item {
             border.color: cell.selected ? Config.Appearance.accent
                 : (hover.hovered ? Config.Appearance.borderStrong : Config.Appearance.border)
 
-            HoverHandler { id: hover }
+            HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
             TapHandler {
                 onTapped: {
                     root.selectedRow = cell.cellRow

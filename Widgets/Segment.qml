@@ -374,6 +374,7 @@ Item {
     HoverHandler {
         id: hoverHandler
         enabled: root.enabled && !root.loading
+        cursorShape: Qt.PointingHandCursor
     }
 
     TapHandler {

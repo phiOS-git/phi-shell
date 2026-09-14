@@ -88,6 +88,9 @@ Singleton {
         onExited: (code) => { root.available = (code === 0); root.healthChecked = true; healthProc.running = false }
     }
     function refreshHealth() { if (!healthProc.running) healthProc.running = true }
+    // Style pass: Panels/tabs/agent/Chat.qml's "Recheck" button had a
+    // hardcoded `loading: false` — this is the real signal for it.
+    readonly property bool checkingHealth: healthProc.running
 
     // docs/TODO.md: "phi agent should run automatically as the panel is
     // opened for the first time (or on startup). It should not waste
@@ -527,6 +530,15 @@ Singleton {
         unitProc.command = ["systemctl", "--user", on ? "start" : "stop", "phi-agent-a1.service"]
         unitProc.running = true
     }
+    // Style pass: Panels/tabs/agent/Chat.qml's "Start service" button had a
+    // hardcoded `loading: false` — this is the real signal for it. Just the
+    // systemctl call itself, not the health re-check its own onExited
+    // chains into (checkingHealth, above) — sharing that flag between the
+    // two buttons would light up "Recheck"'s spinner on a plain Start
+    // click and vice versa, a cross-talk bug worse than the small window
+    // where Start's spinner ends slightly before the panel actually
+    // updates to "online".
+    readonly property bool activating: unitProc.running
 
     // =====================================================================
     // phios-agente-delta.md — the four-section panel's data (OOP-27).

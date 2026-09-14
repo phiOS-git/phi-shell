@@ -66,6 +66,9 @@ Row {
         horizontalAlignment: Text.AlignHCenter
         inputMethodHints: Qt.ImhFormattedNumbersOnly
         invalid: text.length > 0 && isNaN(parseFloat(text))
+        // Narrow (space6·ch) and never meant to sit empty — a clear button
+        // here would just crowd the digits for no real gain over overtyping.
+        clearable: false
         onCommitted: (t) => {
             var n = parseFloat(t)
             if (!isNaN(n)) root._apply(n)

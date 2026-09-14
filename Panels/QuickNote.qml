@@ -132,7 +132,7 @@ PanelWindow {
             }
         }
 
-        HoverHandler { id: hoverHandler }
+        HoverHandler { id: hoverHandler; cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: Services.QuickNote.toggle() }
     }
 

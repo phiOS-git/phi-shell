@@ -100,6 +100,7 @@ Column {
 
     // ---- A2 working-directory blocklist (phios-agente-delta.md §3.4) ----
     SettingsGroup {
+        advanced: true
         title: "Coding-agent blocklist"
         caption: "Directories `phi agent code` and the folder-of-interest picker refuse. One glob per line; '#' comments; '~' expands. A guard-rail on the picker, not the security boundary. Saved to ~/.config/phi-agent/code-blocklist."
 
@@ -152,6 +153,7 @@ Column {
 
     // ---- services (runtime status, read-only) -----------------------
     SettingsGroup {
+        advanced: true
         title: "Services"
         caption: "All phi-agent units are declared and never auto-enabled (phios-agente.md). Start/stop and enable them with `systemctl --user`. The A2 remote surface is status-only here — starting phi-agent-a2-remote* is how a session is declared remote (§10.3)."
 
@@ -181,6 +183,7 @@ Column {
 
     // ---- broker & engine configuration (read-only readout) ----------
     SettingsGroup {
+        advanced: true
         title: "Broker & engine"
         caption: "Read-only. Edit these in ~/.config/phi-agent/ (broker.json, <inst>/opencode/opencode.json, tinyproxy/whitelist) — the key is a separate mode-600 file, never shown. Full specification: phios-agente.md (ADR 084–100)."
 

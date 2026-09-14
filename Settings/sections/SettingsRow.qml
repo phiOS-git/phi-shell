@@ -44,6 +44,21 @@ Item {
     property string description: ""
     property bool resettable: false
     property bool wide: false
+    // docs/TODO.md, style pass: the reference's "advanced options" switch
+    // (Services.SettingsPanel.showAdvanced). A row marked advanced stays
+    // out of the layout — not merely dimmed — until that is on, UNLESS a
+    // live search already matches it: searching for an advanced setting by
+    // name must still find it, the same "search surfaces, never hides"
+    // rule Options.matches()/`highlighted` already applies everywhere else
+    // in this panel. Implemented as this root Item's own `visible` binding
+    // (below) — a caller that ALSO sets its own `visible:` on a row (a few
+    // already do, e.g. Connectivity.qml's Tailscale rows) overrides that
+    // binding outright, the ordinary QML rule for an instantiation-site
+    // property assignment. No current `advanced: true` row also sets its
+    // own `visible:`, but a future one combining both needs to fold the
+    // caller's own condition into that binding by hand, not just add
+    // `advanced: true` and expect it to compose automatically.
+    property bool advanced: false
     signal reset()
 
     default property alias control: slot.data
@@ -67,8 +82,22 @@ Item {
         && root.optionId.length > 0
         && Options.matches(root.optionId, Services.SettingsPanel.query)
 
-    readonly property bool _first: parent && parent.children.length > 0
-        && parent.children[0] === root
+    // Accounts for advanced rows collapsing out of the layout ahead of it:
+    // the first VISIBLE sibling draws no leading hairline, not just the
+    // literal first child. Each `.visible` read inside this loop is a real
+    // binding dependency (QML tracks property reads made while evaluating
+    // a binding, loops included), so this stays correct as showAdvanced or
+    // a search match flips a sibling's visibility.
+    readonly property bool _first: {
+        if (!parent) return true
+        for (var i = 0; i < parent.children.length; i++) {
+            if (parent.children[i] === root) return true
+            if (parent.children[i].visible) return false
+        }
+        return true
+    }
+
+    visible: !root.advanced || Services.SettingsPanel.showAdvanced || root.highlighted
 
     readonly property real _bodyH: root.wide
         ? labelBlock.implicitHeight + (slot.childrenRect.height > 0 ? _pad + slot.childrenRect.height : 0)

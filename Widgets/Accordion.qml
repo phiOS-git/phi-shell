@@ -24,6 +24,15 @@ Column {
     property bool expanded: false
     property bool loading: false
     default property alias content: body.data
+    // Style pass 2026-09-14: an optional header-trailing action (a "clear"
+    // button, say) — the gap this widget's own header comment left open
+    // for docs/TODO.md's "sometimes have the arrow icon and sometimes
+    // don't" complaint: Panels/tabs/Notifications.qml's own notification-
+    // group header needed exactly this and grew a hand-rolled disclosure
+    // instead, one more grammar the shell had to reconcile. Empty by
+    // default so every existing caller (Devices.qml, Updates.qml) is
+    // unaffected.
+    property alias trailingAction: trailingSlot.data
 
     width: parent ? parent.width : 0
     spacing: 0
@@ -38,7 +47,7 @@ Column {
     readonly property real _pad: Config.Appearance.space2 * _ch
 
     readonly property string resolvedState: WidgetStates.resolve({
-        enabled: root.enabled, hovered: header.hovered, pressed: header.pressed,
+        enabled: root.enabled, hovered: toggleArea.hovered, pressed: toggleArea.pressed,
         active: root.expanded, keyboardFocus: false,
         loading: root.loading, invalid: false
     })
@@ -47,44 +56,75 @@ Column {
         id: header
         width: parent.width
         height: caret.implicitHeight + root._pad * 2
-        readonly property bool hovered: hover.hovered
-        readonly property bool pressed: tap.pressed
 
-        HoverHandler { id: hover; enabled: root.enabled }
-        TapHandler { id: tap; enabled: root.enabled; onTapped: root.expanded = !root.expanded }
+        // The trailing slot's own footprint, measured so the toggle area
+        // below can stop short of it — same non-overlapping-regions shape
+        // Panels/tabs/Notifications.qml's own group header already used,
+        // so a trailing "clear" doesn't also toggle the disclosure (or vice
+        // versa) the way one shared full-width TapHandler would.
+        readonly property real _trailingW: trailingSlot.children.length > 0 ? trailingSlot.width : 0
 
-        Rectangle {
-            anchors.fill: parent
-            radius: Config.Appearance.radiusSmall
-            color: Config.Appearance.textPrimary
-            opacity: header.hovered ? 0.06 : 0
-            Behavior on opacity {
-                NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+        Item {
+            id: toggleArea
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.rightMargin: header._trailingW > 0 ? header._trailingW + root._ch : 0
+            anchors.verticalCenter: parent.verticalCenter
+            height: parent.height
+            readonly property bool hovered: hover.hovered
+            readonly property bool pressed: tap.pressed
+
+            HoverHandler { id: hover; enabled: root.enabled; cursorShape: Qt.PointingHandCursor }
+            TapHandler { id: tap; enabled: root.enabled; onTapped: root.expanded = !root.expanded }
+
+            Rectangle {
+                anchors.fill: parent
+                radius: Config.Appearance.radiusSmall
+                color: Config.Appearance.textPrimary
+                opacity: toggleArea.hovered ? 0.06 : 0
+                Behavior on opacity {
+                    NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                }
+            }
+
+            StyledText {
+                id: caret
+                anchors.left: parent.left
+                anchors.leftMargin: root._pad
+                anchors.verticalCenter: parent.verticalCenter
+                mono: true
+                kind: "label"
+                text: root.expanded ? "▾" : "▸"
+            }
+            StyledText {
+                anchors.left: caret.right
+                anchors.leftMargin: root._ch
+                anchors.right: parent.right
+                anchors.rightMargin: root._pad
+                anchors.verticalCenter: parent.verticalCenter
+                text: root.title
+                elide: Text.ElideRight
             }
         }
 
-        StyledText {
-            id: caret
-            anchors.left: parent.left
-            anchors.leftMargin: root._pad
-            anchors.verticalCenter: parent.verticalCenter
-            mono: true
-            kind: "label"
-            text: root.expanded ? "▾" : "▸"
-        }
-        StyledText {
-            anchors.left: caret.right
-            anchors.leftMargin: root._ch
+        Item {
+            id: trailingSlot
             anchors.right: parent.right
             anchors.rightMargin: root._pad
             anchors.verticalCenter: parent.verticalCenter
-            text: root.title
-            elide: Text.ElideRight
+            width: childrenRect.width
+            height: childrenRect.height
         }
     }
 
     // Clipped wrapper so the body's own height can be animated without its
-    // content spilling while collapsed.
+    // content spilling while collapsed. Style pass: "accordions don't
+    // differentiate the body" (docs/TODO.md) — a hairline rule on the left
+    // edge, inset from the header's own caret column, is the one piece of
+    // chrome every collapsible surface in this shell can share regardless
+    // of what its body actually holds (a settings sub-group, a list of
+    // notification cards, …), so a body always reads as "inside" its
+    // header rather than just another block of content below it.
     Item {
         width: parent.width
         height: root.expanded ? body.implicitHeight + root._pad : 0
@@ -93,9 +133,18 @@ Column {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
+        Rectangle {
+            x: root._pad
+            y: 0
+            width: Config.Appearance.borderWidth
+            height: parent.height
+            color: Config.Appearance.border
+        }
+
         Column {
             id: body
-            width: parent.width
+            width: parent.width - root._pad
+            x: root._pad
             y: root._pad / 2
             spacing: Config.Appearance.space1 * root._ch
         }

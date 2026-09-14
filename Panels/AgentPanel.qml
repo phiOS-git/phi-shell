@@ -170,6 +170,14 @@ PanelWindow {
                     spacing: 0
 
                     // --- nav rail -------------------------------------
+                    // Style pass 2026-09-14: was a bespoke hover-wash +
+                    // hairline marker, the ONLY tab-like surface in the shell
+                    // not built from the shared tab grammar (Widgets/
+                    // TabButton) — now unified with Panels/Sidebar's own tab
+                    // strip so "you are here" reads identically everywhere:
+                    // accent content colour + a thin accent bar on the edge
+                    // facing the section body (this rail sits at the dock's
+                    // left edge, so its inner edge is its own right edge).
                     Column {
                         id: rail
                         width: root.chWidth * 3.4
@@ -183,58 +191,20 @@ PanelWindow {
                                 { key: "code", glyph: "⌘", label: "Coding sessions" },
                                 { key: "memory", glyph: "✎", label: "Memory proposals" }
                             ]
-                            delegate: Item {
-                                id: railItem
+                            delegate: Widgets.TabButton {
                                 required property var modelData
                                 width: rail.width
                                 height: rail.width
-                                readonly property bool current: root.section === modelData.key
-
-                                // Hover wash — the rail had no clickable
-                                // affordance at all before.
-                                Rectangle {
-                                    anchors.fill: parent
-                                    color: Config.Appearance.panelHover
-                                    opacity: railHover.hovered && !railItem.current ? 1 : 0
-                                    Behavior on opacity {
-                                        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
-                                    }
-                                }
-                                // "You are here" — a hairline block on the
-                                // inner edge, the opposite colour.
-                                Rectangle {
-                                    anchors.right: parent.right
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: Config.Appearance.borderWidthStrong
-                                    height: parent.height * 0.5
-                                    radius: width / 2
-                                    color: Config.Appearance.colorOpposite
-                                    visible: railItem.current
-                                }
-                                Widgets.StyledText {
-                                    anchors.centerIn: parent
-                                    text: modelData.glyph
-                                    kind: railItem.current ? "title" : "label"
-                                    sizeStep: 3
-                                }
-                                HoverHandler { id: railHover }
-                                // badge on the memory rail item
-                                Widgets.StyledText {
-                                    visible: modelData.key === "memory" && root.agent.totalPendingProposals > 0
-                                    anchors.right: parent.right
-                                    anchors.top: parent.top
-                                    anchors.margins: root.chWidth
-                                    text: String(root.agent.totalPendingProposals)
-                                    kind: "label"; sizeStep: 0; tone: "info"
-                                }
-                                MouseArea {
-                                    anchors.fill: parent
-                                    onClicked: {
-                                        root.section = modelData.key
-                                        if (modelData.key === "code") root.agent.refreshCodingSessions()
-                                        if (modelData.key === "memory") root.agent.refreshAllProposals()
-                                        if (modelData.key === "dashboard") root.agent.refreshChats()
-                                    }
+                                iconOnly: true
+                                indicatorEdge: "right"
+                                glyph: modelData.glyph
+                                badge: modelData.key === "memory" ? root.agent.totalPendingProposals : 0
+                                active: root.section === modelData.key
+                                onActivated: {
+                                    root.section = modelData.key
+                                    if (modelData.key === "code") root.agent.refreshCodingSessions()
+                                    if (modelData.key === "memory") root.agent.refreshAllProposals()
+                                    if (modelData.key === "dashboard") root.agent.refreshChats()
                                 }
                             }
                         }

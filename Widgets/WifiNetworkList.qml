@@ -97,12 +97,18 @@ Item {
                         : (modelData.secured
                             ? ("Secured · " + modelData.signal + "%")
                             : ("Open · " + modelData.signal + "%")))
-                // A secured network never joined before has no tap action
-                // (see the file header) — the row still shows its status,
-                // it just doesn't respond to a click.
+                // Style pass: a secured-never-joined or already-connected
+                // row used to render fully interactive (hover wash, pointer
+                // cursor) while `onActivated` silently did nothing — a
+                // classic "looks clickable, isn't" trap. `enabled` now
+                // reflects that directly: ListRow's own disabled dimming
+                // and its hover/cursor handlers already key off `enabled`,
+                // so an inert row now reads as inert.
+                readonly property bool _actionable: !modelData.connected
+                    && !(modelData.secured && !modelData.known)
+                enabled: _actionable
                 onActivated: {
-                    if (modelData.connected) return
-                    if (modelData.secured && !modelData.known) return
+                    if (!_actionable) return
                     Services.WifiBridge.connectToKnownNetwork(modelData.ssid)
                 }
             }

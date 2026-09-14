@@ -215,7 +215,29 @@ Item {
                             anchors.right: clearGroup.left
                             anchors.rightMargin: root.gap
                             anchors.verticalCenter: parent.verticalCenter
-                            height: groupLabel.implicitHeight
+                            height: parent.height
+                            readonly property bool hovered: groupToggleHover.hovered
+
+                            // Style pass 2026-09-14: same hover-wash grammar
+                            // Widgets/Accordion's header uses — this header
+                            // is hand-rolled rather than that shared widget
+                            // (it owns its expand state externally, via
+                            // root.collapsed/toggleGroup, and Accordion is
+                            // not a controlled component — binding its
+                            // `expanded` here would get silently severed the
+                            // first time its own internal tap handler
+                            // assigns it, the exact class of bug Widgets/
+                            // Toggle.qml's header warns about), but nothing
+                            // stops it looking identical.
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: Config.Appearance.radiusSmall
+                                color: Config.Appearance.textPrimary
+                                opacity: groupToggle.hovered ? 0.06 : 0
+                                Behavior on opacity {
+                                    NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                                }
+                            }
 
                             Widgets.StyledText {
                                 id: groupCaret
@@ -235,6 +257,7 @@ Item {
                                 elide: Text.ElideRight
                                 text: grp.modelData.app + "  (" + grp.modelData.items.length + ")"
                             }
+                            HoverHandler { id: groupToggleHover; cursorShape: Qt.PointingHandCursor }
                             TapHandler { onTapped: root.toggleGroup(grp.modelData.app) }
                         }
                         Widgets.SmallButton {
@@ -246,7 +269,11 @@ Item {
                         }
                     }
 
-                    // group body
+                    // group body — style pass: the same left-edge hairline
+                    // Widgets/Accordion now draws, so a collapsible body
+                    // reads as "inside" its header the same way everywhere
+                    // in the shell (docs/TODO.md: "accordions don't
+                    // differentiate the body").
                     Item {
                         width: parent.width
                         clip: true
@@ -256,9 +283,18 @@ Item {
                                 easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
                         }
 
+                        Rectangle {
+                            x: root.chWidth
+                            y: 0
+                            width: Config.Appearance.borderWidth
+                            height: parent.height
+                            color: Config.Appearance.border
+                        }
+
                         Column {
                             id: bodyCol
-                            width: parent.width
+                            width: parent.width - root.chWidth * 2
+                            x: root.chWidth * 2
                             spacing: 0
 
                             Repeater {

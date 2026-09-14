@@ -18,6 +18,13 @@ Item {
     id: root
 
     property bool shown: false
+    // Style pass 2026-09-14 (docs/TODO.md): "have the 2 types of dim have
+    // different intensity as well (the one that overlays [the bar] should
+    // be stronger)". Default false — every existing caller keeps the
+    // ordinary intensity; the small set of full-attention blocking
+    // surfaces (screenshot selection, Alt-Tab/overview, battery/timer
+    // alerts, a destructive confirmation) opts in.
+    property bool strong: false
     property bool hovered: false
     property bool pressed: false
     property bool active: false
@@ -31,7 +38,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: Config.Appearance.overlayScrim
+        color: root.strong ? Config.Appearance.overlayScrimStrong : Config.Appearance.overlayScrim
     }
 
     Behavior on opacity {
