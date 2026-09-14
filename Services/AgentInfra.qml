@@ -41,6 +41,14 @@ Singleton {
     property string modelIdA1: ""
     property int whitelistEntries: -1    // -1 = file unreadable
     property bool loaded: false
+    // Last line of each instance's broker-meter.jsonl (already written by
+    // phi agent broker, never surfaced before) — {status, model, time} or
+    // null when no request has been metered yet. No response BODY is ever
+    // read here: the broker deliberately never buffers a streamed reply
+    // (V-09), so this is status-code-only, exactly what the meter itself
+    // records.
+    property var lastRequestA1: null
+    property var lastRequestA2: null
 
     // Host-side config/state roots, for the "path" hint the panel shows.
     readonly property string configRoot: Quickshell.env("HOME") + "/.config/phi-agent"
@@ -63,6 +71,42 @@ Singleton {
     }
 
     function refresh() { if (!probe.running) probe.running = true }
+
+    // Out-of-plan: bulk-start whichever units a caller names (CodingSessions'
+    // inline preflight banner, Settings' "Start A2 services" button) — same
+    // systemctl --user shape as Services/Agent.qml's setActivated, just N
+    // units in one call instead of always exactly phi-agent-a1.service.
+    property bool starting: false
+    Process {
+        id: startProc
+        onExited: { startProc.running = false; root.starting = false; root.refresh() }
+    }
+    function startUnits(names) {
+        if (startProc.running || !names || names.length === 0) return
+        root.starting = true
+        startProc.command = ["systemctl", "--user", "start"].concat(names)
+        startProc.running = true
+    }
+
+    // status-code-only categorisation — never reads the upstream body (the
+    // broker never buffers one to read, V-09).
+    function _statusHint(status) {
+        if (status >= 200 && status < 300) return "ok"
+        if (status === 401 || status === 403) return "auth / billing"
+        if (status === 429) return "rate limited"
+        if (status >= 500) return "upstream error"
+        if (status >= 400) return "client error"
+        return ""
+    }
+    function _parseLastRequest(buf) {
+        const line = buf.join("\n").trim()
+        if (line.length === 0) return null
+        let rec = null
+        try { rec = JSON.parse(line) } catch (e) { return null }
+        if (!rec || typeof rec.status !== "number") return null
+        return { status: rec.status, model: rec.model || "", time: rec.time || "",
+            hint: root._statusHint(rec.status) }
+    }
 
     Component.onCompleted: refresh()
 
@@ -88,6 +132,8 @@ Singleton {
         'printf "KEY_A1\\t%s\\n" "$([ -s "$D/a1/provider-key" ] && echo present || echo absent)"',
         'printf "KEY_A2\\t%s\\n" "$([ -s "$D/a2/provider-key" ] && echo present || echo absent)"',
         'printf "METER_A1\\t%s\\n" "$(wc -l < "$S/a1/broker-meter.jsonl" 2>/dev/null | tr -dc "0-9")"',
+        'printf "LASTREQ_A1_BEGIN\\n"; tail -n1 "$S/a1/broker-meter.jsonl" 2>/dev/null; printf "\\nLASTREQ_A1_END\\n"',
+        'printf "LASTREQ_A2_BEGIN\\n"; tail -n1 "$S/a2/broker-meter.jsonl" 2>/dev/null; printf "\\nLASTREQ_A2_END\\n"',
         'printf "BROKER_A1_BEGIN\\n"; cat "$D/a1/broker.json" 2>/dev/null; printf "\\nBROKER_A1_END\\n"',
         'printf "OPENCODE_A1_BEGIN\\n"; cat "$D/a1/opencode/opencode.json" 2>/dev/null; printf "\\nOPENCODE_A1_END\\n"',
         'printf "WHITELIST_BEGIN\\n"; grep -Ev "^[[:space:]]*(#|$)" "$D/tinyproxy/whitelist" 2>/dev/null; printf "\\nWHITELIST_END\\n"',
@@ -105,6 +151,7 @@ Singleton {
                 let meter = -1, whitelist = -1
                 let section = ""
                 const brokerBuf = [], opencodeBuf = []
+                const lastReqA1Buf = [], lastReqA2Buf = []
                 let whitelistCount = 0
 
                 for (const raw of lines) {
@@ -112,11 +159,17 @@ Singleton {
                     if (raw === "BROKER_A1_END") { section = ""; continue }
                     if (raw === "OPENCODE_A1_BEGIN") { section = "opencode"; continue }
                     if (raw === "OPENCODE_A1_END") { section = ""; continue }
+                    if (raw === "LASTREQ_A1_BEGIN") { section = "lastreq_a1"; continue }
+                    if (raw === "LASTREQ_A1_END") { section = ""; continue }
+                    if (raw === "LASTREQ_A2_BEGIN") { section = "lastreq_a2"; continue }
+                    if (raw === "LASTREQ_A2_END") { section = ""; continue }
                     if (raw === "WHITELIST_BEGIN") { section = "whitelist"; whitelist = 0; continue }
                     if (raw === "WHITELIST_END") { section = ""; whitelist = whitelistCount; continue }
 
                     if (section === "broker") { brokerBuf.push(raw); continue }
                     if (section === "opencode") { opencodeBuf.push(raw); continue }
+                    if (section === "lastreq_a1") { lastReqA1Buf.push(raw); continue }
+                    if (section === "lastreq_a2") { lastReqA2Buf.push(raw); continue }
                     if (section === "whitelist") { if (raw.trim().length > 0) whitelistCount++; continue }
 
                     const parts = raw.split("\t")
@@ -157,6 +210,9 @@ Singleton {
                 let opencode = null
                 try { opencode = JSON.parse(opencodeBuf.join("\n")) } catch (e) { opencode = null }
                 root.modelIdA1 = (opencode && opencode.model) ? opencode.model : ""
+
+                root.lastRequestA1 = root._parseLastRequest(lastReqA1Buf)
+                root.lastRequestA2 = root._parseLastRequest(lastReqA2Buf)
 
                 root.loaded = true
             }

@@ -11,6 +11,7 @@ import qs.Widgets as Widgets
 Item {
     id: root
     readonly property var agent: Services.Agent
+    readonly property var infra: Services.AgentInfra
 
     TextMetrics { id: ch; font.family: Config.Appearance.fontMono; font.pixelSize: Config.Appearance.fontSize1; text: "0" }
     readonly property real chWidth: ch.width
@@ -19,7 +20,26 @@ Item {
     property var openRec: null
     property string openTranscript: ""
 
-    Component.onCompleted: agent.refreshCodingSessions()
+    // Out-of-plan: a coding session used to spawn a terminal blind — if A2's
+    // support services weren't running, phi-agent-contain's socat bridge
+    // never found its socket and the failure happened invisibly inside that
+    // terminal window. Reuse the same unit facts AgentInfra already polls
+    // for Settings to warn here BEFORE a session is opened, instead of
+    // after it silently fails.
+    readonly property var a2RequiredUnits: [
+        "phi-agent-broker@a2.service", "phi-agent-proxy.service", "phi-agent-net-bridge.service"
+    ]
+    function a2DownUnits() {
+        const down = []
+        for (const name of root.a2RequiredUnits) {
+            let found = null
+            for (const u of root.infra.units) if (u.name === name) { found = u; break }
+            if (!found || found.active !== "active") down.push(name)
+        }
+        return down
+    }
+
+    Component.onCompleted: { agent.refreshCodingSessions(); infra.refresh() }
     Connections {
         target: agent
         function onCodingTranscriptReady(id, md) {
@@ -80,6 +100,26 @@ Item {
                 Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "title"; text: "Coding sessions" }
                 Item { width: parent.width - x; height: 1 }
                 Widgets.StyledButton { label: "Refresh"; loading: root.agent.codingSessionsLoading; onClicked: root.agent.refreshCodingSessions() }
+            }
+
+            Widgets.Panel {
+                width: parent.width
+                visible: root.infra.loaded && root.a2DownUnits().length > 0
+                height: warnCol.implicitHeight + padding * 2
+                Column {
+                    id: warnCol
+                    width: parent.width
+                    spacing: root.chWidth * Config.Appearance.space1
+                    Widgets.StyledText {
+                        width: parent.width; wrapMode: Text.WordWrap; invalid: true
+                        text: "A new session will fail: not running — " + root.a2DownUnits().join(", ")
+                    }
+                    Widgets.StyledButton {
+                        label: "Start required services"
+                        loading: root.infra.starting
+                        onClicked: root.infra.startUnits(root.a2DownUnits())
+                    }
+                }
             }
 
             Widgets.StyledText {

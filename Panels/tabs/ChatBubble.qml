@@ -20,6 +20,16 @@ import qs.Widgets as Widgets
 // Both still live entirely in the B&W grammar — no accent, no second hue,
 // every colour from Config.Appearance.
 //
+// A third role, "error" (out-of-plan: a turn that fails upstream — a
+// billing/auth/rate-limit rejection from the provider — used to come back
+// from opencode with an empty parts array and Services/Agent.qml simply
+// dropped it, so a failed turn was indistinguishable from a hang; it now
+// surfaces here as a bubble instead of vanishing). Same quiet-card shape as
+// "agent" (still left-aligned, still full width — this is not a user
+// bubble), but its border/text use Config.Appearance.error/errorText, the
+// same invalid-state tokens Widgets.StyledText's own `invalid` prop already
+// draws from (WidgetStates.js contentColor) — no new colour invented.
+//
 // Referenced by id (root.text / root.mine) from the nested StyledText, not
 // a bare `text` (StyledText owns its own `text`) or `parent` — the same
 // indirection Panels/tabs/Notifications.qml documents.
@@ -30,6 +40,7 @@ Item {
     property string from: "you"
     property string text: ""
     readonly property bool mine: root.from === "you"
+    readonly property bool isError: root.from === "error"
 
     // The user's bubble stops short of the pane edge so the asymmetry reads;
     // the agent's uses the full width.
@@ -55,8 +66,9 @@ Item {
             kind: "label"
             sizeStep: 0
             mono: true
-            text: root.mine ? "you" : "agent"
+            text: root.mine ? "you" : (root.isError ? "error" : "agent")
             x: root.mine ? parent.width - width : 0
+            tone: root.isError ? "error" : ""
         }
 
         Rectangle {
@@ -67,7 +79,8 @@ Item {
             radius: Config.Appearance.radiusBase
             color: root.mine ? Config.Appearance.selectionBackground : Config.Appearance.surface1
             border.width: Config.Appearance.borderWidth
-            border.color: root.mine ? Config.Appearance.selectionBackground : Config.Appearance.border
+            border.color: root.mine ? Config.Appearance.selectionBackground
+                : (root.isError ? Config.Appearance.error : Config.Appearance.border)
 
             Widgets.StyledText {
                 id: bubbleText
@@ -78,8 +91,11 @@ Item {
                 wrapMode: Text.Wrap
                 text: root.text
                 // The "you" bubble inverts, so its text takes the main
-                // colour; the agent bubble is a resting surface, ordinary ink.
-                color: root.mine ? Config.Appearance.selectionText : Config.Appearance.textPrimary
+                // colour; the agent bubble is a resting surface, ordinary
+                // ink; the error bubble uses the same invalid-state token
+                // Widgets.StyledText's own `invalid` prop draws from.
+                color: root.mine ? Config.Appearance.selectionText
+                    : (root.isError ? Config.Appearance.errorText : Config.Appearance.textPrimary)
             }
         }
     }

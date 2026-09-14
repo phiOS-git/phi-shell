@@ -18,7 +18,35 @@ import "../" as Tabs
 Item {
     id: root
     readonly property var agent: Services.Agent
+    readonly property var infra: Services.AgentInfra
     property string personality: ""
+
+    // Out-of-plan: the "Agent offline" state used to be one sentence
+    // covering five different real causes (no key, broker down, engine
+    // down/failed, engine active but not answering yet). AgentInfra already
+    // polls every one of those facts for the Settings section — reuse it
+    // here so the panel says which one is actually true instead of leaving
+    // the user to guess.
+    function _unit(name) {
+        for (const u of root.infra.units) if (u.name === name) return u
+        return null
+    }
+    function offlineDiagnosis() {
+        if (!root.infra.loaded) return ["Checking phi-agent-a1.service…"]
+        const lines = []
+        if (!root.infra.keyA1Present)
+            lines.push("No provider key configured for a1 (~/.config/phi-agent/a1/provider-key) — see Settings › AI Agent.")
+        const broker = root._unit("phi-agent-broker@a1.service")
+        if (broker && broker.active !== "active")
+            lines.push("Credential broker not running: phi-agent-broker@a1.service is " + broker.active + ".")
+        const engine = root._unit("phi-agent-a1.service")
+        if (engine && engine.active !== "active")
+            lines.push("AI engine not running: phi-agent-a1.service is " + engine.active + ".")
+        if (lines.length === 0 && root.infra.keyA1Present
+            && (!broker || broker.active === "active") && (!engine || engine.active === "active"))
+            lines.push("Both services report active but the engine isn't answering health checks yet — it may still be starting. Try again in a few seconds, or check `journalctl --user -u phi-agent-a1.service`.")
+        return lines
+    }
 
     signal requestSection(string s)
     // docs/TODO.md ESC task — see Widgets/TextField.qml's own `escaped()`
@@ -52,6 +80,7 @@ Item {
         anchors { left: parent.left; right: parent.right; top: parent.top; margins: root.gap }
         spacing: root.gap
         visible: !root.agent.available
+        onVisibleChanged: if (visible) root.infra.refresh()
         Widgets.StyledText { kind: "title"; text: "Agent offline" }
         Widgets.Panel {
             width: parent.width
@@ -64,9 +93,24 @@ Item {
                 id: offlineCol
                 width: parent.width
                 spacing: root.chWidth * Config.Appearance.space1
-                Widgets.StyledText { width: parent.width; wrapMode: Text.WordWrap
-                    text: "phi-agent-a1.service is not running, or the containment failed to start. Nothing runs outside the containment (§4.7)." }
-                Widgets.StyledButton { label: "Start service"; loading: false; onClicked: root.agent.setActivated(true) }
+                // Out-of-plan: was one static sentence regardless of which of
+                // several real causes applied — see root.offlineDiagnosis().
+                Repeater {
+                    model: root.offlineDiagnosis()
+                    delegate: Widgets.StyledText {
+                        required property string modelData
+                        width: offlineCol.width
+                        wrapMode: Text.WordWrap
+                        invalid: true
+                        text: "• " + modelData
+                    }
+                }
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledButton { label: "Start service"; loading: false; onClicked: root.agent.setActivated(true) }
+                    Widgets.StyledButton { label: "Recheck"; loading: false
+                        onClicked: { root.agent.refreshHealth(); root.infra.refresh() } }
+                }
             }
         }
     }
@@ -226,7 +270,7 @@ Item {
                     model: root.agent.messages
                     delegate: Tabs.ChatBubble {
                         required property var modelData
-                        from: modelData.role === "user" ? "you" : "agent"
+                        from: modelData.role === "user" ? "you" : (modelData.role === "error" ? "error" : "agent")
                         text: modelData.text
                     }
                 }
