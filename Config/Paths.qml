@@ -131,4 +131,12 @@ Singleton {
     // and a nested/grouped value does not fit it anyway (same reasoning as
     // every other file below this comment). Owned by Services/PowerBridge.qml.
     readonly property string powerSoundPrefsFile: root.stateDir + "/power-sound.json"
+
+    // docs/TODO.md: "full screen alert should appear when battery level is
+    // low (2 thresholds warn and danger, configurable)" — { warnThreshold,
+    // dangerThreshold }, both 0..1 fractions matching
+    // Services.PowerBridge.percentage's own unit. Same closed-`phi state`-
+    // key reasoning as every file above: two related values, not one
+    // scalar. Owned by Services/PowerBridge.qml.
+    readonly property string batteryAlertPrefsFile: root.stateDir + "/battery-alert.json"
 }

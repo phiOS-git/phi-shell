@@ -255,4 +255,90 @@ Singleton {
                 root.chargingSoundError = "pw-play exited " + exitCode + " (is " + root._chargingSoundPath() + " present? sound-theme-freedesktop may not be installed)"
         }
     }
+
+    // --- low-battery full-screen alert (docs/TODO.md: "full screen alert
+    // should appear when battery level is low (2 thresholds warn and
+    // danger, configurable)") --------------------------------------------
+    // Deliberately separate from `lowPercentThreshold`/`anomaly` above:
+    // those already drive Bar/modules/Battery.qml's icon colour (a
+    // different, already-shipped surface with its own 0.20 default) — the
+    // two thresholds here are net-new, own their own file, and changing
+    // one must never silently move the other's meaning.
+    property real alertWarnThreshold: 0.15
+    property real alertDangerThreshold: 0.05
+
+    function setAlertWarnThreshold(v) { root.alertWarnThreshold = Math.max(0, Math.min(1, v)); root._persistAlertPrefs() }
+    function setAlertDangerThreshold(v) { root.alertDangerThreshold = Math.max(0, Math.min(1, v)); root._persistAlertPrefs() }
+
+    property bool _alertPrefsWritten: false
+    function _persistAlertPrefs() {
+        root._alertPrefsWritten = true
+        alertPrefsFile.setText(JSON.stringify({
+            warnThreshold: root.alertWarnThreshold,
+            dangerThreshold: root.alertDangerThreshold
+        }, null, 2))
+    }
+
+    FileView {
+        id: alertPrefsFile
+        path: Config.Paths.batteryAlertPrefsFile
+        watchChanges: false
+        onLoaded: {
+            try {
+                const parsed = JSON.parse(alertPrefsFile.text())
+                if (parsed && typeof parsed === "object") {
+                    if (typeof parsed.warnThreshold === "number") root.alertWarnThreshold = parsed.warnThreshold
+                    if (typeof parsed.dangerThreshold === "number") root.alertDangerThreshold = parsed.dangerThreshold
+                }
+            } catch (e) {
+                console.warn("phi-shell: battery-alert.json failed to parse, ignoring: " + e)
+            }
+        }
+        // No migration needed here (unlike soundPrefsFile above) — this is
+        // a net-new preference, never a `phi state` scalar key. Absence
+        // just means the defaults above stand.
+    }
+
+    // `testOverrideLevel` mirrors playChargingSound(force)'s testing
+    // shape: Settings gets a "Test" action for each severity so the alert
+    // can be exercised without actually draining a battery to 5% —
+    // cleared the same moment the alert is dismissed, so a test never
+    // outlives its own dialog.
+    property string testOverrideLevel: "none" // "none" | "warn" | "danger"
+    function testAlert(level) { root.dismissedLevel = "none"; root.testOverrideLevel = level }
+
+    function _rank(level) { return level === "danger" ? 2 : (level === "warn" ? 1 : 0) }
+
+    // Inlined rather than a called helper function, and explicitly gated
+    // on Config.Capabilities.battery (mini has none) — the same capability
+    // Devices.qml:274 and Bar/modules.json's battery row already gate on,
+    // so this dialog can never fire on a machine with no battery even
+    // though it's instantiated unconditionally in shell.qml.
+    readonly property string alertLevel: {
+        if (root.testOverrideLevel !== "none") return root.testOverrideLevel
+        if (!Config.Capabilities.battery || !root.present || !root.discharging) return "none"
+        if (root.percentage <= root.alertDangerThreshold) return "danger"
+        if (root.percentage <= root.alertWarnThreshold) return "warn"
+        return "none"
+    }
+
+    // The highest severity the user has already dismissed for the CURRENT
+    // low-battery episode. `alertShown` compares by rank, not equality, so
+    // an escalation (warn → danger) re-opens the alert even if warn was
+    // already dismissed, but recovering (danger → warn) after a danger
+    // dismissal stays quiet. Resets to "none" the moment the real level
+    // returns to "none" (charged back up, or plugged in), so the NEXT
+    // low-battery episode starts fresh rather than staying permanently
+    // suppressed from one old dismissal.
+    property string dismissedLevel: "none"
+    readonly property bool alertShown: root._rank(root.alertLevel) > root._rank(root.dismissedLevel)
+
+    function dismissAlert() {
+        root.dismissedLevel = root.alertLevel
+        root.testOverrideLevel = "none"
+    }
+
+    onAlertLevelChanged: {
+        if (root.alertLevel === "none") root.dismissedLevel = "none"
+    }
 }

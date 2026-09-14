@@ -312,6 +312,49 @@ Column {
                 onClicked: Services.PowerBridge.playChargingSound(true)
             }
         }
+
+        // docs/TODO.md: "full screen alert should appear when battery
+        // level is low (2 thresholds warn and danger, configurable)" —
+        // Dialogs/BatteryAlert.qml is the presentation, Services/
+        // PowerBridge.qml owns the two thresholds (0..1 fractions
+        // internally, shown here as whole percent to match every other
+        // percent the user sees — the bar label, the settings battery
+        // stats). Kept in this same group rather than a new one: it's
+        // still "editable battery behaviour", the group's own stated
+        // scope above.
+        SettingsRow {
+            title: "Warn threshold"
+            description: "A full-screen alert appears when the battery drops below this level while unplugged."
+            Widgets.NumberField {
+                value: Math.round(Services.PowerBridge.alertWarnThreshold * 100)
+                step: 1; suffix: "%"; from: 1; to: 100
+                onCommitted: (v) => Services.PowerBridge.setAlertWarnThreshold(v / 100)
+            }
+        }
+        SettingsRow {
+            title: "Danger threshold"
+            description: "A more urgent version of the same alert appears at this even lower level."
+            Widgets.NumberField {
+                value: Math.round(Services.PowerBridge.alertDangerThreshold * 100)
+                step: 1; suffix: "%"; from: 1; to: 100
+                onCommitted: (v) => Services.PowerBridge.setAlertDangerThreshold(v / 100)
+            }
+        }
+        SettingsRow {
+            title: "Test alert"
+            description: "Shows the full-screen alert without waiting for the battery to actually drop."
+            Row {
+                spacing: root.gap
+                Widgets.StyledButton {
+                    label: "Test warn"
+                    onClicked: Services.PowerBridge.testAlert("warn")
+                }
+                Widgets.StyledButton {
+                    label: "Test danger"
+                    onClicked: Services.PowerBridge.testAlert("danger")
+                }
+            }
+        }
     }
 
     // ================================================================

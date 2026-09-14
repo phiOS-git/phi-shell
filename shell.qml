@@ -200,6 +200,14 @@ ShellRoot {
         screen: Quickshell.screens[0]
     }
 
+    // docs/TODO.md: "full screen alert should appear when battery level is
+    // low (2 thresholds warn and danger, configurable)" — single shared
+    // instance, same primary-screen-only reasoning as Dialogs.ConfirmDialog
+    // just above (one real battery, not per-monitor ambient state).
+    Dialogs.BatteryAlert {
+        screen: Quickshell.screens[0]
+    }
+
     // S-43 / SF-5: per-screen (Services/Spotlight.qml's header on why a
     // primary-only instance defeats the feature). Declared LAST, and it
     // sets WlrLayer.Overlay + only maps its surface while shown (SF-5) — so
