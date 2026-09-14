@@ -177,30 +177,46 @@ Item {
         }
 
         // Scratchpad toggle (hyprland.lua: MOD+A binds
-        // `togglespecialworkspace scratch`; MOD+SHIFT+A moves the focused
-        // window into it). No `active` state — see the module comment: the
-        // special workspace can read as active alongside a numeric one.
+        // `workspace.toggle_special("scratch")`; MOD+SHIFT+A moves the
+        // focused window into it). No `active` state — see the module
+        // comment: the special workspace can read as active alongside a
+        // numeric one.
         //
-        // docs/TODO.md: "the scratchpad icon does not call the scratchpad".
-        // This used to go through Services.HyprlandBridge.dispatch()
-        // (Hyprland.dispatch(), Quickshell's own IPC call, no `hyprctl`
-        // subprocess) — the SAME mechanism the old, deleted
-        // Bar/modules/SpecialWorkspaces.qml used for its own scratchpad-
-        // style toggles, which ADR 134 (this file's own header) already
-        // records as "never worked on real hardware". Every OTHER
-        // Hyprland-triggering action in this repo instead shells out via
-        // `hyprctl dispatch` (Launcher.qml, AltTab.qml, Services/Agent.qml,
-        // Services/PowerActions.qml, Services/NightShift.qml) —
-        // HyprlandBridge.qml's own dispatch() comment admits it has never
-        // been proven, since the workspace strip switches through the
-        // model's own activate() instead and never needed it. Switched to
-        // the proven pattern.
+        // docs/TODO.md: "the scratchpad icon does not call the scratchpad
+        // ... it's broken" — confirmed 2026-09-14 against a live Hyprland
+        // session: this install's Lua config repurposes the `dispatch`
+        // socket command HyprlandBridge.dispatch() sends over to EVALUATE
+        // its argument as Lua, so the traditional dispatcher-string form
+        // this used to send (`togglespecialworkspace scratch`) failed
+        // with "hl.dispatch: expected a dispatcher" every time, silently
+        // (Quickshell's Hyprland.dispatch() has no return value this file
+        // reads) — confirmed by sending the identical raw request
+        // directly over `.socket.sock`, bypassing both `hyprctl` and
+        // Quickshell entirely, so this is Hyprland itself, not either
+        // client. `hl.dsp.workspace.toggle_special("scratch")` — the exact
+        // Lua-call form hyprland.lua.tmpl's own MOD+A bind already uses —
+        // is the fix, sent as a plain string the same way; round-tripped
+        // live twice (workspace list gained, then lost, `-98 special:
+        // scratch`) to confirm it actually toggles both ways.
+        //
+        // This SUPERSEDES a parallel fix (d9faba4/f130368, landed while
+        // this investigation was in progress) that swapped this call for
+        // a `hyprctl dispatch togglespecialworkspace scratch` subprocess,
+        // on the theory that the subprocess form was already "the proven
+        // pattern" used elsewhere in this repo (AltTab.qml, Launcher.qml,
+        // Services/Agent.qml, Services/PowerActions.qml). It reads as
+        // reasonable by the same convention every one of those files
+        // used — but every one of them was ALSO broken by this identical
+        // bug, fixed in the same change as this file. The subprocess form
+        // sends the exact same rejected traditional string, just from a
+        // different client; which client sends it was never the actual
+        // variable.
         Widgets.Segment {
             ambient: "isle"
             squared: true
             glyph: Glyphs.console
             label: ""
-            onActivated: Quickshell.execDetached(["hyprctl", "dispatch", "togglespecialworkspace", "scratch"])
+            onActivated: Services.HyprlandBridge.dispatch('hl.dsp.workspace.toggle_special("scratch")')
         }
     }
 }

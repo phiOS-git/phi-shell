@@ -752,19 +752,37 @@ Singleton {
         sessListProc.running = true
     }
 
-    Process { id: focusWinProc; onExited: focusWinProc.running = false }
+    // 2026-09-14: focusCodingWindow used to run `hyprctl dispatch
+    // focuswindow address:...` as a subprocess — broken on this exact
+    // Hyprland build the same way AltTab.qml's identical old line was
+    // (see its own updated comment): this install's Lua config rejects
+    // the traditional dispatcher-string form entirely. Fixed the same
+    // way — dispatch the Lua-call form directly over Quickshell's own
+    // Hyprland IPC (Services.HyprlandBridge, confirmed live end to end
+    // elsewhere), no subprocess needed for this one at all any more.
     function focusCodingWindow(addr) {
-        if (focusWinProc.running || !addr) return
-        focusWinProc.command = ["hyprctl", "dispatch", "focuswindow", "address:" + addr]
-        focusWinProc.running = true
+        if (!addr) return
+        Services.HyprlandBridge.dispatch("hl.dsp.focus({ window = \"address:" + addr + "\" })")
     }
     Process { id: openSessProc; onExited: { openSessProc.running = false; root.refreshCodingSessions() } }
     function openCodingSessionInTerminal(dir) {
         if (openSessProc.running || !dir) return
         // A fresh terminal running `phi agent code DIR`. kitty is the shell's
         // terminal (hyprland.lua starts btop the same way, `--class phios-btop`).
-        openSessProc.command = ["hyprctl", "dispatch", "exec",
-            "kitty --class phios-agent-code -e sh -c 'phi agent code " + JSON.stringify(dir) + "'"]
+        //
+        // 2026-09-14: was `hyprctl dispatch exec "kitty ..."` as a
+        // subprocess — same broken traditional-dispatch-string bug as
+        // focusCodingWindow above, but there was never a good reason to
+        // route a plain program launch through Hyprland's dispatch socket
+        // at all: every other launch in this codebase (this file's own
+        // sessListProc just above, PowerActions.qml's suspend/hibernate/
+        // reboot/shutdown, Launcher.qml's "execTerminal" case) spawns
+        // directly via Quickshell's own Process/execDetached, which needs
+        // no Lua-string escaping of the inner `sh -c '...'` at all. Kept
+        // as its own Process (not execDetached) since onExited here also
+        // triggers refreshCodingSessions().
+        openSessProc.command = ["kitty", "--class", "phios-agent-code", "-e", "sh", "-c",
+            "phi agent code " + JSON.stringify(dir)]
         openSessProc.running = true
     }
 

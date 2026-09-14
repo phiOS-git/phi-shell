@@ -280,15 +280,37 @@ PanelWindow {
     }
 
     // Address-based focus is the mechanism Launcher.qml's activateWindow
-    // action already proves works on this compositor (the wlr Toplevel
-    // type's own activate() was found not to actually focus).
+    // action used — "already proves works on this compositor" was never
+    // actually true, it turns out (see below), just never separately
+    // reported broken until this surface was.
+    //
+    // docs/TODO.md: "alt+tab... does not focus the selected window...
+    // does not change workspace" — confirmed 2026-09-14 against a live
+    // Hyprland session that BOTH symptoms trace to the same bug: this
+    // Hyprland build's Lua config repurposes the `hyprctl dispatch` socket
+    // command to EVALUATE its argument as Lua, so the traditional
+    // dispatcher-string form each of these ran as a subprocess
+    // (`focuswindow address:...`, `workspace <id>`) failed with
+    // "hl.dispatch: expected a dispatcher" every time — silently, since
+    // execDetached() never reads the child's output. Confirmed by sending
+    // the identical raw request directly over the IPC socket, bypassing
+    // `hyprctl` entirely, so this is Hyprland itself, not a `hyprctl`
+    // quirk. Fixed by dispatching the Lua-call form directly over
+    // Quickshell's own Hyprland IPC (Services.HyprlandBridge.dispatch(),
+    // no subprocess needed at all any more) — `focus({ window =
+    // "address:0x..." })` confirmed live end to end: defocused a
+    // disposable test window (switched to an empty workspace), then
+    // refocused it by address alone, which also correctly switched back
+    // to its workspace — one call covers both the old focuswindow AND
+    // workspace dispatches, so `_focusWorkspace` no longer needs a
+    // separate command for the workspace half either.
     function _focusWindow(addr) {
         if (addr && addr.length > 0)
-            Quickshell.execDetached(["hyprctl", "dispatch", "focuswindow", "address:" + addr])
+            Services.HyprlandBridge.dispatch("hl.dsp.focus({ window = \"address:" + addr + "\" })")
     }
 
     function _focusWorkspace(wsId) {
-        Quickshell.execDetached(["hyprctl", "dispatch", "workspace", String(wsId)])
+        Services.HyprlandBridge.dispatch("hl.dsp.focus({ workspace = " + wsId + " })")
         root._close()
     }
 

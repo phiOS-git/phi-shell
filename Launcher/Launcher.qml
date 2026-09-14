@@ -355,7 +355,14 @@ PanelWindow {
             Quickshell.execDetached(["kitty", "--hold", "-e", "sh", "-c", action.data.command])
             break
         case "activateWindow":
-            Quickshell.execDetached(["hyprctl", "dispatch", "focuswindow", "address:" + action.data.address])
+            // 2026-09-14: was `hyprctl dispatch focuswindow address:...`
+            // as a subprocess — broken on this exact Hyprland build the
+            // same way AltTab.qml's identical old line was (see its own
+            // updated comment): this install's Lua config rejects the
+            // traditional dispatcher-string form entirely. Fixed the same
+            // way — dispatch the Lua-call form directly over Quickshell's
+            // own Hyprland IPC, confirmed live end to end there.
+            Services.HyprlandBridge.dispatch("hl.dsp.focus({ window = \"address:" + action.data.address + "\" })")
             break
         case "openURL":
             Quickshell.execDetached(["xdg-open", action.data.url])
