@@ -82,6 +82,7 @@ Singleton {
         case "brightness": return "Brightness"
         case "network": return "Tailscale"
         case "wifi": return "Wi-Fi"
+        case "ethernet": return "Ethernet"
         case "bluetooth": return "Bluetooth"
         case "battery": return "Battery"
         case "gpu": return "GPU"
