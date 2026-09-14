@@ -64,9 +64,15 @@ Item {
             ctx.fillStyle = c
             ctx.globalAlpha = root._restingOpacity
 
-            // Plug body.
+            // Plug body. docs/TODO.md (2026-09-14): the icon read as
+            // vertically off-centre in the bar — the silhouette (clip top at
+            // 0.06·b to pin bottom at 0.70·b, 0.64·b tall) sat inside the
+            // full 1.0·b box with only 0.06·b of margin above and 0.30·b
+            // below. bodyY shifted down by 0.12·b so the same silhouette is
+            // centred (0.18·b margin on both sides); every other proportion
+            // (body/clip/pin sizes) is unchanged.
             const bodyX = 0.28 * b
-            const bodyY = 0.16 * b
+            const bodyY = 0.28 * b
             const bodyW = 0.44 * b
             const bodyH = 0.38 * b
             ctx.fillRect(bodyX, bodyY, bodyW, bodyH)

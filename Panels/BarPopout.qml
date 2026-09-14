@@ -21,9 +21,14 @@ import qs.Widgets as Widgets
 //     with a deep-link button where a mature TUI exists.
 //   - power → six plain action buttons (lock/suspend/hibernate/logout/
 //               reboot/shutdown, via Services/PowerActions.qml) plus a
-//               "Settings…" deep-link; reboot/shutdown/logout gate behind
-//               Services/ConfirmDialog.qml's shared centered modal instead
-//               of running immediately.
+//               "Settings…" row that opens the settings panel generally
+//               (docs/TODO.md, 2026-09-14: no longer deep-linked to the
+//               Power section — see root._showInSettings's replacement
+//               below). The six buttons were briefly removed the same day
+//               as a misreading of that same TODO entry — "the 'quick
+//               action' section should not exist" meant Settings/sections/
+//               Devices.qml's OWN duplicate "Quick actions" row, not this
+//               card's; restored here, Devices.qml's row removed instead.
 // No scrim (this window never had one). A full mixer / network list is
 // still a later pass.
 
@@ -522,6 +527,18 @@ PanelWindow {
             // as Launcher.qml's own confirm sub-view for the identical two
             // actions in the runner bar, different UI shape because that
             // one is a stack of navigable views, not a floating dialog.
+            //
+            // docs/TODO.md follow-up (2026-09-14): "the 'settings' button
+            // ... should simply open the settings panel, not bound to a
+            // specific section" — it now calls Services.SettingsPanel.show()
+            // directly, a plain open with no target, instead of
+            // root._showInSettings's reveal(optionId) which used to jump
+            // straight to the Power group. The six action buttons below
+            // were briefly removed the same day, misreading that same
+            // entry's "the 'quick action' section should not exist" as
+            // being about this card — it meant Settings/sections/
+            // Devices.qml's own duplicate "Quick actions" row instead
+            // (removed there); restored here.
             Column {
                 width: parent.width
                 spacing: root.chWidth * Config.Appearance.space1
@@ -565,13 +582,8 @@ PanelWindow {
                     Widgets.Separator { width: parent.width }
                     Widgets.SmallButton {
                         width: parent.width
-                        // Settings/sections/Devices.qml's own "Power" group
-                        // (docs/TODO.md: "add suspension/hibernation
-                        // settings in the settings panel") — same
-                        // _showInSettings deep-link pattern Volume/
-                        // Brightness/Wi-Fi/Bluetooth/VPN above already use.
                         label: "Settings…"
-                        onClicked: root._showInSettings("devices.power")
+                        onClicked: { Services.SettingsPanel.show(); Services.BarPopout.hide() }
                     }
                 }
             }
