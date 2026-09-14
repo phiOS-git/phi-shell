@@ -127,6 +127,7 @@ PanelWindow {
         case "volume": return volumeComponent
         case "brightness": return brightnessComponent
         case "network": return networkComponent
+        case "ethernet": return ethernetComponent
         case "bluetooth": return bluetoothComponent
         case "battery": return batteryComponent
         case "wifi": return wifiComponent
@@ -164,6 +165,7 @@ PanelWindow {
     Component { id: volumeComponent; Modules.Volume { screen: bar.screen } }
     Component { id: brightnessComponent; Modules.Brightness { screen: bar.screen } }
     Component { id: networkComponent; Modules.Network { screen: bar.screen } }
+    Component { id: ethernetComponent; Modules.Ethernet { screen: bar.screen } }
     Component { id: bluetoothComponent; Modules.Bluetooth { screen: bar.screen } }
     Component { id: batteryComponent; Modules.Battery { screen: bar.screen } }
     Component { id: wifiComponent; Modules.Wifi { screen: bar.screen } }

@@ -377,6 +377,24 @@ PanelWindow {
                 }
             }
 
+            // ethernet (docs/TODO.md: "network informations should not be
+            // exclusive to wifi, but for ethernet as well"). Deliberately
+            // just a status readout — no settings deep-link, since no
+            // `connectivity.ethernet` section exists yet in Settings/
+            // sections/Connectivity.qml, and adding one is outside what
+            // this entry asks for.
+            Column {
+                width: parent.width
+                spacing: root.chWidth * Config.Appearance.space1
+                visible: root.which === "ethernet"
+                Widgets.ListRow {
+                    width: parent.width
+                    label: "Ethernet"
+                    value: Services.EthernetBridge.connected
+                        ? Services.EthernetBridge.device.name : "not connected"
+                }
+            }
+
             // bluetooth
             Column {
                 width: parent.width

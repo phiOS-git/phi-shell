@@ -8,6 +8,7 @@
     { "type": "gpu", "island": "right", "position": 25, "source": "internal:nvidia-smi", "capability": "nvidiaGpu" },
     { "type": "network", "island": "right", "position": 30, "source": "internal:tailscale", "capability": "" },
     { "type": "wifi", "island": "right", "position": 40, "source": "internal:networkmanager", "capability": "wifi" },
+    { "type": "ethernet", "island": "right", "position": 45, "source": "internal:networkmanager", "capability": "" },
     { "type": "bluetooth", "island": "right", "position": 50, "source": "internal:bluez", "capability": "bluetooth" },
     { "type": "battery", "island": "right", "position": 55, "source": "internal:upower", "capability": "battery" },
     { "type": "notifications", "island": "right", "position": 60, "source": "internal:notifications", "capability": "" },
