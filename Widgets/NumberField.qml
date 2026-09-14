@@ -67,8 +67,29 @@ Row {
         return root.suffix.length > 0 ? s + root.suffix : s
     }
     function _clamp(v) { return Math.max(root.from, Math.min(root.to, v)) }
+    // Style pass 2026-09-15: was clamping only — `root.value` and the
+    // emitted `committed(c)` both kept whatever precision the caller
+    // passed in (a typed "5.7" into a `decimals: 0` field, or float drift
+    // from repeatedly stepping by a fractional `step`), while `_fmt(c)`
+    // rounded only the DISPLAYED text to `decimals`. The field could show
+    // "6" while `value` was still 5.7 underneath, and `committed` handed
+    // callers that same unrounded 5.7 — several call sites had already
+    // found this the hard way and defensively wrap with their own
+    // `Math.round(v)` (Settings/sections/Devices.qml's Chroma row/col
+    // fields, several in Theme.qml), inconsistently: others (Notifications'
+    // retention days and sound volume, the battery alert thresholds) did
+    // not, and would have silently stored a fractional value in a field
+    // that only ever displays and means a whole number. Rounding here
+    // once, to the field's own `decimals`, fixes it at the source for
+    // every current and future caller — the existing defensive
+    // `Math.round(v)` wrappers become harmless no-ops on an already-
+    // integer value, not double-rounding.
+    function _round(v) {
+        var mult = Math.pow(10, root.decimals)
+        return Math.round(v * mult) / mult
+    }
     function _apply(v) {
-        var c = root._clamp(v)
+        var c = root._round(root._clamp(v))
         root.value = c
         field.text = root._fmt(c)
         root.committed(c)
