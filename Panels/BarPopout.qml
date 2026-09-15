@@ -4,6 +4,7 @@ import Quickshell.Io
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
+import "../Bar/glyphs.js" as Glyphs
 
 // phiOS — Panels/BarPopout.qml (OOP-11; R3 #2/#9; OOP-22; OOP-23). The
 // small card that drops below the button that opened it — its right edge
@@ -95,10 +96,33 @@ PanelWindow {
     function _volumePct() { return Math.round(Services.AudioBridge.volume * 100) }
 
     // Out-of-plan: settings-overhaul batch F. Only sample the live network
-    // stats while the wifi card is actually on screen.
+    // stats while a card that actually shows them is on screen.
+    // Interface rework Phase 3: widened from "wifi" only — the expanded
+    // "network" section's own Wi-Fi sub-panel and the new "stats"
+    // overlay's network graph both show the identical live rate too.
     property bool _netWatched: false
-    onWhichChanged: root._syncNetWatch()
-    onShownChanged: root._syncNetWatch()
+    onWhichChanged: { root._syncNetWatch(); root._syncStatsWatch() }
+    onShownChanged: { root._syncNetWatch(); root._syncStatsWatch() }
+
+    // Interface rework Phase 3 (Stats overlay): Services/SysStats.qml and
+    // Services/GpuStats.qml are both watched-gated the same way
+    // Services/NetStats.qml already is — only sampled while the "stats"
+    // card is actually on screen. Services/GpuStats.qml may already have
+    // a separate, permanent watcher from Bar/modules/Gpu.qml's own icon
+    // (capability-gated) — additive, harmless either way.
+    property bool _statsWatched: false
+    function _syncStatsWatch() {
+        var want = root.shown && root.which === "stats"
+        if (want && !root._statsWatched) {
+            Services.SysStats.watch()
+            Services.GpuStats.watch()
+            root._statsWatched = true
+        } else if (!want && root._statsWatched) {
+            Services.SysStats.unwatch()
+            Services.GpuStats.unwatch()
+            root._statsWatched = false
+        }
+    }
 
     // New "power" IPC target — the one entry point docs/TODO.md's request
     // needs: hyprland.lua's Super+M bind now calls this instead of running
@@ -114,7 +138,7 @@ PanelWindow {
         function confirmLogout(): void { root._confirmAndPerform("logout") }
     }
     function _syncNetWatch() {
-        var want = root.shown && root.which === "wifi"
+        var want = root.shown && (root.which === "wifi" || root.which === "network" || root.which === "stats")
         if (want && !root._netWatched) { Services.NetStats.watch(); root._netWatched = true }
         else if (!want && root._netWatched) { Services.NetStats.unwatch(); root._netWatched = false }
     }
@@ -125,6 +149,89 @@ PanelWindow {
     function _fmtRate(kbps) {
         if (kbps >= 1000) return (kbps / 1000).toFixed(1) + " Mb/s"
         return Math.round(kbps) + " kb/s"
+    }
+
+    // --- "status" card helpers (rework.md's status overlay) ---------------
+    // rework.md: "user profile pic on the left, on the right in column
+    // username and session time." No avatar-picture or per-session-length
+    // data source exists anywhere in this codebase (checked Settings/
+    // sections/General.qml first, per this phase's own brief — it reports
+    // hostname/hardware/OS/uptime, no user identity or session-length
+    // field). `Quickshell.env("USER")` (a plain Quickshell core global,
+    // already used this freely elsewhere outside Services/ — e.g. Config/
+    // Paths.qml, Screenshot/Screenshot.qml — not the fenced
+    // `Quickshell.Services.*`/`.Wayland`/etc. surface phi-shell/CLAUDE.md
+    // restricts) is real; "session time" below reuses
+    // Services.SystemInfo.uptime (the same real figure General's own
+    // "System" card already shows) since no separate per-login-session
+    // timer exists either — both are flagged in the section itself, not
+    // silently presented as something they are not.
+    readonly property string _profileName: Quickshell.env("USER") || "user"
+
+    function _powerGlyph(action) {
+        switch (action) {
+        case "lock": return Glyphs.lock
+        case "suspend": return Glyphs.powerSleep
+        case "hibernate": return Glyphs.hibernate
+        case "logout": return Glyphs.logout
+        case "reboot": return Glyphs.restart
+        case "shutdown": return Glyphs.power
+        }
+        return ""
+    }
+    // rework.md: "different colors on hover" — one semantic tone per
+    // action, using this shell's existing tone palette rather than
+    // inventing new colours (rule 6).
+    function _powerTone(action) {
+        switch (action) {
+        case "suspend": return Config.Appearance.info
+        case "hibernate": return Config.Appearance.accent
+        case "logout": return Config.Appearance.warn
+        case "reboot": return Config.Appearance.warn
+        case "shutdown": return Config.Appearance.error
+        }
+        return Config.Appearance.textPrimary
+    }
+
+    // rework.md's camera-sensor toggle: no v4l2/`/dev/video*` mechanism
+    // exists anywhere in this codebase, and a full permission system is a
+    // separate, explicitly not-yet-built feature (docs/TODO.md's own
+    // answer on this exact backlog entry: "yes, the permission system must
+    // be built ... generally restrictive"). Real, clickable UI; a
+    // clearly-flagged NO-OP underneath, session-local only — the same
+    // "ship the UI, honest about the backend gap" pattern this phase's own
+    // Stats overlay uses for fan control (Services/FanControl.qml).
+    property bool _cameraEnabledPlaceholder: true
+
+    // rework.md's tiling-options grid. Feasibility checked against
+    // phios-dotfiles/profiles/desktop/templates/.config/hypr/
+    // hyprland.lua.tmpl (one level up, read-only, per this phase's own
+    // brief): stock Hyprland ships exactly two native layouts (dwindle,
+    // master) plus per-window floating — no X-scroll/Y-scroll/Center/Fair
+    // concept exists there or in Hyprland itself; those are third-party
+    // plugins (hy3, hyprscroller), outside rule 2 (official Arch packages
+    // only — no AUR, no manual plugin builds, no `hyprpm`). Session-local
+    // UI selection only; "tile" is the default since Hyprland already
+    // tiles by default.
+    property string _tilingMode: "tile"
+    function _applyTilingMode(id) {
+        root._tilingMode = id
+        if (id === "floating") {
+            // The one dispatcher confirmed real and already in production
+            // use (hyprland.lua.tmpl's own Super+Shift+F bind, verified
+            // against that file directly): `hl.dsp.window.float({ action =
+            // "toggle" })`. Toggles the FOCUSED window's floating state —
+            // a real, working action, but narrower than a genuine
+            // workspace-wide "everything floats" mode (stock Hyprland has
+            // no such concept either); flagged here for a human to confirm
+            // this scope reading is acceptable.
+            Services.HyprlandBridge.dispatch('hl.dsp.window.float({ action = "toggle" })')
+        }
+        // xscroll / yscroll / tile / center / fair: no native Hyprland
+        // dispatcher exists for any of these — see this function's own
+        // header. Selecting one only updates `_tilingMode` above (the
+        // button's own active-state highlight); deliberately no dispatch
+        // call, not a fabricated one.
     }
 
     // Live countdown for the "timer" card — only ticks while that specific
@@ -949,6 +1056,441 @@ PanelWindow {
                         label: "Settings…"
                         onClicked: { Services.SettingsPanel.show(); Services.BarPopout.hide() }
                     }
+                }
+            }
+
+            // status — Bar/modules/StatusMenu.qml (top-bar right isle),
+            // rework.md's full "status overlay" content list.
+            Widgets.StaggerReveal {
+                shown: root.which === "status"
+                width: parent.width
+                spacing: root.chWidth * Config.Appearance.space2
+                visible: root.which === "status"
+
+                // --- profile row --------------------------------------
+                Row {
+                    width: parent.width
+                    spacing: root.chWidth * Config.Appearance.space2
+
+                    Rectangle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: root.chWidth * 4
+                        height: width
+                        radius: width / 2
+                        color: Config.Appearance.colorOpposite
+                        Widgets.StyledText {
+                            anchors.centerIn: parent
+                            mono: true
+                            sizeStep: 3
+                            color: Config.Appearance.colorMain
+                            text: root._profileName.length > 0 ? root._profileName.charAt(0).toUpperCase() : "?"
+                        }
+                    }
+                    Column {
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: root.chWidth * Config.Appearance.space1 * 0.5
+                        Widgets.StyledText { kind: "title"; text: root._profileName }
+                        Widgets.StyledText {
+                            kind: "label"; sizeStep: 0
+                            text: "Uptime " + (Services.SystemInfo.uptime.length > 0 ? Services.SystemInfo.uptime : "—")
+                        }
+                    }
+                }
+
+                Widgets.Separator { width: parent.width }
+
+                // --- power icons row -----------------------------------
+                Row {
+                    spacing: root.chWidth * Config.Appearance.space3
+                    Repeater {
+                        model: ["lock", "suspend", "hibernate", "logout", "reboot", "shutdown"]
+                        Item {
+                            id: pwrBtn
+                            required property string modelData
+                            width: root.chWidth * 3
+                            height: width
+
+                            Widgets.StyledIcon {
+                                anchors.centerIn: parent
+                                glyph: root._powerGlyph(pwrBtn.modelData)
+                                sizeStep: 3
+                                color: pwrHover.hovered ? root._powerTone(pwrBtn.modelData) : Config.Appearance.textPrimary
+                                Behavior on color {
+                                    ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                                }
+                            }
+                            HoverHandler { id: pwrHover; cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: root._requestPowerAction(pwrBtn.modelData) }
+                        }
+                    }
+                }
+
+                Widgets.Separator { width: parent.width }
+
+                // --- media control (only while a source is available) --
+                Column {
+                    width: parent.width
+                    spacing: root.chWidth * Config.Appearance.space1
+                    visible: Services.Mpris.active !== null
+
+                    Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Media control" }
+                    Widgets.StyledText {
+                        width: parent.width
+                        elide: Text.ElideRight
+                        text: Services.Mpris.active !== null
+                            ? (Services.Mpris.active.trackArtist + " — " + Services.Mpris.active.trackTitle)
+                            : ""
+                    }
+                    Row {
+                        spacing: root.chWidth * Config.Appearance.space2
+                        Widgets.SmallButton {
+                            label: "Previous"
+                            enabled: Services.Mpris.active !== null && Services.Mpris.active.canGoPrevious
+                            onClicked: Services.Mpris.active.previous()
+                        }
+                        Widgets.SmallButton {
+                            label: (Services.Mpris.active !== null && Services.Mpris.active.isPlaying) ? "Pause" : "Play"
+                            enabled: Services.Mpris.active !== null
+                                && (Services.Mpris.active.canPlay || Services.Mpris.active.canPause)
+                            onClicked: Services.Mpris.active.togglePlaying()
+                        }
+                        Widgets.SmallButton {
+                            label: "Next"
+                            enabled: Services.Mpris.active !== null && Services.Mpris.active.canGoNext
+                            onClicked: Services.Mpris.active.next()
+                        }
+                    }
+                }
+                Widgets.Separator { width: parent.width; visible: Services.Mpris.active !== null }
+
+                // --- system control -------------------------------------
+                Column {
+                    width: parent.width
+                    spacing: root.chWidth * Config.Appearance.space2
+
+                    Widgets.StyledText { kind: "title"; sizeStep: 0; text: "System control" }
+
+                    // Judgment call: rather than a second live draggable
+                    // Widgets.Meter for the same volume/brightness this
+                    // popout already has full interactive cards for (a real
+                    // duplication risk — two sliders for one value, easy to
+                    // drift out of sync visually), the level is a compact
+                    // icon + read-only-looking bar here; the icon itself
+                    // still does rework.md's "pressing on icon toggles
+                    // mute" for volume, and the full draggable card is one
+                    // click away on the bar's own volume/brightness icons.
+                    Item {
+                        width: parent.width
+                        implicitHeight: Math.max(statusVolMeter.implicitHeight, statusVolPct.implicitHeight)
+                        Widgets.StyledIcon {
+                            id: statusVolIcon
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            glyph: Services.AudioBridge.muted ? Glyphs.volumeMute : Glyphs.volume
+                            HoverHandler { cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: Services.AudioBridge.toggleMute() }
+                        }
+                        Widgets.StyledText {
+                            id: statusVolPct
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            mono: true; kind: "label"; sizeStep: 0
+                            text: Math.round(Services.AudioBridge.volume * 100) + "%"
+                        }
+                        Widgets.Meter {
+                            id: statusVolMeter
+                            anchors.left: statusVolIcon.right
+                            anchors.leftMargin: root.chWidth
+                            anchors.right: statusVolPct.left
+                            anchors.rightMargin: root.chWidth
+                            anchors.verticalCenter: parent.verticalCenter
+                            interactive: true
+                            value: Services.AudioBridge.volume
+                            fillColor: Services.AudioBridge.muted ? Config.Appearance.textFaint : Config.Appearance.textPrimary
+                            onMoved: (v) => Services.AudioBridge.setVolume(v)
+                        }
+                    }
+                    Item {
+                        width: parent.width
+                        implicitHeight: Math.max(statusBriMeter.implicitHeight, statusBriPct.implicitHeight)
+                        Widgets.StyledIcon {
+                            id: statusBriIcon
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            glyph: Glyphs.brightness
+                        }
+                        Widgets.StyledText {
+                            id: statusBriPct
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            mono: true; kind: "label"; sizeStep: 0
+                            text: Services.Brightness.percent + "%"
+                        }
+                        Widgets.Meter {
+                            id: statusBriMeter
+                            anchors.left: statusBriIcon.right
+                            anchors.leftMargin: root.chWidth
+                            anchors.right: statusBriPct.left
+                            anchors.rightMargin: root.chWidth
+                            anchors.verticalCenter: parent.verticalCenter
+                            interactive: true
+                            value: Services.Brightness.percent / 100
+                            fillColor: Config.Appearance.textPrimary
+                            onReleased: (v) => Services.Brightness.set(Math.round(v * 100))
+                        }
+                    }
+
+                    // Toggle icons — rendered as ToggleRow (label + switch),
+                    // this shell's own established idiom for exactly this
+                    // shape everywhere else it appears (Night mode/True
+                    // Tone above in this same file), not bespoke icon
+                    // glyphs; mic/camera each carry a third state a plain
+                    // switch cannot show, so those two add a status word.
+                    Widgets.ToggleRow {
+                        width: parent.width
+                        label: "Night mode"
+                        checked: Services.NightShift.enabled
+                        onToggled: (v) => Services.NightShift.setEnabled(v)
+                    }
+                    Widgets.ToggleRow {
+                        width: parent.width
+                        label: "True Tone"
+                        checked: Services.NightShift.trueTone
+                        enabled: Config.Capabilities.ambientLight
+                        onToggled: (v) => Services.NightShift.setTrueTone(v)
+                    }
+                    // rework.md: "stay-awake (amphetamine icon with 2
+                    // states)" — Services/Idle.qml's new `manualOverride`
+                    // (this phase) is a real, working addition.
+                    Widgets.ToggleRow {
+                        width: parent.width
+                        label: "Stay awake"
+                        checked: Services.Idle.manualOverride
+                        onToggled: (v) => Services.Idle.setManualOverride(v)
+                    }
+                    // rework.md: "microphone sensor ... enabled, disabled,
+                    // in use" — Services/AudioBridge.qml's existing
+                    // inputMuted/toggleInputMute() (a real Pipewire mute at
+                    // the source) plus its new `micInUse` (this phase, real
+                    // Pipewire link-state read).
+                    Item {
+                        width: parent.width
+                        implicitHeight: Math.max(micLabel.implicitHeight, micToggle.implicitHeight)
+                        Widgets.StyledText {
+                            id: micLabel
+                            anchors.left: parent.left
+                            anchors.right: micToggle.left
+                            anchors.rightMargin: root.chWidth
+                            anchors.verticalCenter: parent.verticalCenter
+                            kind: "label"
+                            text: "Microphone" + (Services.AudioBridge.micInUse ? " — in use" : "")
+                        }
+                        Widgets.Toggle {
+                            id: micToggle
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            checked: !Services.AudioBridge.inputMuted
+                            onToggled: (v) => Services.AudioBridge.toggleInputMute()
+                        }
+                    }
+                    // rework.md's camera-sensor toggle — see
+                    // root._cameraEnabledPlaceholder's own comment above
+                    // for the full "why a no-op" explanation.
+                    Item {
+                        width: parent.width
+                        implicitHeight: Math.max(camLabel.implicitHeight, camToggle.implicitHeight)
+                        Widgets.StyledText {
+                            id: camLabel
+                            anchors.left: parent.left
+                            anchors.right: camToggle.left
+                            anchors.rightMargin: root.chWidth
+                            anchors.verticalCenter: parent.verticalCenter
+                            kind: "label"
+                            text: "Camera — not available on this build"
+                        }
+                        Widgets.Toggle {
+                            id: camToggle
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            checked: root._cameraEnabledPlaceholder
+                            onToggled: (v) => root._cameraEnabledPlaceholder = v
+                        }
+                    }
+                }
+
+                Widgets.Separator { width: parent.width }
+
+                // --- tiling options grid --------------------------------
+                Column {
+                    width: parent.width
+                    spacing: root.chWidth * Config.Appearance.space1
+
+                    Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Tiling" }
+                    Widgets.StyledText {
+                        width: parent.width
+                        kind: "label"; sizeStep: 0
+                        wrapMode: Text.WordWrap
+                        text: "Stock Hyprland has no native X/Y-scroll, Center or Fair "
+                            + "layout — only Tile (dwindle/master) and per-window "
+                            + "Floating are real here; the rest only highlight."
+                    }
+                    Grid {
+                        width: parent.width
+                        columns: 3
+                        columnSpacing: root.chWidth * Config.Appearance.space2
+                        rowSpacing: root.chWidth * Config.Appearance.space2
+                        Repeater {
+                            model: [
+                                { id: "xscroll", label: "X scroll" },
+                                { id: "yscroll", label: "Y scroll" },
+                                { id: "tile", label: "Tile" },
+                                { id: "center", label: "Center" },
+                                { id: "fair", label: "Fair" },
+                                { id: "floating", label: "Floating" },
+                            ]
+                            Widgets.SmallButton {
+                                required property var modelData
+                                width: (parent.width - root.chWidth * Config.Appearance.space2 * 2) / 3
+                                label: modelData.label
+                                active: root._tilingMode === modelData.id
+                                onClicked: root._applyTilingMode(modelData.id)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // stats — Bar/modules/Stats.qml (bottom-bar right isle),
+            // rework.md's full "stats overlay" content list.
+            Widgets.StaggerReveal {
+                shown: root.which === "stats"
+                width: parent.width
+                spacing: root.chWidth * Config.Appearance.space2
+                visible: root.which === "stats"
+
+                // --- network speed + ping (reuses Services.NetStats,
+                // watched via root._syncNetWatch() above) ----------------
+                Column {
+                    width: parent.width
+                    spacing: root.chWidth * Config.Appearance.space1
+                    Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Network" }
+                    Widgets.AreaChart {
+                        width: parent.width
+                        height: root.chWidth * 5
+                        values: Services.NetStats.downSamples
+                    }
+                    Row {
+                        spacing: root.chWidth * Config.Appearance.space2
+                        Widgets.StyledText { kind: "label"; sizeStep: 0
+                            text: "↓ " + root._fmtRate(Services.NetStats.downKbps) }
+                        Widgets.StyledText { kind: "label"; sizeStep: 0
+                            text: "↑ " + root._fmtRate(Services.NetStats.upKbps) }
+                        Widgets.StyledText { kind: "label"; sizeStep: 0
+                            text: "ping " + (Services.NetStats.pingMs >= 0 ? Services.NetStats.pingMs + " ms" : "—") }
+                    }
+                }
+                Widgets.Separator { width: parent.width }
+
+                // --- disk usage (Services/SysStats.qml, new this phase) -
+                Column {
+                    width: parent.width
+                    spacing: root.chWidth * Config.Appearance.space1
+                    Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Disk" }
+                    Widgets.Meter {
+                        width: parent.width
+                        value: Services.SysStats.diskUsedPercent / 100
+                        fillColor: Config.Appearance.textPrimary
+                    }
+                    Widgets.StyledText {
+                        kind: "label"; sizeStep: 0
+                        text: Math.round(Services.SysStats.diskUsedPercent) + "% used"
+                            + (Services.SysStats.diskFree.length > 0
+                                ? " · " + Services.SysStats.diskFree + " free of " + Services.SysStats.diskTotal
+                                : "")
+                    }
+                }
+                Widgets.Separator { width: parent.width }
+
+                // --- ram / cpu / gpu usage -------------------------------
+                Column {
+                    width: parent.width
+                    spacing: root.chWidth * Config.Appearance.space1
+                    Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Usage" }
+                    Widgets.ListRow { width: parent.width; label: "RAM"; value: Math.round(Services.SysStats.ramPercent) + "%" }
+                    Widgets.Meter { width: parent.width; value: Services.SysStats.ramPercent / 100; fillColor: Config.Appearance.textPrimary }
+                    Widgets.ListRow { width: parent.width; label: "CPU"; value: Math.round(Services.SysStats.cpuPercent) + "%" }
+                    Widgets.Meter { width: parent.width; value: Services.SysStats.cpuPercent / 100; fillColor: Config.Appearance.textPrimary }
+                    Widgets.ListRow {
+                        width: parent.width
+                        visible: Config.Capabilities.nvidiaGpu
+                        label: "GPU"
+                        value: Math.round(Services.GpuStats.utilPercent) + "%"
+                    }
+                    Widgets.Meter {
+                        width: parent.width
+                        visible: Config.Capabilities.nvidiaGpu
+                        value: Services.GpuStats.utilPercent / 100
+                        fillColor: Config.Appearance.textPrimary
+                    }
+                }
+                Widgets.Separator { width: parent.width }
+
+                // --- CPU temp + graph + 4 fan-profile buttons -----------
+                // rework.md: "4 fan profile buttons with active state
+                // (auto, silent, default, heavy)". See Services/
+                // FanControl.qml's own header for why these are real,
+                // clickable UI over a confirmed no-op — no fan-control
+                // mechanism exists anywhere in this codebase or via any
+                // official-repo package.
+                Column {
+                    width: parent.width
+                    spacing: root.chWidth * Config.Appearance.space1
+                    Widgets.StyledText { kind: "title"; sizeStep: 0; text: "CPU" }
+                    Widgets.AreaChart {
+                        width: parent.width
+                        height: root.chWidth * 5
+                        values: Services.SysStats.cpuTempSamples
+                        maxHint: 100
+                    }
+                    Widgets.StyledText {
+                        kind: "label"; sizeStep: 0
+                        text: Services.SysStats.cpuTempC > 0 ? Services.SysStats.cpuTempC + "°C" : "temperature unavailable"
+                    }
+                    Widgets.StyledText {
+                        width: parent.width
+                        visible: !Services.FanControl.available
+                        kind: "label"; sizeStep: 0
+                        wrapMode: Text.WordWrap
+                        text: "Fan control is not available on this hardware yet."
+                    }
+                    Row {
+                        spacing: root.chWidth * Config.Appearance.space2
+                        Repeater {
+                            model: ["auto", "silent", "default", "heavy"]
+                            Widgets.SmallButton {
+                                required property string modelData
+                                label: modelData
+                                active: Services.FanControl.profile === modelData
+                                onClicked: Services.FanControl.setProfile(modelData)
+                            }
+                        }
+                    }
+                }
+
+                // --- GPU temp + graph (if available) --------------------
+                Column {
+                    width: parent.width
+                    visible: Config.Capabilities.nvidiaGpu
+                    spacing: root.chWidth * Config.Appearance.space1
+                    Widgets.Separator { width: parent.width }
+                    Widgets.StyledText { kind: "title"; sizeStep: 0; text: "GPU" }
+                    Widgets.AreaChart {
+                        width: parent.width
+                        height: root.chWidth * 5
+                        values: Services.GpuStats.tempSamples
+                        maxHint: 100
+                    }
+                    Widgets.StyledText { kind: "label"; sizeStep: 0; text: Services.GpuStats.tempC + "°C" }
                 }
             }
         }
