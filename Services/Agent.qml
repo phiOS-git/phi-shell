@@ -230,6 +230,26 @@ Singleton {
             root.base + "/session"]
         newSessProc.running = true
     }
+    // Critical self-review pass 2026-09-15 (no user report — a raw
+    // opencode-generated default title, "New session - 2026-09-14T15:27:
+    // 36.713Z", showing up verbatim in every session list and the chat
+    // header itself: a millisecond-precision ISO 8601 timestamp is not
+    // something a user should ever have to read). opencode assigns this
+    // default server-side before a real title exists (the first user
+    // message hasn't landed yet, or titling hasn't run) — reformatted
+    // here for DISPLAY only, every call site that shows a session/chat
+    // title routes through this so none of them can show the raw form
+    // while another shows it reformatted. The stored title itself is
+    // untouched; this never writes anything back.
+    function formatSessionTitle(title) {
+        const m = /^New session - (.+)$/.exec(title || "")
+        if (!m) return title
+        const d = new Date(m[1])
+        if (isNaN(d.getTime())) return title
+        // Same 24-hour, no-AM/PM convention Lock/Lock.qml's own clock
+        // already uses, for one shell-wide idea of "how time is written".
+        return "New chat · " + Qt.formatDateTime(d, "d MMM, hh:mm")
+    }
     function openSession(id) {
         root.currentSessionId = id
         root.messages = []

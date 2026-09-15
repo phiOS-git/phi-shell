@@ -204,7 +204,7 @@ Item {
 
         Widgets.ListRow {
             width: chatRow.width - pinBtn.implicitWidth - closeBtn.implicitWidth - chatRow.spacing * 2
-            label: (chatRow.rec.Title || chatRow.rec.title || chatRow.chatId)
+            label: root.agent.formatSessionTitle(chatRow.rec.Title || chatRow.rec.title || chatRow.chatId)
             value: (chatRow.rec.Project && chatRow.rec.Project !== "_unfiled") ? chatRow.rec.Project : ""
             glyph: chatRow.pinned ? "★" : ""
             onActivated: { root.agent.openSession(chatRow.chatId); chatRow.open() }

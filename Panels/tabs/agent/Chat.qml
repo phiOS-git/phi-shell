@@ -74,9 +74,15 @@ Item {
         function onProcessingChanged() { if (!agent.processing) agent.syncCurrentTranscript() }
     }
 
-    function currentTitle() {
+    // `raw: true` returns the actual stored title (used to decide what to
+    // pre-fill when renaming — see renameBtn's own comment below); the
+    // default reformats opencode's own raw-ISO-timestamp default title
+    // for display (Services/Agent.qml's own formatSessionTitle() comment
+    // has the full reasoning).
+    function currentTitle(raw) {
         for (var i = 0; i < agent.sessions.length; i++)
-            if (agent.sessions[i].id === agent.currentSessionId) return agent.sessions[i].title
+            if (agent.sessions[i].id === agent.currentSessionId)
+                return raw ? agent.sessions[i].title : agent.formatSessionTitle(agent.sessions[i].title)
         return agent.currentSessionId
     }
 
@@ -170,7 +176,16 @@ Item {
                     label: root.renamingTitle ? "Cancel" : "Rename"
                     onClicked: {
                         if (root.renamingTitle) { root.renamingTitle = false; return }
-                        renameField.text = root.currentTitle()
+                        // The RAW title, not the reformatted display
+                        // string above — pre-filling the synthetic "New
+                        // chat · 14 Sep, 15:27" text would let it get
+                        // saved back as a real, permanent title the next
+                        // time this is committed. Still opencode's own
+                        // raw-timestamp default at this point, so start
+                        // the field empty instead, prompting a real title
+                        // rather than proposing a bad one.
+                        const raw = root.currentTitle(true)
+                        renameField.text = /^New session - /.test(raw) ? "" : raw
                         root.renamingTitle = true
                         renameField.forceEditFocus()
                     }
@@ -207,7 +222,7 @@ Item {
                         delegate: Widgets.ListRow {
                             required property var modelData
                             width: sessCol.width
-                            label: modelData.title
+                            label: root.agent.formatSessionTitle(modelData.title)
                             active: modelData.id === root.agent.currentSessionId
                             onActivated: root.agent.openSession(modelData.id)
                         }

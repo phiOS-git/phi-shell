@@ -259,7 +259,7 @@ Item {
 
                         Widgets.ListRow {
                             width: chatRow.width - pinBtn.implicitWidth - closeBtn.implicitWidth - chatRow.spacing * 2
-                            label: (chatRow.modelData.Title || chatRow.modelData.title || chatRow.chatId)
+                            label: root.agent.formatSessionTitle(chatRow.modelData.Title || chatRow.modelData.title || chatRow.chatId)
                             glyph: chatRow.pinned ? "★" : ""
                             onActivated: { root.agent.openSession(chatRow.chatId); root.startChat() }
                         }
