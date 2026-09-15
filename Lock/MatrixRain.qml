@@ -42,6 +42,11 @@ Item {
     // docs/TODO.md: "ambient effects... should have many settings: some
     // shared (eg. speed)" — see Lock/LavaLamp.qml's own identical comment.
     property real speed: 1.0
+    // docs/TODO.md follow-up (user, 2026-09-15): "way more customisability"
+    // — a multiplier on the column density, inverse on the cell size (>1 =
+    // smaller cells = more columns = denser rain; <1 = sparser). Settings/
+    // sections/Theme.qml's own "Matrix" accordion exposes this.
+    property real density: 1.0
 
     readonly property string glyphs:
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789" +
@@ -50,8 +55,9 @@ Item {
 
     // Deliberately looser than one text cell — a touch of air between
     // columns keeps the glyph count (and the fill cost) sane on a large
-    // display without the rain reading as sparse.
-    readonly property real cell: Math.round(Config.Appearance.fontSize3 * 1.2)
+    // display without the rain reading as sparse. `density` scales this
+    // inversely, clamped so it can never collapse to (or below) zero.
+    readonly property real cell: Math.round(Config.Appearance.fontSize3 * 1.2 / Math.max(0.35, root.density))
     readonly property int columnCount: Math.max(1, Math.floor(width / cell))
     readonly property int rowCount: Math.max(1, Math.ceil(height / cell) + 2)
 

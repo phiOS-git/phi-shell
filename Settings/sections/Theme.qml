@@ -1034,7 +1034,9 @@ Column {
         SettingsRow {
             title: "Ambient effect"
             description: "The backdrop behind the lock screen."
-            Row {
+            wide: true
+            Flow {
+                width: parent.width
                 spacing: root.gap
                 Repeater {
                     model: [
@@ -1043,7 +1045,8 @@ Column {
                         { key: "matrix", label: "Matrix" },
                         { key: "starfield", label: "Starfield" },
                         { key: "plasma", label: "Plasma" },
-                        { key: "life", label: "Life" }
+                        { key: "life", label: "Life" },
+                        { key: "boids", label: "Boids" }
                     ]
                     Widgets.StyledButton {
                         required property var modelData
@@ -1093,6 +1096,108 @@ Column {
                 onCommitted: (v) => Config.LockPrefs.setIntensity(Config.LockPrefs.effect, v)
             }
         }
+
+        // docs/TODO.md follow-up (user, 2026-09-15): "way more
+        // customisability" — one settings block per effect, visible only
+        // while that effect is the one actually selected above (the same
+        // gating Speed/Intensity already use): showing all six effects'
+        // own extra knobs at once would defeat "make the layout fit" by
+        // reintroducing the exact clutter this round is fixing, when only
+        // one of them can ever be active at a time anyway.
+        SettingsRow {
+            visible: Config.LockPrefs.effect === "lava"
+            title: "Lava lamp"
+            description: "More blobs read as a denser, busier field. Wobble scales how much each blob squashes/stretches and drifts sideways as it rises."
+            Column {
+                width: parent.width
+                spacing: root.gap
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Blob count" }
+                    Widgets.NumberField {
+                        value: Config.LockPrefs.paramFor("lava", "blobCount", 9)
+                        from: 3; to: 18; step: 1
+                        onCommitted: (v) => Config.LockPrefs.setParam("lava", "blobCount", Math.round(v))
+                    }
+                }
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Wobble" }
+                    Widgets.NumberField {
+                        value: Config.LockPrefs.paramFor("lava", "wobble", 1.0)
+                        from: 0.25; to: 3.0; step: 0.25; decimals: 2; suffix: "×"
+                        onCommitted: (v) => Config.LockPrefs.setParam("lava", "wobble", v)
+                    }
+                }
+            }
+        }
+        SettingsRow {
+            visible: Config.LockPrefs.effect === "matrix"
+            title: "Matrix"
+            description: "Column density — higher packs the columns closer together."
+            Widgets.NumberField {
+                value: Config.LockPrefs.paramFor("matrix", "density", 1.0)
+                from: 0.4; to: 2.0; step: 0.2; decimals: 1; suffix: "×"
+                onCommitted: (v) => Config.LockPrefs.setParam("matrix", "density", v)
+            }
+        }
+        SettingsRow {
+            visible: Config.LockPrefs.effect === "starfield"
+            title: "Starfield"
+            description: "How many points drift across the field at once."
+            Widgets.NumberField {
+                value: Config.LockPrefs.paramFor("starfield", "starCount", 140)
+                from: 30; to: 400; step: 10
+                onCommitted: (v) => Config.LockPrefs.setParam("starfield", "starCount", Math.round(v))
+            }
+        }
+        SettingsRow {
+            visible: Config.LockPrefs.effect === "plasma"
+            title: "Plasma"
+            description: "Grid resolution — higher is finer detail at a higher redraw cost."
+            Widgets.NumberField {
+                value: Config.LockPrefs.paramFor("plasma", "resolution", 1.0)
+                from: 0.5; to: 2.0; step: 0.25; decimals: 2; suffix: "×"
+                onCommitted: (v) => Config.LockPrefs.setParam("plasma", "resolution", v)
+            }
+        }
+        SettingsRow {
+            visible: Config.LockPrefs.effect === "life"
+            title: "Life"
+            description: "Grid resolution changes the cell size; seed density is how much of the board starts alive when a generation is (re)seeded."
+            Column {
+                width: parent.width
+                spacing: root.gap
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Grid resolution" }
+                    Widgets.NumberField {
+                        value: Config.LockPrefs.paramFor("life", "resolution", 1.0)
+                        from: 0.5; to: 2.0; step: 0.25; decimals: 2; suffix: "×"
+                        onCommitted: (v) => Config.LockPrefs.setParam("life", "resolution", v)
+                    }
+                }
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Seed density" }
+                    Widgets.NumberField {
+                        value: Config.LockPrefs.paramFor("life", "seedDensity", 0.28)
+                        from: 0.1; to: 0.5; step: 0.02; decimals: 2
+                        onCommitted: (v) => Config.LockPrefs.setParam("life", "seedDensity", v)
+                    }
+                }
+            }
+        }
+        SettingsRow {
+            visible: Config.LockPrefs.effect === "boids"
+            title: "Boids"
+            description: "How many boids flock together."
+            Widgets.NumberField {
+                value: Config.LockPrefs.paramFor("boids", "boidCount", 40)
+                from: 10; to: 120; step: 5
+                onCommitted: (v) => Config.LockPrefs.setParam("boids", "boidCount", Math.round(v))
+            }
+        }
     }
 
     // docs/TODO.md: "add a live preview of the effect in the settings
@@ -1139,19 +1244,37 @@ Column {
         SettingsRow {
             wide: true
             title: "Live preview"
+            // docs/TODO.md follow-up (user, 2026-09-15): "the preview
+            // header is covering most part of the preview area" — this
+            // description used to stay populated (a full sentence) even
+            // while the preview was actually showing, on top of the
+            // group's own title/caption above and the Show/Hide button
+            // below, all stacked ahead of a comparatively small 20ch-tall
+            // canvas. Empty string while live (SettingsRow's own
+            // description Text is `visible: description.length > 0`, so
+            // this removes the line entirely rather than leaving it
+            // blank) — the explanatory sentence only earns its keep while
+            // there is nothing else to look at yet.
             description: ambientPreviewGroup.previewLive
-                ? "The currently-selected effect, running live."
+                ? ""
                 : "Hidden by default — some effects are expensive to render continuously. Pick a different effect above, or show it manually."
             Column {
                 width: parent.width
                 spacing: root.gap
-                Widgets.StyledButton {
+                Widgets.SmallButton {
                     label: ambientPreviewGroup.previewLive ? "Hide preview" : "Show preview"
                     onClicked: ambientPreviewGroup.previewLive = !ambientPreviewGroup.previewLive
                 }
                 Item {
                     width: parent.width
-                    height: root.chWidth * 20
+                    // Was chWidth*20 — nearly as tall as the header chrome
+                    // stacked above it (group title+caption, this row's
+                    // own title, the Show/Hide button), which is what
+                    // read as "the header covers most of the preview".
+                    // Close to doubled so the actual live effect is the
+                    // dominant visual element once shown, not a small box
+                    // squeezed under a wall of text.
+                    height: root.chWidth * 34
                     clip: true
                     visible: ambientPreviewGroup.previewLive
 
@@ -1171,19 +1294,42 @@ Column {
                             case "starfield": return starPreview
                             case "plasma": return plasmaPreview
                             case "life": return lifePreview
+                            case "boids": return boidsPreview
                             default: return null
                             }
                         }
                     }
-                    // Speed/intensity bindings so the preview actually
-                    // shows what the Speed/Intensity fields above are set
+                    // Speed/intensity/per-effect-param bindings so the
+                    // preview actually shows what the fields above are set
                     // to, live, matching what Lock/Lock.qml itself will
-                    // use at the next real lock.
-                    Component { id: lavaPreview; LockFx.LavaLamp { running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("lava") } }
-                    Component { id: matrixPreview; LockFx.MatrixRain { running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("matrix") } }
-                    Component { id: starPreview; LockFx.Starfield { running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("starfield") } }
-                    Component { id: plasmaPreview; LockFx.Plasma { running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("plasma") } }
-                    Component { id: lifePreview; LockFx.Life { running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("life") } }
+                    // use at the next real lock — same defaults as that
+                    // file's own component list.
+                    Component { id: lavaPreview; LockFx.LavaLamp {
+                        running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("lava")
+                        blobCount: Config.LockPrefs.paramFor("lava", "blobCount", 9)
+                        wobble: Config.LockPrefs.paramFor("lava", "wobble", 1.0)
+                    } }
+                    Component { id: matrixPreview; LockFx.MatrixRain {
+                        running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("matrix")
+                        density: Config.LockPrefs.paramFor("matrix", "density", 1.0)
+                    } }
+                    Component { id: starPreview; LockFx.Starfield {
+                        running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("starfield")
+                        starCount: Config.LockPrefs.paramFor("starfield", "starCount", 140)
+                    } }
+                    Component { id: plasmaPreview; LockFx.Plasma {
+                        running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("plasma")
+                        resolution: Config.LockPrefs.paramFor("plasma", "resolution", 1.0)
+                    } }
+                    Component { id: lifePreview; LockFx.Life {
+                        running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("life")
+                        resolution: Config.LockPrefs.paramFor("life", "resolution", 1.0)
+                        seedDensity: Config.LockPrefs.paramFor("life", "seedDensity", 0.28)
+                    } }
+                    Component { id: boidsPreview; LockFx.Boids {
+                        running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("boids")
+                        boidCount: Config.LockPrefs.paramFor("boids", "boidCount", 40)
+                    } }
                 }
             }
         }

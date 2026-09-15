@@ -19,15 +19,17 @@ Item {
     // docs/TODO.md: "ambient effects... should have many settings: some
     // shared (eg. speed)" — see Lock/LavaLamp.qml's own identical comment.
     property real speed: 1.0
-
-    readonly property int starCount: 140
+    // docs/TODO.md follow-up (user, 2026-09-15): "way more customisability"
+    // — was a fixed 140, now a real settable property (Settings/sections/
+    // Theme.qml's own "Starfield" accordion).
+    property int starCount: 140
     property var stars: []
 
     function _rand(a, b) { return a + Math.random() * (b - a) }
 
     function seed() {
         var out = []
-        for (var i = 0; i < starCount; i++) {
+        for (var i = 0; i < root.starCount; i++) {
             out.push({
                 x: Math.random(),
                 y: Math.random(),
@@ -40,6 +42,7 @@ Item {
     }
 
     onWidthChanged: if (stars.length === 0) seed()
+    onStarCountChanged: seed()
     Component.onCompleted: seed()
 
     Timer {
