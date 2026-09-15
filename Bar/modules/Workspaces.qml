@@ -68,8 +68,13 @@ Item {
         text: "0"
     }
 
-    implicitWidth: row.implicitWidth
-    implicitHeight: row.implicitHeight
+    // rework-issues.md item 8: "the list itself should have a little
+    // padding" — the same space1 unit every other bar-module gap in this
+    // file already uses, not a new token.
+    readonly property real padding: chMetrics.width * Config.Appearance.space1
+
+    implicitWidth: row.implicitWidth + root.padding * 2
+    implicitHeight: row.implicitHeight + root.padding * 2
 
     // Interface rework Phase 2 (rework.md: "the selected workspace has
     // slightly more width") — how much wider the active square gets,
@@ -78,6 +83,8 @@ Item {
 
     Row {
         id: row
+        x: root.padding
+        y: root.padding
         spacing: chMetrics.width * Config.Appearance.space1
 
         Repeater {
@@ -112,13 +119,27 @@ Item {
                 // bool directly, not a Behavior-animated float, so it
                 // can't hit the restart-storm bug those two pops originally
                 // had and were fixed for.
-                scale: 1.0
+                //
+                // rework-issues.md item 8: "the active workspace grow only
+                // in width, not in height as well" — a plain `scale`
+                // property scales both axes uniformly, so the pop's
+                // momentary overshoot was visibly growing the button
+                // taller too. An X-only `Scale` transform (same technique
+                // Widgets/FlipDigit.qml's own flap squash already uses)
+                // keeps the bounce purely horizontal.
+                property real popScale: 1.0
+                transform: Scale {
+                    origin.x: wsButton.width / 2
+                    origin.y: wsButton.height / 2
+                    xScale: wsButton.popScale
+                    yScale: 1.0
+                }
                 onActiveChanged: if (active) wsPop.restart()
                 SequentialAnimation {
                     id: wsPop
-                    NumberAnimation { target: wsButton; property: "scale"; to: 1.18
+                    NumberAnimation { target: wsButton; property: "popScale"; to: 1.18
                         duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
-                    NumberAnimation { target: wsButton; property: "scale"; to: 1.0
+                    NumberAnimation { target: wsButton; property: "popScale"; to: 1.0
                         duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
                 }
             }
