@@ -55,6 +55,11 @@ Item {
     // Loader/componentFor() the way the retired Sidebar tab was).
     property bool revealShown: true
 
+    // rework-issues.md item 3: the overlay window (Panels/
+    // NotificationsOverlay.qml) reads this to size itself to content
+    // instead of always stretching to the bottom of the screen.
+    readonly property real naturalContentHeight: flick.contentHeight
+
     TextMetrics {
         id: chMetrics
         font.family: Config.Appearance.fontMono
