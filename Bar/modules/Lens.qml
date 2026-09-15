@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import qs.Services as Services
 import qs.Widgets as Widgets
 import "../glyphs.js" as Glyphs
 
@@ -26,6 +27,9 @@ Widgets.Segment {
     ambient: "isle"
     glyph: Glyphs.lens
     label: ""
+    // rework-issues.md item 11: reads Services/Launcher.qml (new — see
+    // that file's own header) instead of having no active state at all.
+    active: Services.Launcher.shown
 
     onActivated: Quickshell.execDetached(["qs", "-p", Quickshell.configDir, "ipc", "call", "launcher", "toggle"])
 }
