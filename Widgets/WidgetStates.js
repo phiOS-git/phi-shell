@@ -233,14 +233,20 @@ function surfaceColors(appearance, resolvedState, ambient) {
     // stays bare (no resting box at all, unlike `toggle`'s own default,
     // which keeps a permanent `offWash` fill) — the reference's un-marked
     // pills are plain icon+text on the wallpaper, nothing boxed.
+    //
+    // Take 2 (reported directly: "the selected state is just a border...
+    // it should be the accent colour background"): the caller
+    // (PowerActionsRow.qml) now passes its own real keyboard-focus flag
+    // in as `active`, not `keyboardFocus` — so `resolvedState` here is
+    // never actually "focus" for this ambient, only "active"/"hover"/
+    // "invalid"/default. No `case "focus"` left in this block on purpose:
+    // it would be genuinely unreachable dead code, not a harmless spare.
     if (ambient === "powerPill") {
         switch (resolvedState) {
         case "active":
             return { bg: appearance.accent, fg: appearance.accentText, border: appearance.accent }
         case "invalid":
             return { bg: "transparent", fg: appearance.error, border: "transparent" }
-        case "focus":
-            return { bg: "transparent", fg: appearance.colorOpposite, border: appearance.focusRing }
         case "hover":
             return { bg: appearance.panelHover, fg: appearance.colorOpposite, border: "transparent" }
         default:

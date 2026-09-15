@@ -47,42 +47,43 @@ Singleton {
     function show() { root.shown = true }
     function hide() { root.shown = false }
 
-    // Called once per SUPER+L press, unconditionally, by the IpcHandler
-    // below. A second call within doubleTapWindowMs of the first cancels
-    // the pending menu-open (so a fast double-tap never flashes the
-    // overlay before locking) and locks instantly instead — the ordering
-    // matters: the pending open is cancelled BEFORE lock() runs, not
-    // after, so there is no window where both could happen.
+    // Style pass 2026-09-15 (reported directly: "the lock overlay appears
+    // with delay when pressing super+l. Either the transition is too slow
+    // or it just lags"). The ORIGINAL version here waited out the FULL
+    // doubleTapWindowMs on every single press before ever calling show()
+    // — deliberately, so a genuine double-tap would never flash the menu
+    // before locking. That traded a real, felt delay on the overwhelmingly
+    // more common single-press case for a cosmetic guarantee on the rare
+    // double-tap one, which is the wrong side of that trade: show() now
+    // runs immediately, on the very first press, and a confirmed second
+    // press within the window hides it again before locking. A genuine
+    // double-tap will now show the menu for the brief instant between the
+    // two presses (human double-taps are rarely faster than ~100-200ms
+    // apart) before the lock screen replaces it — reads as "the menu
+    // started to open, then the screen locked", not as a glitch, and
+    // costs nothing on the single-press path this is actually judged on.
     function _onTrigger() {
         const now = Date.now()
         if (root._lastTriggerMs > 0 && (now - root._lastTriggerMs) <= root.doubleTapWindowMs) {
             root._lastTriggerMs = 0
-            openTimer.stop()
+            doubleTapWindow.stop()
             root.hide()
             Services.PowerActions.lock()
             return
         }
         root._lastTriggerMs = now
-        openTimer.restart()
+        root.show()
+        doubleTapWindow.restart()
     }
 
+    // Purely a "how long is a second press still a double-tap" window
+    // now — no longer gates when the menu itself appears (see
+    // _onTrigger()'s own comment above).
     Timer {
-        id: openTimer
+        id: doubleTapWindow
         interval: root.doubleTapWindowMs
         repeat: false
-        // Clearing _lastTriggerMs here (not just on a matched double-tap)
-        // matters: without it, a single press arriving any time after the
-        // menu is already open would still compare against the ORIGINAL
-        // press's stale timestamp — near-miss timing could then read a
-        // lone press against an already-open menu as a double-tap, or
-        // just leave the timer endlessly restarting for a `show()` that's
-        // already a no-op. Clearing it here means every fresh press
-        // against a settled state (menu open or closed) starts its own
-        // clean double-tap window.
-        onTriggered: {
-            root.show()
-            root._lastTriggerMs = 0
-        }
+        onTriggered: root._lastTriggerMs = 0
     }
 
     IpcHandler {

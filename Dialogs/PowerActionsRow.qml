@@ -29,14 +29,20 @@ import "../Widgets/WidgetStates.js" as WidgetStates
 // about that path changes; `onChosen` below only decides whether to
 // interpose that step, never bypasses it.
 //
-// `highlightedAction` names the one pill to mark with the accent fill —
-// each caller decides which (PowerMenu.qml: a static "lock", matching the
-// reference image's own default; Lock.qml: none, "" — no single action
-// there is more "the" action than another). Independent of real keyboard
-// focus (Tab still moves between pills and shows the ordinary `focus`
-// ring state below), the same way a static reference screenshot cannot
-// itself be showing live input — this is a "default/primary" marker, not
-// a focus indicator.
+// Style pass 2026-09-15, take 2 (reported directly: "the lock button is
+// in accent color but that should be the selected state, instead the
+// selected state is just a border. fix it, the selected state should be
+// the accent colour background. Also until i press tab the first option
+// is not automatically selected and it should be."). The accent fill
+// used to be `highlightedAction`, a static "default/primary" marker
+// independent of real keyboard focus (Tab showed only a border-ring
+// `focus` state, a separate look) — that is exactly the "selected state
+// is just a border" complaint. `highlightedAction` is gone: the accent
+// fill now IS the real keyboard-focus state (`active: pill.keyboardFocus`
+// below, short-circuiting WidgetStates.resolve() past its own separate
+// `focus` case entirely), and `focusFirst()` gives the caller a way to
+// select the first pill the moment the surface appears, so something is
+// always visibly selected without waiting for a first Tab press.
 //
 // Lock/Lock.qml briefly (2026-09-15) removed these pills from the tab
 // chain entirely (`activeFocusOnTab: false`) to fix a real Tab-focus trap
@@ -47,18 +53,31 @@ import "../Widgets/WidgetStates.js" as WidgetStates
 // the loop field -> pills -> back to field) — this row stays plain
 // `activeFocusOnTab: true` for every caller, no per-instance override.
 //
-// Sized compact on purpose (2026-09-15, reported directly: "borders are
-// at least 3 times larger" than references/lock-options-reference.webp)
-// — the reference's own pills are slim, not the generous space3/space2
-// padding a settings-panel button gets away with sitting in a roomy
-// dialog.
+// Sized compact (2026-09-15, reported directly: "borders are at least 3
+// times larger" than references/lock-options-reference.webp) — the
+// reference's own pills are slim, not the generous space3/space2 padding
+// a settings-panel button gets away with sitting in a roomy dialog. Also
+// reported directly: "the border radius of the option elements should be
+// way less" — was a fully rounded pill (`height / 2`); now a plain
+// `radiusSmall`, the same corner every other small control in this shell
+// uses.
 
 Row {
     id: root
 
     property var actions: []
-    property string highlightedAction: ""
     signal chosen(string action)
+
+    // Selects the first pill — call this once, when the surface that
+    // hosts this row actually becomes visible (Dialogs/PowerMenu.qml's
+    // own onShownChanged). Component.onCompleted alone would not do this:
+    // PowerMenu.qml's window is created once and only ever shown/hidden
+    // via opacity, so this component's own Component.onCompleted fires
+    // exactly once, on the very first SUPER+L of the whole session, never
+    // again on a later reopen.
+    function focusFirst() {
+        if (pillRepeater.count > 0) pillRepeater.itemAt(0).forceActiveFocus()
+    }
 
     spacing: chMetrics.width * Config.Appearance.space2
 
@@ -84,20 +103,28 @@ Row {
     }
 
     Repeater {
+        id: pillRepeater
         model: root.actions
 
         Item {
             id: pill
             required property string modelData
 
-            readonly property bool isActive: modelData === root.highlightedAction
             readonly property bool hovered: hoverHandler.hovered
             readonly property bool pressed: tapHandler.pressed
             readonly property bool keyboardFocus: activeFocus
 
+            // `active: pill.keyboardFocus` — the accent fill IS the real
+            // keyboard-selection state, not a separate static marker
+            // (see this file's own header). `keyboardFocus: false` here
+            // is deliberate: resolve()'s own precedence would otherwise
+            // route a focused pill to its "focus" case instead (a border-
+            // ring look, one rung below "active") — passing it as `active`
+            // directly is what gives a Tab-selected pill the full accent
+            // fill rather than just a ring.
             readonly property string resolvedState: WidgetStates.resolve({
                 enabled: true, hovered: pill.hovered, pressed: pill.pressed,
-                active: pill.isActive, keyboardFocus: pill.keyboardFocus,
+                active: pill.keyboardFocus, keyboardFocus: false,
                 loading: false, invalid: false
             })
             readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState, "powerPill")
@@ -108,7 +135,7 @@ Row {
 
             Rectangle {
                 anchors.fill: parent
-                radius: height / 2
+                radius: Config.Appearance.radiusSmall
                 color: pill.stateColors.bg
                 border.width: Config.Appearance.borderWidth
                 border.color: pill.stateColors.border

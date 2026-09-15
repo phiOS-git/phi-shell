@@ -18,18 +18,23 @@ import qs.Widgets as Widgets
 // Restyled 2026-09-15 (references/lock-options-reference.webp,
 // user-provided: "I would like to have the lock options like this") from
 // a titled card containing a vertical Widgets.ListRow list to a bare
-// horizontal Dialogs/PowerActionsRow pill row directly on the scrim,
-// "Lock" marked with the accent fill as the default action — matching the
-// reference image itself, which shows exactly that. Added "logout" (this
-// menu never had it before, though Services/PowerActions.qml always
-// could) since the reference includes it and Lock/Lock.qml's own new
-// power row (added the same day, same request's second half: "add the
-// power options in the lockscreen as well to use them without
-// unlocking") uses the identical action set minus "lock" itself.
-// Reboot/shutdown still go through the existing Services.ConfirmDialog
-// "this cannot be undone" step (Services/PowerActions.needsConfirm()) —
-// PowerActionsRow's own `chosen` signal only decides whether to interpose
-// that step, the mechanism itself is untouched.
+// horizontal Dialogs/PowerActionsRow pill row directly on the scrim.
+// Added "logout" (this menu never had it before, though Services/
+// PowerActions.qml always could) since the reference includes it and
+// Lock/Lock.qml's own new power row (added the same day, same request's
+// second half: "add the power options in the lockscreen as well to use
+// them without unlocking") uses the identical action set minus "lock"
+// itself. Reboot/shutdown still go through the existing Services.
+// ConfirmDialog "this cannot be undone" step (Services/PowerActions.
+// needsConfirm()) — PowerActionsRow's own `chosen` signal only decides
+// whether to interpose that step, the mechanism itself is untouched.
+//
+// Take 2 (reported directly: "until i press tab the first option is not
+// automatically selected and it should be"): `pills.focusFirst()` runs
+// every time this overlay actually becomes shown, not just once at
+// startup — this whole window is created once and only ever shown/
+// hidden via opacity (never destroyed), so Component.onCompleted alone
+// would only have caught the very first SUPER+L of the session.
 PanelWindow {
     id: root
 
@@ -39,6 +44,7 @@ PanelWindow {
     exclusiveZone: -1
     color: "transparent"
     visible: root.shown || fadeRoot.opacity > 0
+    onShownChanged: if (root.shown) Qt.callLater(() => pills.focusFirst())
 
     Component.onCompleted: {
         if (root.WlrLayershell) root.WlrLayershell.layer = WlrLayer.Overlay
@@ -117,7 +123,6 @@ PanelWindow {
             PowerActionsRow {
                 id: pills
                 actions: ["lock", "logout", "suspend", "hibernate", "reboot", "shutdown"]
-                highlightedAction: "lock"
                 onChosen: (action) => root._choose(action)
             }
         }
