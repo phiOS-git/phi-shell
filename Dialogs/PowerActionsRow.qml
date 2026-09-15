@@ -43,6 +43,21 @@ Row {
 
     property var actions: []
     property string highlightedAction: ""
+    // Safety fix (2026-09-15, reported directly: "it's currently
+    // impossible to select the password input by cycling options with tab
+    // in the lockscreen, and given that the cursor is disabled there is no
+    // way to input the password once you cycle with tab to the power
+    // options" — a real Tab-focus trap on the one screen where losing the
+    // password field is a lockout, not an inconvenience). Before these
+    // pills existed, Lock/Lock.qml's password TextInput was the only
+    // focusable thing on the whole surface, so Tab was a harmless no-op;
+    // these pills opting into the tab chain broke that, and nothing ever
+    // routed focus back to the password field once it left (the field
+    // itself was never part of the tab chain to begin with — only ever
+    // focused programmatically). Lock/Lock.qml sets this false; Dialogs/
+    // PowerMenu.qml (no password field to protect, and keyboard-driven
+    // pill selection is exactly the point there) leaves it at the default.
+    property bool tabbable: true
     signal chosen(string action)
 
     spacing: chMetrics.width * Config.Appearance.space4
@@ -89,7 +104,7 @@ Row {
 
             implicitWidth: row.implicitWidth + root._padH * 2
             implicitHeight: row.implicitHeight + root._padV * 2
-            activeFocusOnTab: true
+            activeFocusOnTab: root.tabbable
 
             Rectangle {
                 anchors.fill: parent

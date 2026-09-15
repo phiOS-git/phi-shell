@@ -11,6 +11,10 @@ import qs.Widgets as Widgets
 // relative import, not implicit same-dir resolution (see
 // Panels/tabs/ChatBubble.qml's own note).
 import "." as Local
+// Dialogs/PowerActionsRow (2026-09-15) — the pill row shared with
+// Dialogs/PowerMenu.qml, reached the same namespaced-relative way Local
+// above reaches this directory's own siblings.
+import "../Dialogs" as Dialogs
 
 // phiOS — Lock/Lock.qml (S-34, master plan §8.3 surface 7). The session-
 // stays-locked guarantee comes from the ext-session-lock PROTOCOL, not
@@ -241,6 +245,30 @@ WlSessionLock {
         // window at a time regardless.
         Component.onCompleted: passwordField.forceActiveFocus()
 
+        // docs/TODO.md follow-up (user, 2026-09-15): "add the power
+        // options in the lockscreen as well to use them without
+        // unlocking." These are plain system actions (Services/
+        // PowerActions.qml) — none of them touch PAM or `root.locked` in
+        // any way, so wiring them in here does not weaken this file's one
+        // security-critical path (see the file header) at all: a locked
+        // screen that reboots is still a locked screen right up until the
+        // reboot actually happens, the exact same guarantee a physical
+        // power button already carries on any machine. Reboot/shutdown
+        // still confirm first, identically to every other caller of
+        // Services.PowerActions.
+        function choosePower(action) {
+            if (Services.PowerActions.needsConfirm(action)) {
+                Services.ConfirmDialog.open({
+                    title: Services.PowerActions.title(action),
+                    message: "This cannot be undone.",
+                    confirmLabel: Services.PowerActions.title(action),
+                    onConfirm: () => Services.PowerActions.perform(action)
+                })
+            } else {
+                Services.PowerActions.perform(action)
+            }
+        }
+
         TextMetrics {
             id: chMetrics
             font.family: Config.Appearance.fontMono
@@ -364,6 +392,25 @@ WlSessionLock {
             }
             onLoaded: if (item) item.running = Qt.binding(function () { return !root.authenticated })
         }
+
+        // Style pass 2026-09-15 (reported directly: "dim is too soft",
+        // references/lock-options-reference.webp's own backdrop is a much
+        // darker, moodier read than this screen's ambient effect alone on
+        // a bare background colour). `overlayScrim` (60% black,
+        // design/tokens.dark.sh) is the same token every ordinary dimmed
+        // surface in this shell already uses — reused here rather than
+        // picking a new one-off opacity. Deliberately NOT the `Strong`
+        // variant (80%): tried first, and at that weight it crushed every
+        // ambient effect to almost nothing (most already draw at a low
+        // intensity/opacity of their own — see Config/LockPrefs.qml) —
+        // confirmed by screenshot, not assumed. Sits above the ambient
+        // effect (z: -1) and below the readable content (the default z: 0
+        // below), so the clock/field/pill row keep full contrast while the
+        // animation behind them reads calmer and darker without vanishing.
+        Rectangle {
+            anchors.fill: parent
+            color: Config.Appearance.overlayScrim
+        }
         // docs/TODO.md: "ambient effects... should have many settings:
         // some shared (eg. speed) some specific for the selected one" —
         // speed is shared across every effect; intensityFor(key) is each
@@ -463,6 +510,20 @@ WlSessionLock {
                 // A terminal input has a hard edge, not a rounded card —
                 // the sharpest radius the grammar carries.
                 radius: Config.Appearance.radiusSmall
+                // Style pass 2026-09-15 (reported directly: "Border are
+                // completely different" from references/
+                // lock-options-reference.webp): the shared Panel default
+                // is a bold 2px full-contrast border, the same loud
+                // treatment a settings card or popover uses. Fine there —
+                // wrong here, where the whole rest of the screen (the
+                // clock, the pill row) carries no box at all. Softened to
+                // the low-contrast border token/width pair, still visibly
+                // a field, no longer the loudest thing on the screen.
+                // `invalid` (wrong password) is untouched — Panel.qml's
+                // own override gate keeps the real error colour full
+                // strength the instant something actually goes wrong.
+                borderColorOverride: Config.Appearance.border
+                borderWidthOverride: Config.Appearance.borderWidth
                 // invalid alone is enough here — WidgetStates.resolve()
                 // already gives invalid precedence over loading, so a
                 // `loading: root.lockedOut` alongside this would be a
@@ -575,6 +636,30 @@ WlSessionLock {
                         elide: Text.ElideRight
                         text: modelData.appName + ": " + modelData.summary
                     }
+                }
+            }
+
+            // Same pill row as Dialogs/PowerMenu.qml, minus "lock" —
+            // locking an already-locked screen is meaningless here. No
+            // `highlightedAction`: unlike PowerMenu.qml's own default
+            // "lock", no single action here is more "the" one than
+            // another, so every pill stays bare (WidgetStates.js,
+            // `ambient: "powerPill"`'s own default case).
+            Item {
+                width: parent.width
+                height: powerRow.implicitHeight
+
+                Dialogs.PowerActionsRow {
+                    id: powerRow
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    // Safety fix (2026-09-15) — see PowerActionsRow.qml's
+                    // own comment on `tabbable`: Tab must never be able to
+                    // move keyboard focus off the password field on this
+                    // screen specifically. Mouse/tap activation is
+                    // untouched; only the keyboard tab-stop is removed.
+                    tabbable: false
+                    actions: ["logout", "suspend", "hibernate", "reboot", "shutdown"]
+                    onChosen: (action) => surface.choosePower(action)
                 }
             }
         }

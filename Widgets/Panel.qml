@@ -44,6 +44,19 @@ Item {
     property bool loading: false
     property bool invalid: false
 
+    // Style pass 2026-09-15 (Lock/Lock.qml's password field, reported
+    // directly: "Border are completely different" from
+    // references/lock-options-reference.webp's much softer look) — purely
+    // additive, both default to "no override" so every existing consumer
+    // (this widget's whole point, per its own header, is being the one
+    // surface primitive every container composes) keeps its exact current
+    // look. Only applies while `!root.invalid` (see the Rectangle below) —
+    // a caller wanting a softer RESTING border still gets the real error
+    // colour the instant something actually goes wrong; this never
+    // softens the one state that has to stay loud.
+    property color borderColorOverride: "transparent"
+    property real borderWidthOverride: -1
+
     readonly property string resolvedState: WidgetStates.resolve({
         enabled: root.enabled, hovered: root.hovered, pressed: root.pressed,
         active: root.active, keyboardFocus: root.keyboardFocus,
@@ -70,8 +83,8 @@ Item {
         anchors.fill: parent
         radius: root.radius
         color: root.stateColors.bg
-        border.width: Config.Appearance.borderWidthStrong
-        border.color: root.stateColors.border
+        border.width: (!root.invalid && root.borderWidthOverride >= 0) ? root.borderWidthOverride : Config.Appearance.borderWidthStrong
+        border.color: (!root.invalid && root.borderColorOverride !== "transparent") ? root.borderColorOverride : root.stateColors.border
 
         Behavior on color {
             ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
