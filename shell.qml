@@ -17,6 +17,7 @@ import qs.Screenshot as Screenshot
 import qs.AltTab as AltTab
 import qs.Cheatsheet as Cheatsheet
 import qs.Dialogs as Dialogs
+import qs.Images as Images
 
 // phiOS — phi-shell entry point (master plan §8.2).
 //
@@ -247,6 +248,30 @@ ShellRoot {
     // just above (one real clock, not per-monitor ambient state).
     Dialogs.TimerAlert {
         screen: Quickshell.screens[0]
+    }
+
+    // Interface rework Phase 6a (rework.md "Other UI elements": "image
+    // window"). Genuinely multi-instance (Services/ImageWindows.qml's own
+    // header): a plain array this file owns, fanned out through the same
+    // Variants primitive every per-screen surface above already uses,
+    // just keyed by "open image" entries instead of Quickshell.screens.
+    // The one IpcHandler lives here, registered once, so Quickshell does
+    // not register the "image" target N times over — same reasoning as
+    // "magnifier"/"spotlight" above.
+    Variants {
+        model: Services.ImageWindows.windows
+
+        Images.ImageWindow {
+            required property var modelData
+            imageId: modelData.id
+            path: modelData.path
+        }
+    }
+
+    IpcHandler {
+        target: "image"
+        // qs -p ~/.config/quickshell/phi ipc call image open /path/to/file.png
+        function open(path: string): void { Services.ImageWindows.open(path) }
     }
 
     // S-43 / SF-5: per-screen (Services/Spotlight.qml's header on why a
