@@ -1,7 +1,6 @@
 pragma Singleton
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import Quickshell.Hyprland
 
 // phiOS — thin wrapper over Quickshell.Hyprland (S-22, master plan §8.1:
@@ -43,6 +42,21 @@ Singleton {
     // question, this property only ever answers "what is active anywhere".
     readonly property HyprlandToplevel activeToplevel: Hyprland.activeToplevel
 
+    // Interface rework Phase 2 (Bar/modules/WindowList.qml, rework.md's
+    // bottom-bar "list of windows"): the full live toplevel model, the same
+    // re-export shape as `workspaces`/`activeToplevel` above. UNVERIFIED
+    // against real Quickshell 0.3.1 Hyprland source — this environment has
+    // no running shell to confirm against (phi-shell/CLAUDE.md: "You cannot
+    // run this") — inferred only from this project's own established
+    // naming convention for the sibling members already confirmed live
+    // elsewhere in this file (`Hyprland.workspaces`, `Hyprland.
+    // activeToplevel`) and in Services/ToplevelBridge.qml (`ToplevelManager.
+    // toplevels`). If `Hyprland.toplevels` turns out not to exist (or not
+    // to be an ObjectModel), WindowList.qml's own header names the fallback
+    // (the `hyprctl clients -j` snapshot technique AltTab/AltTab.qml already
+    // uses and proves works on this exact Hyprland build).
+    readonly property var toplevels: Hyprland.toplevels
+
     // Dispatch straight over Hyprland's own IPC socket — no `hyprctl`
     // subprocess. `Hyprland.dispatch("<dispatcher> <args>")` is a plain
     // function on the singleton (confirmed against the real type). Kept as
@@ -77,36 +91,23 @@ Singleton {
     // does not apply here: ordinary numbered workspaces are fully readable
     // through `workspaces` above.
     //
-    // The reserved ids themselves are read from Bar/workspace-icons.json
-    // (ADR 078: data, not code) — the same file Bar/modules/Workspaces.qml
-    // already parses to render 11/12 as a pinned-app glyph — rather than a
-    // second hand-copied literal that could drift from it. Only the `id`
-    // field is used here; `glyph`/`ensure` are that module's own concern.
-    // Populated once, asynchronously, at startup: `reservedWorkspaceIds` is
-    // `[]` until FileView below loads, so a call to leaveReservedWorkspace()
-    // before then no-ops. That window is startup-only (nothing can open a
-    // panel before the shell has finished loading its own singletons), so
-    // every caller can still call this unconditionally on open.
-    property var reservedWorkspaceIds: []
-
-    FileView {
-        id: workspaceIconsFile
-        path: Qt.resolvedUrl("../Bar/workspace-icons.json")
-        onLoaded: {
-            try {
-                const parsed = JSON.parse(workspaceIconsFile.text())
-                const ids = []
-                if (Array.isArray(parsed)) {
-                    for (let i = 0; i < parsed.length; i++) {
-                        if (parsed[i] && parsed[i].id !== undefined) ids.push(parsed[i].id)
-                    }
-                }
-                root.reservedWorkspaceIds = ids
-            } catch (e) {
-                console.warn("phi-shell: HyprlandBridge failed to parse Bar/workspace-icons.json: " + e)
-            }
-        }
-    }
+    // Interface rework Phase 2: was read from Bar/workspace-icons.json (ADR
+    // 078: data, not code) — the same file Bar/modules/Workspaces.qml used
+    // to parse to render 11/12 as a pinned-app glyph. That file is gone
+    // (rework.md, "Features to be removed": "no more workspaces specific
+    // for a certain program (btop/steam)" — Workspaces.qml's own rendering
+    // of it is removed, see that file's header), but THIS mechanism —
+    // "don't leave a panel open on Steam's/btop's dedicated workspace" — is
+    // a separate feature the removal did not ask for and rework.md does not
+    // mention, so it is kept, now as a plain literal matching the same two
+    // ids hyprland.lua.tmpl still pins Steam (11) and btop (12) to
+    // (unchanged — a separate task's scope, not touched by this phase).
+    // Literal, not re-derived from a file, because no file in this repo
+    // states these two ids any more; if phios-dotfiles ever repins Steam/
+    // btop to different workspace numbers, this needs a matching update
+    // (it cannot drift-detect that on its own any more than it could
+    // before — the old file was hand-maintained too).
+    readonly property var reservedWorkspaceIds: [11, 12]
 
     // A slight widening of this file's own "thin wrapper" charter: reading
     // the reserved-id file and the scan below are UI policy, not a Hyprland

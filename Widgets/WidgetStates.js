@@ -246,6 +246,38 @@ function surfaceColors(appearance, resolvedState, ambient) {
         }
     }
 
+    // `ambient: "workspace"` — Out-of-plan: interface rework Phase 2
+    // (rework.md: "workspace list: a list of clickable squares, with hover
+    // and active states. They show the number of the workspace and a thin
+    // border, no background. The selected workspace ... uses inverted
+    // colors."). A workspace-square-specific variant of "isle" above — same
+    // bar-button grammar in every other respect (Segment's own `_bar` flag
+    // keeps the mono font / tight isle padding / hover-sweep it shares with
+    // "isle") — that differs in exactly the two things the spec calls out
+    // and "isle" above deliberately does NOT have any more: a real resting
+    // BORDER (every other isle button dropped its resting border/background
+    // entirely, OOP-21) and a real INVERTED FILL on active (every other
+    // isle button's own active state is bare accent text with no fill,
+    // OOP-02 / the 2026-09-12 follow-up — Segment.qml's own `contentColor`
+    // carves this ambient out of that override so `stateColors.fg` below is
+    // actually used). The width increase itself is Bar/modules/
+    // Workspaces.qml's own job (`Segment.widthBoost`) — this file only
+    // supplies colour.
+    if (ambient === "workspace") {
+        switch (resolvedState) {
+        case "active":
+            return { bg: appearance.colorOpposite, fg: appearance.colorMain, border: appearance.colorOpposite }
+        case "invalid":
+            return { bg: "transparent", fg: appearance.error, border: appearance.error }
+        case "focus":
+            return { bg: "transparent", fg: appearance.colorOpposite, border: appearance.focusRing }
+        case "hover":
+            return { bg: "transparent", fg: appearance.colorMain, border: appearance.colorOpposite }
+        default:
+            return { bg: "transparent", fg: appearance.colorOpposite, border: appearance.border }
+        }
+    }
+
     // `ambient: "tab"` — a section-switcher grammar, deliberately distinct
     // from a "panel" push button's full inversion: a tab never reads as a
     // button being pressed, since selecting it is a navigation state, not a
