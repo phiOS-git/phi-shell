@@ -401,12 +401,20 @@ PanelWindow {
             width: parent ? parent.width : 0
             spacing: root.chWidth * Config.Appearance.space1
 
+            // rework-issues.md item 7: the network overlay used to show a
+            // stale "Tailscale" title left over from before it was merged
+            // with wifi/ethernet/VPN (Services/BarPopout.qml's own
+            // title()) — it now has no top-level title of its own at all
+            // (its per-section headers, "Ethernet"/"Wi-Fi"/etc., are
+            // already real headers), so an empty title() return hides
+            // this row entirely instead of showing a blank line.
             Widgets.StyledText {
                 kind: "title"
                 sizeStep: 2
                 text: Services.BarPopout.title(root.which)
+                visible: text.length > 0
             }
-            Widgets.Separator { width: parent.width }
+            Widgets.Separator { width: parent.width; visible: Services.BarPopout.title(root.which).length > 0 }
 
             // volume
             Widgets.StaggerReveal {
