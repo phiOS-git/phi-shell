@@ -240,7 +240,7 @@ Item {
                 visible: root.agent.totalPendingProposals > 0
                 label: root.agent.totalPendingProposals + " memory proposal(s) pending"
                 value: "review"
-                onActivated: root.requestSection("memory")
+                onActivated: root.requestSection("status")
             }
 
             Widgets.Separator { width: parent.width }
