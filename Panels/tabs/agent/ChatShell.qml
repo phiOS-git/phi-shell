@@ -153,6 +153,17 @@ Item {
                         Timer { id: searchDebounce; interval: 220; onTriggered: root.agent.search(searchInput.text) }
 
                         Widgets.StyledText { visible: root.agent.searching; kind: "label"; sizeStep: 0; text: "searching…" }
+                        // Critical self-review pass 2026-09-15: a query
+                        // with zero hits used to render nothing at all —
+                        // indistinguishable from the search not having run
+                        // yet. sizeStep 0 wraps a long query.
+                        Widgets.StyledText {
+                            visible: !root.agent.searching && searchInput.text.length > 0
+                                && (root.agent.searchResults.Groups || []).length === 0
+                            kind: "label"; sizeStep: 0
+                            width: parent.width; wrapMode: Text.Wrap
+                            text: "No matches for “" + searchInput.text + "”."
+                        }
 
                         Repeater {
                             model: searchInput.text.length > 0 ? (root.agent.searchResults.Groups || []) : []
