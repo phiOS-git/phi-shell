@@ -274,6 +274,25 @@ ShellRoot {
         function open(path: string): void { Services.ImageWindows.open(path) }
     }
 
+    // docs/TODO.md: "switching workspace with a keybind or gesture ...
+    // wraps around ... instead of stopping." Hyprland's own `m+1`/`m-1`
+    // relative selector always wraps and has no non-wrapping form — see
+    // Services/HyprlandBridge.qml's own `focusAdjacentWorkspace()` for the
+    // real fix (a bounded computation over the live `workspaces` model,
+    // ending in the same `.activate()` call Bar/modules/Workspaces.qml's
+    // click handler already uses successfully — not a Lua dispatch
+    // string, so none of this project's other dispatch-string quirks
+    // apply here). phios-dotfiles' hyprland.lua.tmpl calls this instead of
+    // its own native `hl.dsp.focus({ workspace = "m+1"/"m-1" })`, the same
+    // `qs -p ... ipc call ...` shape every other cross-process trigger in
+    // this file already uses (power confirmLogout, agent, image).
+    IpcHandler {
+        target: "workspace"
+        // qs -p ~/.config/quickshell/phi ipc call workspace next|prev
+        function next(): void { Services.HyprlandBridge.focusAdjacentWorkspace(1) }
+        function prev(): void { Services.HyprlandBridge.focusAdjacentWorkspace(-1) }
+    }
+
     // S-43 / SF-5: per-screen (Services/Spotlight.qml's header on why a
     // primary-only instance defeats the feature). Declared LAST, and it
     // sets WlrLayer.Overlay + only maps its surface while shown (SF-5) — so

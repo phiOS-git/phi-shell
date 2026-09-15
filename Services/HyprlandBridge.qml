@@ -42,6 +42,13 @@ Singleton {
     // question, this property only ever answers "what is active anywhere".
     readonly property HyprlandToplevel activeToplevel: Hyprland.activeToplevel
 
+    // The monitor that currently has keyboard focus, or null — confirmed
+    // real (quickshell-hyprland-ipc qmltypes: `HyprlandIpcQml.
+    // focusedMonitor`, a NOTIFYing property, unlike `Hyprland.monitorFor()`
+    // which this file's own header already rules out for that reason).
+    // First consumer: focusAdjacentWorkspace() below.
+    readonly property var focusedMonitor: Hyprland.focusedMonitor
+
     // Interface rework Phase 2 (Bar/modules/WindowList.qml, rework.md's
     // bottom-bar "list of windows"): the full live toplevel model, the same
     // re-export shape as `workspaces`/`activeToplevel` above. UNVERIFIED
@@ -130,6 +137,56 @@ Singleton {
     // monitor instead of clearing screen0). A no-op if screens[0] is
     // already on an ordinary workspace, so every caller can call this
     // unconditionally on open.
+    // docs/TODO.md: "switching workspace with a keybind or gesture ...
+    // wraps around at the first/last workspace on a monitor instead of
+    // stopping." Hyprland's native `m+1`/`m-1` relative selector always
+    // wraps and has no non-wrapping form, so this computes the bounded
+    // target itself instead of delegating to it — the same shape
+    // `leaveReservedWorkspace()` right below already uses for "scan
+    // `workspaces`, filter to one monitor, pick one, `.activate()` it".
+    //
+    // `direction`: 1 for next (higher id), -1 for prev (lower id). Reads
+    // `Hyprland.focusedMonitor` (confirmed real, quickshell-hyprland-ipc
+    // qmltypes: `HyprlandIpcQml.focusedMonitor`) rather than assuming
+    // `Quickshell.screens[0]` the way `leaveReservedWorkspace()` does —
+    // this fires from a global keybind/gesture, not a single-instance
+    // panel pinned to one screen, so it has to follow whichever monitor
+    // actually has focus. `HyprlandMonitor.activeWorkspace` (also
+    // confirmed real) gives that monitor's current workspace directly,
+    // no need to re-scan `workspaces` for the one with `active === true`.
+    // Ordinary numbered workspaces only (`id > 0`), sorted, bounded at
+    // both ends — no wrap, and a monitor with only one workspace (or none
+    // of 1-10 present) simply no-ops rather than erroring.
+    //
+    // `.activate()` is a plain method call on the target HyprlandWorkspace
+    // object (confirmed real), not a dispatch string sent over the Lua-
+    // repurposed `dispatch` IPC command — the exact same call
+    // Bar/modules/Workspaces.qml's own click handler already uses
+    // successfully, so none of this file's `dispatch()` comment's Lua-
+    // string caveats apply here.
+    function focusAdjacentWorkspace(direction) {
+        const monitor = root.focusedMonitor
+        if (!monitor) return
+        const values = root.workspaces.values
+        if (!values) return
+
+        const onThisMonitor = []
+        for (let i = 0; i < values.length; i++) {
+            const w = values[i]
+            if (w.id > 0 && w.monitor !== null && w.monitor.id === monitor.id) onThisMonitor.push(w)
+        }
+        if (onThisMonitor.length === 0) return
+        onThisMonitor.sort((a, b) => a.id - b.id)
+
+        const currentId = monitor.activeWorkspace !== null ? monitor.activeWorkspace.id : -1
+        let index = onThisMonitor.findIndex(w => w.id === currentId)
+        if (index === -1) index = direction > 0 ? -1 : onThisMonitor.length
+
+        const targetIndex = index + direction
+        if (targetIndex < 0 || targetIndex >= onThisMonitor.length) return
+        onThisMonitor[targetIndex].activate()
+    }
+
     function leaveReservedWorkspace() {
         if (Quickshell.screens.length === 0) return
         const screen0 = Quickshell.screens[0]
