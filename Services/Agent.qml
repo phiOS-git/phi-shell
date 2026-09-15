@@ -52,6 +52,12 @@ Singleton {
     property var outputs: []                // output/ file names for the active project
     property string lastError: ""
 
+    // Emitted when a queued send() could not go through at all (session
+    // creation failed) — carries the exact text back so the composer can
+    // restore it instead of it just vanishing (see the newSessProc.onExited
+    // comment below for why this exists).
+    signal sendFailed(string text)
+
     signal proposalTextReady(string name, string currentMemory, string proposalText)
 
     // --- lifecycle --------------------------------------------------------
@@ -231,15 +237,33 @@ Singleton {
 
     Process {
         id: newSessProc
+        property bool _gotId: false
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
                     const s = JSON.parse(this.text)
-                    if (s.id) { root.currentSessionId = s.id; root.messages = [] }
+                    if (s.id) { newSessProc._gotId = true; root.currentSessionId = s.id; root.messages = [] }
                 } catch (e) {}
             }
         }
-        onExited: { newSessProc.running = false; root.refreshSessions() }
+        // Critical self-review pass 2026-09-15: this used to fail
+        // completely silently — no id, no error, nothing. A plain
+        // `newSession()` click just did nothing (mildly confusing); but a
+        // message that was queued behind it (pendingSend, see send() above)
+        // was lost outright with the composer already cleared and the Send
+        // button spinning forever. Surface it the same way a failed
+        // prompt-send already does (root.lastError).
+        onExited: (code) => {
+            newSessProc.running = false
+            if (!newSessProc._gotId && pendingSend.armed) {
+                pendingSend.armed = false
+                root.processing = false
+                root.lastError = "Could not start a new chat — try sending again."
+                root.sendFailed(pendingSend.text)
+            }
+            newSessProc._gotId = false
+            root.refreshSessions()
+        }
     }
     function newSession() {
         if (newSessProc.running) return
@@ -360,7 +384,16 @@ Singleton {
     function send(text, personality) {
         if (sendProc.running || text.trim().length === 0) return
         if (root.currentSessionId.length === 0) {
-            // Create a session first, then retry once it lands.
+            // Create a session first, then retry once it lands. `processing`
+            // set here too (not just once the prompt itself posts below) —
+            // critical self-review pass 2026-09-15: Panels/tabs/agent/
+            // Chat.qml's doSend() only guards on `agent.processing`, so
+            // without this, hitting Send twice in the brief window before a
+            // just-created session's id lands would silently overwrite
+            // `pendingSend` with the second message, losing the first one
+            // with no error and no trace.
+            if (pendingSend.armed) return
+            root.processing = true
             root.newSession()
             pendingSend.text = text
             pendingSend.personality = personality || ""

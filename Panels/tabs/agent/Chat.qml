@@ -72,6 +72,12 @@ Item {
     Connections {
         target: agent
         function onProcessingChanged() { if (!agent.processing) agent.syncCurrentTranscript() }
+        // Critical self-review pass 2026-09-15: doSend() below clears the
+        // composer the instant send() is called, before it's known whether
+        // a lazily-created session actually succeeded — restore the exact
+        // text here if it didn't, instead of it just vanishing with only
+        // an error line in the transcript to explain why.
+        function onSendFailed(text) { field.text = text }
     }
 
     // `raw: true` returns the actual stored title (used to decide what to
