@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Wayland
 import qs.Config as Config
 import qs.Services as Services
+import qs.Widgets as Widgets
 
 // phiOS — Background/Background.qml (S-44; Out-of-plan: settings-overhaul
 // batch D). Native background layer inside the shell — hyprpaper and swww
@@ -43,8 +44,71 @@ PanelWindow {
     }
 
     Item {
+        id: content
         anchors.fill: parent
         clip: true
+
+        // Interface rework Phase 6a (rework.md "Other UI elements":
+        // "context menu: a classic context menu for right click actions
+        // to be used when needed. Clicking on the empty screen evokes it
+        // with a options: run, terminal, files, browser, settings.").
+        // Background is the one surface that sits on the wallpaper at the
+        // very bottom of the Wayland layer stack (WlrLayer.Background,
+        // this file's own header, exclusiveZone: -1, full screen,
+        // per-screen instance) — a right-click that reaches this
+        // TapHandler means nothing else (a real window, a panel) ever
+        // intercepted it, so this is the natural, minimal-footprint place
+        // for the "empty desktop" menu rather than a new dedicated
+        // surface. Wires the existing Widgets/ContextMenu.qml (S-37),
+        // built complete but deliberately left unwired until a real usage
+        // pattern was clear (see that file's own header) — Panels/tabs/
+        // Clipboard.qml's clipboardContextMenu was the first consumer;
+        // this is the second, same {label, onActivated} shape, no new API.
+        //
+        // Each entry launches the real thing this shell already uses
+        // elsewhere for it, not an invented command:
+        //   - run: Bar/modules/Lens.qml's own self-directed `qs ipc call
+        //     launcher toggle` (Quickshell.configDir, not a bare `qs ipc
+        //     call`, for the same reason that file's header gives — `qs
+        //     ipc call` with no `-p` targets Quickshell's default config,
+        //     and phi-shell is launched as a named one).
+        //   - terminal: kitty, the app every Services/*.qml and Settings/
+        //     sections/*.qml call site already launches with
+        //     Quickshell.execDetached(["kitty", …]) (grepped for
+        //     `"kitty"` across this repo — Launcher.qml, AiAgent.qml,
+        //     Connectivity.qml, BarPopout.qml, Agent.qml).
+        //   - files: thunar (phios-dotfiles/profiles/desktop/
+        //     packages.txt, a separate already-landed change in that
+        //     repo), same execDetached shape as kitty/thunar above — no
+        //     Services/*.qml wrapper for it exists yet to reuse.
+        //   - browser: librewolf (same packages.txt) — grepped this repo
+        //     for an existing "open browser" action to reuse first; none
+        //     exists (Launcher.qml's only browser-adjacent call is
+        //     `xdg-open` for a specific URL action, not "open the
+        //     browser"), so this is a first, direct invocation, same
+        //     shape as files/terminal.
+        //   - settings: Services.SettingsPanel.show(), the exact call
+        //     Panels/BarPopout.qml's own "Settings…" row already uses.
+        TapHandler {
+            acceptedButtons: Qt.RightButton
+            onTapped: desktopContextMenu.open(content, [
+                { label: "Run", onActivated: () => {
+                    Quickshell.execDetached(["qs", "-p", Quickshell.configDir, "ipc", "call", "launcher", "toggle"])
+                } },
+                { label: "Terminal", onActivated: () => {
+                    Quickshell.execDetached(["kitty"])
+                } },
+                { label: "Files", onActivated: () => {
+                    Quickshell.execDetached(["thunar"])
+                } },
+                { label: "Browser", onActivated: () => {
+                    Quickshell.execDetached(["librewolf"])
+                } },
+                { label: "Settings", onActivated: () => {
+                    Services.SettingsPanel.show()
+                } },
+            ])
+        }
 
         // Layer 2: procedural texture overlay, tiled. Alpha is baked in by
         // `phi wallpaper texture`, so plain opacity-1 compositing — no blend
@@ -85,5 +149,12 @@ PanelWindow {
             scale: (Services.Background.mode === "contain" || Services.Background.mode === "repeat")
                 ? Math.max(0.1, Services.Background.scale) : 1.0
         }
+    }
+
+    // A real Quickshell PopupWindow (Widgets/ContextMenu.qml's own header),
+    // not a plain in-content Item — same shape Panels/tabs/Clipboard.qml's
+    // own clipboardContextMenu already uses.
+    Widgets.ContextMenu {
+        id: desktopContextMenu
     }
 }
