@@ -146,7 +146,7 @@ Item {
                     kind: "title"
                     elide: Text.ElideRight
                     visible: !root.renamingTitle
-                    width: parent.width - renameBtn.width - newBtn.implicitWidth - settingsBtn.implicitWidth - parent.spacing * 3
+                    width: parent.width - renameBtn.width - newBtn.implicitWidth - parent.spacing * 2
                     text: (root.agent.activeProject.length > 0 ? root.agent.activeProject + " › " : "")
                         + (root.currentTitle().length > 0 ? root.currentTitle() : "new chat")
                 }
@@ -154,7 +154,7 @@ Item {
                     id: renameField
                     anchors.verticalCenter: parent.verticalCenter
                     visible: root.renamingTitle
-                    width: parent.width - renameBtn.width - newBtn.implicitWidth - settingsBtn.implicitWidth - parent.spacing * 3
+                    width: parent.width - renameBtn.width - newBtn.implicitWidth - parent.spacing * 2
                     onCommitted: (t) => {
                         if (t.trim().length > 0) root.agent.setChatTitle(root.agent.currentSessionId, t.trim())
                         root.renamingTitle = false
@@ -190,44 +190,18 @@ Item {
                         renameField.forceEditFocus()
                     }
                 }
-                // docs/TODO.md, style pass: "chat panel has no settings
-                // button." A minor, quiet action (SmallButton, not
-                // StyledButton — the "New" chat button is the primary
-                // action here) that deep-links to the shell Settings panel's
-                // own AI Agent section — activation, broker, model/provider,
-                // egress whitelist — the same "Show in settings…" pattern
-                // every bar popout already uses, rather than duplicating
-                // those controls inline in a chat surface.
-                Widgets.SmallButton {
-                    id: settingsBtn
-                    anchors.verticalCenter: parent.verticalCenter
-                    label: "Settings"
-                    onClicked: Services.SettingsPanel.openSection("aiAgent")
-                }
-                Widgets.StyledButton { id: newBtn; label: "New"; onClicked: root.agent.newSession() }
-            }
-
-            // conversation list (this project's + recent)
-            Flickable {
-                width: parent.width
-                height: Math.min(contentHeight, root.height * 0.14)
-                contentHeight: sessCol.implicitHeight
-                clip: true
-                visible: root.agent.sessions.length > 0 && !root.agent.switching
-                Column {
-                    id: sessCol
-                    width: parent.width
-                    Repeater {
-                        model: root.agent.sessions
-                        delegate: Widgets.ListRow {
-                            required property var modelData
-                            width: sessCol.width
-                            label: root.agent.formatSessionTitle(modelData.title)
-                            active: modelData.id === root.agent.currentSessionId
-                            onActivated: root.agent.openSession(modelData.id)
-                        }
-                    }
-                }
+                // Full chat-panel rework 2026-09-15: the header's own
+                // "Settings" button is gone — Panels/AgentPanel.qml's nav
+                // rail already grew a Settings icon reachable from every
+                // section (this session's own earlier pass), so this was
+                // a second way to reach the identical destination, always
+                // visible on screen at the same time as the rail's own
+                // icon. "New" demoted to a SmallButton: Panels/tabs/agent/
+                // ChatShell.qml's sidebar now has its own, more prominent
+                // "New chat" button as the PRIMARY way to start one — this
+                // is a quiet secondary convenience for "start fresh
+                // without moving to the sidebar", not the main action.
+                Widgets.SmallButton { id: newBtn; label: "New"; onClicked: root.agent.newSession() }
             }
 
             // project-switch loading state
@@ -459,10 +433,15 @@ Item {
                         onClicked: { root.personality = modelData; root.personaOpen = false }
                     }
                 }
-                Widgets.StyledButton {
-                    label: "edit…"
-                    onClicked: { root.personaOpen = false; root.requestSection("dashboard") }
-                }
+                // Full chat-panel rework 2026-09-15: this used to route to
+                // the separate "dashboard" destination so the user could
+                // click into a project to edit its personalities — that
+                // destination no longer exists (ChatShell.qml's sidebar,
+                // where Projects live, is always visible next to this
+                // popover now), so there is nowhere left to "navigate" to
+                // and this button is gone. Editing a personality is just
+                // clicking the project in the sidebar that's already on
+                // screen.
             }
         }
 

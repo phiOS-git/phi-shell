@@ -250,6 +250,24 @@ Singleton {
         // already uses, for one shell-wide idea of "how time is written".
         return "New chat · " + Qt.formatDateTime(d, "d MMM, hh:mm")
     }
+    // Full chat-panel rework 2026-09-15 (direct instruction: "a full
+    // rework of the chat panel with UX at its core"). Groups a chat's
+    // `Updated` timestamp into the same "Today / Yesterday / Earlier"
+    // buckets every mainstream chat app's own sidebar uses — Panels/tabs/
+    // agent/ChatShell.qml's own recency-grouped list is the one reader,
+    // but it lives here so any future reader groups a timestamp exactly
+    // the same way, the same reasoning formatSessionTitle() above already
+    // follows for "how a chat's time is shown".
+    function relativeDay(updated) {
+        const d = new Date(updated || "")
+        if (isNaN(d.getTime())) return "Earlier"
+        const now = new Date()
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+        const t = d.getTime()
+        if (t >= startOfToday) return "Today"
+        if (t >= startOfToday - 86400000) return "Yesterday"
+        return "Earlier"
+    }
     function openSession(id) {
         root.currentSessionId = id
         root.messages = []

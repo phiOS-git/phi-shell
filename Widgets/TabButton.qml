@@ -5,7 +5,7 @@ import "WidgetStates.js" as WidgetStates
 // phiOS — Widgets/TabButton (style pass, 2026-09-14). The shared
 // section-switcher grammar, for wherever the user picks which section of a
 // panel is currently showing: Panels/Sidebar's Notifications/Clipboard
-// strip, Panels/AgentPanel's Dashboard/Chat/Coding/Memory rail. Deliberately
+// strip, Panels/AgentPanel's Chat/Coding/Memory rail. Deliberately
 // NOT Widgets/Segment: a tab is a navigation state, not a momentary action,
 // so selecting one must never read as "a button just got pressed" the way
 // Segment's/StyledButton's full inversion does.

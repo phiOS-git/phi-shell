@@ -9,9 +9,16 @@ import "tabs/agent" as Agent
 
 // phiOS — Panels/AgentPanel (OOP-27, phios-agente-delta.md D-06). The
 // shell-summoned phi agent surface: a left-edge dock that slides in, with
-// FOUR sections — Dashboard, Chat, Coding sessions, Memory proposals — on a
-// thin nav rail. The panel is a dedicated surface, not a tabs.json instance
-// (ADR 100 stays satisfied: the surface TYPE is code written once).
+// THREE sections — Chat, Coding sessions, Memory proposals — on a thin nav
+// rail. The panel is a dedicated surface, not a tabs.json instance (ADR
+// 100 stays satisfied: the surface TYPE is code written once).
+//
+// Full chat-panel rework 2026-09-15 (direct instruction: "a full rework
+// of the chat panel with UX at its core"): "Chat" used to be two separate
+// destinations, Dashboard (search/projects/chat list) and Chat (the
+// active conversation) — Agent.ChatShell folds both into one persistent
+// sidebar-plus-conversation layout, the shape every mainstream chat app
+// already uses, so "Dashboard" no longer exists as its own rail icon.
 //
 // Every call goes through Services/Agent.qml, the one client point (ADR 098).
 //
@@ -32,7 +39,7 @@ PanelWindow {
     readonly property bool shown: Services.AgentPanel.shown
     readonly property var agent: Services.Agent
 
-    // section: "dashboard" | "chat" | "code" | "memory"
+    // section: "chat" | "code" | "memory"
     // Style pass 2026-09-15 (reported directly: "it does not automatically
     // open on a new chat or latest chat" — every open used to land on the
     // Dashboard's list, one extra click away from anything actually
@@ -115,7 +122,7 @@ PanelWindow {
             const chats = root.agent.chats || []
             if (chats.length === 0) return
             // Every other reader of this same array in this panel
-            // (Dashboard.qml's/ProjectView.qml's own ChatRow) treats the
+            // (ChatShell.qml's/ProjectView.qml's own ChatRow) treats the
             // wire format as Go-JSON-capitalised (`ID`, `Updated`, …) with
             // a lowercase fallback — matched here rather than trusting
             // this file's own header comment's lowercase paraphrase.
@@ -143,7 +150,14 @@ PanelWindow {
     // have room (delta §3.7), capped. Sized off `root.width` (the layer
     // surface spans the output) — a PanelWindow has no `parent`, so
     // `parent.width` here is undefined and the dock collapses to zero.
-    readonly property real baseWidth: Math.min(root.width * 0.5, chWidth * 68)
+    //
+    // Full chat-panel rework 2026-09-15: baseWidth was sized (68ch) for a
+    // single conversation column — ChatShell.qml's new persistent ~26ch
+    // sidebar now shares that same width, which would have squeezed the
+    // actual conversation down to an uncomfortable ~40ch. Chat is the
+    // panel's primary, most space-hungry destination now, at least as
+    // much as Memory proposals — given the same wider cap.
+    readonly property real baseWidth: Math.min(root.width * 0.62, chWidth * 92)
     readonly property real wideWidth: Math.min(root.width * 0.62, chWidth * 92)
     readonly property real targetWidth:
         (root.section === "memory" && root.agent.totalPendingProposals > 0) ? wideWidth : baseWidth
@@ -199,7 +213,7 @@ PanelWindow {
             id: keyScope
             anchors.fill: parent
             focus: root.shown
-            // Style pass 2026-09-15: Dashboard→ProjectView and the Coding
+            // Style pass 2026-09-15: ChatShell→ProjectView and the Coding
             // sessions tab's own transcript view each have a "‹ Back"
             // button and their own local navigation state, but no
             // keyboard equivalent — Escape skipped straight past that
@@ -281,9 +295,15 @@ PanelWindow {
                             width: parent.width
                             spacing: root.chWidth * Config.Appearance.space1
 
+                            // Full chat-panel rework 2026-09-15: "Dashboard"
+                            // is gone as its own rail destination —
+                            // Panels/tabs/agent/ChatShell.qml folds it into
+                            // a persistent sidebar right next to the active
+                            // chat instead, the same layout every
+                            // mainstream chat app uses, so there is nothing
+                            // left to separately navigate to.
                             Repeater {
                                 model: [
-                                    { key: "dashboard", glyph: "▤", label: "Dashboard" },
                                     { key: "chat", glyph: "▷", label: "Chat" },
                                     { key: "code", glyph: "⌘", label: "Coding sessions" },
                                     { key: "memory", glyph: "✎", label: "Memory proposals" }
@@ -301,19 +321,19 @@ PanelWindow {
                                         root.section = modelData.key
                                         if (modelData.key === "code") root.agent.refreshCodingSessions()
                                         if (modelData.key === "memory") root.agent.refreshAllProposals()
-                                        if (modelData.key === "dashboard") root.agent.refreshChats()
+                                        if (modelData.key === "chat") root.agent.refreshChats()
                                     }
                                 }
                             }
                         }
 
                         // Style pass 2026-09-15 (reported directly: "there
-                        // is no settings button to open the panel" —
-                        // Chat.qml and Dashboard.qml each already had one,
-                        // but only reachable from those two specific
-                        // sections, easy to miss and inconsistent with
-                        // Coding sessions/Memory proposals having none at
-                        // all). One settings entry on the rail itself,
+                        // is no settings button to open the panel" — Chat.
+                        // qml used to have one of its own, but only
+                        // reachable from that one section, easy to miss and
+                        // inconsistent with Coding sessions/Memory
+                        // proposals having none at all). One settings
+                        // entry on the rail itself,
                         // anchored to the bottom (the same "primary nav
                         // above, settings pinned below" placement this
                         // shell's own Settings dialog sidebar and most
@@ -346,15 +366,13 @@ PanelWindow {
                             anchors.fill: parent
                             sourceComponent: {
                                 switch (root.section) {
-                                case "chat": return chatComp
                                 case "code": return codeComp
                                 case "memory": return memoryComp
-                                default: return dashComp
+                                default: return chatComp
                                 }
                             }
                         }
-                        Component { id: dashComp;   Agent.Dashboard { onOpenChat: root.section = "chat"; onBlurred: keyScope.forceActiveFocus() } }
-                        Component { id: chatComp;   Agent.Chat { onRequestSection: (s) => root.section = s; onBlurred: keyScope.forceActiveFocus() } }
+                        Component { id: chatComp;   Agent.ChatShell { onRequestSection: (s) => root.section = s; onBlurred: keyScope.forceActiveFocus() } }
                         Component { id: codeComp;   Agent.CodingSessions {} }
                         Component { id: memoryComp; Agent.MemoryProposals {} }
                     }

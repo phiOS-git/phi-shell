@@ -18,8 +18,9 @@ import qs.Services as Services
 // phios-agente.md §10.1 / phios-agente-delta.md D-06: the agent panel is
 // summoned by a global shortcut and is a resident surface on a persistent
 // event connection. This file is the toggle plumbing for that; the panel's
-// content is the four-section surface (Panels/AgentPanel.qml + Panels/tabs/
-// agent/*): Dashboard, Chat, Coding sessions, Memory proposals.
+// content is the three-section surface (Panels/AgentPanel.qml + Panels/
+// tabs/agent/*): Chat (a persistent sidebar plus the active conversation,
+// ChatShell.qml), Coding sessions, Memory proposals.
 
 Singleton {
     id: root
