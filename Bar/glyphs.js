@@ -96,3 +96,7 @@ var hibernate       = _c(0xF0717)   // nf-md-snowflake (power menu: Hibernate) �
                                      // SymbolsNerdFontMono-Regular.ttf covers (see `stopwatch`
                                      // above) — then checked rendering with a real screenshot
                                      // of the power menu, not assumed.
+var copy            = _c(0xF018F)   // nf-md-content_copy (chat bubble: copy this message) —
+                                     // confirmed 2026-09-15 against a fresh fetch of
+                                     // nerd-fonts' own glyphnames.json, same rigour as every
+                                     // entry above.

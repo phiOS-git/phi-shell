@@ -246,28 +246,6 @@ Item {
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
             spacing: root.chWidth * Config.Appearance.space1
 
-            // personality picker
-            Flow {
-                width: parent.width
-                spacing: root.chWidth * Config.Appearance.space1
-                visible: root.personaOpen
-                Widgets.StyledButton {
-                    label: "default"
-                    active: root.personality === ""
-                    onClicked: { root.personality = ""; root.personaOpen = false }
-                }
-                Repeater {
-                    model: root.agent.personalities || []
-                    delegate: Widgets.StyledButton {
-                        required property var modelData
-                        label: modelData
-                        active: root.personality === modelData
-                        onClicked: { root.personality = modelData; root.personaOpen = false }
-                    }
-                }
-                Widgets.StyledButton { label: "edit…"; onClicked: root.requestSection("dashboard") }
-            }
-
             Widgets.Panel {
                 width: parent.width
                 height: composeRow.implicitHeight + padding * 2
@@ -281,20 +259,54 @@ Item {
                         active: root.personaOpen
                         onClicked: root.personaOpen = !root.personaOpen
                     }
-                    TextInput {
-                        id: field
+                    // Style pass 2026-09-15 (critical self-review, no user
+                    // report): a plain `TextInput` cannot wrap or hold a
+                    // second line at all — a real limitation for anything
+                    // longer than one short sentence, and out of step with
+                    // every mainstream chat composer's own Enter-sends /
+                    // Shift+Enter-newline convention. `TextEdit` grows
+                    // with its content (capped at `_maxLines` lines, then
+                    // scrolls internally via `fieldScroll`) instead of
+                    // clipping or forcing one line.
+                    Flickable {
+                        id: fieldScroll
+                        readonly property real _lineHeight: Config.Appearance.fontSize1 * 1.4
+                        readonly property real _maxLines: 6
                         width: parent.width - personaBtn.implicitWidth - sendBtn.implicitWidth - parent.spacing * 2
+                        height: Math.min(field.implicitHeight, _lineHeight * _maxLines)
                         anchors.verticalCenter: parent.verticalCenter
-                        font.family: Config.Appearance.fontUi
-                        font.pixelSize: Config.Appearance.fontSize1
-                        color: Config.Appearance.textPrimary
+                        contentWidth: width
+                        contentHeight: field.implicitHeight
                         clip: true
-                        onAccepted: root.doSend()
-                        Keys.onEscapePressed: { field.focus = false; root.blurred() }
-                        Widgets.StyledText { anchors.fill: parent; kind: "label"; text: "Message the agent…"; visible: field.text.length === 0 }
+                        interactive: contentHeight > height
+
+                        TextEdit {
+                            id: field
+                            width: fieldScroll.width
+                            wrapMode: TextEdit.Wrap
+                            font.family: Config.Appearance.fontUi
+                            font.pixelSize: Config.Appearance.fontSize1
+                            color: Config.Appearance.textPrimary
+                            selectByMouse: true
+                            // Enter sends (matching the single-line
+                            // TextInput this replaces); Shift+Enter
+                            // inserts a real newline — TextEdit's own
+                            // default behaviour for a bare Enter, so only
+                            // the un-modified case needs intercepting.
+                            Keys.onPressed: (event) => {
+                                if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+                                    && !(event.modifiers & Qt.ShiftModifier)) {
+                                    root.doSend()
+                                    event.accepted = true
+                                }
+                            }
+                            Keys.onEscapePressed: { field.focus = false; root.blurred() }
+                            Widgets.StyledText { anchors.fill: parent; kind: "label"; text: "Message the agent…"; visible: field.text.length === 0 }
+                        }
                     }
                     Widgets.StyledButton {
                         id: sendBtn
+                        anchors.verticalCenter: parent.verticalCenter
                         label: "Send"
                         // Matches doSend()'s own guard — a spinner instead
                         // of a button that visually invites a click doing
@@ -315,8 +327,29 @@ Item {
             contentWidth: width
             contentHeight: messages.implicitHeight
             clip: true
-            // autoscroll — the placeholder never did this
-            onContentHeightChanged: if (contentHeight > height) contentY = contentHeight - height
+            // Style pass 2026-09-15 (critical self-review of the chat
+            // panel, no user report — a real chat-UX bug found by looking
+            // for one): the previous version force-scrolled to the
+            // bottom on EVERY content-height change, unconditionally —
+            // scrolling up to reread earlier history got yanked straight
+            // back down the instant the next streamed token/message grew
+            // the transcript, the exact "stop stealing my scroll
+            // position" complaint every real chat app (Slack, Discord,
+            // ChatGPT) has already had to fix. Now only autoscrolls if
+            // the user was already at (or within ~2 lines of) the bottom
+            // BEFORE this change — `_prevContentHeight` is the previous
+            // height, captured deliberately instead of comparing against
+            // `contentHeight`'s own new value, which would always read
+            // "not at the bottom" right after growing (the content grew
+            // out from under a contentY that has not had a chance to
+            // move yet).
+            property real _prevContentHeight: 0
+            onContentHeightChanged: {
+                const wasAtBottom = contentY + height >= _prevContentHeight - (root.chWidth * 2)
+                if (wasAtBottom) contentY = Math.max(0, contentHeight - height)
+                _prevContentHeight = contentHeight
+            }
+            Component.onCompleted: _prevContentHeight = contentHeight
 
             Column {
                 id: messages
@@ -369,6 +402,64 @@ Item {
                     text: "error: " + root.agent.lastError
                 }
             }
+        }
+
+        // Persona/personality picker popover (2026-09-15, reported
+        // directly: "large buttons block the input area" — the old
+        // version was an inline Flow of full-size StyledButtons that
+        // pushed the whole composer down whenever opened, sometimes
+        // wrapping to several rows for a handful of personalities).
+        // Positioned in `main`'s own coordinate space (mapToItem, the
+        // exact technique Tooltip/Tooltip.qml already uses for this
+        // shell's only other floating-relative-to-a-button surface)
+        // rather than a Quickshell PopupWindow — no cross-window anchor-
+        // direction risk to get wrong (Widgets/ContextMenu.qml, this
+        // shell's one real PopupWindow, had its own actual sizing bug on
+        // its first-ever use this same session; not worth compounding
+        // that risk here with no way to click-test the result).
+        Widgets.Panel {
+            id: personaCard
+            visible: root.personaOpen
+            readonly property point _anchor: personaBtn.mapToItem(main, 0, 0)
+            x: _anchor.x
+            y: _anchor.y - height - root.chWidth * Config.Appearance.space1
+            width: personaCol.implicitWidth + padding * 2
+            height: personaCol.implicitHeight + padding * 2
+            z: 10
+
+            Column {
+                id: personaCol
+                spacing: root.chWidth * Config.Appearance.space1
+                Widgets.StyledButton {
+                    label: "default"
+                    active: root.personality === ""
+                    onClicked: { root.personality = ""; root.personaOpen = false }
+                }
+                Repeater {
+                    model: root.agent.personalities || []
+                    delegate: Widgets.StyledButton {
+                        required property var modelData
+                        label: modelData
+                        active: root.personality === modelData
+                        onClicked: { root.personality = modelData; root.personaOpen = false }
+                    }
+                }
+                Widgets.StyledButton {
+                    label: "edit…"
+                    onClicked: { root.personaOpen = false; root.requestSection("dashboard") }
+                }
+            }
+        }
+
+        // Click-outside-closes for the popover above — same shape
+        // Dialogs/PowerMenu.qml's own fadeRoot MouseArea already uses.
+        // Below the popover in paint order but above everything else in
+        // `main`, and only intercepts clicks while actually open.
+        MouseArea {
+            anchors.fill: parent
+            visible: root.personaOpen
+            z: 9
+            onClicked: root.personaOpen = false
         }
     }
 
