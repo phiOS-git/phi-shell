@@ -100,22 +100,46 @@ function surfaceColors(appearance, resolvedState, ambient) {
     // same reasoning `ambient: "isle"`'s own `active` case below already
     // gives for reaching for accent over B&W inversion "to show the
     // selected state" — with the knob in `accentText` (the token already
-    // built to read against accent, ThemeOverrides-aware). Off is a plain
-    // muted outline with NO fill, so on/off is a fill-vs-outline
-    // distinction plus a colour swap, not just a hue swap alone that a
-    // narrow track can shrink to nearly nothing.
+    // built to read against accent, ThemeOverrides-aware).
+    //
+    // Two real bugs found on real hardware in this first version, both
+    // fixed here:
+    //   - `hover` used `appearance.colorMain` for fg/border. `colorMain`
+    //     is NOT an ink colour — Config/Appearance.qml defines it as
+    //     `root.background` itself (confirmed by reading that file, not
+    //     assumed; `panelBackground` is literally `root.colorMain`). Every
+    //     OTHER ambient's own hover case reaches for `colorOpposite` (the
+    //     real ink token) for exactly this "full contrast on hover"
+    //     purpose — this one alone had the wrong one, making a hovered
+    //     switch's knob and border exactly match its own panel's
+    //     background: invisible.
+    //   - off's track was fully `"transparent"`, which — on a dark theme,
+    //     where the panel behind it is itself near-black — reads as a
+    //     solid black track, visually indistinguishable from the ON
+    //     state's own near-black `accentText` knob dominating the right
+    //     side of the (small, 2:1) track. Net effect, reported directly:
+    //     "the right part of the switch is always black" regardless of
+    //     state. `offWash` (`appearance.panelHover`, the same solid
+    //     background-mixed-toward-ink tint every hover wash elsewhere in
+    //     this shell already uses — not a new one-off colour, and a
+    //     genuine solid colour rather than an alpha blend, so it can never
+    //     visually depend on whatever happens to sit behind the switch)
+    //     is a permanent, low-emphasis fill — never literally transparent,
+    //     and (unlike the hover bug above) never `colorMain` itself, so it
+    //     can never blend into the very panel it sits on.
     if (ambient === "toggle") {
+        var offWash = appearance.panelHover
         switch (resolvedState) {
         case "active":
             return { bg: appearance.accent, fg: appearance.accentText, border: appearance.accent }
         case "invalid":
-            return { bg: "transparent", fg: appearance.error, border: appearance.error }
+            return { bg: offWash, fg: appearance.error, border: appearance.error }
         case "focus":
-            return { bg: "transparent", fg: appearance.textMuted, border: appearance.focusRing }
+            return { bg: offWash, fg: appearance.colorOpposite, border: appearance.focusRing }
         case "hover":
-            return { bg: "transparent", fg: appearance.colorMain, border: appearance.colorMain }
+            return { bg: offWash, fg: appearance.colorOpposite, border: appearance.colorOpposite }
         default:
-            return { bg: "transparent", fg: appearance.textMuted, border: appearance.textMuted }
+            return { bg: offWash, fg: appearance.textMuted, border: appearance.textMuted }
         }
     }
 
