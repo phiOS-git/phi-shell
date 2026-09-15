@@ -86,165 +86,202 @@ Item {
                 }
             }
 
+            // Style pass 2026-09-15 (reported directly: "managing projects
+            // is a generic form of fields with no hierarchy and grammar").
+            // Every section below used to be the exact same shape — a
+            // plain `kind: "title"` heading followed by rows — with
+            // nothing to tell them apart at a glance or let a user
+            // collapse the ones they are not touching right now. Wrapped
+            // each in Widgets/Accordion (the same disclosure Settings/
+            // sections/Devices.qml already uses for a comparable "several
+            // grouped sub-settings" shape), `expanded: true` by default so
+            // opening a project loses no information and needs no extra
+            // click — the win here is the grouping/hierarchy itself (a
+            // titled, bordered region per concern), not hiding anything.
+
             // description
-            Widgets.StyledText { kind: "title"; text: "Description" }
-            EditableText {
+            Widgets.Accordion {
                 width: parent.width
-                text: root.meta.description || ""
-                placeholder: "The main context description the agent uses."
-                onCommit: (v) => root.agent.setProjectDescription(root.projectName, v)
-                onBlurred: root.blurred()
+                title: "Description"
+                expanded: true
+                EditableText {
+                    width: parent.width
+                    text: root.meta.description || ""
+                    placeholder: "The main context description the agent uses."
+                    onCommit: (v) => root.agent.setProjectDescription(root.projectName, v)
+                    onBlurred: root.blurred()
+                }
             }
 
             // instructions
-            Widgets.StyledText { kind: "title"; text: "Instructions" }
-            Repeater {
-                model: root.meta.instructions || []
-                delegate: Widgets.ListRow {
-                    required property var modelData
-                    width: col.width
-                    label: modelData
-                    value: "remove"
-                    onActivated: root.agent.removeProjectInstruction(root.projectName, modelData)
-                }
-            }
-            Row {
+            Widgets.Accordion {
                 width: parent.width
-                spacing: root.gap
-                Widgets.TextField {
-                    id: insInput
-                    width: parent.width - insAdd.implicitWidth - parent.spacing
-                    anchors.verticalCenter: parent.verticalCenter
-                    mono: false
-                    placeholder: "add an instruction…"
-                    onEscaped: root.blurred()
+                title: "Instructions"
+                expanded: true
+                Repeater {
+                    model: root.meta.instructions || []
+                    delegate: Widgets.ListRow {
+                        required property var modelData
+                        width: parent.width
+                        label: modelData
+                        value: "remove"
+                        onActivated: root.agent.removeProjectInstruction(root.projectName, modelData)
+                    }
                 }
-                Widgets.StyledButton {
-                    id: insAdd; label: "Add"
-                    onClicked: { if (insInput.text.trim().length > 0) { root.agent.addProjectInstruction(root.projectName, insInput.text.trim()); insInput.text = "" } }
+                Row {
+                    width: parent.width
+                    spacing: root.gap
+                    Widgets.TextField {
+                        id: insInput
+                        width: parent.width - insAdd.implicitWidth - parent.spacing
+                        anchors.verticalCenter: parent.verticalCenter
+                        mono: false
+                        placeholder: "add an instruction…"
+                        onEscaped: root.blurred()
+                    }
+                    Widgets.StyledButton {
+                        id: insAdd; label: "Add"
+                        onClicked: { if (insInput.text.trim().length > 0) { root.agent.addProjectInstruction(root.projectName, insInput.text.trim()); insInput.text = "" } }
+                    }
                 }
             }
 
             // context files (materiali/) — static copies
-            Widgets.StyledText { kind: "title"; text: "Context files" }
-            Widgets.StyledText {
-                kind: "label"; sizeStep: 0; width: parent.width; wrapMode: Text.WordWrap
-                text: "Static copies in the project folder. Add a path below; it is copied, not linked."
-            }
-            Repeater {
-                model: root.agent.materials || []
-                delegate: Widgets.ListRow {
-                    required property var modelData
-                    width: col.width
-                    label: modelData
-                    value: "remove"
-                    onActivated: root.agent.removeMaterial(root.projectName, modelData)
-                }
-            }
-            Row {
+            Widgets.Accordion {
                 width: parent.width
-                spacing: root.gap
-                Widgets.TextField {
-                    id: matInput
-                    width: parent.width - matAdd.implicitWidth - parent.spacing
-                    anchors.verticalCenter: parent.verticalCenter
-                    placeholder: "/path/to/file to copy…"
-                    onEscaped: root.blurred()
+                title: "Context files"
+                expanded: true
+                Widgets.StyledText {
+                    kind: "label"; sizeStep: 0; width: parent.width; wrapMode: Text.WordWrap
+                    text: "Static copies in the project folder. Add a path below; it is copied, not linked."
                 }
-                Widgets.StyledButton {
-                    id: matAdd; label: "Copy in"
-                    onClicked: { if (matInput.text.trim().length > 0) { root.agent.addMaterial(root.projectName, matInput.text.trim()); matInput.text = "" } }
+                Repeater {
+                    model: root.agent.materials || []
+                    delegate: Widgets.ListRow {
+                        required property var modelData
+                        width: parent.width
+                        label: modelData
+                        value: "remove"
+                        onActivated: root.agent.removeMaterial(root.projectName, modelData)
+                    }
+                }
+                Row {
+                    width: parent.width
+                    spacing: root.gap
+                    Widgets.TextField {
+                        id: matInput
+                        width: parent.width - matAdd.implicitWidth - parent.spacing
+                        anchors.verticalCenter: parent.verticalCenter
+                        placeholder: "/path/to/file to copy…"
+                        onEscaped: root.blurred()
+                    }
+                    Widgets.StyledButton {
+                        id: matAdd; label: "Copy in"
+                        onClicked: { if (matInput.text.trim().length > 0) { root.agent.addMaterial(root.projectName, matInput.text.trim()); matInput.text = "" } }
+                    }
                 }
             }
 
             // folders of interest — read-only real directories
-            Widgets.StyledText { kind: "title"; text: "Folders of interest (read-only)" }
-            Widgets.StyledText {
-                kind: "label"; sizeStep: 0; width: parent.width; wrapMode: Text.WordWrap
-                text: "Real directories the agent can read but not modify. Not copied. Blocked paths are refused."
-            }
-            Repeater {
-                model: root.meta.folders || []
-                delegate: Widgets.ListRow {
-                    required property var modelData
-                    width: col.width
-                    label: modelData
-                    value: "remove"
-                    onActivated: root.agent.projectFolder("remove", root.projectName, modelData)
-                }
-            }
-            Row {
+            Widgets.Accordion {
                 width: parent.width
-                spacing: root.gap
-                Widgets.TextField {
-                    id: folderInput
-                    width: parent.width - folderAdd.implicitWidth - parent.spacing
-                    anchors.verticalCenter: parent.verticalCenter
-                    placeholder: "/path/to/directory…"
-                    onEscaped: root.blurred()
+                title: "Folders of interest (read-only)"
+                expanded: true
+                Widgets.StyledText {
+                    kind: "label"; sizeStep: 0; width: parent.width; wrapMode: Text.WordWrap
+                    text: "Real directories the agent can read but not modify. Not copied. Blocked paths are refused."
                 }
-                Widgets.StyledButton {
-                    id: folderAdd; label: "Add folder"
-                    onClicked: { if (folderInput.text.trim().length > 0) { root.agent.projectFolder("add", root.projectName, folderInput.text.trim()); folderInput.text = "" } }
+                Repeater {
+                    model: root.meta.folders || []
+                    delegate: Widgets.ListRow {
+                        required property var modelData
+                        width: parent.width
+                        label: modelData
+                        value: "remove"
+                        onActivated: root.agent.projectFolder("remove", root.projectName, modelData)
+                    }
+                }
+                Row {
+                    width: parent.width
+                    spacing: root.gap
+                    Widgets.TextField {
+                        id: folderInput
+                        width: parent.width - folderAdd.implicitWidth - parent.spacing
+                        anchors.verticalCenter: parent.verticalCenter
+                        placeholder: "/path/to/directory…"
+                        onEscaped: root.blurred()
+                    }
+                    Widgets.StyledButton {
+                        id: folderAdd; label: "Add folder"
+                        onClicked: { if (folderInput.text.trim().length > 0) { root.agent.projectFolder("add", root.projectName, folderInput.text.trim()); folderInput.text = "" } }
+                    }
                 }
             }
 
             // default personality
-            Widgets.StyledText { kind: "title"; text: "Default personality" }
-            Row {
+            Widgets.Accordion {
                 width: parent.width
-                spacing: root.gap
-                Repeater {
-                    model: root.agent.personalities || []
-                    delegate: Widgets.StyledButton {
-                        required property var modelData
-                        label: modelData
-                        active: modelData === (root.meta.default_personality || "general")
-                        onClicked: root.agent.setProjectPersonality(root.projectName, modelData)
+                title: "Default personality"
+                expanded: true
+                Row {
+                    width: parent.width
+                    spacing: root.gap
+                    Repeater {
+                        model: root.agent.personalities || []
+                        delegate: Widgets.StyledButton {
+                            required property var modelData
+                            label: modelData
+                            active: modelData === (root.meta.default_personality || "general")
+                            onClicked: root.agent.setProjectPersonality(root.projectName, modelData)
+                        }
                     }
+                    Widgets.StyledButton { label: "Edit / new…"; onClicked: personalityEditor.active = true }
                 }
-                Widgets.StyledButton { label: "Edit / new…"; onClicked: personalityEditor.active = true }
             }
 
             // project chats — style pass 2026-09-14: same gap as
             // Panels/tabs/agent/Dashboard.qml's own ChatRow had (see its
             // comment) — the star only ever displayed pin state, nothing
             // here called the real Services.Agent.setChatPinned(). Same fix.
-            Widgets.StyledText { kind: "title"; text: "Conversations" }
-            Repeater {
-                model: (root.agent.chats || []).filter(function (c) { return (c.Project || c.project) === root.projectName })
-                delegate: Row {
-                    id: chatRow
-                    required property var modelData
-                    width: col.width
-                    spacing: root.gap
-                    readonly property bool pinned: !!(chatRow.modelData.Pinned || chatRow.modelData.pinned)
-                    readonly property string chatId: chatRow.modelData.ID || chatRow.modelData.id
+            Widgets.Accordion {
+                width: parent.width
+                title: "Conversations"
+                expanded: true
+                Repeater {
+                    model: (root.agent.chats || []).filter(function (c) { return (c.Project || c.project) === root.projectName })
+                    delegate: Row {
+                        id: chatRow
+                        required property var modelData
+                        width: parent.width
+                        spacing: root.gap
+                        readonly property bool pinned: !!(chatRow.modelData.Pinned || chatRow.modelData.pinned)
+                        readonly property string chatId: chatRow.modelData.ID || chatRow.modelData.id
 
-                    Widgets.ListRow {
-                        width: chatRow.width - pinBtn.implicitWidth - closeBtn.implicitWidth - chatRow.spacing * 2
-                        label: (chatRow.modelData.Title || chatRow.modelData.title || chatRow.chatId)
-                        glyph: chatRow.pinned ? "★" : ""
-                        onActivated: { root.agent.openSession(chatRow.chatId); root.startChat() }
-                    }
-                    Widgets.SmallButton {
-                        id: pinBtn
-                        anchors.verticalCenter: parent.verticalCenter
-                        label: chatRow.pinned ? "Unpin" : "Pin"
-                        onClicked: root.agent.setChatPinned(chatRow.chatId, !chatRow.pinned)
-                    }
-                    // Style pass 2026-09-14: same Services.Agent.closeSession()
-                    // gap as Dashboard.qml's own ChatRow — see its comment.
-                    Widgets.SmallButton {
-                        id: closeBtn
-                        anchors.verticalCenter: parent.verticalCenter
-                        label: "Close"
-                        onClicked: Services.ConfirmDialog.open({
-                            title: "Close “" + (chatRow.modelData.Title || chatRow.modelData.title || chatRow.chatId) + "”",
-                            message: "Summarises and archives the conversation, then deletes the live session. The full transcript is not kept.",
-                            confirmLabel: "Close",
-                            onConfirm: () => root.agent.closeSession(chatRow.chatId)
-                        })
+                        Widgets.ListRow {
+                            width: chatRow.width - pinBtn.implicitWidth - closeBtn.implicitWidth - chatRow.spacing * 2
+                            label: (chatRow.modelData.Title || chatRow.modelData.title || chatRow.chatId)
+                            glyph: chatRow.pinned ? "★" : ""
+                            onActivated: { root.agent.openSession(chatRow.chatId); root.startChat() }
+                        }
+                        Widgets.SmallButton {
+                            id: pinBtn
+                            anchors.verticalCenter: parent.verticalCenter
+                            label: chatRow.pinned ? "Unpin" : "Pin"
+                            onClicked: root.agent.setChatPinned(chatRow.chatId, !chatRow.pinned)
+                        }
+                        // Style pass 2026-09-14: same Services.Agent.closeSession()
+                        // gap as Dashboard.qml's own ChatRow — see its comment.
+                        Widgets.SmallButton {
+                            id: closeBtn
+                            anchors.verticalCenter: parent.verticalCenter
+                            label: "Close"
+                            onClicked: Services.ConfirmDialog.open({
+                                title: "Close “" + (chatRow.modelData.Title || chatRow.modelData.title || chatRow.chatId) + "”",
+                                message: "Summarises and archives the conversation, then deletes the live session. The full transcript is not kept.",
+                                confirmLabel: "Close",
+                                onConfirm: () => root.agent.closeSession(chatRow.chatId)
+                            })
+                        }
                     }
                 }
             }
