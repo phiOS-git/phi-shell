@@ -201,7 +201,14 @@ Item {
                 // "New chat" button as the PRIMARY way to start one — this
                 // is a quiet secondary convenience for "start fresh
                 // without moving to the sidebar", not the main action.
-                Widgets.SmallButton { id: newBtn; label: "New"; onClicked: root.agent.newSession() }
+                Widgets.SmallButton {
+                    id: newBtn; label: "New"
+                    // Same leaveProject()-first guard as ChatShell.qml's own
+                    // "New chat" button — this is a second way to reach the
+                    // same action, so it needs the same fix or the project
+                    // stays silently active whichever button is clicked.
+                    onClicked: root.agent.activeProject.length > 0 ? root.agent.leaveProject() : root.agent.newSession()
+                }
             }
 
             // project-switch loading state
@@ -212,7 +219,11 @@ Item {
                 Row {
                     id: switchRow
                     spacing: root.chWidth * Config.Appearance.space1
-                    Widgets.StyledText { kind: "label"; text: "Rebuilding the containment for the new project" }
+                    // agent.switchTarget is the DESTINATION of an in-flight
+                    // switch, not agent.activeProject — that still holds
+                    // the OLD value until the switch lands, which would
+                    // show "new project" even while leaving one.
+                    Widgets.StyledText { kind: "label"; text: "Rebuilding the containment for the " + (root.agent.switchTarget.length > 0 ? "new project" : "unfiled chat") }
                     Widgets.Dots {}
                 }
             }

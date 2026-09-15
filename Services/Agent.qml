@@ -39,6 +39,8 @@ Singleton {
     property bool healthChecked: false      // false until the first health result lands — "unknown", not "down"
     property bool processing: false         // a turn is in flight — drives the bar Φ segment (Role B)
     property bool switching: false          // project switch in progress — panel shows a loading state
+    property string switchTarget: ""        // "" = unfiled chat — the DESTINATION of the switch above, since
+                                             // activeProject itself still holds the OLD value until it lands
     property string activeProject: ""
     property var personalities: []
     property var projects: []
@@ -172,7 +174,23 @@ Singleton {
     function useProject(name) {
         if (useProc.running) return
         root.switching = true
+        root.switchTarget = name
         useProc.command = [root.phi, "agent", "project", "use", name]
+        useProc.running = true
+    }
+    // Critical self-review pass 2026-09-15: before this, "use"-ing a
+    // project from ProjectView.qml was one-way — nothing in the CLI or
+    // the shell could ever clear the marker again, so every future "New
+    // chat" silently kept routing into that project forever even after
+    // the sidebar visually looked like plain, unfiled chat again. `phi
+    // agent project use --none` (added alongside this) is the missing
+    // counterpart; ChatShell.qml's "New chat" button calls this first
+    // whenever a project is currently active.
+    function leaveProject() {
+        if (useProc.running || root.activeProject.length === 0) return
+        root.switching = true
+        root.switchTarget = ""
+        useProc.command = [root.phi, "agent", "project", "use", "--none"]
         useProc.running = true
     }
 

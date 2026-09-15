@@ -94,7 +94,20 @@ Item {
                         Widgets.StyledButton {
                             width: (parent.width - parent.spacing) / 2
                             label: "New chat"
-                            onClicked: { root.selectedProject = ""; root.agent.newSession() }
+                            // Critical self-review pass 2026-09-15: once a
+                            // project had been used (ProjectView's own
+                            // "Use + chat"), nothing ever cleared it again —
+                            // this button used to call newSession() alone,
+                            // which resets the visible chat but leaves the
+                            // agent silently scoped to the old project
+                            // forever. leaveProject() (Services/Agent.qml,
+                            // added alongside this) is a no-op when no
+                            // project is active, so this is safe either way.
+                            onClicked: {
+                                root.selectedProject = ""
+                                if (root.agent.activeProject.length > 0) root.agent.leaveProject()
+                                else root.agent.newSession()
+                            }
                         }
                         Widgets.StyledButton {
                             width: (parent.width - parent.spacing) / 2
