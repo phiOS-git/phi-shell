@@ -39,8 +39,22 @@ PopupWindow {
     // at that point. Set imperatively instead, in open()/close().
     grabFocus: true
 
-    implicitWidth: layout.implicitWidth + panel.padding * 2
-    implicitHeight: layout.implicitHeight + panel.padding * 2
+    // Style pass 2026-09-15 (reported directly: "the clipboard seems to
+    // have something when right clicking on entries, yet it does not show
+    // any option in the context menu" — the first real caller of this
+    // component, and the bug that shows up: it was never actually
+    // verified against real hardware before now, per its own header).
+    // Root-caused against Tooltip/Tooltip.qml, the only other PopupWindow
+    // in this whole repo: that file sizes itself with plain `width`/
+    // `height` bound to its content's implicit size, never
+    // `implicitWidth`/`implicitHeight` on the window root itself. A
+    // PopupWindow is a real top-level window, not a plain Item some
+    // parent lays out — nothing reads a window's own `implicitWidth` to
+    // size it, so this menu was opening at whatever default (empty/
+    // near-zero) size an unsized PopupWindow gets, clipping every row in
+    // `layout` out of view. The rows were never missing, just invisible.
+    width: layout.implicitWidth + panel.padding * 2
+    height: layout.implicitHeight + panel.padding * 2
 
     function open(atItem, menuItems) {
         root.anchorItem = atItem
