@@ -3,14 +3,24 @@ import QtQuick
 import Quickshell
 
 // phiOS — semantic roles over the raw design tokens (master plan §6.2, §6.7,
-// §8.2). Config/Tokens.qml stores everything as a string with its unit
+// §8.2). Config/Tokens.qml (structural: typography, spacing, radius, motion,
+// z-layers, textures) and Config/Colors.qml (everything that actually
+// differs by theme variant) both store everything as a string with its unit
 // attached, exactly as design/tokens.common.sh's own contract requires; this
 // file is the one place that turns a token's stored string ("120ms", "14px",
 // "#1a1918") into the QML type a consumer actually wants (color, real, int),
 // and the one place a future role rename or unit change has to happen.
 //
+// Interface rework (rework.md's "auto" theme option): colour used to live on
+// Tokens.qml too, until a variant switch rewriting that `pragma Singleton`
+// file's own source was found to force a destructive full re-evaluation —
+// see Config/Colors.qml's own header for the mechanism and why splitting
+// colour out onto a plain watched JSON file fixes it. Every colour property
+// below now reads Colors.X; every structural property still reads Tokens.X
+// exactly as before.
+//
 // S-20 AGENT contract: every other file in this shell reads Appearance,
-// never Config/Tokens.qml directly.
+// never Config/Tokens.qml or Config/Colors.qml directly.
 //
 // OOP-02 (shell restyle) layered two things on here without touching that
 // contract:
@@ -31,49 +41,56 @@ import Quickshell
 // Only tiers an actual shell surface can plausibly use are exposed. Tier 3
 // (syntax highlighting) and the ANSI 16 / selection / terminal-cursor tokens
 // are terminal-emulator concepts — no surface in master plan §8.3 needs them
-// — so they stay on Tokens, unexposed here, until a real consumer asks.
+// — so they stay on Colors (formerly Tokens — see the interface-rework note
+// above), unexposed here, until a real consumer asks.
 
 Singleton {
     id: root
 
-    readonly property string variant: Tokens.variant
+    // Interface rework: colour now comes from Config/Colors.qml, not
+    // Config/Tokens.qml — see Colors.qml's own header for why (a variant
+    // switch rewrites Colors.json, never Tokens.qml's own source, so this
+    // singleton is never force-re-evaluated by `phi theme set`). Every
+    // other property on this page (typography, spacing, shape, layering,
+    // motion, wallpaper textures) is untouched: those never moved.
+    readonly property string variant: Colors.variant
 
     // --- Structure ---------------------------------------------------------
-    readonly property color background: _color(_tok("bg-0", Tokens.bg0))
-    readonly property color surface1: _color(_tok("bg-1", Tokens.bg1))
-    readonly property color surface2: _color(_tok("bg-2", Tokens.bg2))
-    readonly property color surface3: _color(_tok("bg-3", Tokens.bg3))
-    readonly property color textPrimary: _color(_tok("fg-0", Tokens.fg0))
-    readonly property color textSecondary: _color(_tok("fg-1", Tokens.fg1))
-    readonly property color textMuted: _color(_tok("fg-2", Tokens.fg2))
-    readonly property color textFaint: _color(_tok("fg-3", Tokens.fg3))
-    readonly property color border: _color(_tok("border", Tokens.border))
-    readonly property color borderStrong: _color(_tok("border-strong", Tokens.borderStrong))
-    readonly property color overlayScrim: _color(Tokens.overlayScrim)
+    readonly property color background: _color(_tok("bg-0", Colors.bg0))
+    readonly property color surface1: _color(_tok("bg-1", Colors.bg1))
+    readonly property color surface2: _color(_tok("bg-2", Colors.bg2))
+    readonly property color surface3: _color(_tok("bg-3", Colors.bg3))
+    readonly property color textPrimary: _color(_tok("fg-0", Colors.fg0))
+    readonly property color textSecondary: _color(_tok("fg-1", Colors.fg1))
+    readonly property color textMuted: _color(_tok("fg-2", Colors.fg2))
+    readonly property color textFaint: _color(_tok("fg-3", Colors.fg3))
+    readonly property color border: _color(_tok("border", Colors.border))
+    readonly property color borderStrong: _color(_tok("border-strong", Colors.borderStrong))
+    readonly property color overlayScrim: _color(Colors.overlayScrim)
     // Style pass 2026-09-14 (docs/TODO.md's dim-intensity split): for the
     // small set of full-attention blocking surfaces (screenshot selection,
     // Alt-Tab/overview, battery/timer alerts, a destructive confirmation).
     // Same non-overridable treatment as overlayScrim itself.
-    readonly property color overlayScrimStrong: _color(Tokens.overlayScrimStrong)
+    readonly property color overlayScrimStrong: _color(Colors.overlayScrimStrong)
 
     // --- Accent and semantic state ------------------------------------------
-    readonly property color accent: _color(_tok("accent", Tokens.accent))
+    readonly property color accent: _color(_tok("accent", Colors.accent))
     readonly property color accentText: {
         var explicit = _tok("accent-fg", null)
         if (explicit !== null) return _color(explicit)
         // Auto-flip when the accent is overridden but its text colour is
         // not: a user-picked light accent needs dark text, and vice versa.
         if (ThemeOverrides.value("accent") !== null) return _bestText(root.accent)
-        return _color(Tokens.accentFg)
+        return _color(Colors.accentFg)
     }
-    readonly property color error: _color(_tok("error", Tokens.error))
-    readonly property color errorText: _color(Tokens.errorFg)
-    readonly property color warn: _color(_tok("warn", Tokens.warn))
-    readonly property color warnText: _color(Tokens.warnFg)
-    readonly property color success: _color(_tok("success", Tokens.success))
-    readonly property color successText: _color(Tokens.successFg)
-    readonly property color info: _color(_tok("info", Tokens.info))
-    readonly property color infoText: _color(Tokens.infoFg)
+    readonly property color error: _color(_tok("error", Colors.error))
+    readonly property color errorText: _color(Colors.errorFg)
+    readonly property color warn: _color(_tok("warn", Colors.warn))
+    readonly property color warnText: _color(Colors.warnFg)
+    readonly property color success: _color(_tok("success", Colors.success))
+    readonly property color successText: _color(Colors.successFg)
+    readonly property color info: _color(_tok("info", Colors.info))
+    readonly property color infoText: _color(Colors.infoFg)
 
     // --- phiOS style grammar (OOP-02) -------------------------------------
     // "main"     = bg-0: a warm near-black on the dark variant, a warm
@@ -291,26 +308,28 @@ Singleton {
     // OOP-08: the settings panel's editable Theme section reads and writes
     // token overrides through Config/ThemeOverrides.qml, but it needs the
     // generated DEFAULT for each key (to seed a field, and to restore on
-    // reset). Config/Tokens.qml is this file's to read, not the settings
-    // panel's (S-20 contract) — so the mapping lives here.
+    // reset). Config/Tokens.qml / Config/Colors.qml are this file's to read,
+    // not the settings panel's (S-20 contract) — so the mapping lives here.
+    // Interface rework: the colour cases below now read Colors.X, not
+    // Tokens.X — see this file's header.
     function tokenDefault(key) {
         switch (key) {
-        case "accent": return Tokens.accent
-        case "accent-fg": return Tokens.accentFg
-        case "bg-0": return Tokens.bg0
-        case "bg-1": return Tokens.bg1
-        case "bg-2": return Tokens.bg2
-        case "bg-3": return Tokens.bg3
-        case "fg-0": return Tokens.fg0
-        case "fg-1": return Tokens.fg1
-        case "fg-2": return Tokens.fg2
-        case "fg-3": return Tokens.fg3
-        case "border": return Tokens.border
-        case "border-strong": return Tokens.borderStrong
-        case "error": return Tokens.error
-        case "warn": return Tokens.warn
-        case "success": return Tokens.success
-        case "info": return Tokens.info
+        case "accent": return Colors.accent
+        case "accent-fg": return Colors.accentFg
+        case "bg-0": return Colors.bg0
+        case "bg-1": return Colors.bg1
+        case "bg-2": return Colors.bg2
+        case "bg-3": return Colors.bg3
+        case "fg-0": return Colors.fg0
+        case "fg-1": return Colors.fg1
+        case "fg-2": return Colors.fg2
+        case "fg-3": return Colors.fg3
+        case "border": return Colors.border
+        case "border-strong": return Colors.borderStrong
+        case "error": return Colors.error
+        case "warn": return Colors.warn
+        case "success": return Colors.success
+        case "info": return Colors.info
         case "font-mono": return Tokens.fontMono
         case "font-reading": return Tokens.fontReading
         case "font-ui": return Tokens.fontUi
