@@ -39,6 +39,19 @@ PanelWindow {
     color: Services.Background.color.length > 0
         ? Services.Background.color : Config.Appearance.background
 
+    // Interface rework Phase 6b (rework.md: "a transition is also applied
+    // when switching from one theme to the other"). This is the single
+    // largest painted area on screen and the one place in this file that
+    // reads a live theme colour with no per-state reason to skip a
+    // crossfade — every restyled widget (Widgets/Panel.qml etc.) already
+    // wraps its own colour reads in the same `Behavior on color` using
+    // these same motionB tokens, so this brings the wallpaper base in line
+    // with the rest of the shell rather than snapping instantly while
+    // everything else fades.
+    Behavior on color {
+        ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+    }
+
     Component.onCompleted: {
         if (root.WlrLayershell) root.WlrLayershell.layer = WlrLayer.Background
     }
