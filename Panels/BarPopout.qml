@@ -766,14 +766,36 @@ PanelWindow {
                             Widgets.StyledText { kind: "label"; sizeStep: 0
                                 text: "ping " + (Services.NetStats.pingMs >= 0 ? Services.NetStats.pingMs + " ms" : "—") }
                         }
-                        // rework.md: "status (with speedtest)" — no active
-                        // speedtest TRIGGER exists anywhere in this
-                        // codebase (only the passive live rate graph
-                        // above); not fabricated.
+                        // docs/TODO.md: rework.md's "status (with
+                        // speedtest)" — a real active-speedtest trigger
+                        // (Services/SpeedTest.qml, speedtest-cli). Kept
+                        // separate from the passive live-rate graph above
+                        // (Services.NetStats) — a real bandwidth test
+                        // actually saturates the link for a few seconds,
+                        // so it only runs on demand, never polled.
+                        Row {
+                            width: parent.width
+                            spacing: root.chWidth * Config.Appearance.space2
+                            Widgets.SmallButton {
+                                label: Services.SpeedTest.running ? "Testing…" : "Speed test"
+                                enabled: !Services.SpeedTest.running
+                                onClicked: Services.SpeedTest.run()
+                            }
+                            Widgets.StyledText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: !Services.SpeedTest.running && Services.SpeedTest.error.length === 0 && Services.SpeedTest.downloadMbps >= 0
+                                kind: "label"; sizeStep: 0; mono: true
+                                text: "↓ " + Services.SpeedTest.downloadMbps.toFixed(1) + " Mb/s  ↑ "
+                                    + Services.SpeedTest.uploadMbps.toFixed(1) + " Mb/s  "
+                                    + Services.SpeedTest.pingMs.toFixed(0) + " ms"
+                            }
+                        }
                         Widgets.StyledText {
                             width: parent.width
+                            visible: Services.SpeedTest.error.length > 0
                             kind: "label"; sizeStep: 0
-                            text: "No active speedtest is available — the graph above is the live link rate."
+                            tone: "error"
+                            text: Services.SpeedTest.error
                             wrapMode: Text.WordWrap
                         }
                         Widgets.WifiNetworkList {
