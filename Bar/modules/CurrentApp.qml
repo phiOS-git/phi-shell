@@ -46,6 +46,18 @@ Widgets.StyledText {
     mono: true
     sizeStep: 0
     color: Config.Appearance.accent
+    // rework-issues.md item 9 (new requests): "should have some spacing
+    // on the left, exactly the same amount icons have as inner padding."
+    // Widgets/Segment.qml's own `paddingH` is `chWidth * space2` — the
+    // same token, not a new one. `leftPadding` is a real QtQuick Text
+    // property (unlike implicitWidth, it is included automatically in
+    // this Text's own `width` binding below, so the isle's Row does not
+    // need a second spacer element).
+    leftPadding: chMetrics.width * Config.Appearance.space2
     width: Math.min(implicitWidth, _cap)
     elide: Text.ElideRight
+    // "also it's not vertically centred" — same Row-only-manages-x cause
+    // and plain-`y`-not-`anchors` fix as Bar/modules/Separator.qml's own
+    // header already documents for this isle's other short sibling.
+    y: parent ? Math.round((parent.height - height) / 2) : 0
 }

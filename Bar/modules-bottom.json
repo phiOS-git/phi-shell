@@ -7,8 +7,6 @@
     { "type": "volume", "island": "right", "position": 20, "source": "internal:pipewire", "capability": "" },
     { "type": "networkStatus", "island": "right", "position": 30, "source": "internal:networkmanager", "capability": "" },
     { "type": "bluetooth", "island": "right", "position": 40, "source": "internal:bluez", "capability": "bluetooth" },
-    { "type": "microphone", "island": "right", "position": 45, "source": "internal:sensor-permissions", "capability": "" },
-    { "type": "camera", "island": "right", "position": 46, "source": "internal:sensor-permissions", "capability": "" },
     { "type": "battery", "island": "right", "position": 50, "source": "internal:upower", "capability": "battery" },
     { "type": "separator", "island": "right", "position": 55, "source": "internal:separator", "capability": "" },
     { "type": "stats", "island": "right", "position": 60, "source": "internal:stats", "capability": "" },

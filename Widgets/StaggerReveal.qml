@@ -80,13 +80,29 @@ Column {
             root._animate(root.children[i], i)
     }
 
-    // Lazily attaches one persistent NumberAnimation per child instead of
-    // rebuilding it on every toggle — Qt.createQmlObject is the QML-
-    // idiomatic way to give an arbitrary, caller-supplied Item (this
+    // rework-issues.md (real-hardware bug pass): every reveal logged
+    // "Cannot assign to non-existent property '_staggerAnim'" — a plain
+    // QML/QtQuick Item is not dynamically extensible the way a bare JS
+    // object is; assigning an undeclared property name onto a QObject-
+    // derived instance is a hard error, not a silent add, so the original
+    // `child._staggerAnim = ...` approach below could never have worked.
+    // Fixed by keeping the per-child animation objects in THIS widget's
+    // own `property var _anims` (a plain JS array, which — unlike an
+    // Item's fixed meta-object properties — really can grow arbitrary
+    // indices) instead of trying to attach anything to the child at all;
+    // `Qt.createQmlObject`'s second argument (the object's new parent, for
+    // ownership/context only) is `root` now, not `child`, since nothing
+    // about owning the animation actually requires the child to be its
+    // QML parent.
+    property var _anims: []
+
+    // Lazily creates one persistent SequentialAnimation per child index
+    // instead of rebuilding it on every toggle — Qt.createQmlObject is the
+    // QML-idiomatic way to give an arbitrary, caller-supplied Item (this
     // widget does not own its children's own .qml types, so it cannot
-    // declare a `Behavior` on them directly) its own animated property.
-    // A creation failure (should not happen for a plain NumberAnimation,
-    // but nothing here is worth a hard crash for) just leaves that child
+    // declare a `Behavior` on them directly) an animated property. A
+    // creation failure (should not happen for a plain NumberAnimation, but
+    // nothing here is worth a hard crash for) just leaves that child
     // static — fails open onto "no stagger", never onto a broken panel.
     //
     // Opacity only, deliberately no position slide: `Column` itself
@@ -99,26 +115,43 @@ Column {
     // not what `shown` does here). Fading is the one channel free to
     // animate without that conflict.
     function _animate(child, index) {
-        if (child._staggerAnim === undefined) {
+        if (root._anims[index] === undefined) {
             try {
-                child._staggerAnim = Qt.createQmlObject(
-                    'import QtQuick; NumberAnimation { property: "opacity" }',
-                    child, "StaggerReveal")
+                // rework-issues.md (real-hardware bug pass): a second real
+                // bug found alongside the `_staggerAnim` one this file's
+                // header already explains — plain `NumberAnimation`/
+                // `PropertyAnimation` has no `delay` property in QtQuick at
+                // all (confirmed live: "Cannot assign to non-existent
+                // property 'delay'" the instant this ran on real hardware,
+                // the second thing wrong here, not a guess this time). A
+                // `PauseAnimation` ahead of the real `NumberAnimation`
+                // inside a `SequentialAnimation` is QtQuick's own actual
+                // mechanism for "wait, then animate" — `animations` is
+                // `SequentialAnimation`'s real default list property
+                // (confirmed against Qt's own docs), so the two children
+                // are reachable by index with no need for `id`s inside the
+                // dynamically-created string.
+                var seq = Qt.createQmlObject(
+                    'import QtQuick; SequentialAnimation { PauseAnimation {}; NumberAnimation { property: "opacity" } }',
+                    root, "StaggerReveal")
+                root._anims[index] = seq
                 child.opacity = root.shown ? 1 : 0
             } catch (e) {
-                child._staggerAnim = null
+                root._anims[index] = null
             }
         }
-        if (!child._staggerAnim)
+        var seq = root._anims[index]
+        if (!seq)
             return
 
-        var anim = child._staggerAnim
+        var pause = seq.animations[0]
+        var anim = seq.animations[1]
+        pause.duration = root.shown ? index * root.staggerStep : 0
         anim.target = child
         anim.duration = Config.Appearance.motionBDuration
         anim.easing.type = Easing.Bezier
         anim.easing.bezierCurve = Config.Appearance.motionBCurve
-        anim.delay = root.shown ? index * root.staggerStep : 0
         anim.to = root.shown ? 1 : 0
-        anim.restart()
+        seq.restart()
     }
 }

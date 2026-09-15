@@ -95,7 +95,7 @@ Singleton {
         switch (key) {
         case "volume": return "Volume"
         case "brightness": return "Brightness"
-        case "network": return "Tailscale"
+        case "network": return "" // rework-issues.md item 7: stale leftover from before this key merged wifi/ethernet/VPN in; each has its own section header now.
         case "wifi": return "Wi-Fi"
         case "ethernet": return "Ethernet"
         case "bluetooth": return "Bluetooth"

@@ -64,10 +64,14 @@ PanelWindow {
         left: true
         right: true
     }
-    // OOP-03: the bar window has no background of its own — the isles
-    // (Widgets/BarIsle) are the only chrome. exclusiveZone is set further
-    // down (S-43: 0 while auto-hidden for fullscreen, bar.height otherwise)
-    // — not bound here twice.
+    // rework-issues.md item 1: the bar window itself now paints the ONE
+    // background every isle used to draw separately — see `barBackground`
+    // below. The window's own `color` stays transparent regardless
+    // (`barBackground` is a real child Item, not this property) so the
+    // area OUTSIDE the background shape (the reserved margin around the
+    // isles) still shows the wallpaper through, not a solid rectangle.
+    // exclusiveZone is set further down (S-43: 0 while auto-hidden for
+    // fullscreen, bar.height otherwise) — not bound here twice.
     color: "transparent"
 
     // design/tokens.common.sh stores space-N in `ch`, not px — see
@@ -193,9 +197,6 @@ PanelWindow {
         case "stats": return statsComponent
         case "networkStatus": return networkStatusComponent
         case "statusMenu": return statusMenuComponent
-        // docs/TODO.md's app-permission system: sensor status icons.
-        case "microphone": return microphoneComponent
-        case "camera": return cameraComponent
         default:
             console.warn("phi-shell: Bar module type not recognized: " + type)
             return null
@@ -262,8 +263,6 @@ PanelWindow {
     Component { id: windowListComponent; Modules.WindowList { screen: bar.screen } }
     Component { id: statsComponent; Modules.Stats { screen: bar.screen } }
     Component { id: networkStatusComponent; Modules.NetworkStatus { screen: bar.screen } }
-    Component { id: microphoneComponent; Modules.Microphone { screen: bar.screen } }
-    Component { id: cameraComponent; Modules.Camera { screen: bar.screen } }
     Component { id: statusMenuComponent; Modules.StatusMenu { screen: bar.screen } }
 
     FileView {
@@ -380,9 +379,31 @@ PanelWindow {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
+    // rework-issues.md item 1: ONE continuous background for the whole
+    // bar (every isle plus the gaps between them), not three separate
+    // rounded boxes — moved here from Widgets/BarIsle.qml, which used to
+    // draw this per-isle. Corner radius: "outward"/"inward" interpretation
+    // unchanged from the original Phase 2 call (rework.md does not define
+    // either precisely) — the corners nearest the physical screen edge
+    // (top bar: the two TOP corners; bottom bar: the two bottom corners)
+    // are "outward" and get the smaller radiusSmall (1px); the corners
+    // facing the desktop/window area are "inward" and get the larger
+    // radiusLarge (4px).
+    Widgets.AsymmetricPanel {
+        id: barBackground
+        anchors.fill: parent
+        color: Config.Appearance.colorMain
+        borderWidth: 0
+        readonly property real _outward: Config.Appearance.radiusSmall
+        readonly property real _inward: Config.Appearance.radiusLarge
+        radiusTopLeft: bar.edge === "top" ? _outward : _inward
+        radiusTopRight: bar.edge === "top" ? _outward : _inward
+        radiusBottomLeft: bar.edge === "top" ? _inward : _outward
+        radiusBottomRight: bar.edge === "top" ? _inward : _outward
+    }
+
     Widgets.BarIsle {
         id: leftIsle
-        edge: bar.edge
         anchors.left: parent.left
         anchors.leftMargin: bar.islandMargin
         anchors.verticalCenter: parent.verticalCenter
@@ -411,7 +432,6 @@ PanelWindow {
 
     Widgets.BarIsle {
         id: rightIsle
-        edge: bar.edge
         anchors.right: parent.right
         anchors.rightMargin: bar.islandMargin
         anchors.verticalCenter: parent.verticalCenter
@@ -444,7 +464,6 @@ PanelWindow {
     // it proves a real problem on a host with many open windows).
     Widgets.BarIsle {
         id: centerIsle
-        edge: bar.edge
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
         visible: centerLoader.item !== null && centerLoader.width > 0

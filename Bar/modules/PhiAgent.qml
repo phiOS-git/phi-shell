@@ -67,7 +67,29 @@ Item {
         id: segment
         anchors.fill: parent
         label: "Φ"
-        active: root.processing
+        // rework-issues.md item 12: "the 'phi' character looks too small
+        // compared to the icons." Segment defaults every bar button's text
+        // to sizeStep 0 (OOP-10's "the status bar reads one step smaller"
+        // rule) — correct for a multi-character label, but a lone glyph
+        // character reads visually lighter than this bar's Canvas-drawn
+        // icons at that same nominal size. One step up brings its apparent
+        // weight closer to its neighbours without touching the shared
+        // token (still no hardcoded size — `sizeStep` is itself the design-
+        // token-driven scale, just a different rung of it than the
+        // default). The Φ mark itself stays — replacing it with a font
+        // icon would give up the one closed, deliberate brand identity
+        // (§6.6, PROGRESS.md's own "a single Φ identity mark") for a
+        // generic glyph, which is not what "too small" was asking for.
+        sizeStep: 1
+        // rework-issues.md item 11: was `processing` only — a segment
+        // whose panel is genuinely open (but not mid-turn) showed no
+        // active state at all. `accentWhenActive` below already makes
+        // `active` render as Tier-1 accent rather than a B&W inversion, so
+        // folding the panel's own shown state in here doesn't fight
+        // §6.6's "Tier 1 solo durante l'elaborazione" rule for the
+        // PROCESSING case — it just also covers the plain-open case the
+        // same closed ADR never actually addressed.
+        active: root.processing || Services.AgentPanel.shown
         // §6.6 Role B is a closed ADR: the agent's processing state is
         // Tier-1 accent, not the B&W inversion OOP-02 gave every other
         // selected control. This flag is the one exception to that rule.

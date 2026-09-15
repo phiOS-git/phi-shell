@@ -169,6 +169,11 @@ PanelWindow {
     // shape and the identical reason.
     function setShown(v) {
         root.shown = v
+        // rework-issues.md item 11: mirrors into Services/Launcher.qml so
+        // Bar/modules/Lens.qml (a different component tree) can bind its
+        // own `active` state to whether the runner bar is open — see that
+        // file's own header for why this needed a new singleton at all.
+        Services.Launcher.shown = v
         if (v) {
             searchField.forceActiveFocus()
         } else {

@@ -24,13 +24,14 @@ import "tabs" as Tabs
 // position, since this icon does not always sit where Calendar's clock
 // does.
 //
-// Height: anchored between the bar and the bottom of the screen (the same
-// "as much room as exists" shape the retired Sidebar dock used), not a
-// plain content-based height — rework.md's own words are "not full height
-// ... no maximum height but the layout makes them usually smaller than
-// full height", and a notification history is exactly the case that can
-// genuinely want the room: Panels/tabs/Notifications.qml's own internal
-// Flickable scrolls within whatever height this window's anchors leave it.
+// Height: rework-issues.md item 3 overrides this file's earlier reading of
+// rework.md ("not full height ... no maximum height") — real hardware
+// testing found that reading made the card always stretch to the bottom
+// of the screen regardless of how little history exists. Content-driven
+// now, capped at 3/4 screen height (`root.height * 0.75`): grows with
+// Tabs.Notifications' own natural content height
+// (`naturalContentHeight`, its own Flickable's `contentHeight`) up to
+// that cap, and its internal Flickable takes over scrolling beyond it.
 //
 // Corner radius (rework.md, "## Status bar overlays" intro): a right-isle
 // TOP-bar icon's nearest corner is top-right → radiusSmall there, the
@@ -76,9 +77,18 @@ PanelWindow {
             id: cardWrap
             anchors.top: parent.top
             anchors.topMargin: Services.BarMetrics.height + Config.Appearance.panelGap
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: Config.Appearance.panelGap
             width: root.cardWidth
+            // rework-issues.md item 3: content-driven height, capped at
+            // 3/4 screen height — see this file's own header. `panel`'s
+            // own top/bottom padding (Widgets/Panel.qml) wraps the
+            // Flickable's natural content height; the outer cap leaves
+            // panelGap clear at both the top (already in topMargin) and
+            // the bottom.
+            readonly property real _maxAvailable: root.height - anchors.topMargin - Config.Appearance.panelGap
+            height: Math.min(
+                notifTab.naturalContentHeight + panel.paddingV * 2,
+                root.height * 0.75,
+                cardWrap._maxAvailable)
 
             // Same right-edge-under-the-button clamp Panels/BarPopout.qml
             // already uses (Services.BarPopout.anchorRightX there),
@@ -105,6 +115,7 @@ PanelWindow {
                 Keys.onEscapePressed: Services.NotificationPanel.notificationsShown = false
 
                 Tabs.Notifications {
+                    id: notifTab
                     anchors.fill: parent
                     revealShown: root.shown
                 }

@@ -62,9 +62,18 @@ PanelWindow {
             id: cardWrap
             anchors.top: parent.top
             anchors.topMargin: Services.BarMetrics.height + Config.Appearance.panelGap
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: Config.Appearance.panelGap
             width: root.cardWidth
+            // rework-issues.md item 3: "way too tall ... should not go
+            // over 3/4 of the screen height" — was unconditionally
+            // anchored to the bottom of the screen; now capped, with
+            // Tabs.Clipboard's own internal ListView (unlike
+            // Tabs.Notifications, deliberately not content-driven here —
+            // a clipboard history is the one case that always wants a
+            // real scrollable list, not a shrink-to-fit card) scrolling
+            // within whatever this leaves it.
+            height: Math.min(
+                root.height - anchors.topMargin - Config.Appearance.panelGap,
+                root.height * 0.75)
 
             x: Services.NotificationPanel.clipboardAnchorX > 0
                 ? Math.max(Config.Appearance.panelGap,

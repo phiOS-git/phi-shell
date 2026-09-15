@@ -184,8 +184,16 @@ PanelWindow {
     // rework.md: "different colors on hover" — one semantic tone per
     // action, using this shell's existing tone palette rather than
     // inventing new colours (rule 6).
+    //
+    // rework-issues.md item 4a: "the lock icon has no hover effect" — this
+    // switch had no "lock" case, so it fell through to the same
+    // `textPrimary` the icon already uses at rest: a real hover-state
+    // color Behavior firing every time, animating to a value identical to
+    // where it started, reading as "nothing happens" rather than a bug in
+    // the hover detection itself.
     function _powerTone(action) {
         switch (action) {
+        case "lock": return Config.Appearance.accent
         case "suspend": return Config.Appearance.info
         case "hibernate": return Config.Appearance.accent
         case "logout": return Config.Appearance.warn
@@ -213,24 +221,35 @@ PanelWindow {
     // UI selection only; "tile" is the default since Hyprland already
     // tiles by default.
     property string _tilingMode: "tile"
+    // rework-issues.md item 4c: "when i set a tiling style, all windows in
+    // the workspace should follow it" — the previous fix only toggled the
+    // FOCUSED window via `hl.dsp.window.float({ action = "toggle" })`.
+    // Hyprland 0.56's own Lua binding (/usr/share/hypr/stubs/hl.meta.lua,
+    // read on this machine, not guessed — same file the scratchpad-toggle
+    // bug fix in Bar/modules/Workspaces.qml already relies on) exposes
+    // `hl.get_workspace_windows(workspace): HL.Window[]` and a plain
+    // writable `HL.Window.floating` field, so every window on the current
+    // workspace can be set explicitly (not toggled) in one pass. The
+    // dispatch socket on this install only accepts a single Lua
+    // EXPRESSION (confirmed live: a bare `for` statement is rejected with
+    // "unexpected symbol near 'for'", since the socket wraps whatever is
+    // sent as `return hl.dispatch(<sent text>)`) — a function literal is
+    // itself a valid expression, and `hl.dispatch()` accepts a function as
+    // well as a Dispatcher object (its own stub: `dispatch fun(dispatcher:
+    // HL.Dispatcher|function)`), so the loop lives inside one.
     function _applyTilingMode(id) {
         root._tilingMode = id
-        if (id === "floating") {
-            // The one dispatcher confirmed real and already in production
-            // use (hyprland.lua.tmpl's own Super+Shift+F bind, verified
-            // against that file directly): `hl.dsp.window.float({ action =
-            // "toggle" })`. Toggles the FOCUSED window's floating state —
-            // a real, working action, but narrower than a genuine
-            // workspace-wide "everything floats" mode (stock Hyprland has
-            // no such concept either); flagged here for a human to confirm
-            // this scope reading is acceptable.
-            Services.HyprlandBridge.dispatch('hl.dsp.window.float({ action = "toggle" })')
+        if (id === "tile" || id === "floating") {
+            var floating = (id === "floating") ? "true" : "false"
+            Services.HyprlandBridge.dispatch(
+                'function() for _, w in ipairs(hl.get_workspace_windows(hl.get_active_workspace())) do w.floating = '
+                + floating + ' end end')
         }
-        // xscroll / yscroll / tile / center / fair: no native Hyprland
-        // dispatcher exists for any of these — see this function's own
-        // header. Selecting one only updates `_tilingMode` above (the
-        // button's own active-state highlight); deliberately no dispatch
-        // call, not a fabricated one.
+        // xscroll / yscroll / center / fair: no native Hyprland concept
+        // exists for any of these — see this function's own header.
+        // Selecting one only updates `_tilingMode` above (the button's own
+        // active-state highlight); deliberately no dispatch call, not a
+        // fabricated one.
     }
 
     // Live countdown for the "timer" card — only ticks while that specific
@@ -401,12 +420,20 @@ PanelWindow {
             width: parent ? parent.width : 0
             spacing: root.chWidth * Config.Appearance.space1
 
+            // rework-issues.md item 7: the network overlay used to show a
+            // stale "Tailscale" title left over from before it was merged
+            // with wifi/ethernet/VPN (Services/BarPopout.qml's own
+            // title()) — it now has no top-level title of its own at all
+            // (its per-section headers, "Ethernet"/"Wi-Fi"/etc., are
+            // already real headers), so an empty title() return hides
+            // this row entirely instead of showing a blank line.
             Widgets.StyledText {
                 kind: "title"
                 sizeStep: 2
                 text: Services.BarPopout.title(root.which)
+                visible: text.length > 0
             }
-            Widgets.Separator { width: parent.width }
+            Widgets.Separator { width: parent.width; visible: Services.BarPopout.title(root.which).length > 0 }
 
             // volume
             Widgets.StaggerReveal {
@@ -1457,8 +1484,9 @@ PanelWindow {
                         kind: "label"; sizeStep: 0
                         wrapMode: Text.WordWrap
                         text: "Stock Hyprland has no native X/Y-scroll, Center or Fair "
-                            + "layout — only Tile (dwindle/master) and per-window "
-                            + "Floating are real here; the rest only highlight."
+                            + "layout — only Tile (dwindle/master) and Floating are real "
+                            + "here, applied to every window on the current workspace; "
+                            + "the rest only highlight."
                     }
                     Grid {
                         width: parent.width
