@@ -22,6 +22,31 @@ import "WidgetStates.js" as WidgetStates
 // (4px), all from Config/Appearance's grammar layer. `active` inverts the
 // whole surface. `padding` was a 3ch measurement done here with a local
 // TextMetrics; it is now a plain px token, so that measurement is gone.
+//
+// Interface rework Phase 1 (rework.md s3/s5): the background/border colour
+// recipe now reads WidgetStates' new `ambient: "shaded"` branch (bg-1/2/3
+// shades and the dedicated border/borderStrong hairline tokens) instead of
+// the generic full colorMain/colorOpposite inversion — see
+// Widgets/WidgetStates.js's own comment on that branch for why this is a
+// new branch and not an edit to the shared one. `radius` now defaults to
+// `radiusLarge` (4px, rework.md's own "4px inward corners" / "3 corners of
+// 4px" figure) instead of `radiusBase` (2px) — every existing caller that
+// never set `radius` explicitly picks up the new default; none is expected
+// to look worse for it (radiusBase was itself a generic placeholder, never
+// a per-surface decision).
+//
+// Per-corner radii (`cornerRadius*`, rework.md's own "Overlays have 3
+// corners of 4px and 1 corner of 1px" / "1px border radius on the outward
+// corners, 4px on the inward corners"): each defaults to plain `radius`,
+// so a Panel nobody has touched stays exactly uniform. Setting all four
+// per-instance is later phases' job (wiring up each real overlay/bar isle
+// with the actual corner it sits against) — this phase only has to make
+// that possible without breaking today's uniform look. When the four
+// differ, the background swaps from the cheap native `Rectangle` to
+// Widgets/AsymmetricPanel (Canvas-drawn, see that file's own header for
+// why); when they still agree — the default, and every call site today —
+// Panel keeps the native `Rectangle` it always drew, so this costs nothing
+// for the common case.
 
 Item {
     id: root
@@ -35,7 +60,19 @@ Item {
     property real paddingH: root.padding
     // OOP-05: overridable so the runner can round more (radiusLarge) than
     // every other panel, per shell doc §3 / the user's directive.
-    property real radius: Config.Appearance.radiusBase
+    // Interface rework Phase 1: default raised from radiusBase (2px) to
+    // radiusLarge (4px) — see the file header comment above.
+    property real radius: Config.Appearance.radiusLarge
+
+    // Interface rework Phase 1 — see the file header comment above.
+    property real cornerRadiusTopLeft: root.radius
+    property real cornerRadiusTopRight: root.radius
+    property real cornerRadiusBottomLeft: root.radius
+    property real cornerRadiusBottomRight: root.radius
+    readonly property bool _asymmetric:
+        root.cornerRadiusTopLeft !== root.cornerRadiusTopRight
+        || root.cornerRadiusTopLeft !== root.cornerRadiusBottomLeft
+        || root.cornerRadiusTopLeft !== root.cornerRadiusBottomRight
 
     property bool hovered: false
     property bool pressed: false
@@ -62,7 +99,9 @@ Item {
         active: root.active, keyboardFocus: root.keyboardFocus,
         loading: root.loading, invalid: root.invalid
     })
-    readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState)
+    // Interface rework Phase 1 (rework.md s3) — "shaded", not the generic
+    // B&W default; see WidgetStates.js's own comment on this branch.
+    readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState, "shaded")
 
     // OOP-19: the resolved foreground for this panel's content. A Panel
     // with a plain content slot (a bare StyledText, a Column of them)
@@ -70,21 +109,29 @@ Item {
     // colour inheritance — so a consumer that shows selectable text inside
     // a Panel binds its text `color` to this instead of hand-rolling a
     // `selected ? selectionText : textPrimary` ternary at each call site.
-    // Mirrors Segment.contentColor. At rest this is the ordinary
-    // full-contrast ink; when the panel is `active` (selected) it is the
-    // inverted fg, so the text flips with the background.
+    // Mirrors Segment.contentColor. Interface rework Phase 1: `active` no
+    // longer inverts fg to the background colour — see the "shaded"
+    // ambient note above — so this is ordinary full-contrast ink in every
+    // state; only `invalid` still diverges (the semantic error colour).
     readonly property color contentColor: root.invalid
         ? Config.Appearance.error
         : root.stateColors.fg
 
     opacity: WidgetStates.opacityFor(resolvedState)
 
+    readonly property real _borderWidth: (!root.invalid && root.borderWidthOverride >= 0) ? root.borderWidthOverride : Config.Appearance.borderWidthStrong
+    readonly property color _borderColor: (!root.invalid && root.borderColorOverride !== "transparent") ? root.borderColorOverride : root.stateColors.border
+
+    // Fast path: every Panel whose four corners still agree (the default,
+    // and every call site as of this phase) keeps the plain native
+    // Rectangle it always drew.
     Rectangle {
+        visible: !root._asymmetric
         anchors.fill: parent
         radius: root.radius
         color: root.stateColors.bg
-        border.width: (!root.invalid && root.borderWidthOverride >= 0) ? root.borderWidthOverride : Config.Appearance.borderWidthStrong
-        border.color: (!root.invalid && root.borderColorOverride !== "transparent") ? root.borderColorOverride : root.stateColors.border
+        border.width: root._borderWidth
+        border.color: root._borderColor
 
         Behavior on color {
             ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
@@ -92,6 +139,20 @@ Item {
         Behavior on border.color {
             ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
+    }
+
+    // Only reached once a later phase actually sets differing per-corner
+    // radii on a real instance — see the file header comment above.
+    AsymmetricPanel {
+        visible: root._asymmetric
+        anchors.fill: parent
+        color: root.stateColors.bg
+        borderColor: root._borderColor
+        borderWidth: root._borderWidth
+        radiusTopLeft: root.cornerRadiusTopLeft
+        radiusTopRight: root.cornerRadiusTopRight
+        radiusBottomLeft: root.cornerRadiusBottomLeft
+        radiusBottomRight: root.cornerRadiusBottomRight
     }
 
     Item {
