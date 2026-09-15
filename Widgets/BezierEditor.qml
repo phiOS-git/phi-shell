@@ -52,6 +52,31 @@ Item {
     function _clamp01(v) { return Math.max(0, Math.min(1, v)) }
     function curveArray() { return [root.x1, root.y1, root.x2, root.y2, 1, 1] }
 
+    // Style pass 2026-09-15: this was drag-only, same gap Widgets/Meter.qml
+    // had (fixed earlier this pass) — a fraction of the unit square per
+    // arrow press. Each press is one atomic commit (no "drag" concept
+    // applies to a single key press), so it fires `changed` then
+    // `committed` immediately, same shape Meter's own fix uses.
+    property real keyStep: 0.02
+    function _nudgeP1(dx, dy) {
+        root.x1 = root._clamp01(root.x1 + dx)
+        root.y1 = root._clamp01(root.y1 + dy)
+        h1.place()
+        curveCanvas.requestPaint()
+        previewAnim.restart()
+        root.changed(root.x1, root.y1, root.x2, root.y2)
+        root.committed(root.x1, root.y1, root.x2, root.y2)
+    }
+    function _nudgeP2(dx, dy) {
+        root.x2 = root._clamp01(root.x2 + dx)
+        root.y2 = root._clamp01(root.y2 + dy)
+        h2.place()
+        curveCanvas.requestPaint()
+        previewAnim.restart()
+        root.changed(root.x1, root.y1, root.x2, root.y2)
+        root.committed(root.x1, root.y1, root.x2, root.y2)
+    }
+
     Row {
         anchors.fill: parent
         spacing: WidgetStates.chToPixels(Config.Appearance.space4, root._ch)
@@ -106,6 +131,28 @@ Item {
                 }
                 onXChanged: if (drag1.drag.active) root._readP1()
                 onYChanged: if (drag1.drag.active) root._readP1()
+
+                // Style pass 2026-09-15: see root.keyStep's own comment —
+                // this handle was drag-only. Arrow keys nudge it directly;
+                // note the y-axis flip matches the canvas's own (screen y
+                // grows downward, curve y grows upward, same as
+                // `_readP1`/`onPaint` above already account for).
+                activeFocusOnTab: true
+                Keys.onLeftPressed: root._nudgeP1(-root.keyStep, 0)
+                Keys.onRightPressed: root._nudgeP1(root.keyStep, 0)
+                Keys.onUpPressed: root._nudgeP1(0, root.keyStep)
+                Keys.onDownPressed: root._nudgeP1(0, -root.keyStep)
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: parent.width + Config.Appearance.borderWidthStrong * 4
+                    height: width
+                    radius: width / 2
+                    color: "transparent"
+                    border.width: Config.Appearance.borderWidthStrong
+                    border.color: Config.Appearance.focusRing
+                    visible: h1.activeFocus
+                }
+
                 MouseArea {
                     id: drag1
                     anchors.fill: parent
@@ -116,6 +163,7 @@ Item {
                     drag.maximumX: sq.width - h1.width / 2
                     drag.minimumY: -h1.height / 2
                     drag.maximumY: sq.height - h1.height / 2
+                    onPressed: h1.forceActiveFocus()
                     onReleased: { previewAnim.restart(); root.committed(root.x1, root.y1, root.x2, root.y2) }
                 }
             }
@@ -133,6 +181,23 @@ Item {
                 }
                 onXChanged: if (drag2.drag.active) root._readP2()
                 onYChanged: if (drag2.drag.active) root._readP2()
+
+                activeFocusOnTab: true
+                Keys.onLeftPressed: root._nudgeP2(-root.keyStep, 0)
+                Keys.onRightPressed: root._nudgeP2(root.keyStep, 0)
+                Keys.onUpPressed: root._nudgeP2(0, root.keyStep)
+                Keys.onDownPressed: root._nudgeP2(0, -root.keyStep)
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: parent.width + Config.Appearance.borderWidthStrong * 4
+                    height: width
+                    radius: width / 2
+                    color: "transparent"
+                    border.width: Config.Appearance.borderWidthStrong
+                    border.color: Config.Appearance.focusRing
+                    visible: h2.activeFocus
+                }
+
                 MouseArea {
                     id: drag2
                     anchors.fill: parent
@@ -143,6 +208,7 @@ Item {
                     drag.maximumX: sq.width - h2.width / 2
                     drag.minimumY: -h2.height / 2
                     drag.maximumY: sq.height - h2.height / 2
+                    onPressed: h2.forceActiveFocus()
                     onReleased: { previewAnim.restart(); root.committed(root.x1, root.y1, root.x2, root.y2) }
                 }
             }
