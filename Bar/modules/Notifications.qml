@@ -36,7 +36,11 @@ Widgets.Segment {
     required property ShellScreen screen
 
     ambient: "isle"
-    active: Services.NotificationPanel.shown && Services.NotificationPanel.tab === 0
+    // Interface rework Phase 3: the notifications overlay is now its own
+    // independent surface (Panels/NotificationsOverlay.qml), not a tab of
+    // the retired Panels/Sidebar.qml — `active` tracks
+    // Services.NotificationPanel.notificationsShown directly.
+    active: Services.NotificationPanel.notificationsShown
 
     readonly property bool dnd: Services.Notifications.dnd
     // docs/TODO.md: "the notification icon keeps the same state with the
@@ -46,7 +50,7 @@ Widgets.Segment {
     readonly property bool hasPending: !root.dnd && Services.Notifications.activeCount > 0
     tone: root.hasPending ? "info" : ""
 
-    onActivated: Services.NotificationPanel.openNotifications()
+    onActivated: Services.NotificationPanel.toggleNotifications(root.rightX())
 
     property real dndAmount: 0
     Behavior on dndAmount {

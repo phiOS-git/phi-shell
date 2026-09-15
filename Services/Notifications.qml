@@ -177,6 +177,24 @@ Singleton {
         })
         root._persist()
     }
+    // Interface rework Phase 3 (rework.md notifications overlay: "grouped
+    // by source in the same date ... clear buttons on each single
+    // notification, on each group (source or day)"). Once history is
+    // grouped by DATE first, an app sub-group and a whole date group are
+    // both a specific SUBSET of history, not "everything from this app"
+    // (clearApp's own scope) — clearApp would wrongly wipe that app's
+    // entries in every OTHER date bucket too. Deletes exactly the entries
+    // passed, matched the same way clearEntry matches one (timestamp +
+    // summary + appName has no id field to key on more directly, same as
+    // that function's own reasoning).
+    function clearEntries(entries) {
+        if (!entries || entries.length === 0) return
+        const keySet = entries.map((e) => e.timestamp + "|" + e.summary + "|" + e.appName)
+        root.history = root.history.filter(function (h) {
+            return keySet.indexOf(h.timestamp + "|" + h.summary + "|" + h.appName) === -1
+        })
+        root._persist()
+    }
 
     // Drop history entries older than retentionDays. retentionDays === 0
     // means "keep forever".

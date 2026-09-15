@@ -92,14 +92,16 @@ ShellRoot {
         }
     }
 
-    // S-31: a single sidebar instance, not one per screen like Bar.Bar and
-    // Toast above — it is a focused, toggled-open-or-closed surface, not an
-    // ambient per-monitor indicator, so showing N copies simultaneously
-    // when the IpcHandler fires would be wrong. Pinned to the first screen
-    // Quickshell reports; "open on whichever monitor currently has focus"
-    // would need Hyprland-specific IPC this step's card does not ask for.
-    // Flagged for cheap veto.
-    Panels.Sidebar {
+    // Interface rework Phase 3: the retired Panels/Sidebar.qml (a single
+    // full-height right-edge dock with two tabs) is replaced by two
+    // independent small overlays, one per bar icon — same single-instance
+    // reasoning as Sidebar had (a focused, toggled surface, not an ambient
+    // per-monitor indicator; "open on whichever monitor currently has
+    // focus" would need Hyprland-specific IPC this phase does not add).
+    Panels.NotificationsOverlay {
+        screen: Quickshell.screens[0]
+    }
+    Panels.ClipboardOverlay {
         screen: Quickshell.screens[0]
     }
 

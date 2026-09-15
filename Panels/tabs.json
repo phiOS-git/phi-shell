@@ -1,4 +1,0 @@
-[
-    { "type": "notifications", "title": "Notifications", "source": "internal:notifications" },
-    { "type": "clipboard", "title": "Clipboard", "source": "internal:clipboard" }
-]

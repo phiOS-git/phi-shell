@@ -33,11 +33,19 @@ Item {
     // and the preview overlay below needs the real thing to clamp against.
     required property real screenWidth
     required property real screenHeight
-    // A reference to Sidebar.qml's own dock Item — this tab's root sits
-    // INSET inside it by Widgets/Panel.qml's own padding, so root's own
-    // absolute position is not the dock's visible left edge. See
+    // A reference to the overlay's own card Item (Panels/
+    // ClipboardOverlay.qml's `cardWrap`) — this tab's root sits INSET
+    // inside it by Widgets/Panel.qml's own padding, so root's own absolute
+    // position is not the card's visible left edge. See
     // _updatePreviewPosition below.
     required property Item dockItem
+
+    // Interface rework Phase 3 (rework.md s4): drives the result list's
+    // StaggerReveal cascade — bound to the overlay window's own `shown`
+    // (Panels/ClipboardOverlay.qml). The search field itself is NOT part
+    // of the cascade (it grabs keyboard focus immediately on open; delaying
+    // its appearance would delay typing too).
+    property bool revealShown: true
 
     property string query: ""
     property int highlightedIndex: 0
@@ -217,8 +225,8 @@ Item {
 
     Connections {
         target: Services.NotificationPanel
-        function onShownChanged() {
-            if (Services.NotificationPanel.shown) root.reset()
+        function onClipboardShownChanged() {
+            if (Services.NotificationPanel.clipboardShown) root.reset()
         }
     }
 
@@ -384,8 +392,9 @@ Item {
         contentHeight: listCol.implicitHeight
         clip: true
 
-        Column {
+        Widgets.StaggerReveal {
             id: listCol
+            shown: root.revealShown
             width: parent.width
             spacing: root.gap
 
