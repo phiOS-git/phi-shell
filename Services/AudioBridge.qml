@@ -63,6 +63,32 @@ Singleton {
         if (root.inputReady) root.source.audio.muted = !root.source.audio.muted
     }
 
+    // Interface rework Phase 3 (status overlay, rework.md: "microphone
+    // sensor ... enabled, disabled, in use"). `inputMuted`/
+    // `toggleInputMute()` above already give a real enabled/disabled
+    // toggle (mutes the default source itself, at the Pipewire level, not
+    // just this shell's own OSD). "in use" reads `Pipewire.linkGroups`
+    // (confirmed real API — Quickshell.Services.Pipewire/PwLinkGroup,
+    // PwLinkState, checked directly against the installed
+    // quickshell-service-pipewire.qmltypes, not assumed): a link group
+    // touching the default input device whose own state is
+    // `PwLinkState.Active` means something is actively pulling audio from
+    // it right now, not merely connected-but-idle (Paused/Negotiating/…).
+    // Which end of a capture link is `source` vs. `target` is not
+    // independently verified without real hardware — checks both sides —
+    // flagged for the screenshot pass, same convention every other
+    // Pipewire/Bluetooth/Network surface in this repo already carries.
+    readonly property bool micInUse: {
+        if (root.source === null || Pipewire.linkGroups === null) return false
+        var list = Pipewire.linkGroups.values ? Pipewire.linkGroups.values : []
+        for (var i = 0; i < list.length; i++) {
+            var g = list[i]
+            if (g && g.state === PwLinkState.Active && (g.source === root.source || g.target === root.source))
+                return true
+        }
+        return false
+    }
+
     // --- device selection --------------------------------------
     // Real, selectable endpoints only: a bound audio node that is not an
     // application stream. Monitor sources (`*.monitor`) are the loopback of

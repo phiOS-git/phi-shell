@@ -58,7 +58,21 @@ Singleton {
     // one place both surfaces ask the same question, rather than each
     // deciding independently (and potentially disagreeing) which of the
     // six actions is destructive enough to need a second step.
-    function needsConfirm(action) { return action === "reboot" || action === "shutdown" }
+    //
+    // Interface rework Phase 3 (status overlay, rework.md: "hibernate,
+    // logout, reboot and shutdown option will request confirmation") —
+    // widened from reboot/shutdown only: hibernate and logout join the
+    // confirmed set. This is the one function every confirming surface in
+    // this repo reads (Panels/BarPopout.qml's existing "power" section AND
+    // this phase's new "status" section both call `root._requestPowerAction`,
+    // which reads this; Launcher/Launcher.qml's own system-action confirm
+    // view does too) — widening it here reaches all of them at once,
+    // exactly the point of one shared function instead of each surface
+    // deciding independently.
+    function needsConfirm(action) {
+        return action === "hibernate" || action === "logout"
+            || action === "reboot" || action === "shutdown"
+    }
 
     // The display title for an action id — Panels/BarPopout.qml's button
     // labels and Launcher/Launcher.qml's confirm-view prompt both read

@@ -116,8 +116,20 @@ PanelWindow {
     // depending only on Variants instantiation order. If a later phase
     // needs the bottom bar's own height too (e.g. something anchored above
     // it), BarMetrics gets a second property then — not guessed at here.
-    onHeightChanged: if (bar.edge === "top") Services.BarMetrics.report(bar.height)
-    Component.onCompleted: if (bar.edge === "top") Services.BarMetrics.report(bar.height)
+    //
+    // Interface rework Phase 3: that later phase is this one — most of
+    // Panels/BarPopout.qml's keys now open from a bottom-bar icon
+    // (Bar/modules-bottom.json), and need to sit above THIS bar's real
+    // height, not the top bar's. `reportBottom` is the second property
+    // this comment already named, read only by the bottom instance.
+    onHeightChanged: {
+        if (bar.edge === "top") Services.BarMetrics.report(bar.height)
+        else Services.BarMetrics.reportBottom(bar.height)
+    }
+    Component.onCompleted: {
+        if (bar.edge === "top") Services.BarMetrics.report(bar.height)
+        else Services.BarMetrics.reportBottom(bar.height)
+    }
 
     property var registryRows: []
 
