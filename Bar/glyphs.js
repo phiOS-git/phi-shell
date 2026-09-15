@@ -100,3 +100,18 @@ var copy            = _c(0xF018F)   // nf-md-content_copy (chat bubble: copy thi
                                      // confirmed 2026-09-15 against a fresh fetch of
                                      // nerd-fonts' own glyphnames.json, same rigour as every
                                      // entry above.
+
+// Interface rework Phase 2 additions (Bar/modules/{Lens,StatusMenu,Stats}
+// .qml) — recalled codepoints, NOT verified against a fresh nerd-fonts
+// glyphnames.json fetch this session (no network access from this
+// environment) the way several entries above were. Same blanket rule as
+// this file's own header: flagged for the screenshot pass, degrading to a
+// visible box rather than nothing if wrong (none of these three modules
+// render a text label next to the glyph any more — rework.md's own "no
+// icon has text next to it" — so there is no readable fallback the way
+// there used to be; a wrong codepoint here is a bare box with no clue next
+// to it, more worth a deliberate real-hardware check than most of the
+// glyphs above).
+var lens            = _c(0xF0349)   // nf-md-magnify (Bar/modules/Lens.qml — opens the runner bar)
+var settings        = _c(0xF0493)   // nf-md-cog (Bar/modules/StatusMenu.qml — opens the "status overlay")
+var stats           = _c(0xF0128)   // nf-md-chart_bar (Bar/modules/Stats.qml — opens the "stats overlay")
