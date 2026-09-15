@@ -358,6 +358,7 @@ WlSessionLock {
                 case "starfield": return starFx
                 case "plasma": return plasmaFx
                 case "life": return lifeFx
+                case "boids": return boidsFx
                 default: return null
                 }
             }
@@ -367,11 +368,37 @@ WlSessionLock {
         // some shared (eg. speed) some specific for the selected one" —
         // speed is shared across every effect; intensityFor(key) is each
         // effect's own per-key value (Config/LockPrefs.qml's own header).
-        Component { id: lavaFx; Local.LavaLamp { speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("lava") } }
-        Component { id: matrixFx; Local.MatrixRain { speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("matrix") } }
-        Component { id: starFx; Local.Starfield { speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("starfield") } }
-        Component { id: plasmaFx; Local.Plasma { speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("plasma") } }
-        Component { id: lifeFx; Local.Life { speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("life") } }
+        // paramFor(key, name, default) is the same idea for every other
+        // effect-specific knob added on the user's own "way more
+        // customisability" follow-up — each default here matches that
+        // effect's own file-level default exactly, so an untouched key
+        // renders identically to before these settings existed.
+        Component { id: lavaFx; Local.LavaLamp {
+            speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("lava")
+            blobCount: Config.LockPrefs.paramFor("lava", "blobCount", 9)
+            wobble: Config.LockPrefs.paramFor("lava", "wobble", 1.0)
+        } }
+        Component { id: matrixFx; Local.MatrixRain {
+            speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("matrix")
+            density: Config.LockPrefs.paramFor("matrix", "density", 1.0)
+        } }
+        Component { id: starFx; Local.Starfield {
+            speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("starfield")
+            starCount: Config.LockPrefs.paramFor("starfield", "starCount", 140)
+        } }
+        Component { id: plasmaFx; Local.Plasma {
+            speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("plasma")
+            resolution: Config.LockPrefs.paramFor("plasma", "resolution", 1.0)
+        } }
+        Component { id: lifeFx; Local.Life {
+            speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("life")
+            resolution: Config.LockPrefs.paramFor("life", "resolution", 1.0)
+            seedDensity: Config.LockPrefs.paramFor("life", "seedDensity", 0.28)
+        } }
+        Component { id: boidsFx; Local.Boids {
+            speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("boids")
+            boidCount: Config.LockPrefs.paramFor("boids", "boidCount", 40)
+        } }
 
         Column {
             anchors.centerIn: parent

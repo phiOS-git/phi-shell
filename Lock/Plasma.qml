@@ -26,9 +26,15 @@ Item {
     // docs/TODO.md: "ambient effects... should have many settings: some
     // shared (eg. speed)" — see Lock/LavaLamp.qml's own identical comment.
     property real speed: 1.0
+    // docs/TODO.md follow-up (user, 2026-09-15): "way more customisability"
+    // — a multiplier on the grid resolution (>1 = finer detail, more
+    // cells, more fill cost per frame; <1 = coarser, cheaper). Settings/
+    // sections/Theme.qml's own "Plasma" accordion exposes this. 1.0 keeps
+    // the original fixed 32×18 grid exactly as it always was.
+    property real resolution: 1.0
 
-    readonly property int cols: 32
-    readonly property int rows: 18
+    readonly property int cols: Math.max(4, Math.round(32 * root.resolution))
+    readonly property int rows: Math.max(3, Math.round(18 * root.resolution))
     property real t: 0
 
     Timer {

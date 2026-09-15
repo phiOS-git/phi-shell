@@ -13,16 +13,20 @@ import Quickshell.Io
 // configuration).
 //
 // `effect` is one of: "none" | "lava" | "matrix" | "starfield" | "plasma"
-// | "life". The default is "lava" — the lava lamp is what the user asked
-// for; the rest (including plain "none") are opt-in from the settings
-// Theme section. "plasma" and "life" (Lock/Plasma.qml, Lock/Life.qml)
-// added for docs/TODO.md: "add more [ambient effect] types ... taking
-// inspirations by cool terminal effects or screensavers".
+// | "life" | "boids". The default is "lava" — the lava lamp is what the
+// user asked for; the rest (including plain "none") are opt-in from the
+// settings Theme section. "plasma" and "life" (Lock/Plasma.qml,
+// Lock/Life.qml) added for docs/TODO.md: "add more [ambient effect]
+// types ... taking inspirations by cool terminal effects or
+// screensavers"; "boids" (Lock/Boids.qml) added the same way, on the
+// user's own request for more variety (ideas cross-checked against
+// github.com/phlx0/drift's scene list, a terminal screensaver with a
+// similar "ambient background art" brief).
 
 Singleton {
     id: root
 
-    readonly property var _known: ["none", "lava", "matrix", "starfield", "plasma", "life"]
+    readonly property var _known: ["none", "lava", "matrix", "starfield", "plasma", "life", "boids"]
     readonly property string _default: "lava"
 
     property var prefs: ({})
@@ -67,11 +71,12 @@ Singleton {
 
     // Each effect's own hardcoded default (Lock/LavaLamp.qml: 0.28,
     // Lock/MatrixRain.qml: 0.18, Lock/Starfield.qml: 0.9,
-    // Lock/Plasma.qml: 0.85, Lock/Life.qml: 0.85) — read back here so a
-    // key the user has never touched falls back to exactly what shipped
-    // before this setting existed, not a generic guessed number.
+    // Lock/Plasma.qml: 0.85, Lock/Life.qml: 0.85, Lock/Boids.qml: 0.85) —
+    // read back here so a key the user has never touched falls back to
+    // exactly what shipped before this setting existed, not a generic
+    // guessed number.
     readonly property var _intensityDefaults: ({
-        lava: 0.28, matrix: 0.18, starfield: 0.9, plasma: 0.85, life: 0.85
+        lava: 0.28, matrix: 0.18, starfield: 0.9, plasma: 0.85, life: 0.85, boids: 0.85
     })
 
     function intensityFor(key) {
@@ -88,6 +93,34 @@ Singleton {
             for (var ik in root.prefs.intensity) nextIntensity[ik] = root.prefs.intensity[ik]
         nextIntensity[key] = Math.max(0.05, Math.min(1.0, v))
         next.intensity = nextIntensity
+        root.prefs = next
+        prefsFile.setText(JSON.stringify(root.prefs, null, 2))
+    }
+
+    // docs/TODO.md follow-up (user, 2026-09-15): "way more customisability"
+    // — a generic, per-effect namespace for the many effect-SPECIFIC knobs
+    // added alongside this (LavaLamp's blob count/wobble, MatrixRain's
+    // density, Starfield's star count, Plasma's grid resolution, Life's
+    // seed density). Additive to intensity/speed above, not a replacement:
+    // those two already have their own tested storage shape and every
+    // existing call site; a generic `value` (not `real`) so a future
+    // non-numeric param (a palette choice, say) fits the same mechanism
+    // without a parallel string-typed variant.
+    function paramFor(key, name, defaultValue) {
+        var group = root.prefs && root.prefs.params ? root.prefs.params[key] : undefined
+        var v = group ? group[name] : undefined
+        return (v !== undefined) ? v : defaultValue
+    }
+
+    function setParam(key, name, value) {
+        var next = {}
+        for (var k in root.prefs) next[k] = root.prefs[k]
+        var nextParams = {}
+        if (root.prefs && root.prefs.params)
+            for (var pk in root.prefs.params) nextParams[pk] = Object.assign({}, root.prefs.params[pk])
+        if (!nextParams[key]) nextParams[key] = {}
+        nextParams[key][name] = value
+        next.params = nextParams
         root.prefs = next
         prefsFile.setText(JSON.stringify(root.prefs, null, 2))
     }

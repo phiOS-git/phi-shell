@@ -36,9 +36,18 @@ Item {
     // inversely: doubling speed halves stepEveryTicks, so generations
     // advance twice as often.
     property real speed: 1.0
+    // docs/TODO.md follow-up (user, 2026-09-15): "way more customisability"
+    // — same grid-resolution multiplier shape as Lock/Plasma.qml's own
+    // identical property; 1.0 keeps the original fixed 48×27 grid exactly.
+    property real resolution: 1.0
+    // The initial random-alive probability each seed() (and re-seed on a
+    // dead board) uses — was a hardcoded 0.28. Higher reads as a denser,
+    // more chaotic starting pattern; lower as sparser, more likely to
+    // settle into stable still-lifes quickly.
+    property real seedDensity: 0.28
 
-    readonly property int cols: 48
-    readonly property int rows: 27
+    readonly property int cols: Math.max(8, Math.round(48 * root.resolution))
+    readonly property int rows: Math.max(6, Math.round(27 * root.resolution))
     // ~240ms/generation at the 24ms shared tick, at the default speed 1.0.
     readonly property int stepEveryTicks: Math.max(1, Math.round(10 / root.speed))
 
@@ -52,7 +61,7 @@ Item {
         var c = new Array(root.cols * root.rows)
         var b = new Array(root.cols * root.rows)
         for (var i = 0; i < c.length; i++) {
-            c[i] = Math.random() < 0.28
+            c[i] = Math.random() < root.seedDensity
             b[i] = c[i] ? 1 : 0
         }
         root.cells = c
@@ -105,6 +114,8 @@ Item {
     }
 
     onWidthChanged: if (cells.length === 0) seed()
+    onResolutionChanged: seed()
+    onSeedDensityChanged: seed()
     Component.onCompleted: seed()
 
     Timer {
