@@ -30,12 +30,12 @@ import "../Bar/glyphs.js" as Glyphs
 // copy of nerd-fonts' own glyphnames.json directly (not summarised, not
 // recalled) and matched by exact icon name, avoiding the guess-then-hope
 // mistake Bar/glyphs.js's own history already made twice (Steam, the
-// scratchpad console icon). Hibernate still has NO icon: no glyph named
-// "hibernate" (or a close enough synonym — sleep, power_standby, moon,
-// bed all exist as their own distinct icons but none reads as
-// "hibernate") exists anywhere in the whole nerd-fonts glyph set, checked
-// systematically rather than guessed around — see docs/TODO.md for the
-// still-open follow-up asking for a deliberate substitute pick.
+// scratchpad console icon). Hibernate (2026-09-15): no glyph named
+// "hibernate" exists anywhere in nerd-fonts, so it used to render with no
+// icon at all — visibly inconsistent next to four rows that all have one.
+// Now uses Glyphs.hibernate, a deliberate substitute (see that file's own
+// comment for the reasoning), confirmed against a real screenshot of this
+// menu rather than assumed to render.
 PanelWindow {
     id: root
 
@@ -143,6 +143,7 @@ PanelWindow {
                     Widgets.ListRow {
                         width: parent.width
                         label: "Hibernate"
+                        glyph: Glyphs.hibernate
                         onActivated: root._choose("hibernate")
                     }
                     Widgets.ListRow {
