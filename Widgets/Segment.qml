@@ -49,10 +49,16 @@ Item {
     property bool loading: false
     property bool invalid: false
 
-    // OOP-02: which surface pair this button sits on — "panel" (default,
+    // OOP-02: which surface pair this button sits on — "shaded" (default,
     // e.g. the sidebar tab strip) or "isle" (the status bar's opposite-
     // coloured islands). Passed straight through to surfaceColors().
-    property string ambient: "panel"
+    // Interface rework Phase 1 (rework.md s3): default renamed from the
+    // literal "panel" to "shaded" — WidgetStates.js's new ambient branch,
+    // see its own comment — since no call site anywhere in this shell ever
+    // set `ambient: "panel"` explicitly (grepped: every real caller either
+    // sets "isle" or leaves this at its default), so nothing else is
+    // affected by the rename.
+    property string ambient: "shaded"
 
     // OOP-03: the status bar is mono (user directive). "isle" ambient
     // implies it; a panel Segment stays on the UI font.
@@ -175,9 +181,13 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: Config.Appearance.radiusBase
+        // Interface rework Phase 1 (rework.md s5): radiusSmall/
+        // borderWidthStrong, the same thin/boxy corner and hairline
+        // Widgets/StyledButton now uses, instead of the generic
+        // radiusBase/borderWidth.
+        radius: Config.Appearance.radiusSmall
         color: root.stateColors.bg
-        border.width: Config.Appearance.borderWidth
+        border.width: Config.Appearance.borderWidthStrong
         border.color: root.stateColors.border
 
         Behavior on color {
@@ -262,7 +272,10 @@ Item {
         anchors.right: parent.right
         anchors.top: parent.top
         height: root.ambient === "isle" ? parent.height * root.hoverAmount : 0
-        radius: Config.Appearance.radiusBase
+        // Matches the background Rectangle's own corner above, so the
+        // sweep's top edge never reads more rounded than the button it
+        // sits on.
+        radius: Config.Appearance.radiusSmall
         color: Config.Appearance.colorOpposite
         visible: root.ambient === "isle" && height > 0.5
     }

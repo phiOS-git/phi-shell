@@ -27,7 +27,9 @@ Item {
         active: root.active, keyboardFocus: root.keyboardFocus,
         loading: root.loading, invalid: root.invalid
     })
-    readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState)
+    // Interface rework Phase 1 (rework.md s3) — "shaded", not the generic
+    // B&W default; see WidgetStates.js's own comment on this branch.
+    readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState, "shaded")
 
     // design/tokens.common.sh stores space-N in `ch`, not px — see
     // Panel.qml's identical comment. Measured locally rather than shared,
@@ -54,9 +56,13 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: Config.Appearance.radiusBase
+        // Interface rework Phase 1 (rework.md s5, "avoid very curved
+        // material-like elements"): radiusSmall, the same thin/boxy corner
+        // Widgets/Toggle and Widgets/SmallButton already use, instead of
+        // the generic radiusBase — and the hairline border width to match.
+        radius: Config.Appearance.radiusSmall
         color: root.stateColors.bg
-        border.width: Config.Appearance.borderWidth
+        border.width: Config.Appearance.borderWidthStrong
         border.color: root.stateColors.border
 
         Behavior on color {
