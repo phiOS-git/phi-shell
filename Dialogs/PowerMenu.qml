@@ -4,7 +4,6 @@ import Quickshell.Wayland
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "../Bar/glyphs.js" as Glyphs
 
 // phiOS — Dialogs/PowerMenu. docs/TODO.md: "when pressing SUPER+L instead
 // of locking immediatly, evoke an overlay menu with options (lock,
@@ -14,28 +13,23 @@ import "../Bar/glyphs.js" as Glyphs
 // bare-SUPER double-tap attempt) — this file is presentation only.
 //
 // Layer-shell/scrim/fade plumbing copied verbatim from Dialogs/
-// ConfirmDialog.qml, same as Dialogs/BatteryAlert.qml before it. Each
-// action row is Widgets.ListRow — already animates its own background on
-// hover (WidgetStates.surfaceColors + a Behavior on color), which is the
-// "hover animations" the TODO asks for; no bespoke hover mechanism
-// invented here. Reboot/shutdown still go through the existing
-// Services.ConfirmDialog "this cannot be undone" step (Services/
-// PowerActions.needsConfirm()), the exact same shape Panels/
-// BarPopout.qml's own power card already uses (`_confirmAndPerform`) —
-// copied here rather than duplicated with different wording.
+// ConfirmDialog.qml, same as Dialogs/BatteryAlert.qml before it.
 //
-// Per-action icons (docs/TODO.md, resolved 2026-09-14): Lock, Suspend,
-// Shut down and Reboot each get a real, confirmed `nf-md-*` codepoint
-// (Bar/glyphs.js: lock, powerSleep, power, restart) — fetched a fresh
-// copy of nerd-fonts' own glyphnames.json directly (not summarised, not
-// recalled) and matched by exact icon name, avoiding the guess-then-hope
-// mistake Bar/glyphs.js's own history already made twice (Steam, the
-// scratchpad console icon). Hibernate (2026-09-15): no glyph named
-// "hibernate" exists anywhere in nerd-fonts, so it used to render with no
-// icon at all — visibly inconsistent next to four rows that all have one.
-// Now uses Glyphs.hibernate, a deliberate substitute (see that file's own
-// comment for the reasoning), confirmed against a real screenshot of this
-// menu rather than assumed to render.
+// Restyled 2026-09-15 (references/lock-options-reference.webp,
+// user-provided: "I would like to have the lock options like this") from
+// a titled card containing a vertical Widgets.ListRow list to a bare
+// horizontal Dialogs/PowerActionsRow pill row directly on the scrim,
+// "Lock" marked with the accent fill as the default action — matching the
+// reference image itself, which shows exactly that. Added "logout" (this
+// menu never had it before, though Services/PowerActions.qml always
+// could) since the reference includes it and Lock/Lock.qml's own new
+// power row (added the same day, same request's second half: "add the
+// power options in the lockscreen as well to use them without
+// unlocking") uses the identical action set minus "lock" itself.
+// Reboot/shutdown still go through the existing Services.ConfirmDialog
+// "this cannot be undone" step (Services/PowerActions.needsConfirm()) —
+// PowerActionsRow's own `chosen` signal only decides whether to interpose
+// that step, the mechanism itself is untouched.
 PanelWindow {
     id: root
 
@@ -91,74 +85,23 @@ PanelWindow {
             onClicked: Services.PowerMenu.hide()
         }
 
-        TextMetrics {
-            id: chMetrics
-            font.family: Config.Appearance.fontMono
-            font.pixelSize: Config.Appearance.fontSize1
-            text: "0"
-        }
-        readonly property real chWidth: chMetrics.width
-
-        Widgets.Panel {
-            id: card
+        // Swallow clicks on the row itself so tapping a pill doesn't also
+        // hit this Item's own click-outside-closes MouseArea above.
+        Item {
             anchors.centerIn: parent
-            width: fadeRoot.chWidth * 30
-            height: body.implicitHeight + padding * 2
+            width: pills.implicitWidth
+            height: pills.implicitHeight
 
-            // Swallow clicks on the card so tapping a row doesn't also
-            // hit fadeRoot's click-outside-closes MouseArea underneath.
             MouseArea { anchors.fill: parent }
 
             focus: root.shown
             Keys.onEscapePressed: Services.PowerMenu.hide()
 
-            Column {
-                id: body
-                width: parent.width
-                spacing: fadeRoot.chWidth * Config.Appearance.space2
-
-                Widgets.StyledText {
-                    width: parent.width
-                    kind: "title"
-                    sizeStep: 3
-                    text: "Power"
-                }
-
-                Column {
-                    width: parent.width
-                    spacing: fadeRoot.chWidth * Config.Appearance.space1
-
-                    Widgets.ListRow {
-                        width: parent.width
-                        label: "Lock"
-                        glyph: Glyphs.lock
-                        onActivated: root._choose("lock")
-                    }
-                    Widgets.ListRow {
-                        width: parent.width
-                        label: "Suspend"
-                        glyph: Glyphs.powerSleep
-                        onActivated: root._choose("suspend")
-                    }
-                    Widgets.ListRow {
-                        width: parent.width
-                        label: "Hibernate"
-                        glyph: Glyphs.hibernate
-                        onActivated: root._choose("hibernate")
-                    }
-                    Widgets.ListRow {
-                        width: parent.width
-                        label: "Shut down"
-                        glyph: Glyphs.power
-                        onActivated: root._choose("shutdown")
-                    }
-                    Widgets.ListRow {
-                        width: parent.width
-                        label: "Reboot"
-                        glyph: Glyphs.restart
-                        onActivated: root._choose("reboot")
-                    }
-                }
+            PowerActionsRow {
+                id: pills
+                actions: ["lock", "logout", "suspend", "hibernate", "reboot", "shutdown"]
+                highlightedAction: "lock"
+                onChosen: (action) => root._choose(action)
             }
         }
     }

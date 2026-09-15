@@ -80,6 +80,10 @@ var restart         = _c(0xF0709)   // nf-md-restart (power menu: Reboot) — sa
                                      // own glyph set (checked systematically against a dozen
                                      // candidate names — sleep, power_standby, moon, bed, etc.
                                      // all exist but none is named "hibernate").
+var logout          = _c(0xF0343)   // nf-md-logout (power menu / power pill row: Log out) —
+                                     // confirmed 2026-09-15 against a fresh fetch of
+                                     // nerd-fonts' own glyphnames.json, same rigour as every
+                                     // entry below.
 var hibernate       = _c(0xF0717)   // nf-md-snowflake (power menu: Hibernate) — the deliberate
                                      // substitute for the missing "hibernate" name above: a
                                      // "frozen" pictogram is the same convention several real

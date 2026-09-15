@@ -221,6 +221,33 @@ function surfaceColors(appearance, resolvedState, ambient) {
         }
     }
 
+    // `ambient: "powerPill"` — Dialogs/PowerActionsRow's own pill row
+    // (2026-09-15, references/lock-options-reference.webp, user-provided):
+    // a horizontal row of icon+label actions floating directly on the
+    // wallpaper/scrim, one of them marked with a solid accent fill. The
+    // accent FILL on `active` is a deliberate exception to this shell's
+    // usual "accent is fine detail only" rule (OOP-10) — the same
+    // exception this file's own `ambient: "toggle"` active case already
+    // carries, for the same reason: one real state that has to read at a
+    // glance, not a structural "this is a heading" role. Every other state
+    // stays bare (no resting box at all, unlike `toggle`'s own default,
+    // which keeps a permanent `offWash` fill) — the reference's un-marked
+    // pills are plain icon+text on the wallpaper, nothing boxed.
+    if (ambient === "powerPill") {
+        switch (resolvedState) {
+        case "active":
+            return { bg: appearance.accent, fg: appearance.accentText, border: appearance.accent }
+        case "invalid":
+            return { bg: "transparent", fg: appearance.error, border: "transparent" }
+        case "focus":
+            return { bg: "transparent", fg: appearance.colorOpposite, border: appearance.focusRing }
+        case "hover":
+            return { bg: appearance.panelHover, fg: appearance.colorOpposite, border: "transparent" }
+        default:
+            return { bg: "transparent", fg: appearance.textMuted, border: "transparent" }
+        }
+    }
+
     var surface = appearance.panelBackground
     var contrast = appearance.colorOpposite
     var hoverBg = appearance.panelHover
