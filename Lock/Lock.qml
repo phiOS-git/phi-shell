@@ -637,27 +637,6 @@ WlSessionLock {
                     : (root.errorText.length > 0 ? root.errorText : (root.pam.message.length > 0 ? root.pam.message : " "))
             }
 
-            Column {
-                width: parent.width
-                spacing: surface.chWidth * Config.Appearance.space1
-                visible: recentNotifications.count > 0
-
-                Widgets.StyledText { kind: "label"; text: "Recent" }
-
-                Repeater {
-                    id: recentNotifications
-                    model: Services.Notifications.history.slice(0, 3)
-
-                    Widgets.StyledText {
-                        required property var modelData
-                        width: parent.width
-                        kind: "label"
-                        elide: Text.ElideRight
-                        text: modelData.appName + ": " + modelData.summary
-                    }
-                }
-            }
-
             // Same pill row as Dialogs/PowerMenu.qml, minus "lock" —
             // locking an already-locked screen is meaningless here. No
             // `highlightedAction`: unlike PowerMenu.qml's own default
