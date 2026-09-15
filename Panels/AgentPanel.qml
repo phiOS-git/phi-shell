@@ -33,7 +33,15 @@ PanelWindow {
     readonly property var agent: Services.Agent
 
     // section: "dashboard" | "chat" | "code" | "memory"
-    property string section: "dashboard"
+    // Style pass 2026-09-15 (reported directly: "it does not automatically
+    // open on a new chat or latest chat" — every open used to land on the
+    // Dashboard's list, one extra click away from anything actually
+    // useful). "chat" is now the default landing section; `_autoOpenArmed`
+    // and its Connections block below (triggered once real data exists)
+    // pick up the rest by opening whichever real conversation was touched
+    // last, so a returning user sees their conversation immediately
+    // instead of an empty composer.
+    property string section: "chat"
 
     property bool _animReady: false
     Component.onCompleted: {
@@ -60,6 +68,17 @@ PanelWindow {
     // untypeable). Same as Panels/Sidebar / Settings.
     Services.LayerFocus { target: root }
 
+    // Style pass 2026-09-15 — see `section`'s own comment above. `chats`
+    // loads asynchronously (Services/Agent.qml's refreshChats() spawns a
+    // process and fills the array once it exits), so this cannot just read
+    // `agent.chats` synchronously inside onShownChanged below; it arms
+    // here and resolves once in the onChatsChanged handler further down,
+    // whichever fires first. Guarded to fire at most once per panel
+    // opening: a later refreshChats() call (the user pinning a chat,
+    // renaming one, anything else in this file that re-lists them) must
+    // never yank an already-browsing user back into a conversation.
+    property bool _autoOpenArmed: false
+
     onShownChanged: {
         if (root.shown) {
             // Same reason Overview.qml's setShown() calls
@@ -71,12 +90,38 @@ PanelWindow {
             // Without this, closing the panel any other way than Escape
             // while a field had focus would leave Escape dead on reopen.
             keyScope.forceActiveFocus()
+            if (root.agent.currentSessionId.length === 0) root._autoOpenArmed = true
             root.agent.refreshHealth()
             root.agent.refreshProject()
             root.agent.refreshChats()
             root.agent.refreshAllProposals()
             Services.AgentInfra.refresh()
             if (root.section === "code") root.agent.refreshCodingSessions()
+        }
+    }
+    // Resolves `_autoOpenArmed` above once real chat data actually exists.
+    // Picks the most recently updated chat rather than trusting the list's
+    // own order — `updated` is the one field every entry is guaranteed to
+    // carry (Services/Agent.qml: "[{id,title,project,pinned,updated}]"),
+    // sorting defensively instead of assuming `phi agent chat list` already
+    // returns recency order. An empty list (genuinely no history yet) just
+    // disarms — the Chat section's own "new chat" empty state is correct
+    // there, nothing to resume.
+    Connections {
+        target: root.agent
+        function onChatsChanged() {
+            if (!root._autoOpenArmed) return
+            root._autoOpenArmed = false
+            const chats = root.agent.chats || []
+            if (chats.length === 0) return
+            // Every other reader of this same array in this panel
+            // (Dashboard.qml's/ProjectView.qml's own ChatRow) treats the
+            // wire format as Go-JSON-capitalised (`ID`, `Updated`, …) with
+            // a lowercase fallback — matched here rather than trusting
+            // this file's own header comment's lowercase paraphrase.
+            const updatedOf = (c) => c.Updated || c.updated || ""
+            const mostRecent = chats.reduce((a, b) => (updatedOf(b) > updatedOf(a) ? b : a))
+            root.agent.openSession(mostRecent.ID || mostRecent.id)
         }
     }
     // The nav rail's MouseArea doesn't take keyboard focus, so switching
@@ -215,35 +260,76 @@ PanelWindow {
                     // accent content colour + a thin accent bar on the edge
                     // facing the section body (this rail sits at the dock's
                     // left edge, so its inner edge is its own right edge).
-                    Column {
+                    Item {
                         id: rail
-                        width: root.chWidth * 3.4
+                        // Style pass 2026-09-15 (reported directly: "icons
+                        // are miniscule and uncomfortable to press"). Was
+                        // chWidth*3.4 (~26px square on this shell's own
+                        // tokens) — smaller than even this shell's own
+                        // ordinary control height (~30px, WidgetStates.
+                        // controlHeight), let alone a real target: chat-UI
+                        // research recommends at least 44px for a primary
+                        // action (composer send/stop button), applied here
+                        // to every icon-only nav square for the same
+                        // "actually comfortable to press" reason.
+                        width: root.chWidth * 5.5
                         height: parent.height
-                        spacing: root.chWidth * Config.Appearance.space1
 
-                        Repeater {
-                            model: [
-                                { key: "dashboard", glyph: "▤", label: "Dashboard" },
-                                { key: "chat", glyph: "▷", label: "Chat" },
-                                { key: "code", glyph: "⌘", label: "Coding sessions" },
-                                { key: "memory", glyph: "✎", label: "Memory proposals" }
-                            ]
-                            delegate: Widgets.TabButton {
-                                required property var modelData
-                                width: rail.width
-                                height: rail.width
-                                iconOnly: true
-                                indicatorEdge: "right"
-                                glyph: modelData.glyph
-                                badge: modelData.key === "memory" ? root.agent.totalPendingProposals : 0
-                                active: root.section === modelData.key
-                                onActivated: {
-                                    root.section = modelData.key
-                                    if (modelData.key === "code") root.agent.refreshCodingSessions()
-                                    if (modelData.key === "memory") root.agent.refreshAllProposals()
-                                    if (modelData.key === "dashboard") root.agent.refreshChats()
+                        Column {
+                            id: railTop
+                            anchors.top: parent.top
+                            width: parent.width
+                            spacing: root.chWidth * Config.Appearance.space1
+
+                            Repeater {
+                                model: [
+                                    { key: "dashboard", glyph: "▤", label: "Dashboard" },
+                                    { key: "chat", glyph: "▷", label: "Chat" },
+                                    { key: "code", glyph: "⌘", label: "Coding sessions" },
+                                    { key: "memory", glyph: "✎", label: "Memory proposals" }
+                                ]
+                                delegate: Widgets.TabButton {
+                                    required property var modelData
+                                    width: rail.width
+                                    height: rail.width
+                                    iconOnly: true
+                                    indicatorEdge: "right"
+                                    glyph: modelData.glyph
+                                    badge: modelData.key === "memory" ? root.agent.totalPendingProposals : 0
+                                    active: root.section === modelData.key
+                                    onActivated: {
+                                        root.section = modelData.key
+                                        if (modelData.key === "code") root.agent.refreshCodingSessions()
+                                        if (modelData.key === "memory") root.agent.refreshAllProposals()
+                                        if (modelData.key === "dashboard") root.agent.refreshChats()
+                                    }
                                 }
                             }
+                        }
+
+                        // Style pass 2026-09-15 (reported directly: "there
+                        // is no settings button to open the panel" —
+                        // Chat.qml and Dashboard.qml each already had one,
+                        // but only reachable from those two specific
+                        // sections, easy to miss and inconsistent with
+                        // Coding sessions/Memory proposals having none at
+                        // all). One settings entry on the rail itself,
+                        // anchored to the bottom (the same "primary nav
+                        // above, settings pinned below" placement this
+                        // shell's own Settings dialog sidebar and most
+                        // other apps use), reachable from every section —
+                        // the same deep link (Settings › AI Agent) those
+                        // two buttons already used, not a duplicate
+                        // mechanism.
+                        Widgets.TabButton {
+                            anchors.bottom: parent.bottom
+                            width: rail.width
+                            height: rail.width
+                            iconOnly: true
+                            indicatorEdge: "right"
+                            glyph: "⚙"
+                            label: "Settings"
+                            onActivated: Services.SettingsPanel.openSection("aiAgent")
                         }
                     }
 
