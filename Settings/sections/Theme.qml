@@ -1108,6 +1108,19 @@ Column {
             visible: Config.LockPrefs.effect === "lava"
             title: "Lava lamp"
             description: "More blobs read as a denser, busier field. Wobble scales how much each blob squashes/stretches and drifts sideways as it rises."
+            // `wide: true` (2026-09-15): the default compact layout
+            // right-aligns a content-sized control slot, sized to fit ONE
+            // small control (a single NumberField, same as Matrix/
+            // Starfield/Plasma/Boids below). This row's slot instead holds
+            // a whole Column of label+field pairs (Blob count, Wobble),
+            // which is wide enough to overflow past the dialog's own right
+            // edge in that compact slot — confirmed with a real screenshot
+            // ("the options are out of bound", reported directly). `wide`
+            // is the existing, documented layout for exactly this case
+            // (SettingsRow.qml's own header: "a colour picker, a keyboard
+            // map, a chart" — any control too wide for the compact slot),
+            // not a new mechanism.
+            wide: true
             Column {
                 width: parent.width
                 spacing: root.gap
@@ -1165,6 +1178,8 @@ Column {
             visible: Config.LockPrefs.effect === "life"
             title: "Life"
             description: "Grid resolution changes the cell size; seed density is how much of the board starts alive when a generation is (re)seeded."
+            // Same overflow, same fix as the Lava lamp row above.
+            wide: true
             Column {
                 width: parent.width
                 spacing: root.gap
