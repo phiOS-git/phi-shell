@@ -40,7 +40,11 @@ Widgets.Segment {
     required property ShellScreen screen
 
     ambient: "isle"
-    label: Services.Brightness.percent + "%"
+    // Interface rework Phase 2 (rework.md, "Features to be removed": "no
+    // icon has text next to it anymore"): the "50%" text label is gone —
+    // SunMoonIcon's own `fillLevel` already carries the value visually (and
+    // the real percentage is still a click away, in the BarPopout card).
+    label: ""
     active: Services.BarPopout.which === "brightness"
 
     property real dayness: 1

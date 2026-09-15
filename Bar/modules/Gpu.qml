@@ -65,7 +65,11 @@ Widgets.Segment {
     // glyph, plus a breathing outline while `utilAnomaly` holds (sustained
     // high usage), same "ongoing state -> category A" reasoning
     // BatteryIcon's charging bolt already uses.
-    label: Math.round(root.utilPercent) + "%"
+    // Interface rework Phase 2 (rework.md, "Features to be removed": "no
+    // icon has text next to it anymore"): the utilisation "%" text label is
+    // gone — GpuIcon's own `level` fill and `anomalyAmount` breathe already
+    // carry both visually.
+    label: ""
     tone: root.tempAnomaly ? "error" : (root.utilAnomaly ? "warn" : "")
     active: Services.BarPopout.which === "gpu"
 
