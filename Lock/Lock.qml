@@ -553,6 +553,25 @@ WlSessionLock {
                     id: passwordField
                     width: parent.width
                     enabled: !root.lockedOut
+                    // Safety fix, take 2 (2026-09-15, reported directly:
+                    // "the lock screen now does not allow tab at all, so i
+                    // can never reach the power options. Just restore the
+                    // tab cycling and remove the mouse lock"). The
+                    // previous fix (PowerActionsRow's own `tabbable: false`
+                    // below) closed the real hazard — Tab stranding focus
+                    // on a pill with no way back — by removing the power
+                    // row from the tab chain entirely, which also made it
+                    // keyboard-unreachable, a real regression of its own.
+                    // The actual fix is a CLOSED LOOP: this field now
+                    // opts into the tab chain too (it never did before,
+                    // only ever focused programmatically via
+                    // forceActiveFocus), so Tab cycles field -> pill 1 ->
+                    // ... -> last pill -> back to field (QtQuick's tab
+                    // chain wraps by default within one FocusScope) —
+                    // every stop reachable, and the field is never
+                    // stranded because it is itself always the next stop
+                    // after the last pill.
+                    activeFocusOnTab: true
                     // Old-terminal input: the monospace role, a solid
                     // block caret (cursorDelegate), and `*` for every
                     // masked character — the same bullet the Plymouth
@@ -652,12 +671,12 @@ WlSessionLock {
                 Dialogs.PowerActionsRow {
                     id: powerRow
                     anchors.horizontalCenter: parent.horizontalCenter
-                    // Safety fix (2026-09-15) — see PowerActionsRow.qml's
-                    // own comment on `tabbable`: Tab must never be able to
-                    // move keyboard focus off the password field on this
-                    // screen specifically. Mouse/tap activation is
-                    // untouched; only the keyboard tab-stop is removed.
-                    tabbable: false
+                    // Safety fix, take 2 (2026-09-15) — see passwordField's
+                    // own comment above. `tabbable: false` here made the
+                    // power row keyboard-unreachable, a real regression of
+                    // its own ("i can never reach the power options").
+                    // Left at its default (true): the field being part of
+                    // the tab chain too is what actually keeps this safe.
                     actions: ["logout", "suspend", "hibernate", "reboot", "shutdown"]
                     onChosen: (action) => surface.choosePower(action)
                 }
@@ -676,19 +695,6 @@ WlSessionLock {
         }
 
         } // contentRoot
-
-        // Blank the pointer over the whole locked surface — mouse and
-        // touch alike. `acceptedButtons: NoButton` so a press still falls
-        // through and the keyboard focus forced above is untouched; this
-        // area only paints the cursor shape. A touch device that shows no
-        // pointer has nothing to blank and is unaffected. Outside
-        // contentRoot so it does not fade with the content.
-        MouseArea {
-            anchors.fill: parent
-            acceptedButtons: Qt.NoButton
-            hoverEnabled: true
-            cursorShape: Qt.BlankCursor
-        }
     }
     }
 }

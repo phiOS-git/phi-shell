@@ -37,30 +37,30 @@ import "../Widgets/WidgetStates.js" as WidgetStates
 // ring state below), the same way a static reference screenshot cannot
 // itself be showing live input — this is a "default/primary" marker, not
 // a focus indicator.
+//
+// Lock/Lock.qml briefly (2026-09-15) removed these pills from the tab
+// chain entirely (`activeFocusOnTab: false`) to fix a real Tab-focus trap
+// — but that made the row keyboard-UNREACHABLE, reported directly right
+// back: "the lock screen now does not allow tab at all, so i can never
+// reach the power options." The actual fix lives in Lock/Lock.qml's own
+// password field instead (it now opts into the tab chain too, closing
+// the loop field -> pills -> back to field) — this row stays plain
+// `activeFocusOnTab: true` for every caller, no per-instance override.
+//
+// Sized compact on purpose (2026-09-15, reported directly: "borders are
+// at least 3 times larger" than references/lock-options-reference.webp)
+// — the reference's own pills are slim, not the generous space3/space2
+// padding a settings-panel button gets away with sitting in a roomy
+// dialog.
 
 Row {
     id: root
 
     property var actions: []
     property string highlightedAction: ""
-    // Safety fix (2026-09-15, reported directly: "it's currently
-    // impossible to select the password input by cycling options with tab
-    // in the lockscreen, and given that the cursor is disabled there is no
-    // way to input the password once you cycle with tab to the power
-    // options" — a real Tab-focus trap on the one screen where losing the
-    // password field is a lockout, not an inconvenience). Before these
-    // pills existed, Lock/Lock.qml's password TextInput was the only
-    // focusable thing on the whole surface, so Tab was a harmless no-op;
-    // these pills opting into the tab chain broke that, and nothing ever
-    // routed focus back to the password field once it left (the field
-    // itself was never part of the tab chain to begin with — only ever
-    // focused programmatically). Lock/Lock.qml sets this false; Dialogs/
-    // PowerMenu.qml (no password field to protect, and keyboard-driven
-    // pill selection is exactly the point there) leaves it at the default.
-    property bool tabbable: true
     signal chosen(string action)
 
-    spacing: chMetrics.width * Config.Appearance.space4
+    spacing: chMetrics.width * Config.Appearance.space2
 
     TextMetrics {
         id: chMetrics
@@ -68,8 +68,8 @@ Row {
         font.pixelSize: Config.Appearance.fontSize1
         text: "0"
     }
-    readonly property real _padH: chMetrics.width * Config.Appearance.space3
-    readonly property real _padV: chMetrics.width * Config.Appearance.space2
+    readonly property real _padH: chMetrics.width * Config.Appearance.space2
+    readonly property real _padV: chMetrics.width * Config.Appearance.space1
 
     function _glyphFor(action) {
         switch (action) {
@@ -104,7 +104,7 @@ Row {
 
             implicitWidth: row.implicitWidth + root._padH * 2
             implicitHeight: row.implicitHeight + root._padV * 2
-            activeFocusOnTab: root.tabbable
+            activeFocusOnTab: true
 
             Rectangle {
                 anchors.fill: parent
@@ -129,7 +129,7 @@ Row {
                 Widgets.StyledIcon {
                     anchors.verticalCenter: parent.verticalCenter
                     glyph: root._glyphFor(pill.modelData)
-                    sizeStep: 2
+                    sizeStep: 1
                     color: pill.stateColors.fg
                 }
                 Widgets.StyledText {

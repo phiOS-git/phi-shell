@@ -56,6 +56,23 @@ PanelWindow {
         // about how urgent that class of decision reads.
         strong: true
     }
+    // Style pass 2026-09-15 (reported directly, comparing against
+    // references/lock-options-reference.webp: "dim is too soft"). This
+    // overlay sits on top of the REAL, likely bright desktop — windows,
+    // terminals, whatever was on screen — not a pre-muted photo the way
+    // the reference's own backdrop is, so `strong` alone (80% black, this
+    // shell's own darkest existing token) still let more of it show than
+    // the reference's mood calls for. A second identical layer compounds
+    // it (two 80%-opaque blacks stack to ~96% transmittance) using the
+    // same existing token twice rather than inventing a new one-off
+    // opacity value. No blur effect is available here (would need an
+    // unverified Qt graphical-effects module this codebase has never
+    // taken a dependency on) — this is the lever design tokens allow.
+    Widgets.Scrim {
+        anchors.fill: parent
+        shown: root.shown
+        strong: true
+    }
 
     function _confirmAndPerform(action) {
         Services.ConfirmDialog.open({
