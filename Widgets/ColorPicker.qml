@@ -66,6 +66,25 @@ Item {
         hexField.text = root.hex()
     }
 
+    // Style pass 2026-09-15: the SV box and hue strip below were drag-only
+    // — same gap Widgets/Meter.qml (fixed earlier this pass) and
+    // Widgets/BezierEditor.qml (fixed alongside this) both had. Each arrow
+    // press is one atomic commit, same shape as those two fixes.
+    property real keyStep: 0.02
+    function _nudgeSV(dSat, dVal) {
+        root._sat = Math.max(0, Math.min(1, root._sat + dSat))
+        root._val = Math.max(0, Math.min(1, root._val + dVal))
+        root._recompute()
+        hexField.text = root.hex()
+        root._commit()
+    }
+    function _nudgeHue(dHue) {
+        root._hue = Math.max(0, Math.min(0.9999, root._hue + dHue))
+        root._recompute()
+        hexField.text = root.hex()
+        root._commit()
+    }
+
     Row {
         id: layout
         spacing: root.gap
@@ -74,6 +93,25 @@ Item {
             id: svBox
             width: root.squareSize
             height: root.squareSize
+
+            activeFocusOnTab: true
+            // Up/Down move value the same direction the visible handle
+            // moves (value increases toward the top, matching the y-flip
+            // MouseArea.apply() below already uses).
+            Keys.onLeftPressed: root._nudgeSV(-root.keyStep, 0)
+            Keys.onRightPressed: root._nudgeSV(root.keyStep, 0)
+            Keys.onUpPressed: root._nudgeSV(0, root.keyStep)
+            Keys.onDownPressed: root._nudgeSV(0, -root.keyStep)
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -Config.Appearance.borderWidthStrong
+                radius: Config.Appearance.radiusSmall + Config.Appearance.borderWidthStrong
+                color: "transparent"
+                border.width: Config.Appearance.borderWidthStrong
+                border.color: Config.Appearance.focusRing
+                visible: svBox.activeFocus
+                z: 1
+            }
 
             Rectangle {
                 anchors.fill: parent
@@ -123,7 +161,7 @@ Item {
                     root._recompute()
                     hexField.text = root.hex()
                 }
-                onPressed: (m) => apply(m)
+                onPressed: (m) => { svBox.forceActiveFocus(); apply(m) }
                 onPositionChanged: (m) => { if (pressed) apply(m) }
                 onReleased: root._commit()
             }
@@ -133,6 +171,20 @@ Item {
             id: hueBox
             width: root.hueWidth
             height: root.squareSize
+
+            activeFocusOnTab: true
+            Keys.onUpPressed: root._nudgeHue(-root.keyStep)
+            Keys.onDownPressed: root._nudgeHue(root.keyStep)
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -Config.Appearance.borderWidthStrong
+                radius: Config.Appearance.radiusSmall + Config.Appearance.borderWidthStrong
+                color: "transparent"
+                border.width: Config.Appearance.borderWidthStrong
+                border.color: Config.Appearance.focusRing
+                visible: hueBox.activeFocus
+                z: 1
+            }
 
             Rectangle {
                 anchors.fill: parent
@@ -165,7 +217,7 @@ Item {
                     root._recompute()
                     hexField.text = root.hex()
                 }
-                onPressed: (m) => apply(m)
+                onPressed: (m) => { hueBox.forceActiveFocus(); apply(m) }
                 onPositionChanged: (m) => { if (pressed) apply(m) }
                 onReleased: root._commit()
             }
