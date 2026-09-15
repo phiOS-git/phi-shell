@@ -151,4 +151,86 @@ Column {
             }
         }
     }
+
+    // docs/TODO.md's app-permission system: "add settings for killswitches
+    // and permission rules." UI AND INTERACTIONS ONLY, by explicit
+    // instruction (2026-09-15) — see Services/SensorPermissions.qml's own
+    // header for the full scope note: the killswitches below are real
+    // (mic bridges to Services.AudioBridge's actual Pipewire mute; camera
+    // is a real session flag with no device backend to gate yet), the
+    // rules list is real storage with no real detection to populate it
+    // automatically yet, and "Send a test prompt" is a deliberate preview
+    // affordance — it exercises the real Dialogs/SensorPermissionPrompt.qml
+    // end to end without pretending an app actually asked.
+    SettingsGroup {
+        title: "Sensor permissions"
+        optionId: "security.sensors"
+        caption: "Microphone and camera access — the detection that would populate \"apps using the sensor\" automatically is designed but not built yet (see docs/VERIFICATION.md). Killswitches and stored rules below are real."
+
+        SettingsRow {
+            title: "Microphone"
+            Widgets.Toggle {
+                checked: Services.SensorPermissions.micEnabled
+                onToggled: (v) => Services.SensorPermissions.setMicEnabled(v)
+            }
+        }
+        SettingsRow {
+            title: "Camera"
+            description: "No camera device backend exists yet — this toggle records the choice, it does not gate hardware access yet."
+            Widgets.Toggle {
+                checked: Services.SensorPermissions.cameraEnabled
+                onToggled: (v) => Services.SensorPermissions.setCameraEnabled(v)
+            }
+        }
+
+        SettingsRow {
+            title: "Permission rules"
+            description: "Apps you've granted \"Always\" or \"Never\" to. Ask-every-time apps have no rule and aren't listed."
+            wide: true
+            Column {
+                width: parent.width
+                spacing: root.gap / 2
+                Repeater {
+                    model: Services.SensorPermissions.rules
+                    Row {
+                        required property var modelData
+                        width: parent.width
+                        spacing: root.gap
+                        Widgets.StyledText {
+                            width: parent.width - ruleRemoveBtn.implicitWidth - parent.spacing
+                            elide: Text.ElideRight
+                            text: modelData.appName + " — " + modelData.sensor + " — " + modelData.decision
+                        }
+                        Widgets.SmallButton {
+                            id: ruleRemoveBtn
+                            label: "Remove"
+                            onClicked: Services.SensorPermissions.clearRule(modelData.appId, modelData.sensor)
+                        }
+                    }
+                }
+                Widgets.StyledText {
+                    width: parent.width
+                    visible: Services.SensorPermissions.rules.length === 0
+                    kind: "label"; sizeStep: 0
+                    text: "No stored rules yet."
+                }
+            }
+        }
+
+        SettingsRow {
+            title: "Preview the permission prompt"
+            description: "Sends a one-off test request — not a real app, just exercises the dialog end to end."
+            Row {
+                spacing: root.gap
+                Widgets.SmallButton {
+                    label: "Test: microphone"
+                    onClicked: Services.SensorPermissions.previewPrompt("microphone")
+                }
+                Widgets.SmallButton {
+                    label: "Test: camera"
+                    onClicked: Services.SensorPermissions.previewPrompt("camera")
+                }
+            }
+        }
+    }
 }

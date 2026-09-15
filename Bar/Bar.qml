@@ -193,6 +193,9 @@ PanelWindow {
         case "stats": return statsComponent
         case "networkStatus": return networkStatusComponent
         case "statusMenu": return statusMenuComponent
+        // docs/TODO.md's app-permission system: sensor status icons.
+        case "microphone": return microphoneComponent
+        case "camera": return cameraComponent
         default:
             console.warn("phi-shell: Bar module type not recognized: " + type)
             return null
@@ -259,6 +262,8 @@ PanelWindow {
     Component { id: windowListComponent; Modules.WindowList { screen: bar.screen } }
     Component { id: statsComponent; Modules.Stats { screen: bar.screen } }
     Component { id: networkStatusComponent; Modules.NetworkStatus { screen: bar.screen } }
+    Component { id: microphoneComponent; Modules.Microphone { screen: bar.screen } }
+    Component { id: cameraComponent; Modules.Camera { screen: bar.screen } }
     Component { id: statusMenuComponent; Modules.StatusMenu { screen: bar.screen } }
 
     FileView {

@@ -196,14 +196,11 @@ PanelWindow {
     }
 
     // rework.md's camera-sensor toggle: no v4l2/`/dev/video*` mechanism
-    // exists anywhere in this codebase, and a full permission system is a
-    // separate, explicitly not-yet-built feature (docs/TODO.md's own
-    // answer on this exact backlog entry: "yes, the permission system must
-    // be built ... generally restrictive"). Real, clickable UI; a
-    // clearly-flagged NO-OP underneath, session-local only — the same
-    // "ship the UI, honest about the backend gap" pattern this phase's own
-    // Stats overlay uses for fan control (Services/FanControl.qml).
-    property bool _cameraEnabledPlaceholder: true
+    // exists anywhere in this codebase. Was a stray local placeholder
+    // property here; now owned by Services/SensorPermissions.qml
+    // (`cameraEnabled`) so the bar's own Camera.qml icon and this row
+    // read the same one flag instead of two independent ones — see that
+    // file's own header for the full app-permission-system scope note.
 
     // rework.md's tiling-options grid. Feasibility checked against
     // phios-dotfiles/profiles/desktop/templates/.config/hypr/
@@ -998,6 +995,111 @@ PanelWindow {
                 }
             }
 
+            // microphone / camera — docs/TODO.md's app-permission system.
+            // Each overlay: the master killswitch, the list of apps
+            // currently using the sensor (always empty today — see
+            // Services/SensorPermissions.qml's own header), and a
+            // settings deep-link to the stored permission rules.
+            Widgets.StaggerReveal {
+                shown: root.which === "microphone"
+                width: parent.width
+                spacing: root.chWidth * Config.Appearance.space2
+                visible: root.which === "microphone"
+
+                Widgets.ToggleRow {
+                    width: parent.width
+                    label: "Microphone"
+                    checked: Services.SensorPermissions.micEnabled
+                    onToggled: (v) => Services.SensorPermissions.setMicEnabled(v)
+                }
+                Widgets.StyledText {
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    kind: "label"; sizeStep: 0
+                    visible: Services.SensorPermissions.activeUsers.filter(u => u.sensor === "microphone").length === 0
+                    text: "No app is currently using the microphone."
+                }
+                Repeater {
+                    model: Services.SensorPermissions.activeUsers.filter(u => u.sensor === "microphone")
+                    Item {
+                        required property var modelData
+                        width: parent.width
+                        implicitHeight: Math.max(appLabel.implicitHeight, killBtn.implicitHeight)
+                        Widgets.StyledText {
+                            id: appLabel
+                            anchors.left: parent.left
+                            anchors.right: killBtn.left
+                            anchors.rightMargin: root.chWidth
+                            anchors.verticalCenter: parent.verticalCenter
+                            elide: Text.ElideRight
+                            text: parent.modelData.appName
+                        }
+                        Widgets.SmallButton {
+                            id: killBtn
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            label: "Stop"
+                            onClicked: Services.SensorPermissions.killApp(parent.modelData.pid)
+                        }
+                    }
+                }
+                Widgets.SmallButton {
+                    width: parent.width
+                    label: "Show in settings…"
+                    onClicked: root._showInSettings("security.sensors")
+                }
+            }
+
+            Widgets.StaggerReveal {
+                shown: root.which === "camera"
+                width: parent.width
+                spacing: root.chWidth * Config.Appearance.space2
+                visible: root.which === "camera"
+
+                Widgets.ToggleRow {
+                    width: parent.width
+                    label: "Camera"
+                    checked: Services.SensorPermissions.cameraEnabled
+                    onToggled: (v) => Services.SensorPermissions.setCameraEnabled(v)
+                }
+                Widgets.StyledText {
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    kind: "label"; sizeStep: 0
+                    visible: Services.SensorPermissions.activeUsers.filter(u => u.sensor === "camera").length === 0
+                    text: "No app is currently using the camera."
+                }
+                Repeater {
+                    model: Services.SensorPermissions.activeUsers.filter(u => u.sensor === "camera")
+                    Item {
+                        required property var modelData
+                        width: parent.width
+                        implicitHeight: Math.max(camAppLabel.implicitHeight, camKillBtn.implicitHeight)
+                        Widgets.StyledText {
+                            id: camAppLabel
+                            anchors.left: parent.left
+                            anchors.right: camKillBtn.left
+                            anchors.rightMargin: root.chWidth
+                            anchors.verticalCenter: parent.verticalCenter
+                            elide: Text.ElideRight
+                            text: parent.modelData.appName
+                        }
+                        Widgets.SmallButton {
+                            id: camKillBtn
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            label: "Stop"
+                            onClicked: Services.SensorPermissions.killApp(parent.modelData.pid)
+                        }
+                    }
+                }
+                Widgets.SmallButton {
+                    width: parent.width
+                    label: "Show in settings…"
+                    onClicked: root._showInSettings("security.sensors")
+                }
+            }
+
             // gpu — the live util/temp readout is on the bar button
             // itself; a detail view (history, per-process) is a later pass.
             Widgets.StyledText {
@@ -1318,8 +1420,8 @@ PanelWindow {
                         }
                     }
                     // rework.md's camera-sensor toggle — see
-                    // root._cameraEnabledPlaceholder's own comment above
-                    // for the full "why a no-op" explanation.
+                    // Services/SensorPermissions.qml's own header for the
+                    // full "why a no-op backend" explanation.
                     Item {
                         width: parent.width
                         implicitHeight: Math.max(camLabel.implicitHeight, camToggle.implicitHeight)
@@ -1336,8 +1438,8 @@ PanelWindow {
                             id: camToggle
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
-                            checked: root._cameraEnabledPlaceholder
-                            onToggled: (v) => root._cameraEnabledPlaceholder = v
+                            checked: Services.SensorPermissions.cameraEnabled
+                            onToggled: (v) => Services.SensorPermissions.setCameraEnabled(v)
                         }
                     }
                 }
