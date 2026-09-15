@@ -144,10 +144,16 @@ PanelWindow {
         Item {
             id: cardWrap
             anchors.top: parent.top
-            anchors.right: parent.right
+            // rework-issues.md item 13: "the calendar overlay is not
+            // centred" — was right-anchored to the screen corner, but its
+            // trigger (Bar/modules/Clock.qml) sits at the bar's TRUE
+            // horizontal centre (Bar/Bar.qml's own centerIsle, "pinned to
+            // the TRUE horizontal centre of the screen"), not the right
+            // edge. Horizontally centred on the screen instead, matching
+            // the clock it drops from.
+            anchors.horizontalCenter: parent.horizontalCenter
             // features-change (item 1): the same minimal gap the docks keep.
             anchors.topMargin: Services.BarMetrics.height + Config.Appearance.panelGap
-            anchors.rightMargin: Config.Appearance.panelGap
             // Widened from 34ch (the flip-clock-only width) to fit the
             // 7-column month grid without it feeling cramped against the
             // clock line above it.
