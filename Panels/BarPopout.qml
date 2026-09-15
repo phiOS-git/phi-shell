@@ -116,10 +116,12 @@ PanelWindow {
         if (want && !root._statsWatched) {
             Services.SysStats.watch()
             Services.GpuStats.watch()
+            Services.FanControl.watch()
             root._statsWatched = true
         } else if (!want && root._statsWatched) {
             Services.SysStats.unwatch()
             Services.GpuStats.unwatch()
+            Services.FanControl.unwatch()
             root._statsWatched = false
         }
     }
@@ -1459,11 +1461,12 @@ PanelWindow {
 
                 // --- CPU temp + graph + 4 fan-profile buttons -----------
                 // rework.md: "4 fan profile buttons with active state
-                // (auto, silent, default, heavy)". See Services/
-                // FanControl.qml's own header for why these are real,
-                // clickable UI over a confirmed no-op — no fan-control
-                // mechanism exists anywhere in this codebase or via any
-                // official-repo package.
+                // (auto, silent, default, heavy)". Real control as of
+                // 2026-09-15 — a live check of zotac found a genuine hwmon
+                // PWM interface; see Services/FanControl.qml's own header.
+                // `available` still reads false on hardware with no
+                // PWM-controllable channel (most laptops), shown plainly
+                // rather than hidden.
                 Column {
                     width: parent.width
                     spacing: root.chWidth * Config.Appearance.space1
@@ -1483,15 +1486,24 @@ PanelWindow {
                         visible: !Services.FanControl.available
                         kind: "label"; sizeStep: 0
                         wrapMode: Text.WordWrap
-                        text: "Fan control is not available on this hardware yet."
+                        text: "Fan control is not available on this hardware."
+                    }
+                    Widgets.StyledText {
+                        width: parent.width
+                        visible: Services.FanControl.error.length > 0
+                        kind: "label"; sizeStep: 0; tone: "error"
+                        wrapMode: Text.WordWrap
+                        text: Services.FanControl.error
                     }
                     Row {
                         spacing: root.chWidth * Config.Appearance.space2
+                        visible: Services.FanControl.available
                         Repeater {
                             model: ["auto", "silent", "default", "heavy"]
                             Widgets.SmallButton {
                                 required property string modelData
                                 label: modelData
+                                enabled: !Services.FanControl.busy
                                 active: Services.FanControl.profile === modelData
                                 onClicked: Services.FanControl.setProfile(modelData)
                             }
