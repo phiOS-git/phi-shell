@@ -9,9 +9,18 @@ import "tabs/agent" as Agent
 
 // phiOS — Panels/AgentPanel (OOP-27, phios-agente-delta.md D-06). The
 // shell-summoned phi agent surface: a left-edge dock that slides in, with
-// THREE sections — Chat, Coding sessions, Memory proposals — on a thin nav
-// rail. The panel is a dedicated surface, not a tabs.json instance (ADR
-// 100 stays satisfied: the surface TYPE is code written once).
+// THREE sections — Chat, Coding sessions, Status — on a thin nav rail. The
+// panel is a dedicated surface, not a tabs.json instance (ADR 100 stays
+// satisfied: the surface TYPE is code written once).
+//
+// Interface rework Phase 4 (rework.md's "ai chat panel" entry): the dock
+// now stays clear of BOTH status bars (Services.BarMetrics.height and its
+// Phase-3 sibling .bottomHeight), "Memory proposals" is renamed "Status"
+// (Panels/tabs/agent/MemoryProposals.qml keeps its existing proposals list
+// and gains a system-status-overview section above it — additive, not a
+// rewrite), and the settings deep link moves off the nav rail into a small
+// corner icon at the dock's own top-right, reachable from every section
+// instead of being one more rail entry.
 //
 // Full chat-panel rework 2026-09-15 (direct instruction: "a full rework
 // of the chat panel with UX at its core"): "Chat" used to be two separate
@@ -39,7 +48,7 @@ PanelWindow {
     readonly property bool shown: Services.AgentPanel.shown
     readonly property var agent: Services.Agent
 
-    // section: "chat" | "code" | "memory"
+    // section: "chat" | "code" | "status"
     // Style pass 2026-09-15 (reported directly: "it does not automatically
     // open on a new chat or latest chat" — every open used to land on the
     // Dashboard's list, one extra click away from anything actually
@@ -66,7 +75,15 @@ PanelWindow {
         function toggle(): void { Services.AgentPanel.toggle() }
         function open(): void { Services.AgentPanel.show() }
         function close(): void { Services.AgentPanel.hide() }
-        function memory(): void { root.section = "memory"; Services.AgentPanel.show() }
+        function status(): void { root.section = "status"; Services.AgentPanel.show() }
+        // Interface rework Phase 4: "memory" renamed to "status" (the rail
+        // key and this section string both moved) — kept as a plain alias
+        // rather than dropped outright. No external caller was found for
+        // `qs ipc call agent memory` (grepped hyprland.lua.tmpl and docs/
+        // one level up: only `agent toggle` is bound to a key), but an
+        // IPC verb is a public surface this repo cannot fully account for
+        // by itself, so the old name keeps working at zero cost.
+        function memory(): void { status() }
         function code(): void { root.section = "code"; Services.AgentPanel.show() }
     }
 
@@ -160,7 +177,7 @@ PanelWindow {
     readonly property real baseWidth: Math.min(root.width * 0.62, chWidth * 92)
     readonly property real wideWidth: Math.min(root.width * 0.62, chWidth * 92)
     readonly property real targetWidth:
-        (root.section === "memory" && root.agent.totalPendingProposals > 0) ? wideWidth : baseWidth
+        (root.section === "status" && root.agent.totalPendingProposals > 0) ? wideWidth : baseWidth
 
     // Style pass 2026-09-14 (docs/TODO.md's dim-coverage split): the chat
     // panel's dim should not visually cover the status bar. Every dim
@@ -177,12 +194,20 @@ PanelWindow {
     // published height, Services.BarMetrics — the same value `dock`'s own
     // topMargin below already uses) leaves the bar visibly undimmed,
     // with zero cross-layer risk.
+    //
+    // Interface rework Phase 4 (rework.md: the panel is "contained between
+    // the status bars"): Phase 2 added a bottom bar and Phase 3 published
+    // its real height as BarMetrics.bottomHeight for exactly this — the
+    // scrim used to run all the way to `parent.bottom`, dimming straight
+    // over the bottom bar. Inset from the bottom the same way it already
+    // is from the top.
     Widgets.Scrim {
         anchors.top: parent.top
         anchors.topMargin: Services.BarMetrics.height
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
+        anchors.bottomMargin: Services.BarMetrics.bottomHeight
         shown: root.shown
     }
 
@@ -238,7 +263,11 @@ PanelWindow {
             // all four sides — below the bar and off the three screen edges.
             anchors.topMargin: Services.BarMetrics.height + Config.Appearance.panelGap
             anchors.bottom: parent.bottom
-            anchors.bottomMargin: Config.Appearance.panelGap
+            // Interface rework Phase 4: mirrors topMargin above — the dock
+            // used to only clear panelGap at the bottom, ignoring the
+            // Phase-2 bottom bar entirely (BarMetrics.bottomHeight did not
+            // exist yet when this was first written).
+            anchors.bottomMargin: Services.BarMetrics.bottomHeight + Config.Appearance.panelGap
             anchors.left: parent.left
             anchors.leftMargin: Config.Appearance.panelGap
             width: root.targetWidth
@@ -258,11 +287,39 @@ PanelWindow {
             MouseArea { anchors.fill: parent }
 
             Widgets.Panel {
+                id: dockPanel
                 anchors.fill: parent
                 radius: Config.Appearance.panelRadius
 
+                // Interface rework Phase 4 (rework.md: "in the top right
+                // corner it has a small settings button to open the
+                // settings panel"). Used to be a TabButton pinned to the
+                // BOTTOM of the nav rail — moved off the rail entirely
+                // into a small corner icon reachable from every section, so
+                // it needs its own reserved strip across the FULL panel
+                // width rather than sitting inside the rail's narrow
+                // column (a section's own header content — Chat's rename/
+                // new controls, Coding sessions'/Status's Refresh — already
+                // runs to the content area's own right edge, so a corner
+                // icon merely overlaid on top of that would collide with
+                // it). Same small-icon-button pattern Phase 3's overlays
+                // already use for this exact "deep link to Settings"
+                // affordance (Panels/BarPopout.qml's per-section "⚙"
+                // SmallButtons).
+                Widgets.SmallButton {
+                    id: panelSettingsBtn
+                    anchors.top: parent.top
+                    anchors.right: parent.right
+                    label: "⚙"
+                    onClicked: Services.SettingsPanel.openSection("aiAgent")
+                }
+
                 Row {
-                    anchors.fill: parent
+                    anchors.top: panelSettingsBtn.bottom
+                    anchors.topMargin: root.gap
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
                     spacing: 0
 
                     // --- nav rail -------------------------------------
@@ -302,11 +359,20 @@ PanelWindow {
                             // chat instead, the same layout every
                             // mainstream chat app uses, so there is nothing
                             // left to separately navigate to.
+                            // Interface rework Phase 4: "memory" renamed to
+                            // "status" — Panels/tabs/agent/MemoryProposals.
+                            // qml (component id kept as `statusComp` below,
+                            // file itself unchanged) now opens with a
+                            // system-status-overview section above its
+                            // existing proposals list, per rework.md's own
+                            // "status: will show a quick overview of the
+                            // system status ... and the list of memory
+                            // proposal".
                             Repeater {
                                 model: [
                                     { key: "chat", glyph: "▷", label: "Chat" },
                                     { key: "code", glyph: "⌘", label: "Coding sessions" },
-                                    { key: "memory", glyph: "✎", label: "Memory proposals" }
+                                    { key: "status", glyph: "▤", label: "Status" }
                                 ]
                                 delegate: Widgets.TabButton {
                                     required property var modelData
@@ -315,42 +381,26 @@ PanelWindow {
                                     iconOnly: true
                                     indicatorEdge: "right"
                                     glyph: modelData.glyph
-                                    badge: modelData.key === "memory" ? root.agent.totalPendingProposals : 0
+                                    badge: modelData.key === "status" ? root.agent.totalPendingProposals : 0
                                     active: root.section === modelData.key
                                     onActivated: {
                                         root.section = modelData.key
                                         if (modelData.key === "code") root.agent.refreshCodingSessions()
-                                        if (modelData.key === "memory") root.agent.refreshAllProposals()
+                                        if (modelData.key === "status") {
+                                            root.agent.refreshAllProposals()
+                                            root.agent.refreshHealth()
+                                            Services.AgentInfra.refresh()
+                                        }
                                         if (modelData.key === "chat") root.agent.refreshChats()
                                     }
                                 }
                             }
                         }
-
-                        // Style pass 2026-09-15 (reported directly: "there
-                        // is no settings button to open the panel" — Chat.
-                        // qml used to have one of its own, but only
-                        // reachable from that one section, easy to miss and
-                        // inconsistent with Coding sessions/Memory
-                        // proposals having none at all). One settings
-                        // entry on the rail itself,
-                        // anchored to the bottom (the same "primary nav
-                        // above, settings pinned below" placement this
-                        // shell's own Settings dialog sidebar and most
-                        // other apps use), reachable from every section —
-                        // the same deep link (Settings › AI Agent) those
-                        // two buttons already used, not a duplicate
-                        // mechanism.
-                        Widgets.TabButton {
-                            anchors.bottom: parent.bottom
-                            width: rail.width
-                            height: rail.width
-                            iconOnly: true
-                            indicatorEdge: "right"
-                            glyph: "⚙"
-                            label: "Settings"
-                            onActivated: Services.SettingsPanel.openSection("aiAgent")
-                        }
+                        // Interface rework Phase 4: the rail's own bottom-
+                        // pinned Settings entry (Style pass 2026-09-15) is
+                        // gone — rework.md wants it in the panel's top-right
+                        // corner instead, reachable from every section the
+                        // same way, see `panelSettingsBtn` above the rail.
                     }
 
                     Widgets.Separator { vertical: true; height: parent.height }
@@ -367,14 +417,18 @@ PanelWindow {
                             sourceComponent: {
                                 switch (root.section) {
                                 case "code": return codeComp
-                                case "memory": return memoryComp
+                                case "status": return statusComp
                                 default: return chatComp
                                 }
                             }
                         }
                         Component { id: chatComp;   Agent.ChatShell { onRequestSection: (s) => root.section = s; onBlurred: keyScope.forceActiveFocus() } }
                         Component { id: codeComp;   Agent.CodingSessions {} }
-                        Component { id: memoryComp; Agent.MemoryProposals {} }
+                        // File kept as MemoryProposals.qml (its own header
+                        // comment explains the additive status-overview
+                        // section) — only the rail key/section string and
+                        // this Component's id changed to "status".
+                        Component { id: statusComp; Agent.MemoryProposals {} }
                     }
                 }
             }
