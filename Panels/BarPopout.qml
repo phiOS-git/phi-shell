@@ -184,8 +184,16 @@ PanelWindow {
     // rework.md: "different colors on hover" — one semantic tone per
     // action, using this shell's existing tone palette rather than
     // inventing new colours (rule 6).
+    //
+    // rework-issues.md item 4a: "the lock icon has no hover effect" — this
+    // switch had no "lock" case, so it fell through to the same
+    // `textPrimary` the icon already uses at rest: a real hover-state
+    // color Behavior firing every time, animating to a value identical to
+    // where it started, reading as "nothing happens" rather than a bug in
+    // the hover detection itself.
     function _powerTone(action) {
         switch (action) {
+        case "lock": return Config.Appearance.accent
         case "suspend": return Config.Appearance.info
         case "hibernate": return Config.Appearance.accent
         case "logout": return Config.Appearance.warn
