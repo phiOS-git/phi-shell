@@ -226,6 +226,13 @@ ShellRoot {
         screen: Quickshell.screens[0]
     }
 
+    // docs/TODO.md's app-permission system — same single-shared-instance
+    // reasoning as Dialogs.ConfirmDialog just above; content driven by
+    // Services/SensorPermissions.qml.
+    Dialogs.SensorPermissionPrompt {
+        screen: Quickshell.screens[0]
+    }
+
     // docs/TODO.md: "full screen alert should appear when battery level is
     // low (2 thresholds warn and danger, configurable)" — single shared
     // instance, same primary-screen-only reasoning as Dialogs.ConfirmDialog
