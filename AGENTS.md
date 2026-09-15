@@ -46,9 +46,9 @@ watch stdout: `pkill -x qs; qs -p ~/.config/quickshell/phi`.
   process.)
 - **Type is code, instance is data (ADR 078).** A bar module, a panel tab
   or a settings section is written once as a component; the instance is a
-  row in `Bar/modules.json`, `Panels/tabs.json` or `Settings/sections.json`.
-  Adding one must be a one-file data change — if it is not, the design is
-  wrong.
+  row in `Bar/modules-top.json`/`Bar/modules-bottom.json`, `Panels/tabs.json`
+  or `Settings/sections.json`. Adding one must be a one-file data change —
+  if it is not, the design is wrong.
 - **Capability-gated (ADR 074).** A module declares a capability
   requirement and appears only where `Config/Capabilities.qml` reports it.
   The shell never asks "am I a laptop".
