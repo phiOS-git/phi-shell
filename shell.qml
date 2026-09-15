@@ -17,6 +17,7 @@ import qs.Screenshot as Screenshot
 import qs.AltTab as AltTab
 import qs.Cheatsheet as Cheatsheet
 import qs.Dialogs as Dialogs
+import qs.Images as Images
 
 // phiOS — phi-shell entry point (master plan §8.2).
 //
@@ -64,6 +65,22 @@ ShellRoot {
         }
     }
 
+    // Interface rework Phase 2 (rework.md's "## Status bars": "There will
+    // be 2 status bars, one on the top and one on the bottom of the
+    // screen"). Same per-screen Variants shape as the top bar above (ADR
+    // 077); only `edge` differs — Bar/Bar.qml's own new property picks
+    // Bar/modules-bottom.json and the mirrored anchors/slide-direction/
+    // corner-radius behaviour its own header documents.
+    Variants {
+        model: Quickshell.screens
+
+        Bar.Bar {
+            required property ShellScreen modelData
+            screen: modelData
+            edge: "bottom"
+        }
+    }
+
     // S-30: one toast surface per screen, same per-monitor instantiation
     // as Bar.Bar above (ADR 077) — see Notifications/Toast.qml for why
     // every monitor shows the same toast rather than picking a "primary" one.
@@ -76,14 +93,16 @@ ShellRoot {
         }
     }
 
-    // S-31: a single sidebar instance, not one per screen like Bar.Bar and
-    // Toast above — it is a focused, toggled-open-or-closed surface, not an
-    // ambient per-monitor indicator, so showing N copies simultaneously
-    // when the IpcHandler fires would be wrong. Pinned to the first screen
-    // Quickshell reports; "open on whichever monitor currently has focus"
-    // would need Hyprland-specific IPC this step's card does not ask for.
-    // Flagged for cheap veto.
-    Panels.Sidebar {
+    // Interface rework Phase 3: the retired Panels/Sidebar.qml (a single
+    // full-height right-edge dock with two tabs) is replaced by two
+    // independent small overlays, one per bar icon — same single-instance
+    // reasoning as Sidebar had (a focused, toggled surface, not an ambient
+    // per-monitor indicator; "open on whichever monitor currently has
+    // focus" would need Hyprland-specific IPC this phase does not add).
+    Panels.NotificationsOverlay {
+        screen: Quickshell.screens[0]
+    }
+    Panels.ClipboardOverlay {
         screen: Quickshell.screens[0]
     }
 
@@ -229,6 +248,30 @@ ShellRoot {
     // just above (one real clock, not per-monitor ambient state).
     Dialogs.TimerAlert {
         screen: Quickshell.screens[0]
+    }
+
+    // Interface rework Phase 6a (rework.md "Other UI elements": "image
+    // window"). Genuinely multi-instance (Services/ImageWindows.qml's own
+    // header): a plain array this file owns, fanned out through the same
+    // Variants primitive every per-screen surface above already uses,
+    // just keyed by "open image" entries instead of Quickshell.screens.
+    // The one IpcHandler lives here, registered once, so Quickshell does
+    // not register the "image" target N times over — same reasoning as
+    // "magnifier"/"spotlight" above.
+    Variants {
+        model: Services.ImageWindows.windows
+
+        Images.ImageWindow {
+            required property var modelData
+            imageId: modelData.id
+            path: modelData.path
+        }
+    }
+
+    IpcHandler {
+        target: "image"
+        // qs -p ~/.config/quickshell/phi ipc call image open /path/to/file.png
+        function open(path: string): void { Services.ImageWindows.open(path) }
     }
 
     // S-43 / SF-5: per-screen (Services/Spotlight.qml's header on why a

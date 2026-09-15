@@ -30,6 +30,29 @@ import qs.Config as Config
 //
 // Children go straight into the inner Row via the default `content` alias;
 // a Repeater child instantiates its delegates into that Row.
+//
+// Interface rework Phase 2 (rework.md's "## Status bars": "Both bars have
+// a solid background and have 1px border radius on the outward corners,
+// 4px border radius on the inward corners"): the uniform `radiusBase`
+// Rectangle is replaced by Widgets/AsymmetricPanel (the same per-corner
+// primitive Widgets/Panel.qml itself now uses when its own four corners
+// differ, reused directly here rather than reinventing per-corner rounding
+// a third way — this file stays a lightweight `Item`, not rebuilt on top
+// of Panel, since it never needed Panel's seven-state/hover/active
+// machinery, only its background+corners). `edge` ("top", default — every
+// existing caller's look is unchanged since bare corners still round
+// uniformly then — or "bottom") says which physical screen edge the WHOLE
+// BAR this isle belongs to sits against; every isle in that bar (left,
+// centre, right alike) rounds the same way, set by Bar/Bar.qml's own new
+// `edge` property.
+//
+// "Outward"/"inward" interpretation (rework.md does not define either
+// precisely) — the corners nearest the physical screen edge (top bar: the
+// TWO TOP corners; bottom bar: the two bottom corners) are "outward" and
+// get the smaller radiusSmall (1px); the corners facing the desktop/window
+// area are "inward" and get the larger radiusLarge (4px). Flagged
+// explicitly for the screenshot pass in case the intended reading is the
+// reverse.
 
 Item {
     id: root
@@ -41,14 +64,22 @@ Item {
     // window title WITHOUT growing taller than the other isles.
     property real pad: 0
     property real padH: root.pad
+    property string edge: "top"
 
     implicitWidth: row.implicitWidth + root.padH * 2
     implicitHeight: row.implicitHeight + root.pad * 2
 
-    Rectangle {
+    readonly property real _outward: Config.Appearance.radiusSmall
+    readonly property real _inward: Config.Appearance.radiusLarge
+
+    AsymmetricPanel {
         anchors.fill: parent
-        radius: Config.Appearance.radiusBase
         color: Config.Appearance.colorMain
+        borderWidth: 0
+        radiusTopLeft: root.edge === "top" ? root._outward : root._inward
+        radiusTopRight: root.edge === "top" ? root._outward : root._inward
+        radiusBottomLeft: root.edge === "top" ? root._inward : root._outward
+        radiusBottomRight: root.edge === "top" ? root._inward : root._outward
     }
 
     Row {

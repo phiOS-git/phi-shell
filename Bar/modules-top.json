@@ -1,0 +1,10 @@
+[
+    { "type": "phiAgent", "island": "left", "position": 0, "source": "internal:phi-agent", "capability": "" },
+    { "type": "separator", "island": "left", "position": 5, "source": "internal:separator", "capability": "" },
+    { "type": "workspaces", "island": "left", "position": 10, "source": "internal:hyprland", "capability": "" },
+    { "type": "clock", "island": "center", "position": 0, "source": "internal:clock", "capability": "" },
+    { "type": "clipboard", "island": "right", "position": 10, "source": "internal:clipboard", "capability": "" },
+    { "type": "notifications", "island": "right", "position": 20, "source": "internal:notifications", "capability": "" },
+    { "type": "separator", "island": "right", "position": 25, "source": "internal:separator", "capability": "" },
+    { "type": "statusMenu", "island": "right", "position": 30, "source": "internal:status", "capability": "" }
+]

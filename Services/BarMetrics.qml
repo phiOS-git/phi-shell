@@ -31,6 +31,15 @@ Singleton {
 
     // Written by Bar/Bar.qml via report(). 0 until the first report.
     property real reported: 0
+    // Interface rework Phase 3: the bottom bar's own real height, reported
+    // separately — this file's own OOP-20 header already anticipated
+    // exactly this ("if a later phase needs the bottom bar's own height
+    // too ... BarMetrics gets a second property then"). Needed now because
+    // most of Panels/BarPopout.qml's keys (volume, brightness, network,
+    // bluetooth, battery, stats, gpu) open from a BOTTOM-bar icon as of
+    // Bar/modules-bottom.json (Phase 2), so the popout has to sit ABOVE the
+    // bottom bar for those, not below the top one.
+    property real reportedBottom: 0
 
     // Pre-first-report estimate, deliberately a little generous: a dock
     // inset by this must never briefly show under the bar on the first
@@ -38,8 +47,12 @@ Singleton {
     readonly property real fallback: Config.Appearance.fontSize2 * 2.5
 
     readonly property real height: root.reported > 0 ? root.reported : root.fallback
+    readonly property real bottomHeight: root.reportedBottom > 0 ? root.reportedBottom : root.fallback
 
     function report(h) {
         if (h > 0 && Math.abs(h - root.reported) > 0.5) root.reported = h
+    }
+    function reportBottom(h) {
+        if (h > 0 && Math.abs(h - root.reportedBottom) > 0.5) root.reportedBottom = h
     }
 }

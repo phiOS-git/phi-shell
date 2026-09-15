@@ -35,7 +35,9 @@ Item {
         active: root.active, keyboardFocus: root.keyboardFocus,
         loading: root.loading, invalid: root.invalid
     })
-    readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState)
+    // Interface rework Phase 1 (rework.md s3) — "shaded", not the generic
+    // B&W default; see WidgetStates.js's own comment on this branch.
+    readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState, "shaded")
 
     // design/tokens.common.sh stores space-N in `ch`, not px — see
     // Panel.qml's identical comment.
@@ -68,7 +70,9 @@ Item {
         anchors.fill: parent
         radius: Config.Appearance.radiusSmall
         color: root._chrome ? root.stateColors.bg : "transparent"
-        border.width: root._chrome ? Config.Appearance.borderWidth : 0
+        // Interface rework Phase 1 (rework.md s5): the hairline token, not
+        // the bulkier generic one.
+        border.width: root._chrome ? Config.Appearance.borderWidthStrong : 0
         border.color: root._chrome ? root.stateColors.border : "transparent"
 
         Behavior on color {

@@ -57,6 +57,75 @@ PanelWindow {
         onTriggered: now = new Date()
     }
 
+    // Interface rework Phase 3 (rework.md's calendar-overlay rework: "a
+    // timer, an interactive calendar" — the placeholder text this replaces
+    // said as much). Live countdown readout for the timer LIST below, same
+    // shape Panels/BarPopout.qml's own "timer" card already uses (only
+    // ticking while this card is on screen).
+    property real _timerNow: Date.now()
+    Timer {
+        interval: 1000
+        running: root.shown
+        repeat: true
+        onTriggered: root._timerNow = Date.now()
+    }
+    function _fmtCountdown(targetMs) {
+        const totalSeconds = Math.max(0, Math.ceil((targetMs - root._timerNow) / 1000))
+        const h = Math.floor(totalSeconds / 3600)
+        const m = Math.floor((totalSeconds % 3600) / 60)
+        const s = totalSeconds % 60
+        if (h > 0) return h + "h " + m + "m"
+        return m + ":" + (s < 10 ? "0" : "") + s
+    }
+
+    // A plain minutes-from-now creation control — Services.Timers is the
+    // exact same singleton (and API) Panels/BarPopout.qml's own "timer"
+    // card already reads/writes, reused here rather than a second timer
+    // mechanism. An hour:minute ALARM and a REPEATING alarm both stay a
+    // runner-bar-only creation path ("timer 5m", "alarm 7:30" — Panels/
+    // BarPopout.qml's own deep-link text already points there), same
+    // scope this phase's own brief asks for ("a compact create-a-timer
+    // control ... plus the existing countdown-list rendering").
+    property int _newTimerMinutes: 5
+
+    // An interactive, read-only month grid — no event/CalDAV backend
+    // exists anywhere in this codebase (architettura §8.8 is still open,
+    // this file's own PLACEHOLDER text said so until this phase). Clicking
+    // a day only highlights it locally; no event data is fabricated.
+    property int viewYear: new Date().getFullYear()
+    property int viewMonth: new Date().getMonth() // 0-11
+    readonly property var _today: new Date()
+    property int selectedYear: _today.getFullYear()
+    property int selectedMonth: _today.getMonth()
+    property int selectedDay: _today.getDate()
+
+    function _daysInMonth(y, m) { return new Date(y, m + 1, 0).getDate() }
+    function _firstWeekday(y, m) { return new Date(y, m, 1).getDay() } // 0 = Sunday
+
+    readonly property var monthCells: {
+        const dim = root._daysInMonth(root.viewYear, root.viewMonth)
+        const lead = root._firstWeekday(root.viewYear, root.viewMonth)
+        const cells = []
+        for (let i = 0; i < lead; i++) cells.push({ day: 0 })
+        for (let d = 1; d <= dim; d++) cells.push({ day: d })
+        return cells
+    }
+
+    function prevMonth() {
+        if (root.viewMonth === 0) { root.viewMonth = 11; root.viewYear -= 1 }
+        else root.viewMonth -= 1
+    }
+    function nextMonth() {
+        if (root.viewMonth === 11) { root.viewMonth = 0; root.viewYear += 1 }
+        else root.viewMonth += 1
+    }
+    function selectDay(day) {
+        if (day <= 0) return
+        root.selectedYear = root.viewYear
+        root.selectedMonth = root.viewMonth
+        root.selectedDay = day
+    }
+
     Item {
         id: fadeRoot
         anchors.fill: parent
@@ -79,7 +148,10 @@ PanelWindow {
             // features-change (item 1): the same minimal gap the docks keep.
             anchors.topMargin: Services.BarMetrics.height + Config.Appearance.panelGap
             anchors.rightMargin: Config.Appearance.panelGap
-            width: root.chWidth * 34
+            // Widened from 34ch (the flip-clock-only width) to fit the
+            // 7-column month grid without it feeling cramped against the
+            // clock line above it.
+            width: root.chWidth * 38
             height: panel.height
 
             // Swallow clicks on the card (border included).
@@ -88,14 +160,27 @@ PanelWindow {
             Widgets.Panel {
             id: panel
             width: parent.width
-            radius: Config.Appearance.panelRadius
             height: bodyCol.implicitHeight + padding * 2
+            // rework.md's ONE named exception to the general overlay
+            // corner-radius rule: "This overlay has both the top corner at
+            // 1px (only exception to the general rule)" — it opens from
+            // the top-bar CENTRE clock, not a right-isle icon, so there is
+            // no single "nearest corner" the way there is for every other
+            // overlay in this phase.
+            cornerRadiusTopLeft: Config.Appearance.radiusSmall
+            cornerRadiusTopRight: Config.Appearance.radiusSmall
+            cornerRadiusBottomLeft: Config.Appearance.radiusLarge
+            cornerRadiusBottomRight: Config.Appearance.radiusLarge
 
             focus: root.shown
             Keys.onEscapePressed: Services.Calendar.hide()
 
-            Column {
+            // Interface rework Phase 3 (rework.md s4): the column / timer /
+            // calendar sections cascade in after the card itself is
+            // visible (the card's own fade is `fadeRoot` above, unchanged).
+            Widgets.StaggerReveal {
                 id: bodyCol
+                shown: root.shown
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: parent.top
@@ -141,12 +226,184 @@ PanelWindow {
                     Widgets.FlipDigit { sizeStep: 4; showCard: false; value: parent.ss.charAt(1) }
                 }
                 Widgets.Separator { width: parent.width }
-                Widgets.StyledText {
+
+                // --- Timer ---------------------------------------------
+                // rework.md: "a timer" — Services.Timers is the exact same
+                // singleton/API Panels/BarPopout.qml's own "timer" card
+                // already uses; this is a new home for the same data
+                // (creation control + the existing countdown-list
+                // rendering), not a second timer mechanism. A full HH:MM
+                // alarm and repeating alarms stay a runner-bar-only
+                // creation path, same as BarPopout's own card.
+                Column {
                     width: parent.width
-                    wrapMode: Text.WordWrap
-                    kind: "label"
-                    text: "Calendar and agenda view — placeholder. A month grid and "
-                        + "event list land in a later pass (architettura §8.8)."
+                    spacing: root.chWidth * Config.Appearance.space1
+
+                    Widgets.StyledText { kind: "title"; text: "Timer" }
+
+                    Row {
+                        spacing: root.chWidth * Config.Appearance.space2
+                        Widgets.NumberField {
+                            anchors.verticalCenter: parent.verticalCenter
+                            value: root._newTimerMinutes
+                            step: 1; from: 1; to: 180; suffix: " min"
+                            onCommitted: (v) => root._newTimerMinutes = v
+                        }
+                        Widgets.StyledButton {
+                            anchors.verticalCenter: parent.verticalCenter
+                            label: "Start"
+                            onClicked: Services.Timers.add(root._newTimerMinutes * 60, "Timer")
+                        }
+                    }
+
+                    Repeater {
+                        model: Services.Timers.items.slice().sort((a, b) => a.targetMs - b.targetMs)
+                        Item {
+                            id: timerRow
+                            required property var modelData
+                            width: parent.width
+                            implicitHeight: Math.max(timerLabel.implicitHeight, timerCancel.implicitHeight)
+
+                            Widgets.StyledText {
+                                id: timerLabel
+                                anchors.left: parent.left
+                                anchors.right: timerValue.left
+                                anchors.rightMargin: root.chWidth
+                                anchors.verticalCenter: parent.verticalCenter
+                                elide: Text.ElideRight
+                                text: (timerRow.modelData.kind === "alarm" ? "Alarm — " : "Timer — ") + timerRow.modelData.label
+                            }
+                            Widgets.StyledText {
+                                id: timerValue
+                                anchors.right: timerCancel.left
+                                anchors.rightMargin: root.chWidth
+                                anchors.verticalCenter: parent.verticalCenter
+                                kind: "label"; mono: true
+                                text: timerRow.modelData.kind === "alarm"
+                                    ? Qt.formatDateTime(new Date(timerRow.modelData.targetMs), "HH:mm")
+                                    : root._fmtCountdown(timerRow.modelData.targetMs)
+                            }
+                            Widgets.SmallButton {
+                                id: timerCancel
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                label: "Cancel"
+                                onClicked: Services.Timers.cancel(timerRow.modelData.id)
+                            }
+                        }
+                    }
+                    Widgets.StyledText {
+                        visible: Services.Timers.items.length === 0
+                        kind: "label"; sizeStep: 0
+                        text: "Nothing scheduled. Set one above, or an alarm from the runner bar: \"alarm 7:30\"."
+                        wrapMode: Text.WordWrap
+                        width: parent.width
+                    }
+                }
+
+                Widgets.Separator { width: parent.width }
+
+                // --- Interactive calendar --------------------------------
+                // rework.md: "an interactive calendar". A read-only month
+                // grid — no event/CalDAV backend exists anywhere in this
+                // codebase (architettura §8.8 is still open) — clicking a
+                // day only highlights it locally; no event data is
+                // fabricated. Prev/next navigate the VIEWED month; today
+                // and the current selection are both tracked independently
+                // so navigating away and back does not lose either.
+                Column {
+                    width: parent.width
+                    spacing: root.chWidth * Config.Appearance.space1
+
+                    Item {
+                        width: parent.width
+                        implicitHeight: Math.max(monthLabel.implicitHeight, monthNext.implicitHeight)
+
+                        Widgets.SmallButton {
+                            id: monthPrev
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            label: "‹"
+                            onClicked: root.prevMonth()
+                        }
+                        Widgets.StyledText {
+                            id: monthLabel
+                            anchors.centerIn: parent
+                            kind: "title"
+                            text: Qt.formatDateTime(new Date(root.viewYear, root.viewMonth, 1), "MMMM yyyy")
+                        }
+                        Widgets.SmallButton {
+                            id: monthNext
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            label: "›"
+                            onClicked: root.nextMonth()
+                        }
+                    }
+
+                    Grid {
+                        width: parent.width
+                        columns: 7
+                        readonly property real cellSize: width / 7
+
+                        Repeater {
+                            model: ["S", "M", "T", "W", "T", "F", "S"]
+                            Widgets.StyledText {
+                                required property string modelData
+                                width: parent.cellSize
+                                height: root.chWidth * Config.Appearance.space4
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                kind: "label"; sizeStep: 0
+                                text: modelData
+                            }
+                        }
+
+                        Repeater {
+                            model: root.monthCells
+                            Item {
+                                id: dayCell
+                                required property var modelData
+                                width: parent.cellSize
+                                height: root.chWidth * Config.Appearance.space4
+
+                                readonly property bool isToday: dayCell.modelData.day > 0
+                                    && root.viewYear === root._today.getFullYear()
+                                    && root.viewMonth === root._today.getMonth()
+                                    && dayCell.modelData.day === root._today.getDate()
+                                readonly property bool isSelected: dayCell.modelData.day > 0
+                                    && root.viewYear === root.selectedYear
+                                    && root.viewMonth === root.selectedMonth
+                                    && dayCell.modelData.day === root.selectedDay
+
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: Math.min(parent.width, parent.height) * 0.78
+                                    height: width
+                                    radius: Config.Appearance.radiusSmall
+                                    visible: dayCell.modelData.day > 0 && (dayCell.isSelected || dayCell.isToday)
+                                    color: dayCell.isSelected ? Config.Appearance.colorOpposite : "transparent"
+                                    border.width: (dayCell.isToday && !dayCell.isSelected) ? Config.Appearance.borderWidthStrong : 0
+                                    border.color: Config.Appearance.accent
+                                }
+                                Widgets.StyledText {
+                                    anchors.centerIn: parent
+                                    visible: dayCell.modelData.day > 0
+                                    mono: true
+                                    color: dayCell.isSelected ? Config.Appearance.colorMain : Config.Appearance.textPrimary
+                                    text: dayCell.modelData.day > 0 ? String(dayCell.modelData.day) : ""
+                                }
+                                HoverHandler {
+                                    enabled: dayCell.modelData.day > 0
+                                    cursorShape: Qt.PointingHandCursor
+                                }
+                                TapHandler {
+                                    enabled: dayCell.modelData.day > 0
+                                    onTapped: root.selectDay(dayCell.modelData.day)
+                                }
+                            }
+                        }
+                    }
                 }
             }
             } // Widgets.Panel

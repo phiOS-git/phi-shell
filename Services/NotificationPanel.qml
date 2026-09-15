@@ -1,67 +1,113 @@
 pragma Singleton
 import Quickshell
+import Quickshell.Io
 import qs.Services as Services
 
-// phiOS — Services/NotificationPanel (OOP-06, shell restyle). Owns the
-// shown state AND the active tab of the notification panel
-// (Panels/Sidebar.qml). One owner so every entry point agrees:
-//   - the bar notification bell (Bar/modules/Notifications.qml)
-//   - Super+N               (hyprland.lua → ipc call notifications notifications)
-//     opens the panel on the notifications tab, switching to it if the
-//     panel was already open elsewhere; closes it if already shown there
-//   - Super+Shift+V         (hyprland.lua → ipc call notifications clipboard)
-//     same, for the clipboard tab
+// phiOS — Services/NotificationPanel (interface rework Phase 3, rework.md
+// "## Status bar overlays": the notifications icon and the clipboard icon
+// now each open their OWN small, independent overlay — Panels/
+// NotificationsOverlay.qml and Panels/ClipboardOverlay.qml — instead of two
+// tabs sharing Panels/Sidebar.qml's one right-edge dock (OOP-06; Sidebar and
+// tabs.json are retired, see this file's own git history / PROGRESS.md for
+// the removal). This singleton KEEPS ITS NAME on purpose — every one of the
+// four peer surfaces that already treat it as a closing peer (Services/
+// AgentPanel.qml, Services/SettingsPanel.qml, Services/BarPopout.qml,
+// Services/Calendar.qml) calls `Services.NotificationPanel.hide()` from
+// their own mutual-exclusion `onShownChanged` handler, and Services/
+// Calendar.qml also watches `onShownChanged` on the derived `shown` below —
+// renaming the file would touch all four for no functional gain. What
+// changed is the shape it owns: two independent shown/anchor-x pairs
+// instead of one shown+tab pair, since the two are no longer one surface.
 //
-// Same one-owner shape as Services/AgentPanel.qml, Services/Spotlight.qml,
-// Services/Calendar.qml.
+// Entry points:
+//   - the bar bell (Bar/modules/Notifications.qml) / the bar clipboard icon
+//     (Bar/modules/Clipboard.qml) — each passes its own button's rightX()
+//   - Super+N / Super+Shift+V (hyprland.lua.tmpl → `ipc call notifications
+//     notifications` / `ipc call notifications clipboard`) — unchanged
+//     IPC targets, moved here from the retired Panels/Sidebar.qml (same
+//     "registered once regardless of where it's declared" shape Services/
+//     Timers.qml's own "timer" IpcHandler already uses for a true
+//     singleton).
 
 Singleton {
     id: root
 
-    property bool shown: false
-    // 0 = notifications, 1 = clipboard (Panels/tabs.json order).
-    property int tab: 0
+    property bool notificationsShown: false
+    property bool clipboardShown: false
+    property real notificationsAnchorX: 0
+    property real clipboardAnchorX: 0
 
-    // docs/TODO.md: "opening the notification panel, the agent panel, the
-    // settings panel or a bar popout ... doesn't close whichever of the
-    // others is already open — more than one can be visible at once."
-    // Services/Calendar.qml already closes itself whenever any of these
-    // four opens (and this panel closing Calendar back is handled from
-    // that same file, its one owner) — the four never closed each OTHER,
-    // which is the gap this closes: whichever of them opens hides the
-    // other three.
-    onShownChanged: if (root.shown) {
+    // Kept for the peers that only ever watched (or called .hide() on) the
+    // OLD single `shown` — Services/Calendar.qml's own Connections block
+    // reads this derived value's change signal exactly the same way it read
+    // the old plain property.
+    readonly property bool shown: root.notificationsShown || root.clipboardShown
+
+    // Opening either overlay closes the other one, AND every peer surface
+    // that already documents "whichever of them opens hides the others" —
+    // same shape Services/Calendar.qml / Services/AgentPanel.qml /
+    // Services/SettingsPanel.qml / Services/BarPopout.qml each already use
+    // for themselves.
+    onNotificationsShownChanged: if (root.notificationsShown) root._closePeers(true)
+    onClipboardShownChanged: if (root.clipboardShown) root._closePeers(false)
+
+    function _closePeers(fromNotifications) {
+        if (fromNotifications) root.clipboardShown = false
+        else root.notificationsShown = false
         Services.AgentPanel.hide()
         Services.SettingsPanel.hide()
         Services.BarPopout.hide()
-        // docs/TODO.md: "opening a panel on a special workspace (11, 12),
-        // should automatically open it in the highest possible [workspace]
-        // up to 10" — see Services/HyprlandBridge.qml's own comment on
-        // this function for the full rationale.
+        Services.Calendar.hide()
+        // docs/TODO.md: "opening a panel on a special workspace (11, 12) ...
+        // highest possible up to 10" — see Services/HyprlandBridge.qml's
+        // own comment on this function for the full rationale.
         Services.HyprlandBridge.leaveReservedWorkspace()
     }
 
-    function toggle() { root.shown = !root.shown }
-    function show() { root.shown = true }
-    function hide() { root.shown = false }
-
-    // docs/TODO.md: "super+n should open notification (focus the right
-    // tab), super+shift+v should not only open but also close the
-    // clipboard panel" — a bare `openTab` (below) can only ever open,
-    // never close, so a second press on the same tab did nothing. This is
-    // the toggle-aware version every keybind-facing entry point uses:
-    // switch to tab `i`, opening the panel if it was closed; close it only
-    // if it was already open on that exact tab.
-    function toggleTab(i) {
-        if (root.shown && root.tab === i) root.hide()
-        else root.openTab(i)
+    function openNotifications(x) {
+        root.notificationsAnchorX = x || 0
+        root.notificationsShown = true
+    }
+    function openClipboard(x) {
+        root.clipboardAnchorX = x || 0
+        root.clipboardShown = true
+    }
+    function toggleNotifications(x) {
+        if (root.notificationsShown) root.notificationsShown = false
+        else root.openNotifications(x)
+    }
+    function toggleClipboard(x) {
+        if (root.clipboardShown) root.clipboardShown = false
+        else root.openClipboard(x)
     }
 
-    function openTab(i) {
-        root.tab = i
-        root.shown = true
+    // Every peer's own onShownChanged still just calls this one function —
+    // it now closes BOTH overlays, so no call site anywhere else in the
+    // repo needed to change.
+    function hide() {
+        root.notificationsShown = false
+        root.clipboardShown = false
     }
 
-    function openClipboard() { root.toggleTab(1) }
-    function openNotifications() { root.toggleTab(0) }
+    // Moved from the retired Panels/Sidebar.qml verbatim (same targets,
+    // same function names) — x omitted (0) falls back to the screen
+    // corner, the same convention Services/BarPopout.qml's own anchor-x
+    // parameters already use for a caller with no button to anchor under.
+    IpcHandler {
+        target: "notifications"
+        function toggle(): void { root.toggleNotifications(0) }
+        function open(): void { root.openNotifications(0) }
+        function close(): void { root.hide() }
+        function clipboard(): void { root.toggleClipboard(0) }
+        function notifications(): void { root.toggleNotifications(0) }
+    }
+
+    // Kept for back-compatibility with anything still calling the old
+    // "sidebar" target (a stale `qs ipc call sidebar` habit).
+    IpcHandler {
+        target: "sidebar"
+        function toggle(): void { root.toggleNotifications(0) }
+        function open(): void { root.openNotifications(0) }
+        function close(): void { root.hide() }
+    }
 }

@@ -30,7 +30,12 @@ Widgets.Segment {
     readonly property bool muted: Services.AudioBridge.muted
     readonly property int percent: Math.round(Services.AudioBridge.volume * 100)
 
-    label: root.muted ? "mute" : root.percent + "%"
+    // Interface rework Phase 2 (rework.md, "Features to be removed": "no
+    // icon has text next to it anymore"): the "50%"/"mute" text label is
+    // gone — VolumeIcon's own `level`/`mutedAmount` fill+slash already
+    // carry both states visually (and the real percentage is still a click
+    // away, in the BarPopout card).
+    label: ""
     tone: root.muted ? "warn" : ""
     active: Services.BarPopout.which === "volume"
 

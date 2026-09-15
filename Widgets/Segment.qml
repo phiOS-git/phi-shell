@@ -49,23 +49,52 @@ Item {
     property bool loading: false
     property bool invalid: false
 
-    // OOP-02: which surface pair this button sits on — "panel" (default,
+    // OOP-02: which surface pair this button sits on — "shaded" (default,
     // e.g. the sidebar tab strip) or "isle" (the status bar's opposite-
     // coloured islands). Passed straight through to surfaceColors().
-    property string ambient: "panel"
+    // Interface rework Phase 1 (rework.md s3): default renamed from the
+    // literal "panel" to "shaded" — WidgetStates.js's new ambient branch,
+    // see its own comment — since no call site anywhere in this shell ever
+    // set `ambient: "panel"` explicitly (grepped: every real caller either
+    // sets "isle" or leaves this at its default), so nothing else is
+    // affected by the rename.
+    property string ambient: "shaded"
 
-    // OOP-03: the status bar is mono (user directive). "isle" ambient
+    // Interface rework Phase 2: "workspace" (Bar/modules/Workspaces.qml's
+    // numbered squares) is a bar-button ambient too — same mono font, tight
+    // isle padding and hover sweep as "isle" — it only differs in the
+    // colour recipe WidgetStates.surfaceColors() gives it (a resting border,
+    // an inverted active fill) and in `contentColor` below (its active state
+    // must actually show `stateColors.fg`, not the accent-text override
+    // every other isle button's active state now uses). Every `root.ambient
+    // === "isle"` check below that is really asking "is this a bar button"
+    // reads `root._bar` instead, so a future third bar-button ambient needs
+    // one line here, not a hunt through five separate conditionals.
+    readonly property bool _bar: root.ambient === "isle" || root.ambient === "workspace"
+
+    // OOP-03: the status bar is mono (user directive). A bar-button ambient
     // implies it; a panel Segment stays on the UI font.
-    property bool mono: root.ambient === "isle"
+    property bool mono: root._bar
 
     // OOP-03: the workspace and btop buttons are square regardless of how
     // wide their single glyph/digit is.
     property bool squared: false
 
+    // Interface rework Phase 2 (rework.md: "the selected workspace has
+    // slightly more width"): extra px added on top of the computed
+    // implicitWidth below — Segment has no built-in "wider when selected"
+    // concept, so a caller that wants one (Workspaces.qml, bound to its own
+    // `active`) drives this instead. 0 for every other existing caller, so
+    // nothing else changes width.
+    property real widthBoost: 0
+    Behavior on widthBoost {
+        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+    }
+
     // OOP-10: the status bar reads one step smaller than panel body text
     // (user R2 feedback: "reduce the font size"). A panel Segment keeps
     // the body size.
-    property int sizeStep: root.ambient === "isle" ? 0 : 2
+    property int sizeStep: root._bar ? 0 : 2
 
     // OOP-02: keep the §6.6 Role B rule for the Φ agent segment — its
     // active (processing) state is Tier-1 accent, not the B&W inversion
@@ -128,9 +157,16 @@ Item {
     // `stateColors.fg` via the ternary above, this branch would be
     // redundant for it and is skipped so tone still applies there exactly
     // as it always did.
+    // Interface rework Phase 2: `ambient === "workspace"` is excluded from
+    // the accent-active override too, same shape as `accentWhenActive`
+    // above and for the same reason — rework.md's own spec for the
+    // workspace squares is "the selected workspace ... uses inverted
+    // colors", not accent text, so `stateColors.fg` (WidgetStates.js's new
+    // "workspace" ambient branch, which resolves to the inverted-fill
+    // ink colour on active) has to actually reach the label/icon here.
     readonly property color contentColor: root.invalid
         ? Config.Appearance.error
-        : ((root.resolvedState === "active" && !root.accentWhenActive)
+        : ((root.resolvedState === "active" && !root.accentWhenActive && root.ambient !== "workspace")
             ? Config.Appearance.accent
             : (root.tone.length > 0
                 ? WidgetStates.contentColor(Config.Appearance, "value", root.tone, false)
@@ -151,7 +187,7 @@ Item {
     // panel Segment (the same half-step latitude the runner takes for its
     // own hpad).
     readonly property real paddingV: WidgetStates.chToPixels(Config.Appearance.space1, chWidth)
-        * (root.ambient === "isle" ? 0.5 : 1)
+        * (root._bar ? 0.5 : 1)
 
     readonly property real gap: WidgetStates.chToPixels(Config.Appearance.space1, chWidth)
 
@@ -166,18 +202,23 @@ Item {
     implicitHeight: _contentHeight + paddingV * 2
     // A squared button uses symmetric (vertical) padding and then grows to
     // at least its own height, so a single digit or glyph reads as a
-    // square tile rather than a wide pill.
-    implicitWidth: root.squared
+    // square tile rather than a wide pill. `widthBoost` (Interface rework
+    // Phase 2, default 0 for every caller but Workspaces.qml) adds on top.
+    implicitWidth: (root.squared
         ? Math.max(implicitHeight, layout.implicitWidth + paddingV * 2)
-        : layout.implicitWidth + paddingH * 2
+        : layout.implicitWidth + paddingH * 2) + root.widthBoost
     activeFocusOnTab: true
     opacity: WidgetStates.opacityFor(resolvedState)
 
     Rectangle {
         anchors.fill: parent
-        radius: Config.Appearance.radiusBase
+        // Interface rework Phase 1 (rework.md s5): radiusSmall/
+        // borderWidthStrong, the same thin/boxy corner and hairline
+        // Widgets/StyledButton now uses, instead of the generic
+        // radiusBase/borderWidth.
+        radius: Config.Appearance.radiusSmall
         color: root.stateColors.bg
-        border.width: Config.Appearance.borderWidth
+        border.width: Config.Appearance.borderWidthStrong
         border.color: root.stateColors.border
 
         Behavior on color {
@@ -253,25 +294,28 @@ Item {
         NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
     }
     onResolvedStateChanged: root.hoverAmount =
-        (root.ambient === "isle" && root.resolvedState === "hover") ? 1 : 0
+        (root._bar && root.resolvedState === "hover") ? 1 : 0
     Component.onCompleted: root.hoverAmount =
-        (root.ambient === "isle" && root.resolvedState === "hover") ? 1 : 0
+        (root._bar && root.resolvedState === "hover") ? 1 : 0
 
     Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        height: root.ambient === "isle" ? parent.height * root.hoverAmount : 0
-        radius: Config.Appearance.radiusBase
+        height: root._bar ? parent.height * root.hoverAmount : 0
+        // Matches the background Rectangle's own corner above, so the
+        // sweep's top edge never reads more rounded than the button it
+        // sits on.
+        radius: Config.Appearance.radiusSmall
         color: Config.Appearance.colorOpposite
-        visible: root.ambient === "isle" && height > 0.5
+        visible: root._bar && height > 0.5
     }
 
     // Follow-up (user, 2026-09-11): "invert the order, text before icon" —
-    // scoped to `ambient: "isle"` (the status bar) only, not every Segment
-    // in the app (a panel Segment elsewhere — a settings row, a sidebar
-    // tab — keeps icon-then-label; nothing there was asked to change).
-    readonly property bool labelFirst: root.ambient === "isle"
+    // scoped to bar buttons (the status bar) only, not every Segment in the
+    // app (a panel Segment elsewhere — a settings row, a sidebar tab —
+    // keeps icon-then-label; nothing there was asked to change).
+    readonly property bool labelFirst: root._bar
 
     Item {
         // A plain Item, not a Row: Qt's own Row docs say a child "should

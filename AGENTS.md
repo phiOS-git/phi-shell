@@ -44,11 +44,15 @@ watch stdout: `pkill -x qs; qs -p ~/.config/quickshell/phi`.
   `Singleton` base class and `Quickshell.Io` — `Process`, `FileView` — are
   foundational and used wherever a file legitimately bridges to an external
   process.)
-- **Type is code, instance is data (ADR 078).** A bar module, a panel tab
-  or a settings section is written once as a component; the instance is a
-  row in `Bar/modules.json`, `Panels/tabs.json` or `Settings/sections.json`.
-  Adding one must be a one-file data change — if it is not, the design is
-  wrong.
+- **Type is code, instance is data (ADR 078).** A bar module or a settings
+  section is written once as a component; the instance is a row in
+  `Bar/modules-top.json`/`Bar/modules-bottom.json` or `Settings/
+  sections.json`. Adding one must be a one-file data change — if it is
+  not, the design is wrong. (`Panels/tabs.json` was this same registry
+  for Panels/Sidebar.qml's two tabs; interface rework Phase 3 retired
+  both — Notifications and Clipboard are now independent overlays,
+  Panels/NotificationsOverlay.qml and Panels/ClipboardOverlay.qml, not a
+  tabbed dock, so there was no longer a one-of-many set to register.)
 - **Capability-gated (ADR 074).** A module declares a capability
   requirement and appears only where `Config/Capabilities.qml` reports it.
   The shell never asks "am I a laptop".

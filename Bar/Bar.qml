@@ -7,13 +7,15 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "modules" as Modules
 
-// phiOS — Bar/Bar.qml (S-22, master plan §8.2/§8.4, ADR 078): one instance
-// per screen (shell.qml's Variants), three islands — left workspaces,
-// centre active window title, right status cluster ending with the clock.
-// Composition is Bar/modules.json, read once at startup; adding a module
-// is a one-file data change (this file's own DONE WHEN) — componentFor()
-// below is the only place a new TYPE needs code, exactly ADR 078's rule:
-// the type is code written once, the instance is data.
+// phiOS — Bar/Bar.qml (S-22, master plan §8.2/§8.4, ADR 078; interface
+// rework Phase 2, rework.md's "## Status bars"): TWO instances per screen
+// (shell.qml's two Variants blocks, one per `edge`), each with the same
+// three-island shape but a different module set — see this file's own
+// `edge` property. Composition is Bar/modules-top.json (edge: "top") or
+// Bar/modules-bottom.json (edge: "bottom"), read once at startup; adding a
+// module is a one-file data change (this file's own DONE WHEN) —
+// componentFor() below is the only place a new TYPE needs code, exactly
+// ADR 078's rule: the type is code written once, the instance is data.
 //
 // `import "modules" as Modules` is a plain relative-path import, not the
 // newer `qs.Bar.modules` config-relative one: Quickshell's own guide says
@@ -40,8 +42,25 @@ import "modules" as Modules
 PanelWindow {
     id: bar
 
+    // Interface rework Phase 2 (rework.md's "## Status bars": "There will
+    // be 2 status bars, one on the top and one on the bottom of the
+    // screen"). "top" (default — every existing caller/behaviour is
+    // unchanged) or "bottom": which physical screen edge THIS instance
+    // sits against. Threaded through `anchors` below, the registry
+    // filename (registryFile), BarIsle's own outward/inward corner
+    // direction, the fullscreen-autohide slide direction (barContent's own
+    // `y`), and BarMetrics reporting (only the top bar publishes — see
+    // that binding's own comment) — a parameter, not a second near-copy of
+    // this 360-line file: everything else here (islands, componentFor,
+    // capability filtering, the fullscreen auto-hide condition itself,
+    // IdleInhibitor, height/exclusiveZone) is genuinely edge-independent,
+    // and the few spots that are not turned out to be small, well-scoped
+    // conditionals, not a structural fork.
+    property string edge: "top"
+
     anchors {
-        top: true
+        top: bar.edge === "top"
+        bottom: bar.edge === "bottom"
         left: true
         right: true
     }
@@ -82,8 +101,35 @@ PanelWindow {
     // of the bar (the notification / chat docks, the bar popouts, the
     // calendar) read one number instead of each keeping its own estimate.
     // This file is the only one that can measure the isle footprints.
-    onHeightChanged: Services.BarMetrics.report(bar.height)
-    Component.onCompleted: Services.BarMetrics.report(bar.height)
+    //
+    // Interface rework Phase 2: gated to the TOP bar only. BarMetrics.qml's
+    // own header assumes every Bar instance reports the SAME height ("the
+    // formula is font metrics + tokens, never per-monitor content —
+    // whichever ... delegate writes last is correct for all readers") — a
+    // real assumption now that a top and a bottom bar can genuinely differ
+    // (different module sets, so a different isle footprint), and every
+    // current BarMetrics consumer (Panels/BarPopout.qml, Panels/
+    // Calendar.qml, the notification/chat docks) positions itself below
+    // the TOP bar, where every one of those triggering icons actually
+    // lives. Left ungated, the bottom bar would nondeterministically
+    // overwrite the shared value with its own (possibly different) height,
+    // depending only on Variants instantiation order. If a later phase
+    // needs the bottom bar's own height too (e.g. something anchored above
+    // it), BarMetrics gets a second property then — not guessed at here.
+    //
+    // Interface rework Phase 3: that later phase is this one — most of
+    // Panels/BarPopout.qml's keys now open from a bottom-bar icon
+    // (Bar/modules-bottom.json), and need to sit above THIS bar's real
+    // height, not the top bar's. `reportBottom` is the second property
+    // this comment already named, read only by the bottom instance.
+    onHeightChanged: {
+        if (bar.edge === "top") Services.BarMetrics.report(bar.height)
+        else Services.BarMetrics.reportBottom(bar.height)
+    }
+    Component.onCompleted: {
+        if (bar.edge === "top") Services.BarMetrics.report(bar.height)
+        else Services.BarMetrics.reportBottom(bar.height)
+    }
 
     property var registryRows: []
 
@@ -137,6 +183,16 @@ PanelWindow {
         case "clipboard": return clipboardComponent
         case "timer": return timerComponent
         case "stopwatch": return stopwatchComponent
+        // Interface rework Phase 2 additions (Bar/modules-top.json /
+        // Bar/modules-bottom.json). "separator" is edge-agnostic — the same
+        // component registers for both bars, same as every case above it.
+        case "separator": return separatorComponent
+        case "lens": return lensComponent
+        case "currentApp": return currentAppComponent
+        case "windowList": return windowListComponent
+        case "stats": return statsComponent
+        case "networkStatus": return networkStatusComponent
+        case "statusMenu": return statusMenuComponent
         default:
             console.warn("phi-shell: Bar module type not recognized: " + type)
             return null
@@ -172,21 +228,47 @@ PanelWindow {
     Component { id: gpuComponent; Modules.Gpu { screen: bar.screen } }
     Component { id: phiAgentComponent; Modules.PhiAgent { screen: bar.screen } }
     // ADR 134 (reversing ADR 122) removed the separate `specialWorkspaces`
-    // module: btop and Steam are plain numbered workspaces now, rendered by
-    // Modules.Workspaces itself as a pinned-app glyph (Bar/workspace-icons.json).
+    // module: btop and Steam live on plain numbered workspaces (unchanged,
+    // phios-dotfiles' hyprland.lua.tmpl). Interface rework Phase 2
+    // (rework.md, "Features to be removed": "no more workspaces specific
+    // for a certain program") removed the pinned-app-glyph RENDERING this
+    // comment used to describe — Modules.Workspaces shows every workspace's
+    // plain number again, Bar/workspace-icons.json is gone — while leaving
+    // the actual Hyprland-side pinning untouched (a separate task's scope).
     Component { id: notificationsComponent; Modules.Notifications { screen: bar.screen } }
     Component { id: clipboardComponent; Modules.Clipboard { screen: bar.screen } }
     Component { id: timerComponent; Modules.Timer { screen: bar.screen } }
     Component { id: stopwatchComponent; Modules.Stopwatch { screen: bar.screen } }
 
+    // Interface rework Phase 2: none of Bar/modules-top.json / Bar/
+    // modules-bottom.json contain a "power"/"activeWindow"/"network"/
+    // "wifi"/"ethernet"/"timer"/"stopwatch" row any more (rework.md's own
+    // bar layout replaces/removes each — see this phase's own report for
+    // the full mapping), so every Component above this line for those
+    // types is now dormant — left registered, same "the file stays in the
+    // tree, dormant" precedent Overview/Overview.qml already set (OOP-24's
+    // own comment) — rather than deleted, since a later phase may still
+    // want e.g. Power.qml's content folded into the new "status" overlay,
+    // or Network/Wifi/Ethernet's own BarPopout sections once that overlay
+    // is rebuilt. A stale case with no data row behind it is harmless: it
+    // simply never triggers.
+
+    Component { id: separatorComponent; Modules.Separator { screen: bar.screen } }
+    Component { id: lensComponent; Modules.Lens { screen: bar.screen } }
+    Component { id: currentAppComponent; Modules.CurrentApp { screen: bar.screen } }
+    Component { id: windowListComponent; Modules.WindowList { screen: bar.screen } }
+    Component { id: statsComponent; Modules.Stats { screen: bar.screen } }
+    Component { id: networkStatusComponent; Modules.NetworkStatus { screen: bar.screen } }
+    Component { id: statusMenuComponent; Modules.StatusMenu { screen: bar.screen } }
+
     FileView {
         id: registryFile
-        path: Qt.resolvedUrl("./modules.json")
+        path: Qt.resolvedUrl(bar.edge === "bottom" ? "./modules-bottom.json" : "./modules-top.json")
         onLoaded: {
             try {
                 bar.registryRows = JSON.parse(registryFile.text())
             } catch (e) {
-                console.warn("phi-shell: Bar/modules.json failed to parse: " + e)
+                console.warn("phi-shell: " + registryFile.path + " failed to parse: " + e)
                 bar.registryRows = []
             }
             // `startupReveal`'s own comment on why this waits for THIS
@@ -267,6 +349,13 @@ PanelWindow {
     // throughout.
     exclusiveZone: bar.autoHidden ? 0 : bar.height
 
+    // Interface rework Phase 2: already edge-correct with no change needed
+    // — this HoverHandler covers `bar` itself (the PanelWindow), whose own
+    // geometry sits at whichever physical edge `anchors` above pins it to
+    // and never moves (only `barContent`'s own `y` below slides while
+    // concealed) — so "hover near the top" for a top bar and "hover near
+    // the bottom" for a bottom bar both fall out of the SAME unconditional
+    // HoverHandler for free, without reading `bar.edge` at all.
     HoverHandler {
         id: hoverHandler
     }
@@ -274,7 +363,13 @@ PanelWindow {
     Item {
         id: barContent
         anchors.fill: parent
-        y: bar.concealed ? -bar.height : 0
+        // Interface rework Phase 2: a bottom bar slides DOWN off-screen
+        // (+bar.height) while concealed, not up — the mirror of the top
+        // bar's existing -bar.height. Both directions still slide the
+        // content fully clear of the reserved strip in the direction that
+        // reads as "leaving toward the edge it belongs to", not toward the
+        // screen's centre.
+        y: bar.concealed ? (bar.edge === "top" ? -bar.height : bar.height) : 0
 
         Behavior on y {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
@@ -282,6 +377,7 @@ PanelWindow {
 
     Widgets.BarIsle {
         id: leftIsle
+        edge: bar.edge
         anchors.left: parent.left
         anchors.leftMargin: bar.islandMargin
         anchors.verticalCenter: parent.verticalCenter
@@ -310,6 +406,7 @@ PanelWindow {
 
     Widgets.BarIsle {
         id: rightIsle
+        edge: bar.edge
         anchors.right: parent.right
         anchors.rightMargin: bar.islandMargin
         anchors.verticalCenter: parent.verticalCenter
@@ -330,12 +427,19 @@ PanelWindow {
     // OOP-03: the centre isle is pinned to the TRUE horizontal centre of
     // the screen (user directive — it is no longer evenly spaced between
     // the two side isles). It is a single Loader, not a Row+Repeater:
-    // master plan §8.4 describes the centre as one fixed role ("centro =
-    // titolo finestra attiva"). `maxContentWidth` reserves the WIDER of
-    // the two side isles on BOTH sides, so the title stays screen-centred
-    // and can never overlap either isle — ActiveWindow elides within it.
+    // master plan §8.4 describes the centre as one fixed role, now edge-
+    // dependent (interface rework Phase 2): the top bar's centre is the
+    // clock, the bottom bar's is Modules.WindowList. `maxContentWidth`
+    // reserves the WIDER of the two side isles on BOTH sides, so whatever
+    // sits in the centre stays screen-centred and can never overlap either
+    // isle — the clock never grows past it; WindowList's own Row is capped
+    // by the same `width` binding below and simply cannot show every
+    // window if there are enough of them to exceed it (no internal elide/
+    // scroll built for that case this phase — flagged for a later pass if
+    // it proves a real problem on a host with many open windows).
     Widgets.BarIsle {
         id: centerIsle
+        edge: bar.edge
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
         visible: centerLoader.item !== null && centerLoader.width > 0

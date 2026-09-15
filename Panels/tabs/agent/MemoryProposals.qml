@@ -7,10 +7,29 @@ import qs.Widgets as Widgets
 // Pending proposals grouped by level (system / personality / project). Each
 // shows the LITERAL append-diff — never a summary (§8.6). The panel widens
 // for this section (AgentPanel.targetWidth).
+//
+// Interface rework Phase 4 (rework.md: the panel's "status" tab is "a quick
+// overview of the system status (use icons and small texts) and the list
+// of memory proposal"): this file is now that whole tab, not just the
+// proposals half of it — Panels/AgentPanel.qml's rail renamed "Memory
+// proposals" to "Status" and retargeted its Loader here unchanged. The
+// proposals list below is untouched; only the `statusChips` section above
+// it is new, additive content. Deliberately reuses data this panel already
+// reads elsewhere rather than adding new backend plumbing: agent health
+// (Services.Agent.available, the same field Chat.qml's "Agent offline"
+// state already reads), the containment/broker infra unit list
+// (Services.AgentInfra.units, already read by CodingSessions.qml for its
+// own preflight banner), and the active project (Services.Agent.
+// activeProject). "Infra" is a coarse up/N-of-M count across every unit
+// AgentInfra already polls — CodingSessions.qml's own a2DownUnits() is
+// narrower on purpose (only the units A2 needs); this tab has no single
+// "which units matter" answer of its own, so it shows the whole set
+// AgentInfra already tracks rather than guessing a subset.
 
 Item {
     id: root
     readonly property var agent: Services.Agent
+    readonly property var infra: Services.AgentInfra
 
     TextMetrics { id: ch; font.family: Config.Appearance.fontMono; font.pixelSize: Config.Appearance.fontSize1; text: "0" }
     readonly property real chWidth: ch.width
@@ -19,7 +38,36 @@ Item {
     // key = level + " " + name  ->  { current, add }
     property var diffs: ({})
 
-    Component.onCompleted: agent.refreshAllProposals()
+    // Interface rework Phase 4 (s4, the StaggerReveal cascade below): armed
+    // one tick after creation rather than starting true — StaggerReveal's
+    // own first `_animate()` call sets a child's opacity straight to its
+    // target with no animation the very first time it runs (it has no
+    // prior "hidden" state to animate FROM), so `shown` has to genuinely
+    // transition false→true for the cascade to actually play, the same
+    // `Qt.callLater` pattern Panels/AgentPanel.qml's own `_animReady` uses.
+    property bool _revealArmed: false
+
+    readonly property var statusChips: {
+        const agentOk = root.agent.available
+        const units = root.infra.units || []
+        const upCount = units.filter((u) => u.active === "active").length
+        const infraOk = root.infra.loaded && units.length > 0 && upCount === units.length
+        return [
+            { glyph: "●", tone: agentOk ? "success" : "error",
+              text: "Agent " + (agentOk ? "online" : "offline") },
+            { glyph: "●", tone: !root.infra.loaded ? "" : (infraOk ? "success" : "warn"),
+              text: "Infra " + (root.infra.loaded ? (upCount + "/" + units.length + " active") : "checking…") },
+            { glyph: "●", tone: root.agent.activeProject.length > 0 ? "info" : "",
+              text: "Project " + (root.agent.activeProject.length > 0 ? root.agent.activeProject : "none") }
+        ]
+    }
+
+    Component.onCompleted: {
+        agent.refreshAllProposals()
+        agent.refreshHealth()
+        infra.refresh()
+        Qt.callLater(function () { root._revealArmed = true })
+    }
     Connections {
         target: agent
         function onLevelProposalTextReady(level, name, current, add) {
@@ -64,10 +112,39 @@ Item {
         contentHeight: col.implicitHeight
         clip: true
 
-        Column {
+        // Interface rework Phase 4 (s4): the status chips row and the
+        // proposals list below cascade in together, same shallow stagger
+        // Phase 3's overlays already apply to their own lists
+        // (Panels/tabs/Clipboard.qml, Panels/tabs/Notifications.qml) —
+        // StaggerReveal IS the column, no wrapping Column needed (see its
+        // own header comment).
+        Widgets.StaggerReveal {
             id: col
+            shown: root._revealArmed
             width: parent.width
             spacing: root.gap
+
+            Widgets.StyledText { kind: "title"; text: "System status" }
+            Widgets.Panel {
+                width: col.width
+                height: statusRow.implicitHeight + padding * 2
+                Row {
+                    id: statusRow
+                    width: parent.width
+                    spacing: root.gap
+                    Repeater {
+                        model: root.statusChips
+                        delegate: Column {
+                            required property var modelData
+                            spacing: root.chWidth * Config.Appearance.space1 * 0.5
+                            Widgets.StyledText { kind: "label"; sizeStep: 2; tone: modelData.tone; text: modelData.glyph }
+                            Widgets.StyledText { kind: "label"; sizeStep: 0; text: modelData.text }
+                        }
+                    }
+                }
+            }
+
+            Widgets.Separator { width: parent.width }
 
             Row {
                 width: parent.width

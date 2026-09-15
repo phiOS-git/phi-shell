@@ -43,12 +43,16 @@ Widgets.Segment {
     required property ShellScreen screen
 
     ambient: "isle"
-    active: Services.NotificationPanel.shown && Services.NotificationPanel.tab === 1
+    // Interface rework Phase 3: the clipboard overlay is now its own
+    // independent surface (Panels/ClipboardOverlay.qml), not a tab of the
+    // retired Panels/Sidebar.qml — `active` tracks
+    // Services.NotificationPanel.clipboardShown directly.
+    active: Services.NotificationPanel.clipboardShown
     tone: root._pulse ? "info" : ""
 
     property bool _pulse: false
 
-    onActivated: Services.NotificationPanel.openClipboard()
+    onActivated: Services.NotificationPanel.toggleClipboard(root.rightX())
 
     Timer {
         id: pulseOffTimer

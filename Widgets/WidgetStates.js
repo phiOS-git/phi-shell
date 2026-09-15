@@ -137,9 +137,56 @@ function surfaceColors(appearance, resolvedState, ambient) {
         case "focus":
             return { bg: offWash, fg: appearance.colorOpposite, border: appearance.focusRing }
         case "hover":
-            return { bg: offWash, fg: appearance.colorOpposite, border: appearance.colorOpposite }
+            // Interface rework Phase 1 (rework.md s5): border alone moves
+            // to the dedicated hairline token — `fg` (the knob) keeps the
+            // full-contrast `colorOpposite` the original bugfix above
+            // needed for real visibility, so this does not undo that; the
+            // track OUTLINE just no longer has to be full B&W contrast too
+            // for the switch to read clearly on hover.
+            return { bg: offWash, fg: appearance.colorOpposite, border: appearance.borderStrong }
         default:
-            return { bg: offWash, fg: appearance.textMuted, border: appearance.textMuted }
+            // Same rework.md s5 note as "hover" above: the resting track
+            // outline reads off the actual border-role token instead of
+            // reusing the muted-TEXT token for a non-text stroke.
+            return { bg: offWash, fg: appearance.textMuted, border: appearance.borderStrong }
+        }
+    }
+
+    // `ambient: "shaded"` — Out-of-plan: interface rework Phase 1
+    // (rework.md s3: "the theme should make more use of shades ... have
+    // shades of that colo[u]r used for most of the UI ... text uses white
+    // on black and vice versa. The accent color is used for details.").
+    // Config/Appearance.qml has carried `surface1/2/3` (bg-1/2/3) and
+    // `border`/`borderStrong` since OOP-02 for exactly this, but nothing in
+    // this file ever read them — every "panel"-shaped control instead fell
+    // through to the generic block below, which is a full `colorMain`/
+    // `colorOpposite` B&W inversion. This is a NEW branch, not an edit to
+    // that block: Widgets/Checkbox, Widgets/Radio and Widgets/ListRow (all
+    // untouched this phase — out of scope, later phases' widgets) keep
+    // calling surfaceColors() with no ambient at all and still get the
+    // unchanged block below. Only Widgets/Panel, Widgets/SmallButton,
+    // Widgets/StyledButton and Widgets/Segment's own default (was the bare
+    // "panel" string, now "shaded") opt in.
+    //
+    // `active` (selected) no longer swaps the whole surface to the
+    // opposite ink colour — it rises one more shade (surface3, the most
+    // elevated step) and gets an accent-coloured edge, so accent stays
+    // "fine detail only" (the edge, not a fill) even for the one state
+    // that most wants to stand out. `focus` keeps the pre-existing accent
+    // ring convention unchanged (already the one state s3 always allowed
+    // accent on).
+    if (ambient === "shaded") {
+        switch (resolvedState) {
+        case "active":
+            return { bg: appearance.surface3, fg: appearance.textPrimary, border: appearance.accent }
+        case "invalid":
+            return { bg: appearance.surface1, fg: appearance.error, border: appearance.error }
+        case "focus":
+            return { bg: appearance.surface1, fg: appearance.textPrimary, border: appearance.focusRing }
+        case "hover":
+            return { bg: appearance.surface2, fg: appearance.textPrimary, border: appearance.borderStrong }
+        default:
+            return { bg: appearance.surface1, fg: appearance.textPrimary, border: appearance.border }
         }
     }
 
@@ -196,6 +243,38 @@ function surfaceColors(appearance, resolvedState, ambient) {
             // (formerly always-on) translucent box.
             return { bg: "transparent", fg: appearance.colorOpposite,
                      border: "transparent" }
+        }
+    }
+
+    // `ambient: "workspace"` — Out-of-plan: interface rework Phase 2
+    // (rework.md: "workspace list: a list of clickable squares, with hover
+    // and active states. They show the number of the workspace and a thin
+    // border, no background. The selected workspace ... uses inverted
+    // colors."). A workspace-square-specific variant of "isle" above — same
+    // bar-button grammar in every other respect (Segment's own `_bar` flag
+    // keeps the mono font / tight isle padding / hover-sweep it shares with
+    // "isle") — that differs in exactly the two things the spec calls out
+    // and "isle" above deliberately does NOT have any more: a real resting
+    // BORDER (every other isle button dropped its resting border/background
+    // entirely, OOP-21) and a real INVERTED FILL on active (every other
+    // isle button's own active state is bare accent text with no fill,
+    // OOP-02 / the 2026-09-12 follow-up — Segment.qml's own `contentColor`
+    // carves this ambient out of that override so `stateColors.fg` below is
+    // actually used). The width increase itself is Bar/modules/
+    // Workspaces.qml's own job (`Segment.widthBoost`) — this file only
+    // supplies colour.
+    if (ambient === "workspace") {
+        switch (resolvedState) {
+        case "active":
+            return { bg: appearance.colorOpposite, fg: appearance.colorMain, border: appearance.colorOpposite }
+        case "invalid":
+            return { bg: "transparent", fg: appearance.error, border: appearance.error }
+        case "focus":
+            return { bg: "transparent", fg: appearance.colorOpposite, border: appearance.focusRing }
+        case "hover":
+            return { bg: "transparent", fg: appearance.colorMain, border: appearance.colorOpposite }
+        default:
+            return { bg: "transparent", fg: appearance.colorOpposite, border: appearance.border }
         }
     }
 

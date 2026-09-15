@@ -1,6 +1,5 @@
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
@@ -38,9 +37,17 @@ Widgets.Segment {
     property int sustainedMs: 60000
     property real tempThreshold: 75
 
-    property real utilPercent: 0
-    property real tempC: 0
+    // Interface rework Phase 3: the actual nvidia-smi poll now lives in
+    // Services/GpuStats.qml, shared with the Stats overlay (Panels/
+    // BarPopout.qml's "stats" section) rather than run a second time here
+    // — this module's own job is the anomaly-detection POLICY below
+    // (sustained-high-usage / over-threshold), not the raw read.
+    readonly property real utilPercent: Services.GpuStats.utilPercent
+    readonly property real tempC: Services.GpuStats.tempC
     property var aboveSince: null
+
+    Component.onCompleted: Services.GpuStats.watch()
+    Component.onDestruction: Services.GpuStats.unwatch()
 
     readonly property bool tempAnomaly: root.tempC > root.tempThreshold
     // Not a `readonly property bool: ... Date.now() - aboveSince > ...`
@@ -65,7 +72,11 @@ Widgets.Segment {
     // glyph, plus a breathing outline while `utilAnomaly` holds (sustained
     // high usage), same "ongoing state -> category A" reasoning
     // BatteryIcon's charging bolt already uses.
-    label: Math.round(root.utilPercent) + "%"
+    // Interface rework Phase 2 (rework.md, "Features to be removed": "no
+    // icon has text next to it anymore"): the utilisation "%" text label is
+    // gone — GpuIcon's own `level` fill and `anomalyAmount` breathe already
+    // carry both visually.
+    label: ""
     tone: root.tempAnomaly ? "error" : (root.utilAnomaly ? "warn" : "")
     active: Services.BarPopout.which === "gpu"
 
@@ -77,7 +88,21 @@ Widgets.Segment {
     Behavior on anomalyAmount {
         NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
     }
-    onUtilPercentChanged: root.gpuLevel = Math.max(0, Math.min(1, root.utilPercent / 100))
+    onUtilPercentChanged: {
+        root.gpuLevel = Math.max(0, Math.min(1, root.utilPercent / 100))
+        // Interface rework Phase 3: the anomaly-detection policy that used
+        // to live in this module's own Process handler (Services/
+        // GpuStats.qml now owns the raw poll) — same edge logic, moved
+        // here since this is the one place utilPercent's own change still
+        // fires locally.
+        if (root.utilPercent > root.utilThreshold) {
+            if (root.aboveSince === null) root.aboveSince = Date.now()
+        } else {
+            root.aboveSince = null
+        }
+        root.utilAnomaly = root.aboveSince !== null
+            && (Date.now() - root.aboveSince) > root.sustainedMs
+    }
     onUtilAnomalyChanged: root.anomalyAmount = root.utilAnomaly ? 1 : 0
 
     onActivated: Services.BarPopout.toggle("gpu", root.rightX())
@@ -91,40 +116,4 @@ Widgets.Segment {
         }
     }
 
-    Timer {
-        // A functional constant (how often to poll nvidia-smi), not a
-        // design-system value — same category as Clock.qml's own tick.
-        interval: 5000
-        running: true
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: poll.running = true
-    }
-
-    Process {
-        id: poll
-        command: ["nvidia-smi", "--query-gpu=utilization.gpu,temperature.gpu",
-            "--format=csv,noheader,nounits"]
-        // running=false in onExited: the same class of bug found during
-        // S-36's audit and fixed the same way in Services/Tailscale.qml —
-        // without this, the 5-second Timer above was never actually
-        // pacing nvidia-smi at all; the first poll respawned itself
-        // immediately on exit and kept doing so in a tight loop.
-        onExited: poll.running = false
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const parts = this.text.trim().split(",")
-                if (parts.length !== 2) return
-                root.utilPercent = parseFloat(parts[0])
-                root.tempC = parseFloat(parts[1])
-                if (root.utilPercent > root.utilThreshold) {
-                    if (root.aboveSince === null) root.aboveSince = Date.now()
-                } else {
-                    root.aboveSince = null
-                }
-                root.utilAnomaly = root.aboveSince !== null
-                    && (Date.now() - root.aboveSince) > root.sustainedMs
-            }
-        }
-    }
 }

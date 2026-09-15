@@ -32,7 +32,21 @@ Singleton {
     id: root
 
     property var rules: []
-    readonly property bool active: _computeActive()
+    // Interface rework Phase 3 (status overlay, rework.md: "stay-awake
+    // (amphetamine icon with 2 states)"). A real, working addition to this
+    // file's own rule-based automatic detection, not a stub: forcing
+    // `active` true regardless of what the rule scan below finds is
+    // exactly what "manually keep the system awake" means, and every
+    // consumer of `active` (the actual idle-inhibit protocol object lives
+    // in Bar/Bar.qml, this file's own header explains why) already reads
+    // this one property, so nothing downstream needs to change to honour
+    // it. Session-local, not persisted — same category as every other
+    // plain manual override in this shell (e.g. Services/Notifications.qml's
+    // own DND toggle), not a `phi state` key.
+    property bool manualOverride: false
+    function setManualOverride(v) { root.manualOverride = !!v }
+
+    readonly property bool active: root.manualOverride || _computeActive()
 
     FileView {
         id: rulesFile

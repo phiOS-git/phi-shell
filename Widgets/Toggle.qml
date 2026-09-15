@@ -100,7 +100,12 @@ Item {
         anchors.fill: parent
         radius: Config.Appearance.radiusSmall
         color: root.stateColors.bg
-        border.width: Config.Appearance.borderWidth
+        // Interface rework Phase 1 (rework.md s5, "buttons and switch that
+        // absolutely requires rework"): the hairline token, not the
+        // bulkier generic one — see WidgetStates.js's "toggle" ambient for
+        // the matching border-colour change (borderStrong, not textMuted/
+        // colorOpposite).
+        border.width: Config.Appearance.borderWidthStrong
         border.color: root.stateColors.border
 
         Behavior on color {

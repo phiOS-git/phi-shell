@@ -19,15 +19,25 @@ import qs.Widgets as Widgets
 //     (no Alt to release); three-finger-down closes it. hyprland.lua
 //     points that gesture at `alttab open` / `alttab close` (OOP-25).
 //   - in either mode a click on a window box focuses that window and
-//     closes; a click on a workspace pill switches to that workspace and
 //     closes; a click on the dim closes with no focus change.
+//   - a click on a workspace pill PANS the overview to that workspace
+//     (crossfades the window grid) without closing or touching Hyprland's
+//     real focus — interface rework Phase 5 (rework.md, "overview":
+//     "Clicking a workspace in the overview simply move the view to that
+//     workspace without closing the overview"). Before this phase a pill
+//     click both switched Hyprland's real workspace and closed the
+//     surface, the same as a window click; it no longer does either.
 //
-// Layout (user's directive): window boxes, all the same size, icon over
-// name, grouped by workspace into horizontal rows — the top row is the
-// lowest-numbered workspace, the bottom row the highest. The full
-// workspace list runs along the bottom of the screen, centred, with the
-// workspace of the *selected* window highlighted (so cycling moves the
-// highlight coherently).
+// Layout (interface rework Phase 5, rework.md "overview"; supersedes the
+// original per-workspace-rows layout this file shipped with): window
+// boxes, all the same size, icon over name, for ONE workspace at a time —
+// root.viewedWorkspaceId, not necessarily root.selectedWorkspaceId or the
+// real Hyprland-active workspace, since panning (above) can now move the
+// view independently of both — laid out as a single row, centred on
+// screen. The full workspace list still runs along the bottom of the
+// screen, centred; its highlighted pill now tracks viewedWorkspaceId (see
+// that property's own comment for the active/viewed/selected three-way
+// split and why the strip picks viewedWorkspaceId specifically).
 //
 // Window data is a `hyprctl clients -j` snapshot taken on open — the
 // established shape in this repo (Screenshot.qml, the old AltTab confirm,
@@ -172,8 +182,13 @@ PanelWindow {
 
     // --- derived model ---------------------------------------------------
 
-    // Windows grouped by workspace, workspaces ascending — one row per
-    // non-empty workspace, top row lowest id.
+    // Windows grouped by workspace, workspaces ascending. No longer the
+    // layout model since interface rework Phase 5 (the grid now draws only
+    // root.viewedWorkspaceId's windows — see viewedWindows below) — this
+    // still exists purely to give `flat` a stable, deterministic full
+    // cycle order (every window, lowest-workspace-first) for Alt+Tab,
+    // which still cycles across every workspace, not just the one being
+    // viewed.
     readonly property var groups: {
         const byWs = ({})
         const order = []
@@ -205,11 +220,62 @@ PanelWindow {
         return -1
     }
 
-    // The workspace the selected window is on — the strip highlights this,
-    // so cycling windows moves the highlight coherently.
+    // The workspace the selected window is on — kept as the single source
+    // used both to seed viewedWorkspaceId below and (unchanged from
+    // before) as part of window-focus bookkeeping.
     readonly property int selectedWorkspaceId: {
         const i = root.selectedFlatIndex
         return (i >= 0) ? root.flat[i].wsId : -1
+    }
+
+    // --- current-workspace view (rework.md "overview") -------------------
+    //
+    // The workspace whose windows the centred grid currently shows. Two
+    // writers, matching rework.md's two ways the view can change:
+    //   - every Alt+Tab cycle / the initial open-time selection, via the
+    //     onSelectedAddressChanged handler below — reuses selectedWorkspaceId
+    //     (the same lookup the workspace strip's highlight already used
+    //     before this phase), not a second way to find "the workspace of
+    //     the selected window". This is also how it is seeded on open:
+    //     _selectStartWindow/_applyStartSelection set selectedAddress as
+    //     soon as the snapshot (and then the active-window lookup) lands,
+    //     which fires this handler.
+    //   - a workspace-pill click, via _panTo() below, which sets this
+    //     directly WITHOUT touching selectedAddress — panning looks at a
+    //     different workspace without changing what Alt+Tab is about to
+    //     confirm.
+    // These two can now genuinely disagree (pan to workspace 3 while the
+    // Alt+Tab selection is still a window on workspace 1) — that is the
+    // point of "clicking a workspace simply moves the view", not a bug.
+    property int viewedWorkspaceId: -1
+
+    onSelectedAddressChanged: {
+        if (root.selectedWorkspaceId >= 0)
+            root.viewedWorkspaceId = root.selectedWorkspaceId
+    }
+
+    // The real Hyprland-active workspace, independent of what the overview
+    // is currently showing. Same source Services/HyprlandBridge.qml's own
+    // leaveReservedWorkspace() reads (`workspaces.values`, each entry's own
+    // `.active`) — not a second lookup invented for this file.
+    readonly property int activeWorkspaceId: {
+        const values = Services.HyprlandBridge.workspaces.values
+        if (!values) return -1
+        for (let i = 0; i < values.length; i++)
+            if (values[i].active) return values[i].id
+        return -1
+    }
+
+    // The centred grid's model: root.windows filtered to the workspace
+    // currently being viewed, in snapshot order — replaces the old
+    // per-workspace `groups` rows for layout purposes (groups/flat above
+    // are kept as-is; they still drive Alt+Tab's cycle order across every
+    // workspace, only what is DRAWN changes here).
+    readonly property var viewedWindows: {
+        const out = []
+        for (let i = 0; i < root.windows.length; i++)
+            if (root.windows[i].wsId === root.viewedWorkspaceId) out.push(root.windows[i])
+        return out
     }
 
     // --- open / close / cycle ------------------------------------------
@@ -309,9 +375,23 @@ PanelWindow {
             Services.HyprlandBridge.dispatch("hl.dsp.focus({ window = \"address:" + addr + "\" })")
     }
 
-    function _focusWorkspace(wsId) {
-        Services.HyprlandBridge.dispatch("hl.dsp.focus({ workspace = " + wsId + " })")
-        root._close()
+    // Interface rework Phase 5 (rework.md, "overview"): clicking a
+    // workspace pill now PANS the overview instead of switching Hyprland's
+    // real focus — the old `_focusWorkspace(wsId)` (a bare
+    // `hl.dsp.focus({ workspace = ... })` dispatch, then `_close()`) is
+    // gone; nothing dispatches to Hyprland or closes the surface here any
+    // more, only `viewedWorkspaceId` (and, through it, `viewedWindows`)
+    // changes. The window-focus path is unaffected: `_focusWindow` above
+    // already switches Hyprland to a window's real workspace AND focuses
+    // it in one dispatch (see its own header comment on this file, "one
+    // call covers both the old focuswindow AND workspace dispatches"), so
+    // confirming a selection or clicking a window box still does the real
+    // thing this function used to do, just by way of the window rather
+    // than the workspace.
+    function _panTo(wsId) {
+        if (wsId === root.viewedWorkspaceId) return
+        panFade.targetWsId = wsId
+        panFade.restart()
     }
 
     // --- geometry ------------------------------------------------------
@@ -326,7 +406,6 @@ PanelWindow {
     readonly property real cellW: chWidth * 22
     readonly property real cellH: chWidth * 9
     readonly property real cellGap: chWidth * Config.Appearance.space2
-    readonly property real rowGap: chWidth * Config.Appearance.space3
 
     // Item 8: the same modal backdrop the notification panel / chat /
     // cheatsheet use (OOP-16) — a direct child of the window, fading on
@@ -355,92 +434,119 @@ PanelWindow {
             onClicked: root._close()
         }
 
-        // --- window grid, centred ------------------------------------
-        // gridCol has an explicit width so each row Item can be that wide
-        // and centre its own Row of boxes within it (a Row cannot centre
-        // its own content, and cross-axis anchors on a positioner's own
-        // children are the fragile path). Vertical overflow for many
-        // workspaces is not handled yet — flagged for the screenshot pass.
-        Column {
-            id: gridCol
+        // --- window grid, current workspace only, centred -------------
+        // Interface rework Phase 5 (rework.md, "overview": "show the list
+        // of windows of the current workspace centred in the screen"):
+        // one centred row of same-size boxes for root.viewedWindows, no
+        // longer the old per-workspace-row stack (that grouped every
+        // workspace's windows into its own Row inside a Column of rows —
+        // gone along with the workspace grouping itself, now that only one
+        // workspace is ever drawn at a time). `gridWrap` is the thing
+        // `_panTo`'s crossfade below fades — see panFade's own comment for
+        // why a plain two-step opacity animation was chosen over
+        // Widgets/StaggerReveal for this.
+        Item {
+            id: gridWrap
             width: root.width * 0.92
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
             anchors.verticalCenterOffset: -root.cellH * 0.6   // leave room for the strip
-            spacing: root.rowGap
+            height: gridRow.height
 
-            Repeater {
-                model: root.groups
+            Row {
+                id: gridRow
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: root.cellGap
 
-                Item {
-                    id: wsRow
-                    required property var modelData
-                    width: gridCol.width
-                    height: rowInner.height
+                Repeater {
+                    model: root.viewedWindows
 
-                    Row {
-                        id: rowInner
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        spacing: root.cellGap
+                    Widgets.Panel {
+                        id: box
+                        required property var modelData
+                        width: root.cellW
+                        height: root.cellH
+                        active: box.modelData.address === root.selectedAddress
+                        // Style pass 2026-09-14: every clickable
+                        // window box had no hover feedback or
+                        // pointer cursor at all — the keyboard
+                        // selection (`active`, above) is the only
+                        // state that ever showed, so a mouse user
+                        // got no indication a box was clickable
+                        // until they clicked it.
+                        hovered: boxHover.hovered
 
-                        Repeater {
-                            model: wsRow.modelData.windows
+                        readonly property var desktopEntry:
+                            DesktopEntries.heuristicLookup(box.modelData.cls)
+                        readonly property string iconPath: box.desktopEntry !== null
+                            ? Quickshell.iconPath(box.desktopEntry.icon, true) : ""
 
-                            Widgets.Panel {
-                                id: box
-                                required property var modelData
-                                width: root.cellW
-                                height: root.cellH
-                                active: box.modelData.address === root.selectedAddress
-                                // Style pass 2026-09-14: every clickable
-                                // window box had no hover feedback or
-                                // pointer cursor at all — the keyboard
-                                // selection (`active`, above) is the only
-                                // state that ever showed, so a mouse user
-                                // got no indication a box was clickable
-                                // until they clicked it.
-                                hovered: boxHover.hovered
+                        Column {
+                            anchors.centerIn: parent
+                            width: parent.width
+                            spacing: root.chWidth * Config.Appearance.space1
 
-                                readonly property var desktopEntry:
-                                    DesktopEntries.heuristicLookup(box.modelData.cls)
-                                readonly property string iconPath: box.desktopEntry !== null
-                                    ? Quickshell.iconPath(box.desktopEntry.icon, true) : ""
+                            Image {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                visible: box.iconPath.length > 0
+                                source: box.iconPath
+                                width: root.chWidth * Config.Appearance.space5
+                                height: width
+                                fillMode: Image.PreserveAspectFit
+                            }
 
-                                Column {
-                                    anchors.centerIn: parent
-                                    width: parent.width
-                                    spacing: root.chWidth * Config.Appearance.space1
+                            Widgets.StyledText {
+                                width: parent.width
+                                horizontalAlignment: Text.AlignHCenter
+                                elide: Text.ElideRight
+                                maximumLineCount: 1
+                                color: box.contentColor
+                                text: box.modelData.title
+                            }
+                        }
 
-                                    Image {
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                        visible: box.iconPath.length > 0
-                                        source: box.iconPath
-                                        width: root.chWidth * Config.Appearance.space5
-                                        height: width
-                                        fillMode: Image.PreserveAspectFit
-                                    }
-
-                                    Widgets.StyledText {
-                                        width: parent.width
-                                        horizontalAlignment: Text.AlignHCenter
-                                        elide: Text.ElideRight
-                                        maximumLineCount: 1
-                                        color: box.contentColor
-                                        text: box.modelData.title
-                                    }
-                                }
-
-                                HoverHandler { id: boxHover; cursorShape: Qt.PointingHandCursor }
-                                TapHandler {
-                                    onTapped: {
-                                        root._focusWindow(box.modelData.address)
-                                        root._close()
-                                    }
-                                }
+                        HoverHandler { id: boxHover; cursorShape: Qt.PointingHandCursor }
+                        TapHandler {
+                            onTapped: {
+                                root._focusWindow(box.modelData.address)
+                                root._close()
                             }
                         }
                     }
                 }
+            }
+        }
+
+        // Interface rework Phase 5: the pan crossfade a workspace-pill
+        // click triggers (_panTo above). A plain two-step opacity
+        // animation on `gridWrap` — fade the currently-viewed set out,
+        // swap `viewedWorkspaceId` (and so `viewedWindows`) while
+        // invisible, fade the new set in — using the same
+        // motionBDuration/motionBCurve tokens as every other opacity
+        // transition in this file. Deliberately NOT Widgets/StaggerReveal:
+        // that widget is a vertical Column that stagger-fades a static set
+        // of already-declared children top to bottom (a settings-style
+        // list revealing itself); this is a single centred horizontal row
+        // whose entire MODEL is replaced on a pan, and rework.md's own
+        // wording — "the windows should fade out and the new one fade
+        // in" — reads as one coherent swap of the whole set, not each box
+        // cascading in individually. Retrofitting a Column-based stagger
+        // widget for a Row-based model swap would be more machinery than
+        // the brief asks for; a plain crossfade is the more faithful,
+        // minimal-surface read.
+        SequentialAnimation {
+            id: panFade
+            property int targetWsId: -1
+            NumberAnimation {
+                target: gridWrap; property: "opacity"; to: 0
+                duration: Config.Appearance.motionBDuration
+                easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve
+            }
+            ScriptAction { script: root.viewedWorkspaceId = panFade.targetWsId }
+            NumberAnimation {
+                target: gridWrap; property: "opacity"; to: 1
+                duration: Config.Appearance.motionBDuration
+                easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve
             }
         }
 
@@ -449,6 +555,16 @@ PanelWindow {
             kind: "label"
             text: "No open windows."
             visible: root.flat.length === 0
+        }
+
+        // Distinct from the empty state above: windows exist somewhere,
+        // just not on the workspace currently being viewed (reachable now
+        // that panning can show an empty workspace without closing).
+        Widgets.StyledText {
+            anchors.centerIn: parent
+            kind: "label"
+            text: "No windows on this workspace."
+            visible: root.flat.length > 0 && root.viewedWindows.length === 0
         }
 
         // --- workspace strip, along the bottom ----------------------
@@ -474,8 +590,26 @@ PanelWindow {
                     visible: wsPill.modelData.id > 0
                     label: wsPill.modelData.name.length > 0
                         ? wsPill.modelData.name : String(wsPill.modelData.id)
-                    active: wsPill.modelData.id === root.selectedWorkspaceId
-                    onActivated: root._focusWorkspace(wsPill.modelData.id)
+                    // Interface rework Phase 5: highlights root.viewedWorkspaceId
+                    // — the workspace the grid above is actually SHOWING —
+                    // not root.selectedWorkspaceId any more. The two agree
+                    // except right after a pan (see viewedWorkspaceId's own
+                    // comment), and "what am I looking at" is what this
+                    // strip is for; `tone` below is the separate, weaker
+                    // cue for "what Hyprland will actually be on if I close
+                    // without picking anything".
+                    active: wsPill.modelData.id === root.viewedWorkspaceId
+                    // Folds "real Hyprland-active" into the same pill as a
+                    // second, subtler signal rather than a second full
+                    // highlight: two simultaneous strong highlights (one
+                    // for "active", one for "viewed") would fight for
+                    // attention in a bottom-centre strip this small, and
+                    // in the common case (no panning yet) they are the
+                    // same pill anyway. Only shown when they diverge, so a
+                    // user who never pans never sees it.
+                    tone: (wsPill.modelData.id === root.activeWorkspaceId
+                        && wsPill.modelData.id !== root.viewedWorkspaceId) ? "info" : ""
+                    onActivated: root._panTo(wsPill.modelData.id)
                 }
             }
         }

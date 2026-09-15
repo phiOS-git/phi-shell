@@ -41,6 +41,12 @@ Item {
     signal blurred()
 
     property string selectedProject: ""
+    // Interface rework Phase 4 (rework.md: "a toggleable sidebar with
+    // projects and chat list"). Session-only view state — collapses the
+    // sidebar's WIDTH to zero rather than unloading it, so no scroll
+    // position/search text is lost across a toggle. See `sidebar`'s own
+    // Behavior and `sidebarToggle` below.
+    property bool sidebarCollapsed: false
     readonly property bool hasBack: root.selectedProject.length > 0
     function goBack() {
         if (projectViewLoader.item && projectViewLoader.item.hasBack) projectViewLoader.item.goBack()
@@ -69,12 +75,18 @@ Item {
         // ================= sidebar =================
         Item {
             id: sidebar
-            width: root.chWidth * 26
+            width: root.sidebarCollapsed ? 0 : root.chWidth * 26
             height: parent.height
+            clip: true
+            Behavior on width {
+                NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+            }
 
             Flickable {
                 anchors.fill: parent
-                anchors.rightMargin: root.gap
+                // Avoids a negative-width Flickable once `sidebar` reaches
+                // zero — the margin has nothing left to carve out of.
+                anchors.rightMargin: root.sidebarCollapsed ? 0 : root.gap
                 contentWidth: width
                 contentHeight: sideCol.implicitHeight
                 clip: true
@@ -292,6 +304,29 @@ Item {
                 onBlurred: root.blurred()
             }
         }
+    }
+
+    // Interface rework Phase 4 (rework.md: "a toggleable sidebar"). A
+    // sibling of the Row above rather than a child of it — a Row forcibly
+    // positions every direct child along its own flow axis — so it tracks
+    // `sidebar`'s own moving right edge from outside the Row via
+    // `mapToItem` instead of a raw cross-hierarchy anchor (the same
+    // technique, and the same reasoning, as Chat.qml's own personaCard:
+    // no anchor-direction risk to get wrong between items that are not
+    // strict siblings). Stays reachable at any width, sidebar fully
+    // expanded or fully collapsed to zero. Same SmallButton corner-icon
+    // pattern this repo already uses elsewhere for a minor, always-visible
+    // control (Panels/BarPopout.qml's settings icons), a chevron in place
+    // of a glyph icon: it points the direction the sidebar's edge will
+    // move on click.
+    Widgets.SmallButton {
+        id: sidebarToggle
+        readonly property point _anchor: sidebar.mapToItem(root, sidebar.width, 0)
+        x: sidebarToggle._anchor.x
+        y: (root.height - sidebarToggle.implicitHeight) / 2
+        z: 5
+        label: root.sidebarCollapsed ? "›" : "‹"
+        onClicked: root.sidebarCollapsed = !root.sidebarCollapsed
     }
 
     // Style pass 2026-09-14 (kept from Dashboard.qml): the star glyph only

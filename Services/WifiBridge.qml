@@ -40,6 +40,41 @@ Singleton {
     // does not attempt to show a strength gauge it has no real data for.
     readonly property bool connecting: root.present && root.device.state === ConnectionState.Connecting
 
+    // Interface rework Phase 3 (network overlay, rework.md: "If in wifi a
+    // wifi switch"). No Quickshell.Networking property exposes the radio
+    // on/off state directly (this file's own header already established
+    // that signal strength is likewise absent) — `nmcli radio wifi` is the
+    // real, documented NetworkManager CLI query for exactly this (the
+    // `nmcli` binary is already a hard dependency of this file's own
+    // scan/connect calls below), polled the same lightweight way
+    // Services/Tailscale.qml polls its own state.
+    property bool radioEnabled: true
+    function refreshRadio() { radioProbe.running = true }
+    function setRadioEnabled(v) {
+        radioSetProc.command = ["nmcli", "radio", "wifi", v ? "on" : "off"]
+        radioSetProc.running = true
+    }
+
+    Timer {
+        interval: 5000
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: root.refreshRadio()
+    }
+    Process {
+        id: radioProbe
+        command: ["nmcli", "radio", "wifi"]
+        onExited: radioProbe.running = false
+        stdout: StdioCollector {
+            onStreamFinished: root.radioEnabled = this.text.trim() === "enabled"
+        }
+    }
+    Process {
+        id: radioSetProc
+        onExited: { radioSetProc.running = false; root.refreshRadio() }
+    }
+
     function _findWifiDevice() {
         if (Networking.devices === null) return null
         const list = Networking.devices.values

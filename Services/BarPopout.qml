@@ -58,6 +58,21 @@ Singleton {
         Services.HyprlandBridge.leaveReservedWorkspace()
     }
 
+    // Interface rework Phase 3: which physical bar a given key's own
+    // triggering icon lives in, per Bar/modules-top.json /
+    // modules-bottom.json (Phase 2) — Panels/BarPopout.qml reads this to
+    // decide whether the card sits below the TOP bar or above the BOTTOM
+    // one (see Services/BarMetrics.qml's own `bottomHeight`, added
+    // alongside this), and which corner of the card sits nearest its
+    // triggering icon for the rework.md corner-radius rule. "wifi"/
+    // "ethernet"/"timer"/"stopwatch" are dormant (no bar module opens
+    // them as of Phase 2 — Bar/modules/NetworkStatus.qml's own header
+    // already documents this for wifi/ethernet) but listed here anyway so
+    // they inherit sane positioning if a later phase reconnects one.
+    readonly property var _bottomKeys: ["volume", "brightness", "network", "wifi",
+        "ethernet", "bluetooth", "battery", "stats", "gpu"]
+    function opensFromBottom(key) { return root._bottomKeys.indexOf(key) !== -1 }
+
     function toggle(key, x, edge) {
         if (root.which === key) {
             root.which = ""
@@ -89,6 +104,8 @@ Singleton {
         case "power": return "Power"
         case "timer": return "Timers & Alarms"
         case "stopwatch": return "Stopwatch"
+        case "status": return "Status"
+        case "stats": return "Stats"
         }
         return key
     }

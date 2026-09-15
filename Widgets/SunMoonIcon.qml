@@ -140,10 +140,13 @@ Item {
     readonly property real _shadowOffsetX: _r * (0.55 + 2.35 * root.dayness)
 
     // `_boxSize` derives from `sizeStep` and Config.Appearance's font
-    // tokens, neither of which changes after this item is created (a
-    // theme change re-renders Quickshell entirely, per this project's own
-    // established `phi theme set` + qs restart flow) — no handler needed
-    // for it; Canvas's own first paint already sees the settled value.
+    // tokens — the font-size scale never changes after this item is
+    // created (only per-user font-scale settings would move it, and
+    // nothing here reacts to those live either), so no handler is needed
+    // for it. Not because a theme switch restarts the shell — as of the
+    // interface rework's Colors.json split, it explicitly does not; this
+    // is just font metrics being a separate, structural token family
+    // that a colour-variant switch never touches at all.
     onIconColorChanged: canvas.requestPaint()
     onDaynessChanged: canvas.requestPaint()
     onFillLevelChanged: canvas.requestPaint()

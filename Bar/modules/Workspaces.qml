@@ -1,6 +1,5 @@
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
@@ -27,18 +26,33 @@ import "../glyphs.js" as Glyphs
 // ADR 134 (reversing ADR 122): btop and Steam live on plain numbered
 // workspaces (12 and 11, pinned by hyprland.lua — moved up from 10/9 per
 // docs/TODO.md, "make steam workspace 11 and btop workspace 12", so 9/10
-// are ordinary workspaces again). This module renders those
-// two as a pinned-app glyph instead of their digit — the workspace model is
-// sorted by id, so the two high ids sort to the right end of the strip on
-// their own, and clicking one switches to it like any other workspace. The
-// id → glyph map is Bar/workspace-icons.json (ADR 078: data, not code); it
-// replaced the separate SpecialWorkspaces module and its special-workspace
-// toggle, which never worked on real hardware.
+// are ordinary workspaces again). The Hyprland-side pinning is untouched by
+// this file — a separate task's scope (see interface rework Phase 2's own
+// report).
 //
-// The scratchpad toggle below is NOT a revival of that module's stateful
-// button: it is a bare dispatch with no highlight, because ADR 134 records
-// that the special workspace and a numeric one can both read as "active" at
-// once — a lit toggle would lie half the time.
+// Interface rework Phase 2 (rework.md, "Features to be removed": "there
+// will be no more workspaces specific for a certain program (btop/steam)")
+// removed the pinned-app-glyph RENDERING this module used to do for those
+// two ids (the `iconMap`/`ensureMap`/`pinGlyph`/`_glyph()` machinery and
+// Bar/workspace-icons.json, all gone) — every workspace, 11/12 included,
+// shows its plain number again, exactly like any other. Also restyled per
+// rework.md's own bar-element spec ("a list of clickable squares, with
+// hover and active states. They show the number of the workspace and a
+// thin border, no background. The selected workspace has slightly more
+// width and uses inverted colors."): `ambient: "workspace"` (Widgets/
+// Segment.qml's new bar-button variant, see its own header) supplies the
+// resting-border + inverted-active colour recipe, and `widthBoost` supplies
+// the width increase on the active one.
+//
+// The scratchpad toggle below is NOT a revival of the old SpecialWorkspaces
+// module's stateful button: it is a bare dispatch with no highlight,
+// because ADR 134 records that the special workspace and a numeric one can
+// both read as "active" at once — a lit toggle would lie half the time.
+// Left on plain `ambient: "isle"` (not "workspace") — it is ambiguous
+// whether rework.md's "workspaces list" element is meant to include it at
+// all (it has no number and no active state to invert), so its own look is
+// left exactly as it was rather than guessed into the new recipe; flagged
+// for the screenshot pass.
 
 Item {
     id: root
@@ -57,63 +71,10 @@ Item {
     implicitWidth: row.implicitWidth
     implicitHeight: row.implicitHeight
 
-    // { "<workspace id>": "<glyph name>" } — workspaces that render as a
-    // pinned-app icon instead of their digit. The ids must match the
-    // numbers hyprland.lua pins btop and Steam to.
-    property var iconMap: ({})
-
-    // { "<workspace id>": "<shell command>" } — an optional idempotent
-    // "make sure the pinned app is actually there" command, run (detached,
-    // via `sh -c`) every time that workspace's button is clicked, in
-    // addition to the plain workspace switch every button already does.
-    // docs/TODO.md: "if btop is closed in its workspace, the button just
-    // brakes ... should simply set the workspace 12 and open btop if it's
-    // not open" — persistent workspace 12 (hyprland.lua) keeps the button
-    // itself around even with btop closed, per the user's own design
-    // comment there ("its bar icon just switches to that workspace"), but
-    // nothing re-launched btop if the user had closed it mid-session; the
-    // click landed on an empty workspace with no way back short of a
-    // manual relaunch. `ensure` in workspace-icons.json is the exact same
-    // `pgrep -x btop >/dev/null || ...` guard hyprland.lua's own session-
-    // start hook already uses, just re-runnable from a click.
-    property var ensureMap: ({})
-
-    FileView {
-        id: iconsFile
-        path: Qt.resolvedUrl("../workspace-icons.json")
-        onLoaded: {
-            try {
-                const parsed = JSON.parse(iconsFile.text())
-                const glyphs = ({})
-                const ensures = ({})
-                if (Array.isArray(parsed)) {
-                    for (let i = 0; i < parsed.length; i++) {
-                        const e = parsed[i]
-                        if (e && e.id !== undefined) {
-                            glyphs[String(e.id)] = String(e.glyph || "")
-                            if (e.ensure) ensures[String(e.id)] = String(e.ensure)
-                        }
-                    }
-                }
-                root.iconMap = glyphs
-                root.ensureMap = ensures
-            } catch (e) {
-                console.warn("phi-shell: Bar/workspace-icons.json failed to parse: " + e)
-                root.iconMap = ({})
-                root.ensureMap = ({})
-            }
-        }
-    }
-
-    // Glyph-name → codepoint. An unknown name resolves to "" and the
-    // delegate falls back to showing the workspace digit.
-    function _glyph(name) {
-        switch (name) {
-        case "steam": return Glyphs.steam
-        case "monitor": return Glyphs.monitor
-        default: return ""
-        }
-    }
+    // Interface rework Phase 2 (rework.md: "the selected workspace has
+    // slightly more width") — how much wider the active square gets,
+    // reused as-is by every workspace Segment below via `widthBoost`.
+    readonly property real activeWidthBoost: chMetrics.width * Config.Appearance.space2
 
     Row {
         id: row
@@ -125,34 +86,21 @@ Item {
             Widgets.Segment {
                 id: wsButton
                 required property var modelData
-                // The resolved pinned-app glyph for this workspace id, or
-                // "" for an ordinary numbered workspace.
-                readonly property string pinGlyph: {
-                    const name = root.iconMap[String(modelData.id)]
-                    return name ? root._glyph(name) : ""
-                }
 
-                // OOP-03/OOP-21: squared bar buttons — the number (or the
-                // pinned-app glyph) on the wallpaper, boxed only when it is
-                // the current workspace (master plan §8.4).
-                ambient: "isle"
+                // OOP-03/interface rework Phase 2: squared bar buttons —
+                // the plain workspace number, boxed (inverted) only when it
+                // is the current workspace (master plan §8.4, rework.md's
+                // own workspace-square spec).
+                ambient: "workspace"
                 squared: true
                 // OOP-11: special workspaces (Hyprland gives them a
-                // negative id) never appear in the strip. btop/Steam are
-                // ordinary positive-id workspaces now, so they pass this
-                // filter and render via pinGlyph below.
+                // negative id) never appear in the strip.
                 visible: modelData.id > 0
                     && modelData.monitor !== null && modelData.monitor.name === root.screen.name
-                glyph: pinGlyph
-                label: pinGlyph.length > 0
-                    ? ""
-                    : (modelData.name.length > 0 ? modelData.name : String(modelData.id))
+                label: modelData.name.length > 0 ? modelData.name : String(modelData.id)
                 active: modelData.active
-                onActivated: {
-                    modelData.activate()
-                    const ensureCmd = root.ensureMap[String(modelData.id)]
-                    if (ensureCmd) Quickshell.execDetached(["sh", "-c", ensureCmd])
-                }
+                widthBoost: wsButton.active ? root.activeWidthBoost : 0
+                onActivated: modelData.activate()
 
                 // Follow-up (user, 2026-09-11): "change steam, btop and
                 // desktop number animations as well" — clarified via
