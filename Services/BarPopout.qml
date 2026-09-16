@@ -104,7 +104,17 @@ Singleton {
         case "power": return "Power"
         case "timer": return "Timers & Alarms"
         case "stopwatch": return "Stopwatch"
-        case "status": return "Status"
+        // User bug report, 2026-09-16: "in the 'status overlay' remove
+        // the title 'Status' (and the first separator line below the
+        // removed title)". The shared card header Item and its Separator
+        // (Panels/BarPopout.qml's cardBody) are both already gated on
+        // `title(root.which).length > 0` — the exact same mechanism
+        // rework-issues.md item 7 used to drop the stale "network" title
+        // above — so an empty return here removes both in one place, no
+        // second flag needed. The profile-name row (`root._profileName`,
+        // already a `kind: "title"` heading) is this card's own real
+        // headline now — status has never needed a second, redundant one.
+        case "status": return ""
         case "stats": return "Stats"
         case "microphone": return "Microphone"
         case "camera": return "Camera"
