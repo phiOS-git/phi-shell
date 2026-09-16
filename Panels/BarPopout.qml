@@ -1493,81 +1493,133 @@ PanelWindow {
                         }
                     }
 
-                    // Toggle icons — rendered as ToggleRow (label + switch),
-                    // this shell's own established idiom for exactly this
-                    // shape everywhere else it appears (Night mode/True
-                    // Tone above in this same file), not bespoke icon
-                    // glyphs; mic/camera each carry a third state a plain
-                    // switch cannot show, so those two add a status word.
-                    Widgets.ToggleRow {
+                    // rework-issues.md items 4b/7: "the sensor [rows] were
+                    // never meant as text+switch but as icons ... well
+                    // described as 'list of toggleable icons' ... it even
+                    // explains how many different states an icon should
+                    // have" and "icons should be distributed horizontally"
+                    // — was five stacked ToggleRow/Item+Toggle rows, now
+                    // one horizontal row of icon-buttons, the same bare-
+                    // icon-plus-hover-tint idiom the power icons row two
+                    // sections up already uses in this exact card. New
+                    // font glyphs were deliberately NOT invented for
+                    // True Tone/Stay awake/Microphone/Camera: Bar/modules/
+                    // Microphone.qml's own retired header already recorded
+                    // that this project has twice shipped a wrong PUA
+                    // codepoint before — short text abbreviations are the
+                    // same "the text IS the icon content" fallback
+                    // Bar/modules/{Workspaces,WindowList}.qml already rely
+                    // on elsewhere, not a placeholder. Night mode reuses
+                    // Widgets.SunMoonIcon (a real hand-drawn, animated
+                    // day/night disc, not a static glyph) — the one sensor
+                    // here that gets rework.md's "possibly animating from
+                    // one to another" for real.
+                    Row {
                         width: parent.width
-                        label: "Night mode"
-                        checked: Services.NightShift.enabled
-                        onToggled: (v) => Services.NightShift.setEnabled(v)
-                    }
-                    Widgets.ToggleRow {
-                        width: parent.width
-                        label: "True Tone"
-                        checked: Services.NightShift.trueTone
-                        enabled: Config.Capabilities.ambientLight
-                        onToggled: (v) => Services.NightShift.setTrueTone(v)
-                    }
-                    // rework.md: "stay-awake (amphetamine icon with 2
-                    // states)" — Services/Idle.qml's new `manualOverride`
-                    // (this phase) is a real, working addition.
-                    Widgets.ToggleRow {
-                        width: parent.width
-                        label: "Stay awake"
-                        checked: Services.Idle.manualOverride
-                        onToggled: (v) => Services.Idle.setManualOverride(v)
-                    }
-                    // rework.md: "microphone sensor ... enabled, disabled,
-                    // in use" — Services/AudioBridge.qml's existing
-                    // inputMuted/toggleInputMute() (a real Pipewire mute at
-                    // the source) plus its new `micInUse` (this phase, real
-                    // Pipewire link-state read).
-                    Item {
-                        width: parent.width
-                        implicitHeight: Math.max(micLabel.implicitHeight, micToggle.implicitHeight)
-                        Widgets.StyledText {
-                            id: micLabel
-                            anchors.left: parent.left
-                            anchors.right: micToggle.left
-                            anchors.rightMargin: root.chWidth
-                            anchors.verticalCenter: parent.verticalCenter
-                            kind: "label"
-                            text: "Microphone" + (Services.AudioBridge.micInUse ? " — in use" : "")
+                        spacing: root.chWidth * Config.Appearance.space3
+
+                        Item {
+                            id: nightBtn
+                            width: root.chWidth * 4; height: width
+                            Widgets.SunMoonIcon {
+                                anchors.centerIn: parent
+                                sizeStep: 3
+                                dayness: Services.NightShift.enabled ? 0 : 1
+                                fillLevel: 1
+                                iconColor: nightHover.hovered ? Config.Appearance.accent : Config.Appearance.textPrimary
+                                Behavior on dayness {
+                                    NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                                }
+                                Behavior on iconColor {
+                                    ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                                }
+                            }
+                            HoverHandler { id: nightHover; cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: Services.NightShift.setEnabled(!Services.NightShift.enabled) }
                         }
-                        Widgets.Toggle {
-                            id: micToggle
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            checked: !Services.AudioBridge.inputMuted
-                            onToggled: (v) => Services.AudioBridge.toggleInputMute()
+
+                        Item {
+                            id: trueToneBtn
+                            width: root.chWidth * 4; height: width
+                            enabled: Config.Capabilities.ambientLight
+                            // 0.45 mirrors Widgets/WidgetStates.js's own
+                            // INACTIVE_OPACITY (Settings/sections/
+                            // SettingsGroup.qml's identical comment on
+                            // this same number explains why it is
+                            // duplicated here rather than imported).
+                            opacity: enabled ? 1 : 0.45
+                            Widgets.StyledText {
+                                anchors.centerIn: parent
+                                mono: true; sizeStep: 1
+                                color: Services.NightShift.trueTone
+                                    ? Config.Appearance.accent
+                                    : (trueToneHover.hovered ? Config.Appearance.textPrimary : Config.Appearance.textMuted)
+                                text: "TT"
+                            }
+                            HoverHandler { id: trueToneHover; cursorShape: trueToneBtn.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor }
+                            TapHandler { enabled: trueToneBtn.enabled; onTapped: Services.NightShift.setTrueTone(!Services.NightShift.trueTone) }
+                        }
+
+                        // rework.md: "stay-awake (amphetamine icon with 2
+                        // states)" — Services/Idle.qml's `manualOverride`.
+                        Item {
+                            id: awakeBtn
+                            width: root.chWidth * 4; height: width
+                            Widgets.StyledText {
+                                anchors.centerIn: parent
+                                mono: true; sizeStep: 1
+                                color: Services.Idle.manualOverride
+                                    ? Config.Appearance.accent
+                                    : (awakeHover.hovered ? Config.Appearance.textPrimary : Config.Appearance.textMuted)
+                                text: "Z"
+                            }
+                            HoverHandler { id: awakeHover; cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: Services.Idle.setManualOverride(!Services.Idle.manualOverride) }
+                        }
+
+                        // rework.md: "microphone sensor ... enabled,
+                        // disabled, in use" — three real states: muted
+                        // (textMuted), enabled-idle (textPrimary),
+                        // in-use (error tone — the same "something is
+                        // actively listening" urgency every other in-use
+                        // indicator in this shell already reads as).
+                        Item {
+                            id: micBtn
+                            width: root.chWidth * 4; height: width
+                            Widgets.StyledText {
+                                anchors.centerIn: parent
+                                mono: true; sizeStep: 1
+                                color: Services.AudioBridge.inputMuted ? Config.Appearance.textMuted
+                                    : (Services.AudioBridge.micInUse ? Config.Appearance.error
+                                        : (micHover.hovered ? Config.Appearance.textPrimary : Config.Appearance.accent))
+                                text: "MIC"
+                            }
+                            HoverHandler { id: micHover; cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: Services.AudioBridge.toggleInputMute() }
+                        }
+
+                        // rework.md's camera-sensor toggle — see
+                        // Services/SensorPermissions.qml's own header for
+                        // the full "why a no-op backend" explanation.
+                        Item {
+                            id: camBtn
+                            width: root.chWidth * 4; height: width
+                            Widgets.StyledText {
+                                anchors.centerIn: parent
+                                mono: true; sizeStep: 1
+                                color: !Services.SensorPermissions.cameraEnabled ? Config.Appearance.textMuted
+                                    : (camHover.hovered ? Config.Appearance.textPrimary : Config.Appearance.accent)
+                                text: "CAM"
+                            }
+                            HoverHandler { id: camHover; cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: Services.SensorPermissions.setCameraEnabled(!Services.SensorPermissions.cameraEnabled) }
                         }
                     }
-                    // rework.md's camera-sensor toggle — see
-                    // Services/SensorPermissions.qml's own header for the
-                    // full "why a no-op backend" explanation.
-                    Item {
+                    Widgets.StyledText {
                         width: parent.width
-                        implicitHeight: Math.max(camLabel.implicitHeight, camToggle.implicitHeight)
-                        Widgets.StyledText {
-                            id: camLabel
-                            anchors.left: parent.left
-                            anchors.right: camToggle.left
-                            anchors.rightMargin: root.chWidth
-                            anchors.verticalCenter: parent.verticalCenter
-                            kind: "label"
-                            text: "Camera — not available on this build"
-                        }
-                        Widgets.Toggle {
-                            id: camToggle
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            checked: Services.SensorPermissions.cameraEnabled
-                            onToggled: (v) => Services.SensorPermissions.setCameraEnabled(v)
-                        }
+                        visible: Services.AudioBridge.micInUse
+                        kind: "label"; sizeStep: 0; tone: "error"
+                        text: "Microphone in use"
                     }
                 }
 
