@@ -3,18 +3,15 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// phiOS — Services/NetStats (Out-of-plan: settings-overhaul batch F). Live
-// throughput and latency for the Wi-Fi settings section and the wifi bar
-// overlay — the `flow`-inspired area graph (github.com/programmersd21/flow,
-// not cloned) plus the numbers.
+// Live throughput and latency for the Wi-Fi settings section and the wifi
+// bar overlay — an area graph plus the numbers.
 //
-// No `phi net` verb: this reads /proc/net/dev and runs `ping` directly, the
-// same way Services/WifiBridge.qml and Services/Tailscale.qml already read
-// their own sources rather than routing through `phi` (ADR 021 — an alias
-// over one command does not earn a verb). Every Process here sets
-// `running = false` in onExited (Services/Tailscale.qml's documented
-// landmine: Process.onFinished re-arms unconditionally, so a one-shot left
-// running tight-loops instead of polling).
+// No `phi net` verb: this reads /proc/net/dev and runs `ping` directly,
+// the same way Services/WifiBridge.qml and Services/Tailscale.qml read
+// their own sources rather than routing through `phi`. Every Process here
+// sets `running = false` in onExited — Process.onFinished re-arms
+// unconditionally, so a one-shot left running tight-loops instead of
+// polling.
 
 Singleton {
     id: root
@@ -36,20 +33,12 @@ Singleton {
 
     property real _lastRx: -1
     property real _lastTx: -1
-    // docs/TODO.md: "the speedtest feature ... always show 1-5 kb/s" — the
-    // rate formula divided the byte delta by a hardcoded 1000 (ms),
-    // trusting the poll Timer landed exactly 1.000s after the previous
-    // sample. It never actually measures that: `pingProc` below (up to a
-    // full second on packet loss, and DNS resolution for the
-    // "one.one.one.one" fallback is not bounded by `-W1` at all) runs
-    // every tick alongside `devProc`, and Services/Tailscale.qml's own
-    // documented Process-lifecycle landmine (referenced in this file's own
-    // header) means a slow or skipped tick is a real, not hypothetical,
-    // risk here. Any tick that actually lands late spans MORE real time
-    // than the 1000 this divided by, so the reported rate is too LOW by
-    // exactly that ratio — silently, with no way to tell from the number
-    // alone. `_lastSampleT` (Date.now()) makes the elapsed time measured
-    // instead of assumed.
+    // The rate formula divides the byte delta by the REAL elapsed time
+    // (`_lastSampleT`, Date.now()), not a hardcoded 1000ms poll interval —
+    // `pingProc` below can take up to a full second on packet loss and
+    // runs every tick alongside `devProc`, so a tick landing late is a
+    // real risk; dividing by an assumed 1000 would silently under-report
+    // the rate by whatever multiple the real gap exceeded 1s by.
     property real _lastSampleT: -1
 
     function watch() { root.watchers++ }
@@ -119,13 +108,8 @@ Singleton {
                     if (isNaN(rx) || isNaN(tx)) return
                     var now = Date.now()
                     if (root._lastRx >= 0 && root._lastSampleT >= 0) {
-                        // Elapsed since the LAST SUCCESSFUL sample, not the
-                        // nominal 1000ms poll interval — a late or skipped
-                        // tick used to silently under-report the rate by
-                        // whatever multiple the real gap exceeded 1s by.
                         // Floored at 0.1s so two samples landing back to
-                        // back (near-zero elapsed time) can't spike the
-                        // rate toward infinity.
+                        // back can't spike the rate toward infinity.
                         var elapsedS = Math.max(0.1, (now - root._lastSampleT) / 1000)
                         root.downKbps = Math.max(0, (rx - root._lastRx) * 8 / 1000 / elapsedS)
                         root.upKbps = Math.max(0, (tx - root._lastTx) * 8 / 1000 / elapsedS)
