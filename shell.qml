@@ -198,23 +198,23 @@ ShellRoot {
     ////////////////////////////////////////////////////////////////////////
     
     // Dialog Confirmation
-    Dialogs.ConfirmDialog {
+    Components.Dialogs.ConfirmDialog {
         screen: Quickshell.screens[0]
     }
     // Dialog Prompt
-    Dialogs.SensorPermissionPrompt {
+    Components.Dialogs.SensorPermissionPrompt {
         screen: Quickshell.screens[0]
     }
     // Dialog Battery Alert
-    Dialogs.BatteryAlert {
+    Components.Dialogs.BatteryAlert {
         screen: Quickshell.screens[0]
     }
     // Dialog Power Menu
-    Dialogs.PowerMenu {
+    Components.Dialogs.PowerMenu {
         screen: Quickshell.screens[0]
     }
     // Dialog Timer Alert
-    Dialogs.TimerAlert {
+    Components.Dialogs.TimerAlert {
         screen: Quickshell.screens[0]
     }
     
