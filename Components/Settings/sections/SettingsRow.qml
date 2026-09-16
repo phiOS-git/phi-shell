@@ -4,37 +4,29 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "options.js" as Options
 
-// phiOS — Settings/SettingsRow (Out-of-plan: settings-overhaul batch A).
-// The one way a settings control exists from this round on: a titled row
-// with an optional description, a control slot, an optional per-row reset,
-// and — the reason it is a type and not a plain Row — it
+// The one way a settings control exists: a titled row with an optional
+// description, a control slot, an optional per-row reset, and — the
+// reason it's a type and not a plain Row — it
 //   1. registers its `optionId` with Services/SettingsPanel so a search
 //      result or `qs ipc call settings reveal <id>` can scroll to it, and
-//   2. highlights itself (a wash, category B) whenever the live search
-//      query matches it, WITHOUT being hidden — the user's directive that
-//      the search highlights results rather than filtering them out.
+//   2. highlights itself (a wash) whenever the live search query matches
+//      it, WITHOUT being hidden — search highlights results rather than
+//      filtering them out.
 //
 // Layout:
-//   default    — title + description on the left, control content-sized and
-//                right-aligned (matching references/settings-reference.JPG).
+//   default    — title + description on the left, control content-sized
+//                and right-aligned.
 //   wide: true — control full-width below the title (a colour picker, a
 //                keyboard map, a chart, a font preview).
 //
-// features-change (item 1): the per-row "reset" was top-RIGHT, and the
-// control slot reserved room for it only once the row became resettable —
-// so a control jumped sideways the instant a value was first changed.
-// "reset" now sits under the label on the LEFT, out of the control's way,
-// so the control never moves; the row just grows a line taller.
+// "reset" sits under the label on the LEFT, out of the control's way, so
+// the control never moves; the row just grows a line taller.
 //
-// panels-ux-rework: the row's own height eases (category B) so a "reset"
-// appearing, a description changing, or a `wide` control growing/shrinking
-// slides rather than jumps — the same motion a search reveal already used.
-// The label column also took a slightly wider share of the row (0.46, was
-// 0.42) so a description wraps a little less tightly.
+// The row's own height eases so a "reset" appearing, a description
+// changing, or a `wide` control growing/shrinking slides rather than jumps.
 //
-// `pulse()` is the reveal's arrival flash — a short symmetric fade,
-// category B (a search selection is frequent by definition, style plan §5 /
-// S-52) — never ScrambleText/TypingText, which are category C.
+// `pulse()` is the reveal's arrival flash — a short symmetric fade, never
+// ScrambleText/TypingText.
 
 Item {
     id: root
@@ -44,20 +36,16 @@ Item {
     property string description: ""
     property bool resettable: false
     property bool wide: false
-    // docs/TODO.md, style pass: the reference's "advanced options" switch
-    // (Services.SettingsPanel.showAdvanced). A row marked advanced stays
-    // out of the layout — not merely dimmed — until that is on, UNLESS a
-    // live search already matches it: searching for an advanced setting by
-    // name must still find it, the same "search surfaces, never hides"
-    // rule Options.matches()/`highlighted` already applies everywhere else
-    // in this panel. Implemented as this root Item's own `visible` binding
-    // (below) — a caller that ALSO sets its own `visible:` on a row (a few
-    // already do, e.g. Connectivity.qml's Tailscale rows) overrides that
-    // binding outright, the ordinary QML rule for an instantiation-site
-    // property assignment. No current `advanced: true` row also sets its
-    // own `visible:`, but a future one combining both needs to fold the
-    // caller's own condition into that binding by hand, not just add
-    // `advanced: true` and expect it to compose automatically.
+    // The "advanced options" switch (Services.SettingsPanel.showAdvanced).
+    // A row marked advanced stays out of the layout — not merely dimmed —
+    // until that's on, UNLESS a live search already matches it: searching
+    // for an advanced setting by name must still find it, the same
+    // "search surfaces, never hides" rule Options.matches()/`highlighted`
+    // applies everywhere else. Implemented as this root Item's own
+    // `visible` binding (below) — a caller that ALSO sets its own
+    // `visible:` on a row (a few do, e.g. Connectivity.qml's Tailscale
+    // rows) overrides that binding outright. A future row combining both
+    // needs to fold the caller's own condition into that binding by hand.
     property bool advanced: false
     signal reset()
 
@@ -104,12 +92,11 @@ Item {
         : Math.max(labelBlock.implicitHeight, slot.childrenRect.height)
     implicitHeight: _bodyH + _pad * 2
 
-    // panels-ux-rework: ease the row's own height so a "reset" line, a
-    // changed description or a growing `wide` control slides in on the
-    // shell's one transition category rather than snapping the column.
+    property bool _settled: false
+    // Eases the row's own height so a "reset" line, a changed description
+    // or a growing `wide` control slides in rather than snapping.
     // `_settled` keeps the first layout (and section switches) instant —
     // only later height changes animate.
-    property bool _settled: false
     Behavior on implicitHeight {
         enabled: root._settled
         NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
@@ -180,9 +167,9 @@ Item {
             text: root.description
         }
 
-        // features-change (item 1): "reset" lives here, under the label, so
-        // it never displaces the control. Only present when the row is
-        // resettable — the row grows a line, the control does not move.
+        // "reset" lives here, under the label, so it never displaces the
+        // control. Only present when the row is resettable — the row
+        // grows a line, the control doesn't move.
         Widgets.SmallButton {
             visible: root.resettable
             label: "reset"
@@ -193,9 +180,7 @@ Item {
     // Control slot. Content-sized and right-aligned by default; full-width
     // under the label when `wide`. Only `right` + `top` are anchored — the
     // width is explicit either way, so nothing ever gets an `undefined`
-    // anchor or an `undefined` (→ NaN) width (the OOP-27 zero-width bug).
-    // `root.wide` is set once at construction, so the ternaries evaluate
-    // once.
+    // anchor or an `undefined` (→ NaN) width.
     Item {
         id: slot
         anchors.right: parent.right
