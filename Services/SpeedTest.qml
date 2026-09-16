@@ -3,24 +3,18 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// phiOS — Services/SpeedTest (docs/TODO.md: "the network overlay's Wi-Fi
-// section shows a live speed graph but has no actual speedtest trigger —
-// only the passive rate readout exists"). `speedtest-cli` (sivel/
-// speedtest-cli, extra/T0 — a real official-repo package, confirmed via
-// `pacman -Ss speedtest`, not AUR) run once on demand, never polled —
-// unlike Services/NetStats.qml's live passive graph, a real bandwidth
-// test is expensive and intrusive (it actually saturates the link for a
-// few seconds), so this only ever runs when the user presses the button.
+// `speedtest-cli` (extra, an official-repo package) run once on demand,
+// never polled — unlike Services/NetStats.qml's live passive graph, a
+// real bandwidth test is expensive and intrusive (it saturates the link
+// for a few seconds), so this only runs when the user presses the button.
 //
-// `--simple` output is three fixed lines, the tool's own long-stable
-// plain-text contract (not JSON, no version flag needed):
+// `--simple` output is three fixed lines:
 //   Ping: 20.123 ms
 //   Download: 95.23 Mbit/s
 //   Upload: 11.45 Mbit/s
 // Parsed defensively (a labelled-number regex per line, not a fixed line
-// count/order) rather than assumed byte-for-byte — this tool's output has
-// not been run against a real installed copy from this environment
-// (`speedtest-cli` is not installed here), so a genuinely different
+// count/order) rather than assumed byte-for-byte — unverified against a
+// real installed copy from this environment, so a genuinely different
 // wording or a network failure surfaces as `error`, never silently wrong
 // numbers.
 
