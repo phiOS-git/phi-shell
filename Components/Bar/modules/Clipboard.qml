@@ -5,37 +5,21 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../glyphs.js" as Glyphs
 
-// phiOS — Bar/modules/Clipboard.qml (docs/TODO.md: "add the clipboard icon
-// to the status bar (with animation for when an element is added)"). A
-// clipboard glyph in the right isle; a click opens the sidebar straight
-// onto the Clipboard tab (Services/NotificationPanel.qml's tab 1, already
-// wired for Super+Shift+V) — same click-to-toggle shape as the existing
-// notification bell (Bar/modules/Notifications.qml).
+// A clipboard glyph in the right isle; a click opens the clipboard
+// overlay (Services.NotificationPanel.toggleClipboard()) — same click-to-
+// toggle shape as the notification bell.
 //
-// `active` reflects the panel AND the specific tab, not just `shown`: the
-// panel is shared with Notifications (tab 0), so this icon should only
-// read "active" while the Clipboard tab itself is the one showing.
+// The "new entry" animation is a brief `tone` pulse, not an overlay-
+// Rectangle flash: a Rectangle appended as a child paints on top of
+// Segment's own internally-declared glyph layout, partially obscuring it
+// during the pulse instead of highlighting it. `tone` only recolors the
+// glyph via StyledIcon's existing `Behavior on color` — no extra layer to
+// occlude anything.
 //
-// The "new entry" animation is a brief `tone` pulse, NOT the overlay-
-// Rectangle flash Notifications.qml uses: read Widgets/Segment.qml before
-// copying that — its glyph is rendered by an internal `layout` Item
-// declared BEFORE any child an instantiating file adds, so an appended
-// Rectangle (like Notifications.qml's `flash`) paints on TOP of the icon,
-// partially obscuring it during its own pulse rather than highlighting it.
-// Pre-existing there, not fixed here (out of this task's scope), but not
-// worth copying into a new module. `tone` is this widget's own real
-// mechanism for "a real threshold or discrete event" (Segment.qml's own
-// header) and only recolors the glyph via StyledIcon's existing
-// `Behavior on color` — no new layer, nothing to occlude.
-//
-// UNVERIFIED against the font/compositor — flagged for the screenshot
-// pass, same as every glyph in Bar/glyphs.js.
-//
-// docs/TODO.md (status-bar rework, "all other icons" follow-up): the
-// static `glyph:` is replaced by Widgets.ClipboardIcon via `iconDelegate`
-// — same glyph, rendered by that widget instead of Segment's built-in
-// StyledIcon, so it can also pop on arrival (Widgets.ClipboardIcon's own
-// `arrived()`) on top of the `tone` pulse this file already had.
+// The static `glyph:` is replaced by Widgets.ClipboardIcon via
+// `iconDelegate` — same glyph, rendered by that widget instead of
+// Segment's built-in StyledIcon, so it can also pop on arrival
+// (Widgets.ClipboardIcon's own `arrived()`) on top of the `tone` pulse.
 
 Widgets.Segment {
     id: root
@@ -43,21 +27,15 @@ Widgets.Segment {
     required property ShellScreen screen
 
     ambient: "isle"
-    // Interface rework Phase 3: the clipboard overlay is now its own
-    // independent surface (Panels/ClipboardOverlay.qml), not a tab of the
-    // retired Panels/Sidebar.qml — `active` tracks
-    // Services.NotificationPanel.clipboardShown directly.
     active: Services.NotificationPanel.clipboardShown
     tone: root._pulse ? "info" : ""
 
     property bool _pulse: false
 
-    // rework-status-bar.md Style item 4 (corrected): registers this icon's
-    // own live position getter once, so Services/NotificationPanel.qml's
-    // open()/toggle() — called identically by a click and by the
-    // Super+Shift+V keybind — always aligns the overlay to this icon's
-    // real current position, whichever one triggered it. See that file's
-    // own header.
+    // Registers this icon's own live position getter, so
+    // Services/NotificationPanel.qml's open()/toggle() — called
+    // identically by a click and by the Super+Shift+V keybind — always
+    // aligns the overlay to this icon's real current position.
     Component.onCompleted: Services.NotificationPanel.clipboardIconRightX = root.rightX
 
     onActivated: Services.NotificationPanel.toggleClipboard()
