@@ -959,6 +959,51 @@ PanelWindow {
                     kind: "label"; sizeStep: 0
                     text: "VPN — no tunnels configured"
                 }
+
+                // rework-issues.md "New requests" item 3: "in the network
+                // panel, add a section to toggle the firewall and, when
+                // enabled, to set the firewall profile" — the full
+                // control surface (rules, logging, blocked-connections
+                // log) already exists in Settings/sections/
+                // Connectivity.qml (Services/Firewall.qml, a real
+                // nftables backend); this is the compact on/off + preset
+                // picker the bar card gets, same shape as every other
+                // section here, with the header icon deep-linking to the
+                // rest.
+                Widgets.Separator { width: parent.width }
+                Item {
+                    width: parent.width
+                    implicitHeight: Math.max(fwTitle.implicitHeight, fwSettings.implicitHeight)
+                    Widgets.StyledText { id: fwTitle; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; kind: "title"; text: "Firewall" }
+                    Widgets.IconButton {
+                        id: fwSettings
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        glyph: Glyphs.settings
+                        onActivated: root._showInSettings("connectivity.firewall")
+                    }
+                }
+                Widgets.ToggleRow {
+                    width: parent.width
+                    label: "Inbound firewall"
+                    checked: Services.Firewall.enabled
+                    enabled: Services.Firewall.nftAvailable && !Services.Firewall.busy
+                    onToggled: (v) => v ? Services.Firewall.enable() : Services.Firewall.disable()
+                }
+                Row {
+                    spacing: root.chWidth * Config.Appearance.space2
+                    visible: Services.Firewall.enabled
+                    Repeater {
+                        model: Services.Firewall.presetNames
+                        Widgets.SmallButton {
+                            required property string modelData
+                            label: modelData
+                            active: Services.Firewall.preset === modelData
+                            enabled: !Services.Firewall.busy
+                            onClicked: Services.Firewall.setPreset(modelData)
+                        }
+                    }
+                }
             }
 
             // timer/alarm — style pass 2026-09-14: the one bar module that
