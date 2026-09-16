@@ -1,11 +1,11 @@
 [
-    { "type": "lens", "island": "left", "position": 0, "source": "internal:launcher", "capability": "" },
+    { "type": "runner", "island": "left", "position": 0, "source": "internal:launcher", "capability": "" },
     { "type": "separator", "island": "left", "position": 5, "source": "internal:separator", "capability": "" },
     { "type": "currentApp", "island": "left", "position": 10, "source": "internal:hyprland", "capability": "" },
     { "type": "windowList", "island": "center", "position": 0, "source": "internal:hyprland", "capability": "" },
     { "type": "brightness", "island": "right", "position": 10, "source": "internal:brightnessctl", "capability": "backlight" },
     { "type": "volume", "island": "right", "position": 20, "source": "internal:pipewire", "capability": "" },
-    { "type": "networkStatus", "island": "right", "position": 30, "source": "internal:networkmanager", "capability": "" },
+    { "type": "network", "island": "right", "position": 30, "source": "internal:networkmanager", "capability": "" },
     { "type": "bluetooth", "island": "right", "position": 40, "source": "internal:bluez", "capability": "bluetooth" },
     { "type": "battery", "island": "right", "position": 50, "source": "internal:upower", "capability": "battery" },
     { "type": "separator", "island": "right", "position": 55, "source": "internal:separator", "capability": "" },
