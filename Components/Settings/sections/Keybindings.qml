@@ -3,20 +3,16 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Settings/sections/Keybindings (S-40; Out-of-plan: settings-
-// overhaul batch H, master plan §9.12): "vista di reference da hyprctl
-// binds -j. Sola lettura e ricerca: nessuna modifica da interfaccia
-// (shell §14, decisione chiusa)." Reads Services/Keybinds.qml — the exact
-// same read-only guarantee Cheatsheet.qml has carried since S-37 ("there
-// is no second place holding it").
+// A read-only reference view from `hyprctl binds -j`, via
+// Services/Keybinds.qml — no second place holding this data, and no
+// editing from this UI.
 //
-// batch H: bindings are grouped by context (Services.Keybinds.groups),
-// one SettingsGroup card per context, in the same order the Cheatsheet
-// uses — the two surfaces now render the same derivation. Search
-// highlights nothing here; it filters (a reference list with 40+ rows is
-// the one place in the panel where filtering earns its keep, and this
-// section never adopted the highlight-not-filter rule the option rows
-// follow).
+// Bindings are grouped by context (Services.Keybinds.groups), one
+// SettingsGroup card per context, in the same order Cheatsheet uses — the
+// two surfaces render the same derivation. Search filters here rather
+// than highlighting: a reference list with 40+ rows is the one place in
+// the panel where filtering earns its keep, unlike the option rows,
+// which follow a highlight-not-filter rule.
 
 Column {
     id: root
