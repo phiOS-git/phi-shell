@@ -210,6 +210,7 @@ Item {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                     kind: "title"
+                    sizeStep: 0
                     text: activeRepeater.count > 0 ? "Active" : "History"
                 }
                 Widgets.StyledButton {
@@ -261,6 +262,7 @@ Item {
                         }
                         Widgets.StyledText {
                             kind: "label"
+                            sizeStep: 0
                             width: parent.width
                             wrapMode: Text.Wrap
                             visible: modelData.body.length > 0
@@ -289,6 +291,7 @@ Item {
             }
             Widgets.StyledText {
                 kind: "title"
+                sizeStep: 0
                 text: "History"
                 visible: activeRepeater.count > 0 && root.dateGroups.length > 0
             }
@@ -334,6 +337,7 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                                 mono: true
                                 kind: "title"
+                                sizeStep: 0
                                 text: dateGrp.isCollapsed ? "▸" : "▾"
                             }
                             Widgets.StyledText {
@@ -343,6 +347,7 @@ Item {
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
                                 kind: "title"
+                                sizeStep: 0
                                 elide: Text.ElideRight
                                 text: dateGrp.modelData.label + "  (" + dateGrp.modelData.items.length + ")"
                             }
@@ -434,6 +439,7 @@ Item {
                                                 anchors.verticalCenter: parent.verticalCenter
                                                 mono: true
                                                 kind: "label"
+                                                sizeStep: 0
                                                 text: appGrp.isExpanded ? "▾" : "▸"
                                             }
                                             Widgets.StyledText {
@@ -443,6 +449,7 @@ Item {
                                                 anchors.right: parent.right
                                                 anchors.verticalCenter: parent.verticalCenter
                                                 mono: true
+                                                sizeStep: 0
                                                 elide: Text.ElideRight
                                                 text: appGrp.modelData.app + "  (" + appGrp.modelData.items.length + ")"
                                             }
@@ -505,6 +512,7 @@ Item {
                                                         anchors.right: itemTime.left
                                                         anchors.rightMargin: root.gap
                                                         anchors.verticalCenter: parent.verticalCenter
+                                                        sizeStep: 0
                                                         elide: Text.ElideRight
                                                         text: histRow.modelData.summary
                                                     }
@@ -536,6 +544,7 @@ Item {
 
             Widgets.StyledText {
                 kind: "label"
+                sizeStep: 0
                 topPadding: root.gap
                 text: "No notifications yet."
                 visible: activeRepeater.count === 0 && root.dateGroups.length === 0

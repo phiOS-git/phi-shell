@@ -397,6 +397,7 @@ Item {
 
             Widgets.StyledText {
                 kind: "label"
+                sizeStep: 0
                 text: "Pinned"
                 visible: root.pinned.length > 0
             }
@@ -413,6 +414,7 @@ Item {
             }
             Widgets.StyledText {
                 kind: "label"
+                sizeStep: 0
                 topPadding: root.pinned.length > 0 ? root.gap : 0
                 text: root.pinned.length > 0 ? "Recent" : ""
                 visible: root.pinned.length > 0 && root.rest.length > 0
@@ -422,6 +424,7 @@ Item {
 
             Widgets.StyledText {
                 kind: "label"
+                sizeStep: 0
                 text: root.query.length > 0 ? "no matches" : "clipboard history is empty"
                 visible: root.navList.length === 0
             }
@@ -653,6 +656,7 @@ Item {
                     Widgets.StyledText {
                         width: parent.width - pinBtn.width - root.chWidth
                         mono: !card.isImage
+                        sizeStep: 0
                         elide: Text.ElideRight
                         maximumLineCount: 1
                         wrapMode: Text.NoWrap

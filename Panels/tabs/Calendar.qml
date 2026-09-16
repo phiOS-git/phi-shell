@@ -17,6 +17,7 @@ Item {
     Widgets.StyledText {
         anchors.centerIn: parent
         kind: "label"
+        sizeStep: 0
         text: "No calendar backend exists in the project plan yet."
     }
 }

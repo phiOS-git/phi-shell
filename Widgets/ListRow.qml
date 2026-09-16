@@ -82,31 +82,48 @@ Item {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
-    readonly property real inset: WidgetStates.chToPixels(Config.Appearance.space2, chWidth)
     readonly property real gap: WidgetStates.chToPixels(Config.Appearance.space1, chWidth)
+    // The highlight's own small overshoot past the text it hugs — same
+    // proportion Launcher.qml's own result-row highlight uses (`hpad:
+    // root.chWidth * 0.6`), not this row's old, much wider `inset`.
+    readonly property real hpad: root.chWidth * 0.6
 
-    // User bug report, 2026-09-16: "entries still are large 'button-like'
-    // elements ... simple text, with highlighter effect and hover opacity."
-    // The "list" ambient (2026-09-16, same round) already removed the
-    // resting box, but this row's own HEIGHT was still button-sized: two
-    // full `space2` (2ch) units of vertical padding on top of the other —
-    // Launcher.qml's own result row (the exact reference cited, "same
-    // effect used in the runner bar") is `chMetrics.height + space1` (1ch
-    // total, not 2ch per side), a genuinely denser row. Matched exactly —
-    // this is what "simple text" actually looks like at this row's own
-    // font size, not a value chosen freeer-hand.
+    // User bug report, 2026-09-16, round 2: "still wrong, it should be a
+    // simple 'highlighted' text, no padding, border radius and such. Also
+    // the text is way too large." Round 1 (same day) fixed the ROW HEIGHT
+    // to match Launcher.qml's own dense result row but left two things
+    // from the old "panel button" shape untouched: a full-row-width
+    // background Rectangle (with its own radius and a symmetric `inset`
+    // pushing every row's content in from both edges, exactly the "padding
+    // and border radius" complaint) and a default `sizeStep` (2, this
+    // widget never set one, so every row silently rendered at body-text
+    // size — the same "way too large" text bug just fixed project-wide in
+    // Panels/BarPopout.qml). Both gone now: no background Rectangle at
+    // all — the highlight below hugs only the text itself, the same shape
+    // Launcher.qml's own runner-bar reference uses — and `labelText`/
+    // `valueText` both set `sizeStep: 0`, this shell's own established
+    // size for list/body content (Panels/BarPopout.qml's "Output device"
+    // section label and every other in-card label already use it).
     implicitHeight: Math.max(labelText.implicitHeight, valueText.implicitHeight)
         + WidgetStates.chToPixels(Config.Appearance.space1, chWidth)
     activeFocusOnTab: true
     opacity: WidgetStates.opacityFor(resolvedState) * root.restEmphasis
 
+    // The "highlighter effect" itself: a Rectangle sized to the leading
+    // glyph + label text ONLY (not the row's full width, and not the
+    // trailing `value`) — Launcher.qml's own result-row highlight is the
+    // literal reference this shape copies. Shown for active/keyboard-focus
+    // only; hover is opacity-only (`restEmphasis` above), per the same
+    // request's own "hover opacity" half.
     Rectangle {
-        anchors.fill: parent
-        radius: Config.Appearance.radiusBase
+        x: (leading.visible ? leading.x : labelText.x) - root.hpad
+        width: (labelText.x + labelText.contentWidth) - x + root.hpad
+        height: parent.height
+        radius: Config.Appearance.radiusSmall
         color: root.stateColors.bg
-
-        Behavior on color {
-            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+        opacity: (root.resolvedState === "active" || root.resolvedState === "focus") ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
     }
 
@@ -129,7 +146,6 @@ Item {
         visible: glyph.length > 0
         color: root.labelColor
         anchors.left: parent.left
-        anchors.leftMargin: root.inset
         anchors.verticalCenter: parent.verticalCenter
     }
 
@@ -138,10 +154,11 @@ Item {
         text: root.label
         invalid: root.invalid
         color: root.labelColor
+        sizeStep: 0
         anchors.left: parent.left
-        anchors.leftMargin: root.inset + (leading.visible ? leading.implicitWidth + root.gap : 0)
+        anchors.leftMargin: leading.visible ? leading.implicitWidth + root.gap : 0
         anchors.right: valueText.visible ? valueText.left : parent.right
-        anchors.rightMargin: valueText.visible ? root.gap : root.inset
+        anchors.rightMargin: valueText.visible ? root.gap : 0
         anchors.verticalCenter: parent.verticalCenter
         elide: Text.ElideRight
     }
@@ -150,10 +167,10 @@ Item {
         id: valueText
         text: root.value
         kind: "label"
+        sizeStep: 0
         color: root.valueColor
         visible: root.value.length > 0
         anchors.right: parent.right
-        anchors.rightMargin: root.inset
         anchors.verticalCenter: parent.verticalCenter
     }
 

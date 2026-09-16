@@ -812,7 +812,7 @@ PanelWindow {
                     // Connectivity.qml (same gap the old standalone
                     // "ethernet" BarPopout section's own comment already
                     // flagged), so there is nowhere real for one to point.
-                    Widgets.StyledText { kind: "title"; text: "Ethernet" }
+                    Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Ethernet" }
                     Widgets.ListRow {
                         width: parent.width
                         label: "Status"
@@ -833,6 +833,7 @@ PanelWindow {
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                             kind: "title"
+                            sizeStep: 0
                             text: "Wi-Fi"
                         }
                         Widgets.IconButton {
@@ -918,7 +919,7 @@ PanelWindow {
                 Item {
                     width: parent.width
                     implicitHeight: Math.max(tsTitle.implicitHeight, tsSettings.implicitHeight)
-                    Widgets.StyledText { id: tsTitle; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; kind: "title"; text: "Tailscale" }
+                    Widgets.StyledText { id: tsTitle; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; kind: "title"; sizeStep: 0; text: "Tailscale" }
                     Widgets.IconButton {
                         id: tsSettings
                         anchors.right: parent.right
@@ -946,7 +947,7 @@ PanelWindow {
                 Item {
                     width: parent.width
                     implicitHeight: Math.max(vpnTitle.implicitHeight, vpnSettings.implicitHeight)
-                    Widgets.StyledText { id: vpnTitle; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; kind: "title"; text: "VPN" }
+                    Widgets.StyledText { id: vpnTitle; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; kind: "title"; sizeStep: 0; text: "VPN" }
                     Widgets.IconButton {
                         id: vpnSettings
                         anchors.right: parent.right
@@ -991,7 +992,7 @@ PanelWindow {
                 Item {
                     width: parent.width
                     implicitHeight: Math.max(fwTitle.implicitHeight, fwSettings.implicitHeight)
-                    Widgets.StyledText { id: fwTitle; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; kind: "title"; text: "Firewall" }
+                    Widgets.StyledText { id: fwTitle; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; kind: "title"; sizeStep: 0; text: "Firewall" }
                     Widgets.IconButton {
                         id: fwSettings
                         anchors.right: parent.right
@@ -1190,6 +1191,7 @@ PanelWindow {
                             anchors.right: killBtn.left
                             anchors.rightMargin: root.chWidth
                             anchors.verticalCenter: parent.verticalCenter
+                            sizeStep: 0
                             elide: Text.ElideRight
                             text: parent.modelData.appName
                         }
@@ -1237,6 +1239,7 @@ PanelWindow {
                             anchors.right: camKillBtn.left
                             anchors.rightMargin: root.chWidth
                             anchors.verticalCenter: parent.verticalCenter
+                            sizeStep: 0
                             elide: Text.ElideRight
                             text: parent.modelData.appName
                         }
@@ -1260,6 +1263,7 @@ PanelWindow {
                 width: parent.width
                 wrapMode: Text.WordWrap
                 kind: "label"
+                sizeStep: 0
                 text: "Live utilisation and temperature are shown on the bar. "
                     + "A detailed GPU view is a later pass."
             }
@@ -1427,6 +1431,7 @@ PanelWindow {
                     Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Media control" }
                     Widgets.StyledText {
                         width: parent.width
+                        sizeStep: 0
                         elide: Text.ElideRight
                         text: Services.Mpris.active !== null
                             ? (Services.Mpris.active.trackArtist + " — " + Services.Mpris.active.trackTitle)
