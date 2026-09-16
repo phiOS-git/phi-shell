@@ -2,33 +2,26 @@ pragma Singleton
 import Quickshell
 import Quickshell.Services.Pipewire
 
-// phiOS — thin wrapper over Quickshell.Services.Pipewire (S-23, master plan
-// §8.1/§8.4: volume module, both hosts; Out-of-plan: settings-overhaul
-// batch G added the device lists + setters + the input side). The one file
-// outside Config/ sanctioned to touch this service surface (phi-shell/
-// CLAUDE.md) — every bar module and the Devices settings section reads this,
-// never Quickshell.Services.Pipewire directly.
+// Thin wrapper over Quickshell.Services.Pipewire — the one file outside
+// Config/ allowed to touch this service surface. Every bar module and the
+// Devices settings section reads this, never Quickshell.Services.Pipewire
+// directly.
 //
-// Real Quickshell source (git.outfoxxed.me/quickshell/quickshell,
-// src/services/pipewire/qml.hpp), not assumed, same practice as
-// HyprlandBridge: the C++ class behind a pipewire node is `PwNodeIface`,
-// but it registers under `QML_NAMED_ELEMENT(PwNode)` — the QML-facing name
-// is `PwNode`, not the C++ class name. A first real-hardware run on razer
-// caught this exact mismatch ("PwNodeIface is not a type"). A `PwNode`'s
-// `audio` property is non-null based on whether the node handles audio at
-// all, regardless of binding state, but the values INSIDE that audio object
-// (volume, muted) are only valid once the node is bound via
-// PwObjectTracker — "by default, objects remain unbound with limited
-// information access" (qml.hpp's own doc comment). Every node this file
+// The C++ class behind a pipewire node is `PwNodeIface`, but it registers
+// under `QML_NAMED_ELEMENT(PwNode)` — the QML-facing name is `PwNode`, not
+// the C++ class name (a real-hardware run caught this mismatch, "PwNodeIface
+// is not a type"). A `PwNode`'s `audio` property is non-null based on
+// whether the node handles audio at all, but the values INSIDE it (volume,
+// muted) are only valid once the node is bound via PwObjectTracker —
+// unbound objects have limited information access. Every node this file
 // hands out for selection is tracked below for exactly that reason;
 // `defaultAudioSink.ready` / a listed node's `.ready` reports whether the
 // binding has completed.
 //
 // preferredDefaultAudioSink / preferredDefaultAudioSource are writable
-// PwNode references on the Pipewire singleton (qml.hpp) — assigning one is
-// how the shell changes the system default, with no `wpctl` shell-out.
-// Unverified end to end from here (no real Pipewire graph reachable);
-// flagged for the screenshot pass.
+// PwNode references on the Pipewire singleton — assigning one is how the
+// shell changes the system default, with no `wpctl` shell-out. Unverified
+// end to end from here — no real Pipewire graph reachable.
 
 Singleton {
     id: root
@@ -63,21 +56,14 @@ Singleton {
         if (root.inputReady) root.source.audio.muted = !root.source.audio.muted
     }
 
-    // Interface rework Phase 3 (status overlay, rework.md: "microphone
-    // sensor ... enabled, disabled, in use"). `inputMuted`/
-    // `toggleInputMute()` above already give a real enabled/disabled
-    // toggle (mutes the default source itself, at the Pipewire level, not
-    // just this shell's own OSD). "in use" reads `Pipewire.linkGroups`
-    // (confirmed real API — Quickshell.Services.Pipewire/PwLinkGroup,
-    // PwLinkState, checked directly against the installed
-    // quickshell-service-pipewire.qmltypes, not assumed): a link group
-    // touching the default input device whose own state is
+    // `inputMuted`/`toggleInputMute()` above give a real enabled/disabled
+    // toggle (mutes the default source at the Pipewire level, not just
+    // this shell's own OSD). "in use" reads `Pipewire.linkGroups`: a link
+    // group touching the default input device whose state is
     // `PwLinkState.Active` means something is actively pulling audio from
-    // it right now, not merely connected-but-idle (Paused/Negotiating/…).
-    // Which end of a capture link is `source` vs. `target` is not
-    // independently verified without real hardware — checks both sides —
-    // flagged for the screenshot pass, same convention every other
-    // Pipewire/Bluetooth/Network surface in this repo already carries.
+    // it, not merely connected-but-idle. Which end of a capture link is
+    // `source` vs. `target` is not independently verified without real
+    // hardware, so this checks both sides.
     readonly property bool micInUse: {
         if (root.source === null || Pipewire.linkGroups === null) return false
         var list = Pipewire.linkGroups.values ? Pipewire.linkGroups.values : []
