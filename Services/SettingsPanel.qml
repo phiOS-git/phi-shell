@@ -3,13 +3,12 @@ import QtQml
 import Quickshell
 import qs.Services as Services
 
-// phiOS — Services/SettingsPanel.qml (OOP-23; Out-of-plan: settings-overhaul
-// batch A). Owns the Settings panel's shown state plus everything needed to
-// summon it AND navigate it from outside, so any surface can reach a
-// specific control in-process:
+// Owns the Settings panel's shown state plus everything needed to summon
+// it AND navigate it from outside, so any surface can reach a specific
+// control in-process:
 //   - the Super+S bind (through the IpcHandler in Settings/Settings.qml)
-//   - the bar volume/brightness card's "settings" button (OOP-23)
-//   - every bar-overlay "Show in settings" button (settings-overhaul batch F)
+//   - the bar volume/brightness card's "settings" button
+//   - every bar-overlay "Show in settings" button
 //   - `qs ipc call settings reveal <option-id>` from a system overlay
 //   - Settings' own close button / Esc / click-outside
 //
@@ -38,31 +37,20 @@ Singleton {
     // closed or the field is empty.
     property string query: ""
 
-    // docs/TODO.md, style pass: references/settings-layout-reference.PNG's
-    // own "advanced options switch to simplify navigation". A SettingsRow
-    // can mark itself `advanced: true`; it then stays out of the way
-    // (visible: false, no layout space) until this is on — see
+    // A SettingsRow can mark itself `advanced: true`; it then stays out of
+    // the way (visible: false, no layout space) until this is on — see
     // SettingsRow.qml's own `visible` binding. Session-only, not a `phi
-    // state` key: that closed set lives in the `phi` Go repo and rejects
-    // any key it does not already know, so persisting this would need a
-    // cross-repo change this pass does not need to make; defaulting off
-    // each time the shell starts is a fine cost for "simplify navigation".
+    // state` key, so it defaults off each time the shell starts.
     property bool showAdvanced: false
     function setShowAdvanced(v) { root.showAdvanced = v }
 
-    // docs/TODO.md: "opening the notification panel, the agent panel, the
-    // settings panel or a bar popout ... doesn't close whichever of the
-    // others is already open" — see Services/NotificationPanel.qml's own
-    // comment on this same handler for the full rationale. Reactive on
-    // `shown` rather than added to each setter individually, so it covers
-    // every entry point below (show, openSection, reveal) the same way.
+    // Reactive on `shown` rather than added to each setter individually,
+    // so it covers every entry point below (show, openSection, reveal)
+    // the same way.
     onShownChanged: if (root.shown) {
         Services.NotificationPanel.hide()
         Services.AgentPanel.hide()
         Services.BarPopout.hide()
-        // docs/TODO.md: "opening a panel on a special workspace (11, 12) ...
-        // highest possible up to 10" — see Services/HyprlandBridge.qml's
-        // own comment on this function for the full rationale.
         Services.HyprlandBridge.leaveReservedWorkspace()
     }
 
