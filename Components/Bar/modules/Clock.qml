@@ -4,47 +4,37 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Bar/modules/Clock.qml (S-22, master plan §8.4: every host's
-// status cluster "termina con l'orologio"). Just the system clock — no
-// capability, and (OOP-04) one Services bridge: a click toggles the small
-// calendar panel (Panels/Calendar.qml, Services/Calendar.qml owns its
-// shown state) — the user's directive that the calendar "appears when
-// pressing on the datetime".
+// Just the system clock: a click toggles the small calendar panel through
+// Services/Calendar.qml, which owns its shown state.
 //
 // `screen` is required for API uniformity with every other module type
-// Bar.qml's registry can load (each Component wrapper in Bar.qml binds it
-// unconditionally), even though a clock has no per-monitor behaviour of
-// its own to use it for.
+// Bar.qml's registry can load, even though a clock has no per-monitor
+// behaviour of its own to use it for.
 //
-// Follow-up (user, docs/TODO.md): "the clock in the status bar should
-// change like a flip clock" — the same Widgets.FlipDigit cells the
-// calendar overlay uses, injected through Segment's `labelDelegate` slot
-// (the label-side mirror of `iconDelegate`; see Widgets/Segment.qml) so
-// the existing Segment button box, hover/active colouring and calendar
-// toggle all stay as they are. Bar size: `showCard: false` — at the
-// status-bar's isle sizeStep 0 (fontSize0) each digit is a plain glyph,
-// the bordered "card" version stays on the calendar clock where it shows
-// at sizeStep 4.
+// The digits are Widgets.FlipDigit cells, the same ones the calendar
+// overlay uses, injected through Segment's `labelDelegate` slot (the
+// label-side mirror of `iconDelegate`) so the existing Segment button
+// box, hover/active colouring and calendar toggle all stay as they are.
+// `showCard: false` — at the status-bar's isle sizeStep 0 each digit is a
+// plain glyph, the bordered "card" version stays on the calendar clock
+// where it shows at sizeStep 4.
 //
-// Follow-up (user, docs/TODO.md): "add settings for the status bar time...
-// allow to set the format with day/number/year/second etc." — the format
-// itself (12/24-hour, seconds, date) is Config/ClockPrefs.qml, edited from
-// Settings/sections/Theme.qml's "Clock" group. The seconds/AM-PM cells and
-// the date text collapse out of the Row entirely (not just hidden) when
-// their setting is off, so the default look is pixel-identical to before
-// this settings group existed. Date and AM/PM stay plain StyledText, not
-// FlipDigit cells: FlipDigit's flip is a value-change effect for a single
-// glyph in a fixed-width numeric run (HH/mm/ss); a weekday/month NAME
-// changes at most once a day and has no fixed width, so animating it the
-// same way would be motion for its own sake, not the tracked feedback the
-// style plan's category B is for.
+// Format (12/24-hour, seconds, date) is Config/ClockPrefs.qml, edited
+// from Settings/sections/Theme.qml's "Clock" group. The seconds/AM-PM
+// cells and the date text collapse out of the Row entirely (not just
+// hidden) when their setting is off, so the default look is pixel-
+// identical to before this settings group existed. Date and AM/PM stay
+// plain StyledText, not FlipDigit cells: FlipDigit's flip is a value-
+// change effect for a single glyph in a fixed-width numeric run
+// (HH/mm/ss); a weekday/month name changes at most once a day and has no
+// fixed width, so animating it the same way would be motion for its own
+// sake.
 
 Widgets.Segment {
     id: root
 
     required property ShellScreen screen
 
-    // OOP-03: bar buttons sit on the opposite-coloured islands.
     ambient: "isle"
 
     labelDelegate: Component {
@@ -107,12 +97,8 @@ Widgets.Segment {
     Timer {
         id: clockTimer
         property var now: new Date()
-        // A one-second tick is a functional constant (matches the "hh:mm"
-        // display's own granularity), not a design-system value — no
-        // token in design/tokens covers "how often to poll the system
-        // clock", and motion-*'s categories are about UI transitions, not
-        // this. This step's own judgment call, flagged the same way
-        // S-14 flagged its disk-usage thresholds.
+        // A one-second tick is a functional constant (matches the
+        // display's own granularity), not a design-system value.
         interval: 1000
         running: true
         repeat: true
