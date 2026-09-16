@@ -3,45 +3,29 @@ import Quickshell
 import Quickshell.Io
 import qs.Services as Services
 
-// phiOS — Services/SensorPermissions. docs/TODO.md: "add status bar icons
-// for active sensors (microphone, camera); the overlay should show a list
-// of apps with the sensor they are using and killswitches. Also add
-// settings for killswitches and permission rules." + the entry's own
-// **Answer:** "yes, the permission system must be built. It should be
-// generally restrictive, always asking permission the first time an app
-// requires it (granted once, always, or never)."
-//
-// UI-AND-INTERACTIONS ONLY, BY EXPLICIT INSTRUCTION (2026-09-15): the
-// user asked for the full permission-system UI to be built now, with the
-// real detection/enforcement mechanism designed and discussed separately
-// afterward — this is not a gap found by this file, it is the agreed
-// scope for this pass. The constraint that prompted that split: on a
-// traditional (non-sandboxed) Linux desktop, there is no OS mechanism to
-// block an ordinary app from opening a camera/mic device before it
-// happens — that is what Flatpak + xdg-desktop-portal solve, and this
-// system uses neither. A real implementation later would be a REACTIVE
-// detect-then-kill loop (Pipewire capture-stream nodes for the
-// microphone — Services/AudioBridge.qml already has the proven
-// mechanism, see its `micInUse` — and /proc/*/fd scanning for
-// `/dev/video*` for the camera, no precedent yet), not true prior
-// restraint. Every function below that would need that detection is
-// real Go/QML plumbing with an honest empty/no-op result today:
+// UI and interactions only — the real detection/enforcement mechanism is
+// separate future work, not a gap in this file. On a traditional
+// (non-sandboxed) Linux desktop there is no OS mechanism to block an
+// ordinary app from opening a camera/mic device before it happens; that
+// needs Flatpak + xdg-desktop-portal, which this system uses neither of.
+// A real implementation would be a reactive detect-then-kill loop
+// (Pipewire capture-stream nodes for the microphone — Services/
+// AudioBridge.qml's `micInUse` already has the mechanism — and
+// /proc/*/fd scanning for /dev/video* for the camera, no precedent yet),
+// not true prior restraint. What's below is honest about which parts are
+// real:
 //   - `activeUsers` is always `[]` — nothing populates it yet.
 //   - `requestPermission(appId, appName, sensor)` is real (sets
 //     `pendingPrompt`, the dialog responds to it) but nothing calls it
 //     automatically — Settings' own "send a test prompt" control is the
 //     only caller today, clearly labelled as a UI preview.
-//   - `killApp(pid)` really does send SIGTERM (Quickshell.Io.Process,
-//     `kill <pid>`) — inert in practice only because `activeUsers` is
-//     always empty, not because the call itself is fake.
-// `rules` (the persisted always/never decisions) and `micEnabled`/
+//   - `killApp(pid)` really does send SIGTERM — inert in practice only
+//     because `activeUsers` is always empty, not because the call is fake.
+// `rules` (persisted always/never decisions) and `micEnabled`/
 // `cameraEnabled` (the master per-sensor killswitches) are genuinely
-// real and persist for the session — `micEnabled` bridges to
-// Services.AudioBridge's real input-mute state; `cameraEnabled` is a
-// session-local flag (moved here from a stray property that used to live
-// directly on Panels/BarPopout.qml, no camera device backend exists to
-// actually gate yet, same "no v4l2 precedent anywhere in this codebase"
-// finding the interface rework's own write-up already recorded).
+// real: `micEnabled` bridges to Services.AudioBridge's real input-mute
+// state; `cameraEnabled` is a session-local flag — no camera device
+// backend exists yet to actually gate.
 
 Singleton {
     id: root
@@ -66,11 +50,9 @@ Singleton {
     Process { id: killProc }
 
     // --- stored per-app decisions ------------------------------------------
-    // { appId, appName, sensor, decision: "always"|"never" }[] — "ask"
-    // is not stored, it is the absence of a rule. Session-local (not
-    // persisted to disk yet — a real detection pass will also need to
-    // decide where these live, `phi state` or their own JSON file the
-    // way Services/Vpn's config does; not decided here).
+    // { appId, appName, sensor, decision: "always"|"never" }[] — "ask" is
+    // not stored, it's the absence of a rule. Session-local, not yet
+    // persisted to disk.
     property var rules: []
 
     function ruleFor(appId, sensor) {
