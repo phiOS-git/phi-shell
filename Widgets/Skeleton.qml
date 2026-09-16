@@ -2,22 +2,18 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/Skeleton (style pass, 2026-09-14). docs/TODO.md: "a
-// reusable loading-skeleton placeholder for async lists ... every trigger
-// button's own loading state is correctly wired now, but nothing shows a
-// skeleton while a list itself is still loading." One placeholder "row" —
-// the same rounded-rect footprint a Widgets/ListRow takes at rest, so
-// swapping one for a real row once data arrives reads as a continuation,
-// not a layout jump.
+// A reusable loading-skeleton placeholder for async lists. One placeholder
+// "row" — the same rounded-rect footprint a Widgets/ListRow takes at rest,
+// so swapping one for a real row once data arrives reads as a
+// continuation, not a layout jump.
 //
-// Motion category A (an ongoing, ambient state — the same "breathe"
-// Bar/modules/PhiAgent.qml's own processing indicator already uses,
-// tokens.common.sh's PHI_MOTION_A_PERIOD/EASING), not a shimmer sweep: a
-// gradient animation would be a heavier, more decorative effect than this
-// design language's restrained motion taxonomy allows for something this
-// frequent and this passive — every list in this shell that scans
-// (Wi-Fi, Bluetooth) or shells out (Updates) can be waiting on this at
-// once, so it has to stay genuinely quiet.
+// Motion category A (an ongoing, ambient "breathe", same as
+// Bar/modules/PhiAgent.qml's own processing indicator), not a shimmer
+// sweep — a gradient animation would be a heavier, more decorative effect
+// than this design language's restrained motion taxonomy allows for
+// something this frequent and this passive: every list in this shell that
+// scans (Wi-Fi, Bluetooth) or shells out (Updates) can be waiting on this
+// at once, so it has to stay genuinely quiet.
 
 Item {
     id: root
@@ -56,18 +52,13 @@ Item {
                 width: parent.width
                 height: root._rowH
                 radius: Config.Appearance.radiusBase
-                // rework-status-bar.md Style item 9a: "while scanning the
-                // list appears as an empty area, that should not happen"
-                // — root cause: `panelHover` is an 8%-mix wash meant for a
-                // hover cue on top of a `colorMain` surface, not a
-                // standalone placeholder; against a card already sitting
-                // on `surface1`/`surface2` (every list this widget is
-                // used from — Wi-Fi, Bluetooth, Updates — lives inside one
-                // of this shell's own cards) that 8% mix reads as
-                // essentially invisible, which IS "an empty area" even
-                // though real placeholder rows are there. `surface2`, the
-                // same clearly-visible recessed-but-present shade
-                // Settings/sections/SettingsGroup.qml already uses for an
+                // `panelHover`'s 8%-mix wash reads as essentially invisible
+                // against a card already sitting on `surface1`/`surface2`
+                // (every list this widget is used from — Wi-Fi, Bluetooth,
+                // Updates — lives inside one of this shell's own cards),
+                // which defeats the point of a placeholder row. `surface2`
+                // is the same clearly-visible recessed-but-present shade
+                // Settings/sections/SettingsGroup.qml uses for the
                 // identical "must stand out from its own card" need.
                 color: Config.Appearance.surface2
 
