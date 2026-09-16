@@ -43,27 +43,25 @@ import Quickshell.Io
 ShellRoot {
     id: root
 
-    // // S-44: per-screen, same reasoning as Bar.Bar/Notifications.Toast
-    // // below (ADR 077). Its own WlrLayer.Background placement (set inside
-    // // that file) is what keeps it beneath every other surface regardless
-    // // of declaration order here.
-    // Variants {
-    //     model: Quickshell.screens
+    // Background
+    Variants {
+        model: Quickshell.screens
 
-    //     Background.Background {
-    //         required property ShellScreen modelData
-    //         screen: modelData
-    //     }
-    // }
+        Background.Background {
+            required property ShellScreen modelData
+            screen: modelData
+        }
+    }
 
-    // Variants {
-    //     model: Quickshell.screens
+    // Status Bar
+    Variants {
+        model: Quickshell.screens
 
-    //     Bar.Bar {
-    //         required property ShellScreen modelData
-    //         screen: modelData
-    //     }
-    // }
+        Bar.Bar {
+            required property ShellScreen modelData
+            screen: modelData
+        }
+    }
 
     // // Interface rework Phase 2 (rework.md's "## Status bars": "There will
     // // be 2 status bars, one on the top and one on the bottom of the
