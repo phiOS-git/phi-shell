@@ -3,25 +3,21 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// phiOS — Services/GpuStats (interface rework Phase 3). Extracted out of
-// Bar/modules/Gpu.qml's own local nvidia-smi Process/Timer so the new
-// Stats overlay (Panels/BarPopout.qml, rework.md: "gpu usage ... GPU temp
-// (if available), graph") can read the SAME poll instead of invoking a
-// second, independent nvidia-smi loop — this task's own explicit
-// instruction ("reuse that data source for the GPU half rather than
-// re-invoking nvidia-smi a second way"). Bar/modules/Gpu.qml now reads
-// this singleton's `utilPercent`/`tempC` instead of running its own
-// Process; its own anomaly-detection logic (sustained-high-usage,
-// threshold-crossed) stays there — that is bar-icon UI policy, not raw
-// data, the same split every other Services/*.qml file in this repo keeps.
+// phiOS — Services/GpuStats (interface rework Phase 3). Originally
+// extracted out of Bar/modules/Gpu.qml's own local nvidia-smi Process/
+// Timer so the Stats overlay (Panels/BarPopout.qml, rework.md: "gpu usage
+// ... GPU temp (if available), graph") could read the SAME poll instead of
+// invoking a second, independent nvidia-smi loop. User bug report,
+// 2026-09-16: "remove the GPU icon and panel in the bottom status bar (NOT
+// the GPU in the 'Stats overlay')" — Bar/modules/Gpu.qml and its own
+// Widgets/GpuIcon.qml are gone, so this singleton is now the Stats
+// overlay's own sole client, not a shared extraction.
 //
-// Watched-gated like Services/NetStats.qml: the Stats overlay adds itself
-// as an ADDITIONAL watcher (Bar/modules/Gpu.qml already watches
-// permanently, for its own icon, whenever the capability is present) —
-// `active` is true if either wants it, so opening the Stats overlay costs
-// nothing extra on a host where the bar icon is already polling, and the
-// poll never runs at all on a host with no nvidia GPU (Bar/modules/Gpu.qml
-// is capability-gated out entirely there, so it never calls watch()).
+// Watched-gated like Services/NetStats.qml — Panels/BarPopout.qml's own
+// `_syncStatsWatch()` calls `watch()`/`unwatch()` only while the "stats"
+// card is actually on screen, so the poll never runs otherwise, and never
+// at all on a host with no nvidia GPU (the "stats" card's own GPU section
+// is capability-gated out there).
 
 Singleton {
     id: root

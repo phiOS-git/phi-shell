@@ -13,6 +13,24 @@ import "WidgetStates.js" as WidgetStates
 // bare focus state. The row has one leading slot: it shows ">" while
 // focused, else the row's own `glyph` if it has one, else nothing — never
 // both, so the glyph never appears as ambient decoration.
+//
+// User bug report, 2026-09-16: a "thin" restyle (rework-issues.md "New
+// requests" item 14 — plain text, a highlighter pill, no resting box) was
+// built directly into this widget's own DEFAULT look — but ListRow is the
+// SHARED row used everywhere (Settings nav, the agent panel's project
+// list, the memory-notice picker, …), not just the status bar overlays'
+// device lists it was actually reported against, so every one of those
+// unrelated surfaces silently changed shape too. "The sections should
+// have never change, those are specific elements for a custom panel, not
+// simple entries in a list. The devices lists instead can stay as they
+// are. All the previous changes were meant for the status bar overlays
+// only." `thin` (opt-in, default false) is the fix: false reproduces this
+// widget's original panel-button look byte-for-byte (verified against
+// commit 4494290, the last one before this ever changed), true is the new
+// look — set explicitly only at the call sites that are genuinely a
+// status-bar-overlay device list (Widgets/WifiNetworkList.qml, and
+// Panels/BarPopout.qml's bluetooth/ethernet/tailscale/firewall/timer/
+// stopwatch rows), never as this widget's own default.
 
 Item {
     id: root
@@ -28,6 +46,9 @@ Item {
     // entry whose section matches the query without hiding the others.
     // Additive and default-off — every existing caller is unaffected.
     property bool highlighted: false
+    // See this file's own header — opt-in, default false (the original
+    // look). True is the status-bar-overlay device-list style.
+    property bool thin: false
 
     readonly property bool hovered: hoverHandler.hovered
     readonly property bool pressed: tapHandler.pressed
@@ -43,18 +64,20 @@ Item {
     // rework-issues.md "New requests" item 14: "a list of texts, with the
     // 'highlight' hover and selection (same effect used in the runner
     // bar)" — the "list" ambient (WidgetStates.js) is the thin-text/
-    // highlighter recipe; every other ambient's `default` case still
-    // paints a full-contrast block behind the row at rest, which is what
-    // read as "bulky bordered entries" on real hardware.
-    readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState, "list")
-    // The "hover effect (opacity)" half of the same request: a resting row
-    // reads at reduced emphasis, hovering (or being selected/focused/
-    // invalid, all of which already carry their own colour cue) brings it
-    // to full. Kept local to this widget rather than folded into
-    // WidgetStates.opacityFor(), which is a loading/disabled fade shared
-    // by every ambient — this dimming is ListRow's own presentation
-    // choice, not a colour-recipe concern.
-    readonly property real restEmphasis: (root.resolvedState === "default" || root.resolvedState === "disabled")
+    // highlighter recipe, read only when `thin` is set; every other
+    // ambient's `default` case (the plain, no-ambient call below) still
+    // paints a full-contrast block behind the row at rest, this widget's
+    // original look.
+    readonly property var stateColors: root.thin
+        ? WidgetStates.surfaceColors(Config.Appearance, resolvedState, "list")
+        : WidgetStates.surfaceColors(Config.Appearance, resolvedState)
+    // The "hover effect (opacity)" half of the same request, `thin` only:
+    // a resting row reads at reduced emphasis, hovering (or being
+    // selected/focused/invalid, all of which already carry their own
+    // colour cue) brings it to full. The original (non-thin) look never
+    // dimmed a resting row this way.
+    readonly property real restEmphasis: root.thin
+        && (root.resolvedState === "default" || root.resolvedState === "disabled")
         ? 0.7 : 1.0
 
     // OOP-19: when the row background inverts (the "active"/selected state,
@@ -67,9 +90,12 @@ Item {
     // every state (which is the ordinary full-contrast ink except when
     // inverted or invalid); `valueColor` keeps the §8.6 affordance split —
     // a value stays low-contrast monochrome at rest — and only follows the
-    // inversion when the whole row is selected.
+    // inversion when the whole row is selected (`thin` also follows it on
+    // keyboard-focus, since that state gets its own highlighter pill there
+    // too — the original look has no such pill to match).
     readonly property color labelColor: root.stateColors.fg
-    readonly property color valueColor: (root.resolvedState === "active" || root.resolvedState === "focus")
+    readonly property color valueColor: (root.resolvedState === "active"
+            || (root.thin && root.resolvedState === "focus"))
         ? root.stateColors.fg
         : Config.Appearance.textMuted
 
@@ -82,40 +108,43 @@ Item {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
+    readonly property real inset: WidgetStates.chToPixels(Config.Appearance.space2, chWidth)
     readonly property real gap: WidgetStates.chToPixels(Config.Appearance.space1, chWidth)
-    // The highlight's own small overshoot past the text it hugs — same
-    // proportion Launcher.qml's own result-row highlight uses (`hpad:
-    // root.chWidth * 0.6`), not this row's old, much wider `inset`.
+    // The `thin` highlight's own small overshoot past the text it hugs —
+    // same proportion Launcher.qml's own result-row highlight uses
+    // (`hpad: root.chWidth * 0.6`), not this row's `inset` above.
     readonly property real hpad: root.chWidth * 0.6
 
-    // User bug report, 2026-09-16, round 2: "still wrong, it should be a
-    // simple 'highlighted' text, no padding, border radius and such. Also
-    // the text is way too large." Round 1 (same day) fixed the ROW HEIGHT
-    // to match Launcher.qml's own dense result row but left two things
-    // from the old "panel button" shape untouched: a full-row-width
-    // background Rectangle (with its own radius and a symmetric `inset`
-    // pushing every row's content in from both edges, exactly the "padding
-    // and border radius" complaint) and a default `sizeStep` (2, this
-    // widget never set one, so every row silently rendered at body-text
-    // size — the same "way too large" text bug just fixed project-wide in
-    // Panels/BarPopout.qml). Both gone now: no background Rectangle at
-    // all — the highlight below hugs only the text itself, the same shape
-    // Launcher.qml's own runner-bar reference uses — and `labelText`/
-    // `valueText` both set `sizeStep: 0`, this shell's own established
-    // size for list/body content (Panels/BarPopout.qml's "Output device"
-    // section label and every other in-card label already use it).
+    // `thin` rows are noticeably denser: Launcher.qml's own result row
+    // (the "runner bar" reference the original report cited) is
+    // `chMetrics.height + space1` (1ch total), against this row's
+    // original `space2 * 2` (4ch). The original look is unchanged.
     implicitHeight: Math.max(labelText.implicitHeight, valueText.implicitHeight)
-        + WidgetStates.chToPixels(Config.Appearance.space1, chWidth)
+        + WidgetStates.chToPixels(root.thin ? Config.Appearance.space1 : Config.Appearance.space2, chWidth)
+        * (root.thin ? 1 : 2)
     activeFocusOnTab: true
     opacity: WidgetStates.opacityFor(resolvedState) * root.restEmphasis
 
-    // The "highlighter effect" itself: a Rectangle sized to the leading
+    // The original look: a full-row-width filled Rectangle, present at
+    // every state (colour alone changes).
+    Rectangle {
+        visible: !root.thin
+        anchors.fill: parent
+        radius: Config.Appearance.radiusBase
+        color: root.stateColors.bg
+
+        Behavior on color {
+            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+        }
+    }
+
+    // The `thin` "highlighter effect": a Rectangle sized to the leading
     // glyph + label text ONLY (not the row's full width, and not the
     // trailing `value`) — Launcher.qml's own result-row highlight is the
     // literal reference this shape copies. Shown for active/keyboard-focus
-    // only; hover is opacity-only (`restEmphasis` above), per the same
-    // request's own "hover opacity" half.
+    // only; hover is opacity-only (`restEmphasis` above).
     Rectangle {
+        visible: root.thin
         x: (leading.visible ? leading.x : labelText.x) - root.hpad
         width: (labelText.x + labelText.contentWidth) - x + root.hpad
         height: parent.height
@@ -146,6 +175,7 @@ Item {
         visible: glyph.length > 0
         color: root.labelColor
         anchors.left: parent.left
+        anchors.leftMargin: root.thin ? 0 : root.inset
         anchors.verticalCenter: parent.verticalCenter
     }
 
@@ -154,11 +184,11 @@ Item {
         text: root.label
         invalid: root.invalid
         color: root.labelColor
-        sizeStep: 0
+        sizeStep: root.thin ? 0 : 2
         anchors.left: parent.left
-        anchors.leftMargin: leading.visible ? leading.implicitWidth + root.gap : 0
+        anchors.leftMargin: (root.thin ? 0 : root.inset) + (leading.visible ? leading.implicitWidth + root.gap : 0)
         anchors.right: valueText.visible ? valueText.left : parent.right
-        anchors.rightMargin: valueText.visible ? root.gap : 0
+        anchors.rightMargin: valueText.visible ? root.gap : (root.thin ? 0 : root.inset)
         anchors.verticalCenter: parent.verticalCenter
         elide: Text.ElideRight
     }
@@ -167,10 +197,11 @@ Item {
         id: valueText
         text: root.value
         kind: "label"
-        sizeStep: 0
+        sizeStep: root.thin ? 0 : 2
         color: root.valueColor
         visible: root.value.length > 0
         anchors.right: parent.right
+        anchors.rightMargin: root.thin ? 0 : root.inset
         anchors.verticalCenter: parent.verticalCenter
     }
 

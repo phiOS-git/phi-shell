@@ -107,9 +107,10 @@ PanelWindow {
     // Interface rework Phase 3 (Stats overlay): Services/SysStats.qml and
     // Services/GpuStats.qml are both watched-gated the same way
     // Services/NetStats.qml already is — only sampled while the "stats"
-    // card is actually on screen. Services/GpuStats.qml may already have
-    // a separate, permanent watcher from Bar/modules/Gpu.qml's own icon
-    // (capability-gated) — additive, harmless either way.
+    // card is actually on screen. (Bar/modules/Gpu.qml, which used to hold
+    // a second, permanent GpuStats watcher for its own bar icon, is gone —
+    // see this file's own "gpu" removal note further down — so this is now
+    // GpuStats' one and only watcher.)
     property bool _statsWatched: false
     function _syncStatsWatch() {
         var want = root.shown && root.which === "stats"
@@ -168,21 +169,34 @@ PanelWindow {
         }
         return ""
     }
-    // "brightness" deep-links to a whole section (Theme), not one
-    // Settings/options.js option id — its own call shape (openSection, not
-    // reveal) predates this header icon and is kept as-is rather than
-    // forcing a fake options.js id into existence just to fit the
-    // single-function mapping above.
+    // "brightness" and "volume" deep-link to a whole section (Theme,
+    // Devices), not one Settings/options.js option id — their own call
+    // shape (openSection, not reveal) predates this header icon and is
+    // kept as-is rather than forcing a fake options.js id into existence
+    // just to fit the single-function mapping above.
     function _headerSettingsActivate(which) {
         if (which === "brightness") {
             Services.SettingsPanel.openSection("theme")
             Services.BarPopout.hide()
             return
         }
+        // User bug report, 2026-09-16: "the sound overlay still uses the
+        // 'Sound settings' button instead of the header settings icon" —
+        // rework-issues.md item 6 moved every other card's trailing
+        // settings button into this shared header icon; volume's own
+        // trailing `Widgets.SmallButton` was missed. Same `openSection`
+        // shape as brightness above, not `_showInSettings`/`reveal`: there
+        // is no single options.js anchor for "the sound section", the
+        // trailing button this replaces opened the whole Devices section.
+        if (which === "volume") {
+            Services.SettingsPanel.openSection("devices")
+            Services.BarPopout.hide()
+            return
+        }
         root._showInSettings(root._headerSettingsTarget(which))
     }
     function _hasHeaderSettings(which) {
-        return which === "brightness" || root._headerSettingsTarget(which).length > 0
+        return which === "brightness" || which === "volume" || root._headerSettingsTarget(which).length > 0
     }
 
     // rework-issues.md "New requests" item 2. Interface rework Phase 2
@@ -582,6 +596,7 @@ PanelWindow {
                 Repeater {
                     model: Services.AudioBridge.sinks
                     Widgets.ListRow {
+                        thin: true
                         required property var modelData
                         width: parent.width
                         label: Services.AudioBridge.nodeLabel(modelData)
@@ -595,14 +610,11 @@ PanelWindow {
                     kind: "label"; sizeStep: 0
                     text: "No output devices found."
                 }
-                Widgets.SmallButton {
-                    width: parent.width
-                    label: "Sound settings…"
-                    onClicked: {
-                        Services.SettingsPanel.openSection("devices")
-                        Services.BarPopout.hide()
-                    }
-                }
+                // User bug report, 2026-09-16: the trailing "Sound
+                // settings…" button here was the one card rework-issues.md
+                // item 6's header-icon move missed — see root.
+                // _headerSettingsActivate's own "volume" case above, which
+                // now does exactly what this button used to.
             }
 
             // brightness
@@ -676,6 +688,7 @@ PanelWindow {
                 spacing: root.chWidth * Config.Appearance.space1
                 visible: root.which === "wifi"
                 Widgets.ListRow {
+                    thin: true
                     width: parent.width
                     label: "Network"
                     value: Services.WifiBridge.connected ? Services.WifiBridge.ssid : "not connected"
@@ -724,6 +737,7 @@ PanelWindow {
                 spacing: root.chWidth * Config.Appearance.space1
                 visible: root.which === "ethernet"
                 Widgets.ListRow {
+                    thin: true
                     width: parent.width
                     label: "Ethernet"
                     value: Services.EthernetBridge.connected
@@ -750,14 +764,27 @@ PanelWindow {
                 // readout line above is not enough on its own; kept as a
                 // quick-glance summary, the real list follows.
                 Widgets.StyledText { kind: "label"; sizeStep: 0; text: "Devices" }
+                // User bug report, 2026-09-16: "the list entries in the
+                // bluetooth panel and network panel (wifi list) are
+                // different. Use the same style from the network panel."
+                // Widgets/WifiNetworkList.qml's own ListRow never sets
+                // `active` — a connected network is conveyed by its VALUE
+                // text alone ("Connected · 87%"), never by the highlighter
+                // pill (that's reserved for hover/keyboard-focus/selection
+                // on an actionable row). This row set `active:
+                // modelData.connected`, which pinned a permanent highlight
+                // on the connected device — the one real visual mismatch
+                // between the two lists. Dropped, matching wifi: the
+                // "connected"/"paired" value text alone now carries that
+                // state.
                 Repeater {
                     model: Services.BluetoothBridge.adapterDevices ? Services.BluetoothBridge.adapterDevices.values : []
                     Widgets.ListRow {
+                        thin: true
                         required property var modelData
                         width: parent.width
                         label: modelData.name && modelData.name.length > 0 ? modelData.name : modelData.address
                         value: modelData.connected ? "connected" : (modelData.paired ? "paired" : "")
-                        active: modelData.connected
                         onActivated: Services.BluetoothBridge.toggleConnected(modelData)
                     }
                 }
@@ -814,6 +841,7 @@ PanelWindow {
                     // flagged), so there is nowhere real for one to point.
                     Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Ethernet" }
                     Widgets.ListRow {
+                        thin: true
                         width: parent.width
                         label: "Status"
                         value: Services.EthernetBridge.connected ? Services.EthernetBridge.device.name : "not connected"
@@ -856,6 +884,7 @@ PanelWindow {
                         visible: Services.WifiBridge.radioEnabled
 
                         Widgets.ListRow {
+                            thin: true
                             width: parent.width
                             label: "Network"
                             value: Services.WifiBridge.connected ? Services.WifiBridge.ssid : "not connected"
@@ -935,6 +964,7 @@ PanelWindow {
                     onToggled: (v) => v ? Services.Tailscale.up() : Services.Tailscale.down()
                 }
                 Widgets.ListRow {
+                    thin: true
                     width: parent.width
                     visible: Services.Tailscale.connected
                     label: "Overlay name"
@@ -1022,6 +1052,7 @@ PanelWindow {
                     Repeater {
                         model: Services.Firewall.presetNames
                         Widgets.ListRow {
+                            thin: true
                             required property string modelData
                             width: parent.width
                             label: modelData
@@ -1054,6 +1085,7 @@ PanelWindow {
                         width: parent.width
                         spacing: root.chWidth * Config.Appearance.space1 * 0.5
                         Widgets.ListRow {
+                            thin: true
                             width: parent.width
                             label: (itemRow.modelData.kind === "alarm" ? "Alarm — " : "Timer — ") + itemRow.modelData.label
                             value: {
@@ -1118,6 +1150,7 @@ PanelWindow {
                 Repeater {
                     model: Services.Stopwatch.laps.slice().reverse()
                     Widgets.ListRow {
+                        thin: true
                         required property var modelData
                         required property int index
                         width: parent.width
@@ -1133,12 +1166,14 @@ PanelWindow {
                 spacing: root.chWidth * Config.Appearance.space1
                 visible: root.which === "battery"
                 Widgets.ListRow {
+                    thin: true
                     width: parent.width
                     label: "Charge"
                     value: Math.round(Services.PowerBridge.percentage * 100) + "%"
                         + (Services.PowerBridge.discharging ? " (discharging)" : " (charging)")
                 }
                 Widgets.ListRow {
+                    thin: true
                     width: parent.width
                     visible: Services.PowerBridge.discharging && Services.PowerBridge.timeToEmpty > 0
                     label: "Time left"
@@ -1256,17 +1291,14 @@ PanelWindow {
                 // header's own settings icon (root._headerSettingsActivate).
             }
 
-            // gpu — the live util/temp readout is on the bar button
-            // itself; a detail view (history, per-process) is a later pass.
-            Widgets.StyledText {
-                visible: root.which === "gpu"
-                width: parent.width
-                wrapMode: Text.WordWrap
-                kind: "label"
-                sizeStep: 0
-                text: "Live utilisation and temperature are shown on the bar. "
-                    + "A detailed GPU view is a later pass."
-            }
+            // User bug report, 2026-09-16: "remove the GPU icon and panel
+            // in the bottom status bar (NOT the GPU in the 'Stats
+            // overlay')" — the standalone "gpu" bar module/popout key is
+            // gone (Bar/modules/Gpu.qml and Widgets/GpuIcon.qml deleted,
+            // the "gpu" row dropped from Bar/modules-bottom.json); the
+            // "stats" overlay's own GPU util/temp graph a few sections
+            // down (Services.GpuStats, unchanged) is the one this request
+            // explicitly keeps.
 
             // power (docs/TODO.md: "add a power icon to the left isle of
             // the status bar, it's overlay should have power options
@@ -1807,11 +1839,12 @@ PanelWindow {
                     width: parent.width
                     spacing: root.chWidth * Config.Appearance.space1
                     Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Usage" }
-                    Widgets.ListRow { width: parent.width; label: "RAM"; value: Math.round(Services.SysStats.ramPercent) + "%" }
+                    Widgets.ListRow { thin: true; width: parent.width; label: "RAM"; value: Math.round(Services.SysStats.ramPercent) + "%" }
                     Widgets.Meter { width: parent.width; value: Services.SysStats.ramPercent / 100; fillColor: Config.Appearance.textPrimary }
-                    Widgets.ListRow { width: parent.width; label: "CPU"; value: Math.round(Services.SysStats.cpuPercent) + "%" }
+                    Widgets.ListRow { thin: true; width: parent.width; label: "CPU"; value: Math.round(Services.SysStats.cpuPercent) + "%" }
                     Widgets.Meter { width: parent.width; value: Services.SysStats.cpuPercent / 100; fillColor: Config.Appearance.textPrimary }
                     Widgets.ListRow {
+                        thin: true
                         width: parent.width
                         visible: Config.Capabilities.nvidiaGpu
                         label: "GPU"

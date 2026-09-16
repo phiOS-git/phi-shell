@@ -112,6 +112,14 @@ Item {
             model: Services.WifiBridge.scannedNetworks
 
             delegate: ListRow {
+                // User bug report, 2026-09-16: the earlier "thin" restyle
+                // (rework-issues.md item 14) was built into ListRow's own
+                // default look, so it leaked into every unrelated caller
+                // (Settings nav, the agent panel, …) — now opt-in
+                // (Widgets/ListRow.qml's own header). This is one of the
+                // two real "status bar overlay device list" callers it was
+                // actually reported against.
+                thin: true
                 width: col.width
                 label: modelData.ssid
                 value: modelData.connected
