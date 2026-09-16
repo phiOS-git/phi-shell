@@ -66,7 +66,7 @@ ShellRoot {
     }
     
     // Lockscreen
-    Componentsß.Lock {}
+    Components.Lock {}
     
     // Settings
     Components.Settings {
