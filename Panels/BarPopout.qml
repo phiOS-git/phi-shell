@@ -73,15 +73,24 @@ PanelWindow {
     color: "transparent"
     visible: root.shown || fadeRoot.opacity > 0
 
-    // rework-status-bar.md Style item 10: this window still spans the
-    // whole screen (needed so `cardWrap` below can land anywhere along the
-    // bar), but its own INPUT region no longer does — restricted to just
-    // the visible card, so a click anywhere else (another bar icon, the
-    // desktop) passes straight through to whatever real window is there
-    // instead of being swallowed here. See Services/OverlayGrab.qml's own
-    // header for the full mechanism and why this replaces the old
-    // fullscreen `MouseArea { onClicked: hide() }`.
-    mask: Region { item: cardWrap }
+    // rework-status-bar.md Style item 10: reverted 2026-09-16. Tried
+    // `mask: Region { item: cardWrap }` + a new Services/OverlayGrab.qml
+    // wrapping Hyprland's own HyprlandFocusGrab — both real, confirmed-to-
+    // exist mechanisms (this machine's own installed qmltypes), and the
+    // config loaded and ran without error. But on real use it did not
+    // change the reported blocking at all, and introduced a new visible
+    // glitch on close for bottom-triggered cards. Root cause not confirmed
+    // — this environment has no way to synthesize real pointer motion/
+    // clicks to test hover/click passthrough directly (Hyprland dispatch
+    // here is wrapped by custom Lua that has no `movecursor`), so the
+    // mechanism could not be verified before shipping it, and shipping an
+    // unverified guess a second time on the user's live desktop was the
+    // wrong call. Reverted to the known-stable fullscreen `MouseArea`
+    // below — still blocks the rest of the shell while open, but that is
+    // the pre-existing, well-understood behavior, not a new regression.
+    // Services/OverlayGrab.qml is unused again but left in place rather
+    // than deleted, in case a future session can actually test the real
+    // mechanism interactively before retrying.
 
     // Style pass 2026-09-14: this surface had no keyboard focus and no
     // Escape handling at all — the one way to close it was clicking
@@ -89,7 +98,6 @@ PanelWindow {
     // other overlay in this shell (Settings, Launcher, Cheatsheet, AltTab,
     // Sidebar, AgentPanel, Screenshot as of last round). Same fix.
     Services.LayerFocus { target: root }
-    Services.OverlayGrab { window: root; active: root.shown; onDismissed: Services.BarPopout.hide() }
 
     TextMetrics {
         id: chMetrics
@@ -417,6 +425,11 @@ PanelWindow {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
+        MouseArea {
+            anchors.fill: parent
+            onClicked: Services.BarPopout.hide()
+        }
+
         Item {
             id: cardWrap
 
@@ -453,6 +466,8 @@ PanelWindow {
                         Math.min(parent.width - width - Config.Appearance.panelGap,
                             Services.BarPopout.anchorRightX - width))
                     : parent.width - width - Config.Appearance.panelGap
+
+            MouseArea { anchors.fill: parent }
 
             Widgets.Panel {
                 id: panel

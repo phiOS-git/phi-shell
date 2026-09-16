@@ -52,10 +52,14 @@ Widgets.Segment {
 
     property bool _pulse: false
 
-    // rework-status-bar.md Style item 4: the overlay always opens at its
-    // own fixed screen corner now (Panels/ClipboardOverlay.qml), same
-    // position regardless of whether this icon or a keybinding triggered
-    // it — see Services/NotificationPanel.qml's own header.
+    // rework-status-bar.md Style item 4 (corrected): registers this icon's
+    // own live position getter once, so Services/NotificationPanel.qml's
+    // open()/toggle() — called identically by a click and by the
+    // Super+Shift+V keybind — always aligns the overlay to this icon's
+    // real current position, whichever one triggered it. See that file's
+    // own header.
+    Component.onCompleted: Services.NotificationPanel.clipboardIconRightX = root.rightX
+
     onActivated: Services.NotificationPanel.toggleClipboard()
 
     Timer {

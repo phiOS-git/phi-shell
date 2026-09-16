@@ -50,10 +50,6 @@ Widgets.Segment {
     readonly property bool hasPending: !root.dnd && Services.Notifications.activeCount > 0
     tone: root.hasPending ? "info" : ""
 
-    // rework-status-bar.md Style item 4: the overlay always opens at its
-    // own fixed screen corner now (Panels/NotificationsOverlay.qml), same
-    // position regardless of whether this icon or a keybinding triggered
-    // it — see Services/NotificationPanel.qml's own header.
     onActivated: Services.NotificationPanel.toggleNotifications()
 
     property real dndAmount: 0
@@ -71,7 +67,19 @@ Widgets.Segment {
     }
     onDndChanged: root._sync()
     onHasPendingChanged: root._sync()
-    Component.onCompleted: root._sync()
+    // rework-status-bar.md Style item 4 (corrected): also registers this
+    // icon's own live position getter, so Services/NotificationPanel.qml's
+    // open()/toggle() — called identically by a click and by the Super+N
+    // keybind — always aligns the overlay to this icon's real current
+    // position, whichever one triggered it. See that file's own header.
+    // Merged into this one Component.onCompleted, not a second one — QML
+    // does not support declaring the same signal handler twice on one
+    // object (a real launch failure on this exact mistake, confirmed live:
+    // "Property value set multiple times").
+    Component.onCompleted: {
+        root._sync()
+        Services.NotificationPanel.notificationsIconRightX = root.rightX
+    }
 
     iconDelegate: Component {
         Widgets.NotificationBellIcon {
