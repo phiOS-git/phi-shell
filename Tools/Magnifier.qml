@@ -7,23 +7,20 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Magnifier/Magnifier.qml (OOP-50, rebuilt OOP-58, master plan
-// §8.3 surface 21). A screen-magnifier loupe: a circular, glass-edged
-// lens centred ON the pointer, showing the area under it magnified.
-// SUPER+Z toggles it (Services/Magnifier owns the state); hyprland.lua
-// binds the zoom / lens-size steppers.
+// A screen-magnifier loupe: a circular, glass-edged lens centred ON the
+// pointer, showing the area under it magnified. Super+Z toggles it
+// (Services/Magnifier owns the state); hyprland.lua binds the zoom /
+// lens-size steppers.
 //
-// FREEZE-ON-STOP (the user's directive, OOP-58). A lens centred on the
-// pointer and fed a *live* wlr-screencopy stream is mathematically
-// self-referential — the capture region under the pointer is exactly this
-// overlay's own transparent hole, so each live frame would magnify the
-// previous magnified frame and the view collapses within a few frames.
-// OOP-50 dodged this by drawing the lens OFFSET from the pointer; the
-// user asked for centred instead. So the feed is NOT live: it is a still
-// that is recaptured (ScreencopyView.captureFrame) whenever the pointer
-// settles, with the magnified layer hidden for the grab so the capture
-// never contains the loupe. While the pointer moves, the last still is
-// panned under the circle — stale but centred and smooth; a slow
+// FREEZE-ON-STOP. A lens centred on the pointer and fed a *live*
+// wlr-screencopy stream is mathematically self-referential — the capture
+// region under the pointer is exactly this overlay's own transparent hole,
+// so each live frame would magnify the previous magnified frame and the
+// view collapses within a few frames. So the feed is NOT live: it is a
+// still that is recaptured (ScreencopyView.captureFrame) whenever the
+// pointer settles, with the magnified layer hidden for the grab so the
+// capture never contains the loupe. While the pointer moves, the last
+// still is panned under the circle — stale but centred and smooth; a slow
 // keep-fresh recapture runs while the pointer is parked.
 //
 // The pointer itself is never magnified: `paintCursor: false` keeps it
@@ -32,17 +29,14 @@ import qs.Widgets as Widgets
 // top of" the lens with no glyph of our own to draw.
 //
 // The circle is a real mask (QtQuick.Effects MultiEffect, maskSource a
-// round Rectangle) — confirmed present in this Qt build (qt6-declarative
-// ships it; qmllint resolves it). It replaces the earlier opaque bezel
-// disc, which the user found too heavy ("remove the large solid colour
-// border"). The glass edge is a plain Canvas (createRadialGradient, the
-// same primitive Spotlight.qml uses): an inner shadow falloff + a crisp
-// rim. True optical refraction needs a fragment shader (Q-F07 territory)
-// and is approximated by that falloff.
+// round Rectangle), not an opaque bezel disc. The glass edge is a plain
+// Canvas (createRadialGradient, the same primitive Spotlight.qml uses): an
+// inner shadow falloff + a crisp rim. True optical refraction would need a
+// fragment shader; this falloff approximates it.
 //
 // Cursor tracking is the same `hyprctl cursorpos` poll Spotlight.qml uses;
-// the lens position eases toward each sample on a SpringAnimation for the
-// "liquid" trailing + settle the reference (Glasscope) has.
+// the lens position eases toward each sample on a SpringAnimation for a
+// "liquid" trailing + settle feel.
 //
 // Not verifiable without a compositor — flagged for the screenshot pass:
 // whether `captureFrame()` + the hide/grab timing is blink-free enough,
@@ -72,8 +66,8 @@ PanelWindow {
     property double _lastCaptureMs: 0
 
     // Smoothed position — the circle, the magnified image and the bezel
-    // all derive from this, so they move as one (OOP-50 had the rim on a
-    // separate Behavior from the lens, which let them drift apart).
+    // all derive from this, so they move as one rather than the rim
+    // drifting apart from the lens on a separate Behavior.
     property real viewX: cursorX
     property real viewY: cursorY
     // Disabled until the first real sample so the loupe appears AT the
