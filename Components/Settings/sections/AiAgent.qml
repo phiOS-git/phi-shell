@@ -4,25 +4,17 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Settings/sections/AiAgent (S-75, expanded out-of-plan 2026-09-09;
-// Out-of-plan: settings-overhaul batch J — layout-only pass onto
-// SettingsGroup/SettingsRow for visual coherence with the rest of the
-// panel. NO behavioural change: every Services call, binding, Process and
-// validator is exactly as it was.
-//
-// Master plan §9.12 names four items: "Toggle di attivazione, stato
-// connessione, progetto attivo, proposte di memoria in attesa." Those are
-// the Activation group. The rest is the "all the configurations you can"
-// request, kept to §9.12's perimeter ("solo stato realmente runtime"):
+// Activation (toggle, connection status, active project, pending memory
+// proposals), plus everything else scoped to genuinely runtime state:
 //   - Real runtime CONTROLS: A1 activation, open panel, refresh.
 //   - Read-only RUNTIME status: systemd unit state, broker request meter.
 //   - Read-only CONFIG readout: broker.json / opencode.json / the egress
-//     whitelist — shown with intent, never an edit control (those files are
-//     dotfiles-tracked; editing them here would fight `git pull`).
+//     whitelist — shown with intent, never an edit control (those files
+//     are dotfiles-tracked; editing them here would fight `git pull`).
 //
 // Deliberately NOT here: a start/stop control for the A2 remote surface,
-// and a default-personality control (both need a config write, not runtime
-// state).
+// and a default-personality control (both need a config write, not
+// runtime state).
 
 Column {
     id: root
@@ -50,7 +42,7 @@ Column {
         infra.refresh()
     }
 
-    // ---- activation / connection (master plan §9.12) -----------------
+    // ---- activation / connection -----------------------------------
     SettingsGroup {
         title: "AI Agent"
         caption: "Projects, personalities, conversations, tool approval and the literal memory-proposal diffs live in the agent panel — the Φ bar segment or Super+P. This section keeps only runtime status and the A2 working-directory blocklist."
@@ -99,7 +91,7 @@ Column {
         }
     }
 
-    // ---- A2 working-directory blocklist (phios-agente-delta.md §3.4) ----
+    // ---- A2 working-directory blocklist -----------------------------
     SettingsGroup {
         advanced: true
         title: "Coding-agent blocklist"
@@ -129,10 +121,10 @@ Column {
                             selectionColor: Config.Appearance.selectionBackground
                             selectedTextColor: Config.Appearance.selectionText
                             selectByMouse: true
-                            // features-change (item 1): seed once, then only
-                            // re-seed from the service while the field is not
-                            // being edited — a plain `text:` binding threw the
-                            // user's in-progress edits away on any refresh.
+                            // Seed once, then only re-seed from the service
+                            // while the field isn't being edited — a plain
+                            // `text:` binding threw the user's in-progress
+                            // edits away on any refresh.
                             Component.onCompleted: text = root.infra.codeBlocklistText
                             Connections {
                                 target: root.infra
@@ -188,13 +180,9 @@ Column {
         title: "Broker & engine"
         caption: "The values below are read-only — broker.json / opencode.json / the egress whitelist are versioned config, and editing them from this panel would fight `git pull` (the exact problem a past round hit doing exactly that). The buttons open the real files in a terminal editor instead. The provider key is a separate mode-600 file, never shown here at all. Full specification: phios-agente.md (ADR 084–100)."
 
-        // Style pass 2026-09-14 (docs/TODO.md: "AI agents settings shows
-        // many informations but misses the most important and obvious
-        // settings (change model, change token per service, etc)"). The
-        // two facts anyone actually opening this group wants FIRST — is a
-        // key configured, and which model — now lead it, ahead of the
-        // lower-level broker networking readout (upstream/listen/rate-
-        // limit/auth-header) that used to come before them.
+        // The two facts anyone opening this group wants FIRST — is a key
+        // configured, and which model — lead it, ahead of the lower-level
+        // broker networking readout (upstream/listen/rate-limit/auth-header).
         Widgets.ListRow {
             width: parent ? parent.width : 0
             label: "Provider key (a1)"
@@ -213,14 +201,11 @@ Column {
             invalid: root.infra.modelIdA1.indexOf("REPLACE-WITH") >= 0
         }
 
-        // The actual "change model" / "change token per service" path:
-        // these edit real files (a provider key is one of them — see the
-        // group caption, not shown but very much editable this way), just
-        // through a terminal editor rather than a control on this panel,
-        // the one shape that does not fight `git pull`. `$EDITOR` with a
-        // `nvim` fallback — this project is TUI-first (PROGRESS.md's own
-        // guiding constraint) and nvim is what every host here actually
-        // has installed, but a user's own `$EDITOR` still wins when set.
+        // Edits real files through a terminal editor rather than a
+        // control on this panel — the one shape that doesn't fight
+        // `git pull`. `$EDITOR` with a `nvim` fallback: nvim is what
+        // every host here has installed, but a user's own `$EDITOR`
+        // still wins when set.
         SettingsRow {
             title: "Edit configuration"
             description: "Opens the real files — model id, provider key, broker settings, the A2 egress whitelist — in a terminal editor. Restart the engine below afterwards for a change to take effect."
@@ -234,8 +219,7 @@ Column {
                 Widgets.StyledButton {
                     // Same "Open folder…" convention as Settings/sections/
                     // Theme.qml's wallpaper picker — xdg-open on a
-                    // directory, the user's own default file manager,
-                    // rather than assuming an editor can browse one.
+                    // directory, the user's default file manager.
                     label: "Open config folder…"
                     onClicked: Quickshell.execDetached(["xdg-open", root.infra.configRoot])
                 }
