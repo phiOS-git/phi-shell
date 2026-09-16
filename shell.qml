@@ -69,17 +69,17 @@ ShellRoot {
     Components.Lock.Lock {}
     
     // Settings
-    SettingsSurface.Settings {
+    Components.Settings.Settings {
         screen: Quickshell.screens[0]
     }
     
     // Keybindings Cheatsheet
-    Cheatsheet.Cheatsheet {
+    Components.Cheatsheet {
         screen: Quickshell.screens[0]
     }
     
     // Overview
-    Components.AltTab {
+    Components.Overview {
         screen: Quickshell.screens[0]
     } 
     
@@ -154,7 +154,7 @@ ShellRoot {
     Variants {
         model: Quickshell.screens
         
-        MagnifierSurface.Magnifier {
+        Tools.Magnifier {
             required property ShellScreen modelData
             screen: modelData
         }
@@ -188,7 +188,7 @@ ShellRoot {
     }
     
     // Screenshot
-    Screenshot.Screenshot {
+    Tools.Screenshot {
         screen: Quickshell.screens[0]
     }
     
