@@ -2,20 +2,15 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/Segment (S-21). The bar's level-1 clickable unit
-// (three-level disclosure model, master plan §8.5/style plan §7): "muto
-// per default, cambia stato solo su soglia o evento discreto" — mute
-// unless the bar module that owns this decides a real threshold or
-// discrete event has occurred, via `tone`. Opening its level-2 popover is
-// wired by whatever composes this into the bar (S-22, the "max 5 rows + 2
-// actions" cap belongs there too); this widget only renders itself and
-// signals `activated()` when clicked.
+// The bar's level-1 clickable unit: mute by default, changing state only
+// on a real threshold or discrete event, via `tone`. Opening a level-2
+// popover is wired by whatever composes this into the bar; this widget
+// only renders itself and signals `activated()` when clicked.
 //
-// OOP-02/OOP-03 (shell restyle): the button's label/icon track the
-// resolved state's fg, so an inverted active segment reads as inverted,
-// not as invisible same-on-same. Two bar-specific knobs: `ambient:
-// "isle"` switches the text to the mono font and (OOP-21) drops the
-// resting fill and border entirely — a bar button is a bare
+// The button's label/icon track the resolved state's fg, so an inverted
+// active segment reads as inverted, not as invisible same-on-same. Two
+// bar-specific knobs: `ambient: "isle"` switches the text to the mono font
+// and drops the resting fill and border entirely — a bar button is a bare
 // opposite-coloured glyph on the wallpaper, boxed only when selected;
 // `squared` forces a roughly square footprint for the workspace and btop
 // buttons. A panel Segment keeps its 1px contrast border and resting
@@ -26,80 +21,68 @@ Item {
 
     property string glyph: ""
     property string label: ""
-    // docs/TODO.md: "Apply SVG animations to icon when changing within
-    // states" (status-bar rework). `glyph` is a plain font-symbol
-    // character — it cannot express a custom animated icon. A caller that
-    // needs one sets `iconDelegate` instead (and leaves `glyph` empty):
-    // Bar/modules/Brightness.qml's sun/moon eclipse icon is the first
-    // consumer. See the `customIcon` Loader below for how it's sized and
-    // positioned; every existing glyph/label-only consumer is unaffected
-    // since this defaults to null.
+    // `glyph` is a plain font-symbol character — it cannot express a
+    // custom animated icon. A caller that needs one sets `iconDelegate`
+    // instead (and leaves `glyph` empty): Bar/modules/Brightness.qml's
+    // sun/moon eclipse icon is one consumer. See the `customIcon` Loader
+    // below for how it's sized and positioned; every existing glyph/
+    // label-only consumer is unaffected since this defaults to null.
     property Component iconDelegate: null
     // The label-side mirror of `iconDelegate` above: a plain font-symbol /
-    // label-string cannot express rich label content either (docs/TODO.md,
-    // "the clock in the status bar should change like a flip clock").
-    // A caller that needs one sets `labelDelegate` instead of (or alongside,
-    // when labelFirst) `label`: Bar/modules/Clock.qml renders its HH:MM as
-    // four Widgets.FlipDigit cells through this slot. Same interaction as
-    // the icon side — the loaded item positions where the StyledText label
+    // label-string cannot express rich label content either. A caller that
+    // needs one sets `labelDelegate` instead of (or alongside, when
+    // labelFirst) `label`: Bar/modules/Clock.qml renders its HH:MM as four
+    // Widgets.FlipDigit cells through this slot. Same interaction as the
+    // icon side — the loaded item positions where the StyledText label
     // would, and nothing here pushes values into it beyond its own size.
     property Component labelDelegate: null
-    property string tone: "" // "" | "error" | "warn" | "success" | "info" — opt-in, §8.6
+    property string tone: "" // "" | "error" | "warn" | "success" | "info" — opt-in
     property bool active: false
     property bool loading: false
     property bool invalid: false
 
-    // OOP-02: which surface pair this button sits on — "shaded" (default,
-    // e.g. the sidebar tab strip) or "isle" (the status bar's opposite-
-    // coloured islands). Passed straight through to surfaceColors().
-    // Interface rework Phase 1 (rework.md s3): default renamed from the
-    // literal "panel" to "shaded" — WidgetStates.js's new ambient branch,
-    // see its own comment — since no call site anywhere in this shell ever
-    // set `ambient: "panel"` explicitly (grepped: every real caller either
-    // sets "isle" or leaves this at its default), so nothing else is
-    // affected by the rename.
+    // Which surface pair this button sits on — "shaded" (default, e.g. the
+    // sidebar tab strip) or "isle" (the status bar's opposite-coloured
+    // islands). Passed straight through to surfaceColors().
     property string ambient: "shaded"
 
-    // Interface rework Phase 2: "workspace" (Bar/modules/Workspaces.qml's
-    // numbered squares) is a bar-button ambient too — same mono font, tight
-    // isle padding and hover sweep as "isle" — it only differs in the
-    // colour recipe WidgetStates.surfaceColors() gives it (a resting border,
-    // an inverted active fill) and in `contentColor` below (its active state
-    // must actually show `stateColors.fg`, not the accent-text override
-    // every other isle button's active state now uses). Every `root.ambient
-    // === "isle"` check below that is really asking "is this a bar button"
+    // "workspace" (Bar/modules/Workspaces.qml's numbered squares) is a
+    // bar-button ambient too — same mono font, tight isle padding and hover
+    // sweep as "isle" — it only differs in the colour recipe
+    // WidgetStates.surfaceColors() gives it (a resting border, an inverted
+    // active fill) and in `contentColor` below (its active state must
+    // actually show `stateColors.fg`, not the accent-text override every
+    // other isle button's active state uses). Every `root.ambient ===
+    // "isle"` check below that is really asking "is this a bar button"
     // reads `root._bar` instead, so a future third bar-button ambient needs
     // one line here, not a hunt through five separate conditionals.
     readonly property bool _bar: root.ambient === "isle" || root.ambient === "workspace"
 
-    // OOP-03: the status bar is mono (user directive). A bar-button ambient
-    // implies it; a panel Segment stays on the UI font.
+    // The status bar is mono. A bar-button ambient implies it; a panel
+    // Segment stays on the UI font.
     property bool mono: root._bar
 
-    // OOP-03: the workspace and btop buttons are square regardless of how
-    // wide their single glyph/digit is.
+    // The workspace and btop buttons are square regardless of how wide
+    // their single glyph/digit is.
     property bool squared: false
 
-    // Interface rework Phase 2 (rework.md: "the selected workspace has
-    // slightly more width"): extra px added on top of the computed
-    // implicitWidth below — Segment has no built-in "wider when selected"
-    // concept, so a caller that wants one (Workspaces.qml, bound to its own
-    // `active`) drives this instead. 0 for every other existing caller, so
-    // nothing else changes width.
+    // Extra px added on top of the computed implicitWidth below — Segment
+    // has no built-in "wider when selected" concept, so a caller that
+    // wants one (Workspaces.qml, bound to its own `active`) drives this
+    // instead. 0 for every other existing caller, so nothing else changes
+    // width.
     property real widthBoost: 0
     Behavior on widthBoost {
         NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
     }
 
-    // OOP-10: the status bar reads one step smaller than panel body text
-    // (user R2 feedback: "reduce the font size"). A panel Segment keeps
-    // the body size.
+    // The status bar reads one step smaller than panel body text. A panel
+    // Segment keeps the body size.
     property int sizeStep: root._bar ? 0 : 2
 
-    // OOP-02: keep the §6.6 Role B rule for the Φ agent segment — its
-    // active (processing) state is Tier-1 accent, not the B&W inversion
-    // every other selected control now uses. The one closed-ADR exception,
-    // set only by Bar/modules/PhiAgent.qml.
+    // The Φ agent segment's active (processing) state is accent, not the
+    // B&W inversion every other selected control uses — the one
+    // deliberate exception, set only by Bar/modules/PhiAgent.qml.
     property bool accentWhenActive: false
 
     readonly property bool hovered: hoverHandler.hovered
@@ -108,11 +91,10 @@ Item {
 
     signal activated()
 
-    // OOP-22 (item 4): screen x of this button's RIGHT edge — the bar
-    // popout aligns its own right edge to this so it hangs directly under
-    // the button rather than in the corner. Guarded: mapToItem(null) can
-    // throw before the item is in a scene; callers treat 0 as "fall back
-    // to a corner position". (Replaced OOP-17's centerX(), now unused.)
+    // Screen x of this button's RIGHT edge — a popout can align its own
+    // right edge to this so it hangs directly under the button rather than
+    // in the corner. Guarded: mapToItem(null) can throw before the item is
+    // in a scene; callers treat 0 as "fall back to a corner position".
     function rightX() {
         try {
             return root.mapToItem(null, root.width, 0).x
@@ -121,12 +103,11 @@ Item {
         }
     }
 
-    // Same idea, the button's LEFT edge — Bar/modules/Power.qml (the
-    // first left-isle consumer of Panels/BarPopout.qml) anchors the
-    // popout's own left edge to this instead, since right-edge alignment
-    // (rightX() above) would pin the card's far side to a button near the
-    // screen's left edge, pushing almost the whole card off-screen before
-    // Panels/BarPopout.qml's own clamp even applies.
+    // Same idea, the button's LEFT edge — for a button near the screen's
+    // left edge, right-edge alignment (rightX() above) would pin a
+    // popout's far side there and push almost the whole card off-screen;
+    // a left-isle consumer anchors its popout's own left edge to this
+    // instead.
     function leftX() {
         try {
             return root.mapToItem(null, 0, 0).x
@@ -144,26 +125,23 @@ Item {
         ? ({ bg: Config.Appearance.accent, fg: Config.Appearance.accentText, border: Config.Appearance.accent })
         : WidgetStates.surfaceColors(Config.Appearance, root.resolvedState, root.ambient)
 
-    // The label/icon colour: invalid wins outright, then — follow-up (user,
-    // 2026-09-12): "use the accent colour for the text and icon to show
-    // the selected state" — a plain (non-accentWhenActive) active segment
-    // wins over `tone` too, otherwise a toned button (e.g. battery on a
-    // low-charge `warn`/`error`, a notification bell with a pending `info`)
-    // would show NO visual change at all on selection: active no longer
-    // draws any fill or border of its own (WidgetStates.js's isle "active"
-    // case), so tone winning would leave a selected-but-toned button with
-    // literally nothing marking it selected. `accentWhenActive` (PhiAgent)
-    // is excluded here — its own accent colours already flow through
-    // `stateColors.fg` via the ternary above, this branch would be
-    // redundant for it and is skipped so tone still applies there exactly
-    // as it always did.
-    // Interface rework Phase 2: `ambient === "workspace"` is excluded from
-    // the accent-active override too, same shape as `accentWhenActive`
-    // above and for the same reason — rework.md's own spec for the
-    // workspace squares is "the selected workspace ... uses inverted
-    // colors", not accent text, so `stateColors.fg` (WidgetStates.js's new
-    // "workspace" ambient branch, which resolves to the inverted-fill
-    // ink colour on active) has to actually reach the label/icon here.
+    // The label/icon colour: invalid wins outright, then a plain
+    // (non-accentWhenActive) active segment wins over `tone` too —
+    // otherwise a toned button (e.g. battery on a low-charge
+    // `warn`/`error`, a notification bell with a pending `info`) would
+    // show NO visual change at all on selection: active draws no fill or
+    // border of its own (WidgetStates.js's isle "active" case), so tone
+    // winning would leave a selected-but-toned button with nothing marking
+    // it selected. `accentWhenActive` (PhiAgent) is excluded here — its own
+    // accent colours already flow through `stateColors.fg` via the ternary
+    // above, this branch would be redundant for it and is skipped so tone
+    // still applies there exactly as it always did.
+    // `ambient === "workspace"` is excluded from the accent-active
+    // override too, for the same reason: the selected workspace uses
+    // inverted colours, not accent text, so `stateColors.fg`
+    // (WidgetStates.js's "workspace" ambient branch, which resolves to the
+    // inverted-fill ink colour on active) has to actually reach the
+    // label/icon here.
     readonly property color contentColor: root.invalid
         ? Config.Appearance.error
         : ((root.resolvedState === "active" && !root.accentWhenActive && root.ambient !== "workspace")
@@ -182,28 +160,27 @@ Item {
     }
     readonly property real chWidth: chMetrics.width
     readonly property real paddingH: WidgetStates.chToPixels(Config.Appearance.space2, chWidth)
-    // R3: the status bar reads much tighter than a panel button — half a
+    // The status bar reads much tighter than a panel button — half a
     // rhythm unit of vertical inset on an isle Segment, a full one on a
-    // panel Segment (the same half-step latitude the runner takes for its
-    // own hpad).
+    // panel Segment.
     readonly property real paddingV: WidgetStates.chToPixels(Config.Appearance.space1, chWidth)
         * (root._bar ? 0.5 : 1)
 
     readonly property real gap: WidgetStates.chToPixels(Config.Appearance.space1, chWidth)
 
-    // OOP-11: floor the content box against the mono cell height. A
-    // glyph-only button (btop) and a text-only button (a workspace digit)
-    // measure to different heights otherwise — the symbol font's glyph
-    // box is shorter than a text line — so glyph-only bar buttons came out
-    // visibly short next to their neighbours. Flooring here makes every
-    // Segment in an isle the same height regardless of what it holds.
+    // Floor the content box against the mono cell height. A glyph-only
+    // button (btop) and a text-only button (a workspace digit) measure to
+    // different heights otherwise — the symbol font's glyph box is shorter
+    // than a text line — so glyph-only bar buttons came out visibly short
+    // next to their neighbours. Flooring here makes every Segment in an
+    // isle the same height regardless of what it holds.
     readonly property real _contentHeight: Math.max(layout.implicitHeight, chMetrics.height)
 
     implicitHeight: _contentHeight + paddingV * 2
     // A squared button uses symmetric (vertical) padding and then grows to
     // at least its own height, so a single digit or glyph reads as a
-    // square tile rather than a wide pill. `widthBoost` (Interface rework
-    // Phase 2, default 0 for every caller but Workspaces.qml) adds on top.
+    // square tile rather than a wide pill. `widthBoost` (default 0 for
+    // every caller but Workspaces.qml) adds on top.
     implicitWidth: (root.squared
         ? Math.max(implicitHeight, layout.implicitWidth + paddingV * 2)
         : layout.implicitWidth + paddingH * 2) + root.widthBoost
@@ -212,9 +189,8 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        // Interface rework Phase 1 (rework.md s5): radiusSmall/
-        // borderWidthStrong, the same thin/boxy corner and hairline
-        // Widgets/StyledButton now uses, instead of the generic
+        // radiusSmall/borderWidthStrong, the same thin/boxy corner and
+        // hairline Widgets/StyledButton uses, instead of the generic
         // radiusBase/borderWidth.
         radius: Config.Appearance.radiusSmall
         color: root.stateColors.bg
@@ -229,28 +205,17 @@ Item {
         }
     }
 
-    // Follow-up (user, 2026-09-11): "change the hover effect, instead of
-    // changing the button borders and background, 'highlight' the text...
-    // Do that with a transition (quick)." Isle-only (the status bar) — a
-    // panel Segment (a settings row, a sidebar tab) keeps its existing
-    // flat hover fill untouched, same scoping decision as `labelFirst`
-    // above. Direction: top-to-bottom (height growth, anchored to the
-    // top) — went through left-to-right, then bottom-to-top, across two
-    // earlier follow-ups; this is the third and, per the user, correct
-    // direction.
+    // Isle-only (the status bar) — a panel Segment (a settings row, a
+    // sidebar tab) keeps its existing flat hover fill untouched. Direction:
+    // top-to-bottom, height growth anchored to the top.
     //
-    // Hover-only again, deliberately NOT shared with "active" any more.
-    // An earlier pass unified the two (same sweep, same colorOpposite/
-    // colorMain pair) specifically to fix a hover-then-click flicker —
-    // but the user then reported THAT as broken in its own right:
-    // un-hovering an active button looked like "the highlight wrongly
-    // staying applied", because hover and active had become impossible
-    // to tell apart by look alone. Reworked instead of patched: active no
-    // longer uses this Rectangle or this Behavior AT ALL (WidgetStates.js
-    // gives it `accent`-coloured text/icon instead, no fill) — the two
-    // states now have zero shared mechanism, so they cannot race or be
-    // confused for one another again, by construction rather than by
-    // careful sequencing.
+    // Hover-only, deliberately NOT shared with "active": a shared sweep
+    // between the two makes them impossible to tell apart by look alone —
+    // un-hovering an active button reads as the highlight wrongly staying
+    // applied. Active no longer uses this Rectangle or this Behavior AT
+    // ALL (WidgetStates.js gives it `accent`-coloured text/icon instead, no
+    // fill) — the two states have zero shared mechanism, so they cannot
+    // race or be confused for one another, by construction.
     //
     // Driven off `resolvedState`, not the raw `hovered` flag: resolve()
     // already picks exactly one state by precedence (active/pressed beats
@@ -259,34 +224,32 @@ Item {
     // for the same space — the same precedence `stateColors` itself
     // already respects.
     //
-    // Deliberately NOT a per-pixel masked reveal of the icon/label
-    // content (i.e. not a duplicate icon/text layer clipped to the sweep
-    // extent, the way SunMoonIcon/BatteryIcon/GpuIcon's own fills work):
-    // several of this bar's icons are procedural Canvas drawings, and
-    // rendering every `iconDelegate` a second time just to clip it would
-    // double each icon's Canvas and its running animations (a real cost —
-    // BatteryIcon's charge pulse, WifiIcon's search pulse etc. are all
-    // infinite loops) for a hover micro-interaction. Instead: this
-    // Rectangle alone sweeps for the BACKGROUND, and the foreground
-    // colour (`contentColor`, which every icon/label already reads) just
-    // fades to the inverted pair on the same timer via the Behaviors
-    // those already have — `StyledText`/`StyledIcon` both already carry
-    // `Behavior on color`, so the label fades smoothly; a custom Canvas
-    // `iconDelegate` has no such Behavior on its own `iconColor` (that
-    // property is fed by a binding at the call site, not an imperative
-    // assignment — the same binding-vs-Behavior gap this session hit and
-    // documented repeatedly elsewhere, e.g. Brightness.qml's header), so
-    // those icons snap colour instead of fading.
+    // Deliberately NOT a per-pixel masked reveal of the icon/label content
+    // (i.e. not a duplicate icon/text layer clipped to the sweep extent,
+    // the way SunMoonIcon/BatteryIcon/GpuIcon's own fills work): several of
+    // this bar's icons are procedural Canvas drawings, and rendering every
+    // `iconDelegate` a second time just to clip it would double each
+    // icon's Canvas and its running animations (BatteryIcon's charge
+    // pulse, WifiIcon's search pulse etc. are all infinite loops) for a
+    // hover micro-interaction. Instead: this Rectangle alone sweeps for
+    // the BACKGROUND, and the foreground colour (`contentColor`, which
+    // every icon/label already reads) fades to the inverted pair on the
+    // same timer via the Behaviors those already have — `StyledText`/
+    // `StyledIcon` both carry `Behavior on color`, so the label fades
+    // smoothly; a custom Canvas `iconDelegate` has no such Behavior on its
+    // own `iconColor` (that property is fed by a binding at the call site,
+    // not an imperative assignment), so those icons snap colour instead of
+    // fading.
+    //
     // Not routed through a separate `_sweepOn` property read inside the
-    // handler below — found on review: `onResolvedStateChanged` and a
-    // `_sweepOn` binding would both depend on the same `resolvedState`
-    // change, and QML does not guarantee which of two dependents on the
-    // same source re-evaluates first. If the handler ran before
-    // `_sweepOn`'s own binding caught up, it would read a STALE value —
-    // exactly the reported bug ("highlight is applied when hover-out"):
-    // on hover-out (resolvedState "hover"→"default"), a stale-true read
-    // would set hoverAmount to 1 right as the mouse left, and the mirror
-    // on hover-in would silently do nothing. The condition is inlined
+    // handler below: `onResolvedStateChanged` and a `_sweepOn` binding
+    // would both depend on the same `resolvedState` change, and QML does
+    // not guarantee which of two dependents on the same source
+    // re-evaluates first. If the handler ran before `_sweepOn`'s own
+    // binding caught up, it would read a STALE value — on hover-out
+    // (resolvedState "hover"→"default"), a stale-true read would set
+    // hoverAmount to 1 right as the mouse left, and the mirror on
+    // hover-in would silently do nothing. The condition is inlined
     // directly in the handler instead, so there is nothing else for it to
     // race against.
     property real hoverAmount: 0
@@ -311,10 +274,9 @@ Item {
         visible: root._bar && height > 0.5
     }
 
-    // Follow-up (user, 2026-09-11): "invert the order, text before icon" —
-    // scoped to bar buttons (the status bar) only, not every Segment in the
-    // app (a panel Segment elsewhere — a settings row, a sidebar tab —
-    // keeps icon-then-label; nothing there was asked to change).
+    // Text-before-icon order, scoped to bar buttons (the status bar) only
+    // — a panel Segment elsewhere (a settings row, a sidebar tab) keeps
+    // icon-then-label.
     readonly property bool labelFirst: root._bar
 
     Item {
@@ -322,13 +284,11 @@ Item {
         // not... horizontally anchor itself using left, right,
         // horizontalCenter, fill or centerIn", and icon/text below anchor
         // horizontally to each other. Explicit rounded x/y instead of
-        // `anchors.centerIn: parent` — follow-up (user, 2026-09-11): a
-        // workspace digit read "1px low-right" of true centre. `centerIn`
-        // computes `(parent - child) / 2`, which is fractional whenever
-        // that difference is odd; Math.round pins it to a whole pixel
-        // instead of leaving the sub-pixel remainder for the renderer to
-        // resolve however it does. Applies to every Segment, not just
-        // workspaces — the same rounding gap exists wherever content and
+        // `anchors.centerIn: parent`: `centerIn` computes
+        // `(parent - child) / 2`, which is fractional whenever that
+        // difference is odd; Math.round pins it to a whole pixel instead of
+        // leaving the sub-pixel remainder for the renderer to resolve
+        // however it does — a real, visible gap wherever content and
         // button box sizes differ by an odd number of pixels.
         id: layout
         readonly property bool _iconShown: iconGlyph.visible || customIcon.active
@@ -424,63 +384,36 @@ Item {
     TapHandler {
         id: tapHandler
         enabled: root.enabled && !root.loading
-        // docs/TODO.md: "the status bar icon don't always work with
-        // touchscreen: sometimes the highlight effect is triggered but
-        // not the click." The hover and tap areas were never actually
-        // mismatched (both handlers already cover this Item's full
-        // bounds, no explicit sizing on either) — the real cause is
-        // TapHandler's own default `gesturePolicy`, `DragThreshold`
-        // (confirmed against Qt's own qquicktaphandler_p.h and docs):
-        // it cancels the tap — `onTapped` never fires — if the pointer
-        // moves more than ~10px between press and release, which a
-        // finger on a touchscreen crosses far more easily than a mouse
-        // does. `pressed` alone already drives the full inverted "active"
-        // visual (WidgetStates.resolve: `active || pressed`), so the
-        // highlight fires the instant a finger lands and stays lit for
-        // the whole gesture — leaving exactly the reported symptom once
-        // a cancelled tap drops back to no-op on release.
-        // `ReleaseWithinBounds` only cancels if the release itself lands
-        // outside this Item — in-between jitter no longer matters, which
-        // is Qt's own documented recommendation for touch-friendly tap
-        // recognition.
+        // TapHandler's default `gesturePolicy`, `DragThreshold`, cancels
+        // the tap — `onTapped` never fires — if the pointer moves more
+        // than ~10px between press and release, which a finger on a
+        // touchscreen crosses far more easily than a mouse does. `pressed`
+        // alone already drives the full inverted "active" visual
+        // (WidgetStates.resolve: `active || pressed`), so the highlight
+        // fires the instant a finger lands and stays lit for the whole
+        // gesture, then drops back to no-op on release once the tap
+        // cancels — looking like the highlight triggered but not the
+        // click. `ReleaseWithinBounds` only cancels if the release itself
+        // lands outside this Item, so in-between jitter no longer matters.
         gesturePolicy: TapHandler.ReleaseWithinBounds
-        // docs/TODO.md, a later and more specific report than the one
-        // above: "the status bar icons can be touched with touch screen
-        // near their top border, triggering the hover effect but not the
-        // activation." Not the same bug 877955e (above) already fixed —
-        // that one was in-flight jitter between press and release; this is
-        // a genuine boundary case release-outside-bounds itself introduces
-        // for a press that lands, and lifts, right at the Item's edge.
-        // `margin` (confirmed real against Qt's own current source,
-        // qtdeclarative's qquickpointerhandler.cpp: `parentContains()` —
-        // the exact bounds test `ReleaseWithinBounds` itself calls —
-        // returns `localPosition >= -m && <= size + m` once `margin() > 0`,
-        // not merely an activation-only radius) grows that tolerance
-        // uniformly on all four sides. Reused from `paddingV` rather than
-        // a new literal (rule 6): already this Segment's own token-derived
-        // vertical breathing room. Left off `hoverHandler` above
-        // deliberately — the report says hover already fires correctly,
-        // and BarIsle packs Segments with zero spacing (Bar.qml: "remove
-        // the space between icon buttons"), so widening the HOVER region
-        // too would let two adjacent buttons' hover zones overlap at their
-        // shared edge. `margin` on the tap side is symmetric too, so it
-        // widens that same shared edge by a few px on the RELEASE check —
-        // an already-tight zero-spacing tolerance made very slightly
-        // tighter still; `parentContains()` above shows PRESS is margin-
-        // expanded exactly the same way release is, so which handler wins
-        // a press genuinely inside that overlap is Qt's own grab
-        // arbitration, not something this change controls or verifies.
-        // Not gated on `Config.Capabilities.touchscreen`: a more forgiving
-        // release tolerance is correct for a mouse too.
+        // A separate boundary case `ReleaseWithinBounds` itself introduces:
+        // a press that lands, and lifts, right at the Item's edge.
+        // `margin` grows the release-bounds tolerance uniformly on all
+        // four sides. Reused from `paddingV` rather than a new literal —
+        // already this Segment's own token-derived vertical breathing
+        // room. Left off `hoverHandler` above deliberately — hover already
+        // fires correctly, and BarIsle packs Segments with zero spacing,
+        // so widening the HOVER region too would let two adjacent
+        // buttons' hover zones overlap at their shared edge. Not gated on
+        // `Config.Capabilities.touchscreen`: a more forgiving release
+        // tolerance is correct for a mouse too.
         margin: root.paddingV
         onTapped: root.activated()
     }
 
-    // Style pass 2026-09-14: see Widgets/StyledButton.qml's identical
-    // comment — a systemic keyboard-activation gap, fixed the same way
-    // here. Every consumer of this widget (bar buttons, sidebar/settings
-    // tabs before TabButton existed, workspace pills, firewall presets, …)
-    // inherits this for free.
+    // Same keyboard-activation fix as Widgets/StyledButton.qml. Every
+    // consumer of this widget (bar buttons, settings tabs, workspace
+    // pills, firewall presets, …) inherits this for free.
     Keys.onReturnPressed: if (root.enabled && !root.loading) root.activated()
     Keys.onSpacePressed: if (root.enabled && !root.loading) root.activated()
 
