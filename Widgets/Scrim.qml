@@ -1,29 +1,24 @@
 import QtQuick
 import qs.Config as Config
 
-// phiOS — Widgets/Scrim (S-21). A translucent backdrop for whatever sits
-// above it (a popover, a lock screen, a modal) — the design token already
-// carries its own alpha (PHI_OVERLAY_SCRIM), so this is plain colour plus a
-// category-B fade, nothing else. No consumer wires this in yet; the first
-// is whichever surface first needs a modal backdrop.
+// A translucent backdrop for whatever sits above it (a popover, a lock
+// screen, a modal) — the design token already carries its own alpha, so
+// this is plain colour plus a category-B fade, nothing else.
 //
 // Of the seven transverse states, only presence (`shown`) has a defined
 // visual effect here: a full-area dim has no hover, press, keyboard focus,
 // active, loading or invalid look of its own. The other six exist as
 // inert, settable properties for interface uniformity with every other
-// widget in this directory (§8.6 mandates all seven on every component),
-// documented here rather than silently omitted.
+// widget in this directory, documented here rather than silently omitted.
 
 Item {
     id: root
 
     property bool shown: false
-    // Style pass 2026-09-14 (docs/TODO.md): "have the 2 types of dim have
-    // different intensity as well (the one that overlays [the bar] should
-    // be stronger)". Default false — every existing caller keeps the
-    // ordinary intensity; the small set of full-attention blocking
-    // surfaces (screenshot selection, Alt-Tab/overview, battery/timer
-    // alerts, a destructive confirmation) opts in.
+    // Default false — most callers keep the ordinary intensity; the small
+    // set of full-attention blocking surfaces (screenshot selection,
+    // Alt-Tab/overview, battery/timer alerts, a destructive confirmation)
+    // opts in to the stronger dim.
     property bool strong: false
     property bool hovered: false
     property bool pressed: false
