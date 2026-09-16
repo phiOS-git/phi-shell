@@ -7,24 +7,20 @@ import qs.Widgets as Widgets
 import qs.Lock as LockFx
 import "options.js" as Options
 
-// phiOS — Settings/sections/Theme (S-40; OOP-08; Out-of-plan: settings-
-// overhaul batches C/D/E). Every variable that is reasonable to change has
-// an editable control here, grouped by context (the reference's inner-
-// section pattern): Appearance, Colours (first — the user's directive),
-// Typography, Shape & spacing, Animations (batch D), Night shift, Cursor
-// spotlight, Wallpaper (batch E).
+// Every variable that is reasonable to change has an editable control
+// here, grouped by context: Appearance, Colours, Typography, Shape &
+// spacing, Animations, Night shift, Cursor spotlight, Wallpaper.
 //
 // Every editor writes a per-user override through Config/ThemeOverrides.qml
 // (a flat JSON file in $XDG_STATE_HOME/phi — never the repo: design/ stays
-// the source of the DEFAULTS, I-05). Config/Appearance merges the override
-// over the generated Config/Tokens.qml at read time, so a change here is
-// live everywhere. Fields commit on Enter / focus-out, not per keystroke.
+// the source of the defaults). Config/Appearance merges the override over
+// the generated Config/Tokens.qml at read time, so a change here is live
+// everywhere. Fields commit on Enter / focus-out, not per keystroke.
 //
 // Colours carry a live "phi theme check": ContrastBadge shells out to the
-// new `phi theme contrast <hex> on <bg-0>` verb (batch C) — the one WCAG
-// implementation, not a copy in QML — debounced, and only for the pairs
-// `phi theme check` itself measures (fg-0/1/2, accent, error/warn/success/
-// info vs bg-0).
+// `phi theme contrast <hex> on <bg-0>` verb — the one WCAG implementation,
+// not a copy in QML — debounced, and only for the pairs `phi theme check`
+// itself measures (fg-0/1/2, accent, error/warn/success/info vs bg-0).
 
 Column {
     id: root
@@ -51,9 +47,9 @@ Column {
         function onVariantChanged() { root.pendingVariant = Config.Appearance.variant }
     }
 
-    // OOP-54 / panels-ux-rework: the token key whose editor panel is open.
-    // One at a time across every colour group, so at most one editor panel
-    // is ever slid open under the grids.
+    // The token key whose editor panel is open. One at a time across every
+    // colour group, so at most one editor panel is ever slid open under
+    // the grids.
     property string _openColor: ""
 
     function setVariant(v) {
@@ -77,14 +73,13 @@ Column {
 
     // --- reusable rows ---------------------------------------------------
 
-    // panels-ux-rework: a colour context is a stable grid of compact
-    // swatches plus ONE editor panel that slides open (category B) directly
-    // beneath the group. Tapping a swatch — or a search reveal / `qs ipc
-    // call settings reveal theme.colors.<key>` — rings it and opens the
-    // editor; `root._openColor` keeps exactly one swatch open across every
-    // colour group. This replaces OOP-54's in-place expand, where the
-    // tapped chip grew to a full-width row and shoved its neighbours around
-    // the Flow (the user's "editing one completely breaks the layout").
+    // A colour context is a stable grid of compact swatches plus ONE editor
+    // panel that slides open directly beneath the group — rather than the
+    // tapped chip itself growing to a full-width row and shoving its
+    // neighbours around the Flow. Tapping a swatch — or a search reveal /
+    // `qs ipc call settings reveal theme.colors.<key>` — rings it and opens
+    // the editor; `root._openColor` keeps exactly one swatch open across
+    // every colour group.
     //
     // `swatches` is a list of { key, label, contrast }: `key` a design
     // token name, `contrast` opting the editor into the live `phi theme
@@ -128,11 +123,9 @@ Column {
                         && Services.SettingsPanel.query.length > 0
                         && sw.tokenKey.length > 0
                         && Options.matches(sw.optionId, Services.SettingsPanel.query)
-                    // Style pass 2026-09-14 (docs/TODO.md: "in the theme
-                    // settings colors have no hover effect"). This tile had
-                    // an open/selected wash, a search-match wash and a
-                    // pulse-on-reveal — every state except the one that
-                    // tells you it is clickable at all before you click.
+                    // This tile had an open/selected wash, a search-match
+                    // wash and a pulse-on-reveal — every state except the
+                    // one that tells you it is clickable before you click.
                     readonly property bool _hovered: swHover.hovered || sw.activeFocus
 
                     width: Math.round(root.chWidth * 24)
@@ -216,15 +209,11 @@ Column {
 
                     TapHandler { onTapped: root._openColor = sw._open ? "" : sw.tokenKey }
 
-                    // Style pass 2026-09-14: this tile had no
-                    // `activeFocusOnTab` at all — unlike every shared
-                    // Widgets/ control (now keyboard-activatable end to
-                    // end, a separate fix this same pass), a raw
-                    // Rectangle+TapHandler composition like this one was
-                    // not just dead to Enter/Space, it could not even
-                    // receive Tab focus in the first place, so keyboard
-                    // navigation through Settings → Theme silently
-                    // skipped the whole colour swatch grid.
+                    // A raw Rectangle+TapHandler composition is not
+                    // Tab-reachable by default, unlike the shared Widgets/
+                    // controls — without this, keyboard navigation through
+                    // Settings → Theme silently skipped the whole colour
+                    // swatch grid.
                     activeFocusOnTab: true
                     Keys.onReturnPressed: root._openColor = sw._open ? "" : sw.tokenKey
                     Keys.onSpacePressed: root._openColor = sw._open ? "" : sw.tokenKey
@@ -396,17 +385,12 @@ Column {
                 spacing: root.gap
                 Widgets.TextField {
                     id: ff
-                    // Style pass 2026-09-14 (docs/TODO.md: "options inputs
-                    // in settings like 'ringtone' are text field rather
-                    // then real selection elements" — the exact same
-                    // pattern, just for an installed font name instead of
-                    // a sound name). The field stays — a power user who
-                    // already knows the exact family name can still just
-                    // type it — but "Browse…" reveals every font Qt
-                    // actually has installed (Qt.fontFamilies(), a plain
-                    // Qt API — no subprocess needed at all, unlike
-                    // Widgets/SoundPicker's directory scan), filterable,
-                    // tap to select.
+                    // The field stays — a power user who already knows the
+                    // exact family name can still just type it — but
+                    // "Browse…" reveals every font Qt actually has
+                    // installed (Qt.fontFamilies(), a plain Qt API — no
+                    // subprocess needed, unlike Widgets/SoundPicker's
+                    // directory scan), filterable, tap to select.
                     width: parent.width - browseBtn.implicitWidth - parent.spacing
                     mono: false
                     placeholder: "Font family name"
@@ -609,9 +593,9 @@ Column {
         }
     }
 
-    // --- Colours (first inner section) -------------------------------
-    // panels-ux-rework: grouped by context, each a ColorGroup — a stable
-    // swatch grid plus one slide-open editor panel (see the component).
+    // --- Colours ------------------------------------------------------
+    // Grouped by context, each a ColorGroup — a stable swatch grid plus one
+    // slide-open editor panel (see the component above).
     ColorGroup {
         title: "Colours — structure"
         caption: "Two structural colours (background, primary text) carry the whole shell; the surfaces step up from the background for stacked panels."
@@ -712,14 +696,13 @@ Column {
             tokenKey: "panel-radius"; title: "Panel corner radius"; step: 1; suffix: "px"; from: 0; to: 24
             description: "Corner rounding of those same below-the-bar surfaces."
         }
-        // rework-issues.md "New requests" item 16. Not a TokenNumberRow/
-        // ThemeOverrides value like its siblings above — those only ever
-        // affect phi-shell's own rendering, but this one has to reach
-        // kitty (a separate process, its own config file), so it goes
-        // through `phi state` (Services/Terminal.qml) and a real
-        // `phi theme set` re-render instead, reusing this section's own
-        // `setVariant` plumbing to apply immediately rather than only on
-        // the next manual theme switch.
+        // Not a TokenNumberRow/ThemeOverrides value like its siblings
+        // above — those only ever affect phi-shell's own rendering, but
+        // this one has to reach kitty (a separate process, its own config
+        // file), so it goes through `phi state` (Services/Terminal.qml)
+        // and a real `phi theme set` re-render instead, reusing this
+        // section's own `setVariant` plumbing to apply immediately rather
+        // than only on the next manual theme switch.
         SettingsRow {
             optionId: "theme.shape.terminal-padding"
             title: "Terminal window padding"
@@ -891,8 +874,8 @@ Column {
             }
         }
 
-        // dim / flashlight options — slide in/out with the effect choice
-        // (panels-ux-rework) rather than the sub-rows popping.
+        // dim / flashlight options slide in/out with the effect choice
+        // rather than the sub-rows popping.
         Widgets.Reveal {
             shown: Services.Spotlight.effect === "dim" || Services.Spotlight.effect === "flashlight"
             SettingsRow {
@@ -964,9 +947,9 @@ Column {
     }
 
     // --- Screen magnifier ------------------------------------
-    // OOP-50: the loupe (Magnifier/Magnifier.qml). Runtime UI state stored
-    // through `phi state` by Services/Magnifier, same category as the
-    // spotlight size above — not a design token.
+    // The loupe (Magnifier/Magnifier.qml). Runtime UI state stored through
+    // `phi state` by Services/Magnifier, same category as the spotlight
+    // size above — not a design token.
     SettingsGroup {
         title: "Screen magnifier"
         SettingsRow {
@@ -997,8 +980,6 @@ Column {
     }
 
     // --- Clock ---------------------------------------------------
-    // docs/TODO.md: "add settings for the status bar time in the settings
-    // panel. Allow to set the format with day/number/year/second etc."
     // Stored in Config/ClockPrefs.qml ($XDG_STATE_HOME/phi/clock.json),
     // read by Bar/modules/Clock.qml. Same shape and reasoning as the Lock
     // screen group just below.
@@ -1044,11 +1025,10 @@ Column {
     }
 
     // --- Lock screen -----------------------------------------
-    // OOP-35 (auth surfaces): the ambient backdrop behind the lock screen.
-    // Stored in Config/LockPrefs.qml ($XDG_STATE_HOME/phi/lock.json), read
-    // by Lock/Lock.qml. Runtime UI state, not a design token — same
-    // category as the spotlight size above. Ported into the batch-C/D/E
-    // Theme rewrite on merge.
+    // The ambient backdrop behind the lock screen. Stored in
+    // Config/LockPrefs.qml ($XDG_STATE_HOME/phi/lock.json), read by
+    // Lock/Lock.qml. Runtime UI state, not a design token — same category
+    // as the spotlight size above.
     SettingsGroup {
         title: "Lock screen"
         optionId: "theme.lockscreen"
@@ -1079,13 +1059,11 @@ Column {
             }
         }
 
-        // docs/TODO.md: "ambient effects look great, they should have many
-        // settings: some shared (eg. speed) some specific for the selected
-        // one." Speed applies to whichever effect is picked above (one
-        // multiplier every Lock/*.qml effect already scales its own motion
-        // by — see Config/LockPrefs.qml's own header); Intensity is scoped
-        // to the CURRENTLY selected effect specifically, each with its own
-        // stored value and its own pre-existing default.
+        // Speed applies to whichever effect is picked above (one multiplier
+        // every Lock/*.qml effect already scales its own motion by — see
+        // Config/LockPrefs.qml's own header); Intensity is scoped to the
+        // CURRENTLY selected effect specifically, each with its own stored
+        // value and its own default.
         SettingsRow {
             visible: Config.LockPrefs.effect !== "none"
             title: "Speed"
@@ -1118,29 +1096,23 @@ Column {
             }
         }
 
-        // docs/TODO.md follow-up (user, 2026-09-15): "way more
-        // customisability" — one settings block per effect, visible only
-        // while that effect is the one actually selected above (the same
-        // gating Speed/Intensity already use): showing all six effects'
-        // own extra knobs at once would defeat "make the layout fit" by
-        // reintroducing the exact clutter this round is fixing, when only
-        // one of them can ever be active at a time anyway.
+        // One settings block per effect, visible only while that effect is
+        // the one actually selected above (the same gating Speed/Intensity
+        // already use) — showing all six effects' own extra knobs at once
+        // would just be clutter, when only one of them can ever be active
+        // at a time anyway.
         SettingsRow {
             visible: Config.LockPrefs.effect === "lava"
             title: "Lava lamp"
             description: "More blobs read as a denser, busier field. Wobble scales how much each blob squashes/stretches and drifts sideways as it rises."
-            // `wide: true` (2026-09-15): the default compact layout
-            // right-aligns a content-sized control slot, sized to fit ONE
-            // small control (a single NumberField, same as Matrix/
-            // Starfield/Plasma/Boids below). This row's slot instead holds
-            // a whole Column of label+field pairs (Blob count, Wobble),
-            // which is wide enough to overflow past the dialog's own right
-            // edge in that compact slot — confirmed with a real screenshot
-            // ("the options are out of bound", reported directly). `wide`
-            // is the existing, documented layout for exactly this case
-            // (SettingsRow.qml's own header: "a colour picker, a keyboard
-            // map, a chart" — any control too wide for the compact slot),
-            // not a new mechanism.
+            // The default compact layout right-aligns a content-sized
+            // control slot, sized to fit ONE small control (a single
+            // NumberField, same as Matrix/Starfield/Plasma/Boids below).
+            // This row's slot instead holds a whole Column of label+field
+            // pairs (Blob count, Wobble), which needs the full-width `wide`
+            // layout (SettingsRow.qml's own documented use for a control
+            // too wide for the compact slot) or it overflows past the
+            // dialog's own right edge.
             wide: true
             Column {
                 width: parent.width
@@ -1236,29 +1208,20 @@ Column {
         }
     }
 
-    // docs/TODO.md: "add a live preview of the effect in the settings
-    // when one is selected" — same `preview: true` shape as "Colour
-    // preview" above: a real, live instance of the currently-selected
-    // effect, not a static screenshot. Fixed-size box (the effects assume
-    // full-lockscreen dimensions normally; here they just get a smaller
-    // Item to fill instead — every effect already scales its own grid/
-    // point positions off `width`/`height`, so no effect-side change was
-    // needed for this).
+    // A real, live instance of the currently-selected lock effect, not a
+    // static screenshot. Fixed-size box: the effects assume full-lockscreen
+    // dimensions normally, but every effect already scales its own grid/
+    // point positions off `width`/`height`, so a smaller Item to fill needs
+    // no effect-side change.
     //
-    // docs/TODO.md (style pass): "the settings panel now can be laggy
-    // especially with live previews. Make them toggable and hidden by
-    // default (should be toggled on when their relative option like
-    // ambient effect change)." This ran `active: true` unconditionally —
     // Life (a real Conway's-game-of-life simulation) and MatrixRain in
-    // particular are genuinely expensive continuous Canvas repaints, and
-    // this box sat there running for the ENTIRE time Theme was the open
-    // settings section, whether or not the user was even looking at this
-    // part of the page. `_previewLive` now starts false (hidden by
-    // default, matching the entry's own wording) and the Loader is gated
-    // on it; picking a different effect above sets it back to true (also
-    // per the entry's own wording — a changed selection is exactly the
-    // moment a live look is actually wanted), and a small toggle lets the
-    // user turn it off again (or back on) whenever they like.
+    // particular are genuinely expensive continuous Canvas repaints, so the
+    // preview stays hidden (`previewLive` starts false) and the Loader is
+    // gated on it rather than running for the entire time this section is
+    // open regardless of whether it's on screen. Picking a different effect
+    // above turns it back on — a changed selection is exactly the moment a
+    // live look is wanted — and a small toggle lets the user flip it either
+    // way.
     SettingsGroup {
         id: ambientPreviewGroup
         title: "Ambient effect preview"
@@ -1280,17 +1243,13 @@ Column {
         SettingsRow {
             wide: true
             title: "Live preview"
-            // docs/TODO.md follow-up (user, 2026-09-15): "the preview
-            // header is covering most part of the preview area" — this
-            // description used to stay populated (a full sentence) even
-            // while the preview was actually showing, on top of the
-            // group's own title/caption above and the Show/Hide button
-            // below, all stacked ahead of a comparatively small 20ch-tall
-            // canvas. Empty string while live (SettingsRow's own
-            // description Text is `visible: description.length > 0`, so
-            // this removes the line entirely rather than leaving it
-            // blank) — the explanatory sentence only earns its keep while
-            // there is nothing else to look at yet.
+            // Empty while live (SettingsRow's own description Text is
+            // `visible: description.length > 0`, so this removes the line
+            // entirely) — otherwise it stays stacked above the canvas
+            // alongside the group's own title/caption and the Show/Hide
+            // button, crowding a comparatively small preview area. The
+            // explanatory sentence only earns its keep while there's
+            // nothing else to look at yet.
             description: ambientPreviewGroup.previewLive
                 ? ""
                 : "Hidden by default — some effects are expensive to render continuously. Pick a different effect above, or show it manually."
@@ -1303,13 +1262,9 @@ Column {
                 }
                 Item {
                     width: parent.width
-                    // Was chWidth*20 — nearly as tall as the header chrome
-                    // stacked above it (group title+caption, this row's
-                    // own title, the Show/Hide button), which is what
-                    // read as "the header covers most of the preview".
-                    // Close to doubled so the actual live effect is the
-                    // dominant visual element once shown, not a small box
-                    // squeezed under a wall of text.
+                    // Tall enough that the live effect reads as the
+                    // dominant visual element once shown, rather than a
+                    // small box squeezed under the header chrome above it.
                     height: root.chWidth * 34
                     clip: true
                     visible: ambientPreviewGroup.previewLive
@@ -1371,7 +1326,7 @@ Column {
         }
     }
 
-    // --- Wallpaper (settings-overhaul batch D) ------------------
+    // --- Wallpaper ------------------------------------------------
     SettingsGroup {
         title: "Wallpaper"
         Component.onCompleted: Services.Background.refreshAvailable()
@@ -1406,11 +1361,10 @@ Column {
                         radius: Config.Appearance.radiusSmall
                         color: Config.Appearance.surface1
                         border.width: Config.Appearance.borderWidth
-                        // Style pass: thumbnails had no hover affordance at
-                        // all — a hairline brightens on hover, distinct from
-                        // the (unchanged) accent border that marks the
-                        // CURRENT selection, so "hovering" and "selected"
-                        // never read as the same thing.
+                        // A hairline brightens on hover, distinct from the
+                        // accent border that marks the CURRENT selection,
+                        // so "hovering" and "selected" never read as the
+                        // same thing.
                         border.color: Services.Background.image.length === 0
                             ? Config.Appearance.accent
                             : ((noneHover.hovered || noneTile.activeFocus) ? Config.Appearance.borderStrong : Config.Appearance.border)
@@ -1420,9 +1374,8 @@ Column {
                         Widgets.StyledText { anchors.centerIn: parent; kind: "label"; sizeStep: 0; text: "none" }
                         HoverHandler { id: noneHover; cursorShape: Qt.PointingHandCursor }
                         TapHandler { onTapped: Services.Background.clearImage() }
-                        // Style pass 2026-09-14: same "not even Tab-
-                        // reachable" gap as the colour swatches above —
-                        // see that fix's own comment.
+                        // Same Tab-reachability fix as the colour swatches
+                        // above.
                         activeFocusOnTab: true
                         Keys.onReturnPressed: Services.Background.clearImage()
                         Keys.onSpacePressed: Services.Background.clearImage()
@@ -1454,8 +1407,8 @@ Column {
                             }
                             HoverHandler { id: wpHover; cursorShape: Qt.PointingHandCursor }
                             TapHandler { onTapped: Services.Background.setImage(modelData) }
-                            // Style pass 2026-09-14: same fix as the
-                            // colour swatches / "none" tile above.
+                            // Same fix as the colour swatches / "none"
+                            // tile above.
                             activeFocusOnTab: true
                             Keys.onReturnPressed: Services.Background.setImage(modelData)
                             Keys.onSpacePressed: Services.Background.setImage(modelData)
@@ -1564,10 +1517,9 @@ Column {
         }
     }
 
-    // panels-ux-rework: the global "reset every override" is a footer
-    // action at the very bottom of the section now, behind a rule — it used
-    // to sit mid-list between Animations and Night shift, reading as a row
-    // that belonged to neither.
+    // The global "reset every override" sits as a footer action at the very
+    // bottom of the section, behind a rule — not mid-list where it would
+    // read as belonging to whichever group happened to be nearby.
     Column {
         width: parent.width
         spacing: Config.Appearance.space2 * root.chWidth
@@ -1577,12 +1529,10 @@ Column {
             layoutDirection: Qt.RightToLeft
             Widgets.StyledButton {
                 label: "Reset all theme overrides"
-                // Style pass 2026-09-14: the same bulk-irreversible-action
-                // gap this section's "Clear all keys" (Devices.qml) and the
-                // notification panel's "Clear all"/per-app "clear" already
-                // got fixed for — every colour, font, size, radius and
-                // motion override the user has made, gone in one click,
-                // with no confirmation at all.
+                // Confirmed like every other bulk-irreversible action
+                // (Devices.qml's "Clear all keys", notifications' "Clear
+                // all") — every colour, font, size, radius and motion
+                // override gone in one click deserves a confirmation.
                 onClicked: Services.ConfirmDialog.open({
                     title: "Reset all theme overrides",
                     message: "Removes every colour, font, size and motion override you've made and returns to the design defaults. This cannot be undone.",
