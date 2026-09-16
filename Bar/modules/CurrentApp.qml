@@ -57,7 +57,14 @@ Widgets.StyledText {
     width: Math.min(implicitWidth, _cap)
     elide: Text.ElideRight
     // "also it's not vertically centred" — same Row-only-manages-x cause
-    // and plain-`y`-not-`anchors` fix as Bar/modules/Separator.qml's own
-    // header already documents for this isle's other short sibling.
-    y: parent ? Math.round((parent.height - height) / 2) : 0
+    // as Bar/modules/Separator.qml's own header describes.
+    //
+    // User bug report, 2026-09-16: a per-module `y` binding here against
+    // `parent.height` was still visibly top-pinned on real hardware —
+    // `parent` is this label's own wrapping Loader, which mirrors ITS OWN
+    // height back at it, a same-object round trip that always resolved
+    // near zero. Fixed generically instead, one level up: Bar/Bar.qml's
+    // own Loader (the actual Row-managed child) now centres itself against
+    // the Row's real height directly — see its own comment for the full
+    // mechanism. Nothing to do here any more.
 }

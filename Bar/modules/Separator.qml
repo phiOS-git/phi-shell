@@ -30,11 +30,18 @@ import qs.Widgets as Widgets
 // Y at all — so a child shorter than its neighbours (this one: a bare
 // `chMetrics.height`, no padding added, next to Segments whose own
 // `implicitHeight` includes real vertical padding) sat top-aligned inside
-// the Row instead of centred against its taller siblings. First attempt
-// used `anchors.verticalCenter` — confirmed live (a real screenshot) that
-// anchoring ANY property on a Row-managed child makes it vanish entirely,
-// not just the X-axis conflict Qt's own Row docs warn about; a plain `y`
-// binding below (not an anchor at all) is what actually works.
+// the Row instead of centred against its taller siblings.
+//
+// User bug report, 2026-09-16: an earlier fix here set a plain `y` binding
+// on THIS item against `parent.height` — but `parent` is this module's own
+// wrapping Loader (Bar/Bar.qml's Repeater delegate), which mirrors ITS OWN
+// height back at it with no explicit size set, so that was a same-object
+// round trip landing within rounding error of `(h - h) / 2 == 0`, still
+// visibly top-pinned on real hardware. The real, generic fix now lives one
+// level up: Bar/Bar.qml's own Loader (the actual Row-managed child) centres
+// itself against the Row's real height directly, which correctly handles
+// every module — this one included — in one place. Nothing to do here any
+// more; implicitHeight is enough.
 Widgets.Separator {
     id: root
 
@@ -50,11 +57,4 @@ Widgets.Separator {
     vertical: true
     strong: true
     implicitHeight: chMetrics.height
-    // A plain `y` binding, not `anchors.verticalCenter`: confirmed live
-    // (screenshot) that anchoring a Row child makes it vanish entirely —
-    // Qt's own Row docs warn against anchoring a managed child at all, not
-    // just on the X axis this comment used to assume was the only
-    // conflict. A bare `y` assignment is not an anchor, so Row's own
-    // "don't anchor my children" constraint does not apply to it.
-    y: parent ? Math.round((parent.height - height) / 2) : 0
 }

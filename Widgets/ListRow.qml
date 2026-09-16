@@ -40,7 +40,22 @@ Item {
         active: root.active, keyboardFocus: root.keyboardFocus,
         loading: root.loading, invalid: root.invalid
     })
-    readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState)
+    // rework-issues.md "New requests" item 14: "a list of texts, with the
+    // 'highlight' hover and selection (same effect used in the runner
+    // bar)" — the "list" ambient (WidgetStates.js) is the thin-text/
+    // highlighter recipe; every other ambient's `default` case still
+    // paints a full-contrast block behind the row at rest, which is what
+    // read as "bulky bordered entries" on real hardware.
+    readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState, "list")
+    // The "hover effect (opacity)" half of the same request: a resting row
+    // reads at reduced emphasis, hovering (or being selected/focused/
+    // invalid, all of which already carry their own colour cue) brings it
+    // to full. Kept local to this widget rather than folded into
+    // WidgetStates.opacityFor(), which is a loading/disabled fade shared
+    // by every ambient — this dimming is ListRow's own presentation
+    // choice, not a colour-recipe concern.
+    readonly property real restEmphasis: (root.resolvedState === "default" || root.resolvedState === "disabled")
+        ? 0.7 : 1.0
 
     // OOP-19: when the row background inverts (the "active"/selected state,
     // surfaceColors() → bg: contrast), the label, value and leading glyph
@@ -54,7 +69,7 @@ Item {
     // a value stays low-contrast monochrome at rest — and only follows the
     // inversion when the whole row is selected.
     readonly property color labelColor: root.stateColors.fg
-    readonly property color valueColor: root.resolvedState === "active"
+    readonly property color valueColor: (root.resolvedState === "active" || root.resolvedState === "focus")
         ? root.stateColors.fg
         : Config.Appearance.textMuted
 
@@ -73,7 +88,7 @@ Item {
     implicitHeight: Math.max(labelText.implicitHeight, valueText.implicitHeight)
         + WidgetStates.chToPixels(Config.Appearance.space2, chWidth) * 2
     activeFocusOnTab: true
-    opacity: WidgetStates.opacityFor(resolvedState)
+    opacity: WidgetStates.opacityFor(resolvedState) * root.restEmphasis
 
     Rectangle {
         anchors.fill: parent

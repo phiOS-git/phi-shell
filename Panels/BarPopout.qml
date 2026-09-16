@@ -478,6 +478,23 @@ PanelWindow {
             width: parent ? parent.width : 0
             spacing: root.chWidth * Config.Appearance.space1
 
+            // User bug report, 2026-09-16 ("padding to the status bars
+            // rather than to the status bar overlays"): every
+            // `Widgets.Separator` in this Component — the shared card
+            // header's own divider below and every per-section one further
+            // down — now sets `strong: true`. They were already real,
+            // present widgets (New Requests item 8's own padding/spacing
+            // was genuinely there), but `Separator`'s default (`strong:
+            // false`) reads off `Config.Appearance.border`, a hairline so
+            // close to the card's own background in the dark variant
+            // (measured live: rgb 36,35,32 background vs. 47,45,41 line —
+            // an 11-value difference, effectively invisible on a real
+            // screen) that the division read as "not there" even though it
+            // was. `borderStrong` is the exact token the bar's own isle
+            // separators already use for this reason (Bar/modules/
+            // Separator.qml) — same fix, applied here instead of guessing
+            // at a new colour.
+            //
             // rework-issues.md item 7: the network overlay used to show a
             // stale "Tailscale" title left over from before it was merged
             // with wifi/ethernet/VPN (Services/BarPopout.qml's own
@@ -511,7 +528,7 @@ PanelWindow {
                     onActivated: root._headerSettingsActivate(root.which)
                 }
             }
-            Widgets.Separator { width: parent.width; visible: Services.BarPopout.title(root.which).length > 0 }
+            Widgets.Separator { width: parent.width; strong: true; visible: Services.BarPopout.title(root.which).length > 0 }
 
             // volume
             Widgets.StaggerReveal {
@@ -895,7 +912,7 @@ PanelWindow {
                     }
                 }
 
-                Widgets.Separator { width: parent.width }
+                Widgets.Separator { width: parent.width; strong: true }
 
                 // --- Tailscale ---------------------------------------
                 Item {
@@ -923,7 +940,7 @@ PanelWindow {
                     value: Services.Tailscale.hostName
                 }
 
-                Widgets.Separator { width: parent.width }
+                Widgets.Separator { width: parent.width; strong: true }
 
                 // --- VPN (WireGuard) ----------------------------------
                 Item {
@@ -970,7 +987,7 @@ PanelWindow {
                 // picker the bar card gets, same shape as every other
                 // section here, with the header icon deep-linking to the
                 // rest.
-                Widgets.Separator { width: parent.width }
+                Widgets.Separator { width: parent.width; strong: true }
                 Item {
                     width: parent.width
                     implicitHeight: Math.max(fwTitle.implicitHeight, fwSettings.implicitHeight)
@@ -1292,7 +1309,7 @@ PanelWindow {
                         label: Services.PowerActions.title("logout")
                         onClicked: root._requestPowerAction("logout")
                     }
-                    Widgets.Separator { width: parent.width }
+                    Widgets.Separator { width: parent.width; strong: true }
                     Widgets.SmallButton {
                         width: parent.width
                         label: Services.PowerActions.title("reboot")
@@ -1303,7 +1320,7 @@ PanelWindow {
                         label: Services.PowerActions.title("shutdown")
                         onClicked: root._requestPowerAction("shutdown")
                     }
-                    Widgets.Separator { width: parent.width }
+                    Widgets.Separator { width: parent.width; strong: true }
                     Widgets.SmallButton {
                         width: parent.width
                         label: "Settings…"
@@ -1350,17 +1367,29 @@ PanelWindow {
                     }
                 }
 
-                Widgets.Separator { width: parent.width }
+                Widgets.Separator { width: parent.width; strong: true }
 
                 // --- power icons row -----------------------------------
+                // User bug report, 2026-09-16: "you didn't align the power
+                // options to be 'spaced between'" — was a plain `Row` with
+                // a fixed gap, packed to the card's left edge. `spacing`
+                // computed against the card's own full width, the same
+                // "known count, evenly fill the width" formula this card's
+                // sensor-icon row (a few sections down) already uses,
+                // distributes the six icons edge-to-edge across the card
+                // instead.
                 Row {
-                    spacing: root.chWidth * Config.Appearance.space3
+                    id: pwrRow
+                    width: parent.width
+                    readonly property int _count: 6
+                    readonly property real _btnSize: root.chWidth * 3
+                    spacing: _count > 1 ? (width - _count * _btnSize) / (_count - 1) : 0
                     Repeater {
                         model: ["lock", "suspend", "hibernate", "logout", "reboot", "shutdown"]
                         Item {
                             id: pwrBtn
                             required property string modelData
-                            width: root.chWidth * 3
+                            width: pwrRow._btnSize
                             height: width
 
                             Widgets.StyledIcon {
@@ -1378,7 +1407,7 @@ PanelWindow {
                     }
                 }
 
-                Widgets.Separator { width: parent.width }
+                Widgets.Separator { width: parent.width; strong: true }
 
                 // --- media control (only while a source is available) --
                 Column {
@@ -1414,7 +1443,7 @@ PanelWindow {
                         }
                     }
                 }
-                Widgets.Separator { width: parent.width; visible: Services.Mpris.active !== null }
+                Widgets.Separator { width: parent.width; strong: true; visible: Services.Mpris.active !== null }
 
                 // --- system control -------------------------------------
                 Column {
@@ -1501,26 +1530,41 @@ PanelWindow {
                     // — was five stacked ToggleRow/Item+Toggle rows, now
                     // one horizontal row of icon-buttons, the same bare-
                     // icon-plus-hover-tint idiom the power icons row two
-                    // sections up already uses in this exact card. New
-                    // font glyphs were deliberately NOT invented for
-                    // True Tone/Stay awake/Microphone/Camera: Bar/modules/
-                    // Microphone.qml's own retired header already recorded
-                    // that this project has twice shipped a wrong PUA
-                    // codepoint before — short text abbreviations are the
-                    // same "the text IS the icon content" fallback
-                    // Bar/modules/{Workspaces,WindowList}.qml already rely
-                    // on elsewhere, not a placeholder. Night mode reuses
-                    // Widgets.SunMoonIcon (a real hand-drawn, animated
-                    // day/night disc, not a static glyph) — the one sensor
-                    // here that gets rework.md's "possibly animating from
-                    // one to another" for real.
+                    // sections up already uses in this exact card.
+                    //
+                    // User bug report, 2026-09-16: an earlier pass rendered
+                    // True Tone/Stay awake/Microphone/Camera as short text
+                    // abbreviations ("TT", "Z", "MIC", "CAM") rather than
+                    // invent a font glyph — Bar/modules/Microphone.qml's own
+                    // retired header records two past wrong-PUA-codepoint
+                    // mistakes, and this shell does treat a short label as a
+                    // legitimate icon fallback elsewhere (Workspaces.qml's
+                    // digit, WindowList.qml's letter) — but the user asked
+                    // again for real icons with real per-state shapes, which
+                    // rework.md's own "possibly animating from one to
+                    // another" always implied a label alone cannot give.
+                    // Widgets/TrueToneIcon, StayAwakeIcon, MicrophoneIcon
+                    // and CameraIcon (new, this pass) are hand-drawn Canvas
+                    // icons — the same convention as every other icon in
+                    // this shell that has no reliable font glyph
+                    // (SunMoonIcon, VolumeIcon, WifiIcon, BrightnessIcon,
+                    // BatteryIcon, GpuIcon) — so this sidesteps the exact
+                    // font-glyph pitfall the earlier pass was avoiding while
+                    // still giving each toggle a real icon. `evenSpacing`
+                    // below spreads the five buttons across the card's full
+                    // width (New Requests item 7: "icons should be
+                    // distributed horizontally") instead of packing them to
+                    // the left with a fixed gap.
                     Row {
+                        id: sensorRow
                         width: parent.width
-                        spacing: root.chWidth * Config.Appearance.space3
+                        readonly property int _count: 5
+                        readonly property real _btnSize: root.chWidth * 4
+                        spacing: _count > 1 ? (width - _count * _btnSize) / (_count - 1) : 0
 
                         Item {
                             id: nightBtn
-                            width: root.chWidth * 4; height: width
+                            width: sensorRow._btnSize; height: width
                             Widgets.SunMoonIcon {
                                 anchors.centerIn: parent
                                 sizeStep: 3
@@ -1540,7 +1584,7 @@ PanelWindow {
 
                         Item {
                             id: trueToneBtn
-                            width: root.chWidth * 4; height: width
+                            width: sensorRow._btnSize; height: width
                             enabled: Config.Capabilities.ambientLight
                             // 0.45 mirrors Widgets/WidgetStates.js's own
                             // INACTIVE_OPACITY (Settings/sections/
@@ -1548,13 +1592,16 @@ PanelWindow {
                             // this same number explains why it is
                             // duplicated here rather than imported).
                             opacity: enabled ? 1 : 0.45
-                            Widgets.StyledText {
+                            Widgets.TrueToneIcon {
                                 anchors.centerIn: parent
-                                mono: true; sizeStep: 1
-                                color: Services.NightShift.trueTone
+                                sizeStep: 3
+                                on: Services.NightShift.trueTone
+                                iconColor: Services.NightShift.trueTone
                                     ? Config.Appearance.accent
                                     : (trueToneHover.hovered ? Config.Appearance.textPrimary : Config.Appearance.textMuted)
-                                text: "TT"
+                                Behavior on iconColor {
+                                    ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                                }
                             }
                             HoverHandler { id: trueToneHover; cursorShape: trueToneBtn.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor }
                             TapHandler { enabled: trueToneBtn.enabled; onTapped: Services.NightShift.setTrueTone(!Services.NightShift.trueTone) }
@@ -1562,37 +1609,50 @@ PanelWindow {
 
                         // rework.md: "stay-awake (amphetamine icon with 2
                         // states)" — Services/Idle.qml's `manualOverride`.
+                        // See Widgets/StayAwakeIcon.qml's own header for
+                        // why this draws an eye rather than the named
+                        // third-party app's own logo.
                         Item {
                             id: awakeBtn
-                            width: root.chWidth * 4; height: width
-                            Widgets.StyledText {
+                            width: sensorRow._btnSize; height: width
+                            Widgets.StayAwakeIcon {
                                 anchors.centerIn: parent
-                                mono: true; sizeStep: 1
-                                color: Services.Idle.manualOverride
+                                sizeStep: 3
+                                awake: Services.Idle.manualOverride
+                                iconColor: Services.Idle.manualOverride
                                     ? Config.Appearance.accent
                                     : (awakeHover.hovered ? Config.Appearance.textPrimary : Config.Appearance.textMuted)
-                                text: "Z"
+                                Behavior on iconColor {
+                                    ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                                }
                             }
                             HoverHandler { id: awakeHover; cursorShape: Qt.PointingHandCursor }
                             TapHandler { onTapped: Services.Idle.setManualOverride(!Services.Idle.manualOverride) }
                         }
 
                         // rework.md: "microphone sensor ... enabled,
-                        // disabled, in use" — three real states: muted
-                        // (textMuted), enabled-idle (textPrimary),
-                        // in-use (error tone — the same "something is
-                        // actively listening" urgency every other in-use
-                        // indicator in this shell already reads as).
+                        // disabled, in use" — three real states, marked by
+                        // SHAPE (Widgets/MicrophoneIcon.qml: muted strikes
+                        // the capsule through, in-use fills it solid) as
+                        // well as colour: muted (textMuted), enabled-idle
+                        // (accent), in-use (error tone — the same
+                        // "something is actively listening" urgency every
+                        // other in-use indicator in this shell already
+                        // reads as).
                         Item {
                             id: micBtn
-                            width: root.chWidth * 4; height: width
-                            Widgets.StyledText {
+                            width: sensorRow._btnSize; height: width
+                            Widgets.MicrophoneIcon {
                                 anchors.centerIn: parent
-                                mono: true; sizeStep: 1
-                                color: Services.AudioBridge.inputMuted ? Config.Appearance.textMuted
+                                sizeStep: 3
+                                state: Services.AudioBridge.inputMuted ? "muted"
+                                    : (Services.AudioBridge.micInUse ? "inUse" : "idle")
+                                iconColor: Services.AudioBridge.inputMuted ? Config.Appearance.textMuted
                                     : (Services.AudioBridge.micInUse ? Config.Appearance.error
                                         : (micHover.hovered ? Config.Appearance.textPrimary : Config.Appearance.accent))
-                                text: "MIC"
+                                Behavior on iconColor {
+                                    ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                                }
                             }
                             HoverHandler { id: micHover; cursorShape: Qt.PointingHandCursor }
                             TapHandler { onTapped: Services.AudioBridge.toggleInputMute() }
@@ -1600,16 +1660,27 @@ PanelWindow {
 
                         // rework.md's camera-sensor toggle — see
                         // Services/SensorPermissions.qml's own header for
-                        // the full "why a no-op backend" explanation.
+                        // the full "why a no-op detection backend"
+                        // explanation; `activeUsers` itself is real (this
+                        // same card already filters it for camera at line
+                        // ~1210), it just stays empty until that backend
+                        // exists, so "in use" here is honest, not faked.
                         Item {
                             id: camBtn
-                            width: root.chWidth * 4; height: width
-                            Widgets.StyledText {
+                            width: sensorRow._btnSize; height: width
+                            readonly property bool _inUse: Services.SensorPermissions.activeUsers
+                                .filter(u => u.sensor === "camera").length > 0
+                            Widgets.CameraIcon {
                                 anchors.centerIn: parent
-                                mono: true; sizeStep: 1
-                                color: !Services.SensorPermissions.cameraEnabled ? Config.Appearance.textMuted
-                                    : (camHover.hovered ? Config.Appearance.textPrimary : Config.Appearance.accent)
-                                text: "CAM"
+                                sizeStep: 3
+                                state: !Services.SensorPermissions.cameraEnabled ? "disabled"
+                                    : (camBtn._inUse ? "inUse" : "enabled")
+                                iconColor: !Services.SensorPermissions.cameraEnabled ? Config.Appearance.textMuted
+                                    : (camBtn._inUse ? Config.Appearance.error
+                                        : (camHover.hovered ? Config.Appearance.textPrimary : Config.Appearance.accent))
+                                Behavior on iconColor {
+                                    ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                                }
                             }
                             HoverHandler { id: camHover; cursorShape: Qt.PointingHandCursor }
                             TapHandler { onTapped: Services.SensorPermissions.setCameraEnabled(!Services.SensorPermissions.cameraEnabled) }
@@ -1623,7 +1694,7 @@ PanelWindow {
                     }
                 }
 
-                Widgets.Separator { width: parent.width }
+                Widgets.Separator { width: parent.width; strong: true }
 
                 // --- tiling options grid --------------------------------
                 Column {
@@ -1695,7 +1766,7 @@ PanelWindow {
                             text: "ping " + (Services.NetStats.pingMs >= 0 ? Services.NetStats.pingMs + " ms" : "—") }
                     }
                 }
-                Widgets.Separator { width: parent.width }
+                Widgets.Separator { width: parent.width; strong: true }
 
                 // --- disk usage (Services/SysStats.qml, new this phase) -
                 Column {
@@ -1715,7 +1786,7 @@ PanelWindow {
                                 : "")
                     }
                 }
-                Widgets.Separator { width: parent.width }
+                Widgets.Separator { width: parent.width; strong: true }
 
                 // --- ram / cpu / gpu usage -------------------------------
                 Column {
@@ -1739,7 +1810,7 @@ PanelWindow {
                         fillColor: Config.Appearance.textPrimary
                     }
                 }
-                Widgets.Separator { width: parent.width }
+                Widgets.Separator { width: parent.width; strong: true }
 
                 // --- CPU temp + graph + 4 fan-profile buttons -----------
                 // rework.md: "4 fan profile buttons with active state
@@ -1798,7 +1869,7 @@ PanelWindow {
                     width: parent.width
                     visible: Config.Capabilities.nvidiaGpu
                     spacing: root.chWidth * Config.Appearance.space1
-                    Widgets.Separator { width: parent.width }
+                    Widgets.Separator { width: parent.width; strong: true }
                     Widgets.StyledText { kind: "title"; sizeStep: 0; text: "GPU" }
                     Widgets.AreaChart {
                         width: parent.width
@@ -1813,7 +1884,7 @@ PanelWindow {
                 // 'stats overlay' a button to open btop in a new
                 // workspace (simply add one to the currently highest and
                 // focus that)."
-                Widgets.Separator { width: parent.width }
+                Widgets.Separator { width: parent.width; strong: true }
                 Column {
                     width: parent.width
                     spacing: root.chWidth * Config.Appearance.space1
