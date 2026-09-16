@@ -1,4 +1,4 @@
-import QtQml
+import QtQuick
 import Quickshell.Hyprland
 
 // phiOS — Services/OverlayGrab. rework-status-bar.md Style item 10: "While
@@ -39,7 +39,14 @@ import Quickshell.Hyprland
 // as a child, pass the window in explicitly" shape that file established
 // (a PanelWindow is not an Item, so this cannot just read `parent`).
 
-QtObject {
+// `Item`, not `QtObject` (real launch failure, 2026-09-16: "Cannot assign
+// to non-existent default property" — QtObject has no default property to
+// receive the declared `HyprlandFocusGrab` child below; unlike Services/
+// LayerFocus.qml, which stays QtObject because it never declares a child
+// QML object at all, only properties and imperative Component.onCompleted
+// code). Never parented into a visible surface with real content, so the
+// unused geometry/visual properties this pulls in cost nothing.
+Item {
     id: root
 
     property var window: null   // the PanelWindow to grab focus around
