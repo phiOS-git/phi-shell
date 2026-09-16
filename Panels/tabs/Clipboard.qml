@@ -403,6 +403,14 @@ Item {
 
             Repeater { model: root.pinned; delegate: entryCard }
 
+            // rework-issues.md item 8: "there should be more some padding
+            // for each inner section and those should be divided by an
+            // horizontal thin line separator" — Pinned/Recent used to be
+            // told apart by a label and spacing alone.
+            Widgets.Separator {
+                width: parent.width
+                visible: root.pinned.length > 0 && root.rest.length > 0
+            }
             Widgets.StyledText {
                 kind: "label"
                 topPadding: root.pinned.length > 0 ? root.gap : 0
