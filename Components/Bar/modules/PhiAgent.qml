@@ -4,99 +4,62 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Bar/modules/PhiAgent.qml (S-23, master plan §6.6 Role B / §8.4:
-// "Segmento dedicato in barra su zotac e razer").
+// `processing` is bound to Services/Agent.qml (the one client point) —
+// true while an A1 turn is in flight, false otherwise.
 //
-// S-75: `processing` is now bound to Services/Agent.qml (the one client
-// point, ADR 098) — it is true while an A1 turn is in flight and false
-// otherwise. The S-23 text below describes the placeholder this replaced;
-// the motion and Role-B reasoning it works out are unchanged and still
-// apply, only the trigger is real now.
+// Segment's `active` state (full bg/fg inversion to accent) is used
+// here, not `tone` (a text-colour-only semantic highlight) — this is the
+// one bar module that needs the stronger, Tier-1 accent treatment.
 //
-// §6.6 Role B: "Tier 1 (accento) solo durante l'elaborazione, altrimenti
-// neutro" is Segment's `active` state (full bg/fg inversion to accent,
-// Widgets/WidgetStates.js `surfaceColors()`'s "active" case), NOT `tone`
-// (Tier 2, a text-colour-only semantic highlight) — Tier 1 and Tier 2 are
-// different roles in §6.2, and this is the one bar module in this step
-// that needs the former.
+// Label, not glyph: U+03A6 (Φ, uppercase) renders through the general UI
+// text font via StyledText, not the icon-only symbol font via StyledIcon.
 //
-// Label, not glyph: same font-symbol-coverage reasoning as every other new
-// module this step (see Volume.qml's note) — U+03A6 (Φ, uppercase, per
-// §6.6's own codepoint rule) renders through the general UI text font via
-// StyledText, not the icon-only symbol font via StyledIcon.
-//
-// Motion category A ("feedback di tracciamento... indicatore di
-// elaborazione dell'agente" — §6.5 names this exact segment as category
-// A's own worked example): continuous, light — a slow opacity breathe,
-// tokens.common.sh's PHI_MOTION_A_PERIOD/EASING (1600ms, linear). Applied
-// to this wrapper Item, not to the Segment directly: Segment already owns
-// its own internal `opacity` binding (WidgetStates.opacityFor, for its
-// disabled/loading fade) — an external "Animation on opacity" targeting
-// that same property would permanently sever that binding the moment it
-// first runs, a real QML footgun, not a hypothetical one. Runs only while
-// `processing` is true, so it costs nothing today: `processing` is
-// hardcoded false, making this animation dead code until a real trigger
-// exists, deliberately, not a bug — the alternative (leaving the motion
-// unwritten) would ship a segment that stays permanently silent even once
-// wired, since nothing else in this file would then know to animate it.
+// A slow, continuous opacity breathe. Applied to this wrapper Item, not
+// to the Segment directly: Segment already owns its own internal
+// `opacity` binding (WidgetStates.opacityFor, for its disabled/loading
+// fade) — an external "Animation on opacity" targeting that same property
+// would permanently sever that binding the moment it first runs. Runs
+// only while `processing` is true, so it costs nothing when idle.
 
 Item {
     id: root
 
     required property ShellScreen screen
-    // S-75: wired to the real client. Role B (accent) + category-A breathe
-    // while a turn is in flight, neutral otherwise (§6.6). The placeholder
-    // `false` from S-23 is gone — this is now driven by Services/Agent.qml,
-    // the one client point.
     property bool processing: Services.Agent.processing
 
     implicitWidth: segment.implicitWidth
     implicitHeight: segment.implicitHeight
 
-    // Out-of-plan (2026-09-09): clicking the segment toggles the phi agent
-    // panel (Panels/AgentPanel.qml) through Services/AgentPanel.qml, the
-    // one owner of that surface's shown state — same path as the Super+P
-    // bind and the Settings button. `active` still tracks `processing`
-    // only: §6.6 reserves Role B accent for "durante l'elaborazione", so a
-    // panel-open state is deliberately NOT reflected here (the panel being
-    // on screen is its own feedback). Handler on the inner Segment, not the
-    // wrapper Item — the wrapper exists only to host the opacity breathe
-    // (see the note above on why an external opacity animation on Segment
-    // would sever its internal binding).
+    // Clicking the segment toggles the AI agent panel through
+    // Services/AgentPanel.qml, the one owner of that surface's shown
+    // state — same path as the Super+P bind and the Settings button.
+    // `active` still tracks `processing` only: a panel-open state is
+    // deliberately NOT reflected here (the panel being on screen is its
+    // own feedback). Handler on the inner Segment, not the wrapper Item —
+    // the wrapper exists only to host the opacity breathe (see the note
+    // above on why an external opacity animation on Segment would sever
+    // its internal binding).
     Widgets.Segment {
         id: segment
         anchors.fill: parent
         label: "Φ"
-        // rework-issues.md item 12: "the 'phi' character looks too small
-        // compared to the icons." Segment defaults every bar button's text
-        // to sizeStep 0 (OOP-10's "the status bar reads one step smaller"
-        // rule) — correct for a multi-character label, but a lone glyph
-        // character reads visually lighter than this bar's Canvas-drawn
-        // icons at that same nominal size. One step up brings its apparent
-        // weight closer to its neighbours without touching the shared
-        // token (still no hardcoded size — `sizeStep` is itself the design-
-        // token-driven scale, just a different rung of it than the
-        // default). The Φ mark itself stays — replacing it with a font
-        // icon would give up the one closed, deliberate brand identity
-        // (§6.6, PROGRESS.md's own "a single Φ identity mark") for a
-        // generic glyph, which is not what "too small" was asking for.
+        // Segment defaults every bar button's text to sizeStep 0 —
+        // correct for a multi-character label, but a lone glyph character
+        // reads visually lighter than this bar's Canvas-drawn icons at
+        // that same nominal size. One step up brings its apparent weight
+        // closer to its neighbours without hardcoding a size (`sizeStep`
+        // is itself the design-token-driven scale, just a different rung).
         sizeStep: 1
-        // rework-issues.md item 11: was `processing` only — a segment
-        // whose panel is genuinely open (but not mid-turn) showed no
-        // active state at all. `accentWhenActive` below already makes
-        // `active` render as Tier-1 accent rather than a B&W inversion, so
-        // folding the panel's own shown state in here doesn't fight
-        // §6.6's "Tier 1 solo durante l'elaborazione" rule for the
-        // PROCESSING case — it just also covers the plain-open case the
-        // same closed ADR never actually addressed.
+        // Also active (not just processing) when the panel itself is
+        // open, so a segment whose panel is genuinely open — but not
+        // mid-turn — still shows a state.
         active: root.processing || Services.AgentPanel.shown
-        // §6.6 Role B is a closed ADR: the agent's processing state is
-        // Tier-1 accent, not the B&W inversion OOP-02 gave every other
-        // selected control. This flag is the one exception to that rule.
+        // The agent's processing state is Tier-1 accent, not the B&W
+        // inversion every other selected control gets. This flag is the
+        // one exception to that rule.
         accentWhenActive: true
-        // OOP-03: the Φ mark moved to the LEFT isle (leftmost element,
-        // ahead of the workspace list) — a deviation from §8.4's own
-        // per-host inventory, which put it at the end of the right cluster.
+        // The Φ mark sits in the LEFT isle (leftmost element, ahead of
+        // the workspace list).
         ambient: "isle"
         onActivated: Services.AgentPanel.toggle()
     }
