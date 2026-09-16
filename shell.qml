@@ -1,23 +1,23 @@
 import QtQml
 import Quickshell
 import Quickshell.Io
-// import qs.Config as Config
-// import qs.Services as Services
-// import qs.Background as Background
-// import qs.Bar as Bar
-// import qs.Notifications as Notifications
-// import qs.Panels as Panels
-// import qs.Settings as SettingsSurface
-// import qs.Osd as Osd
-// import qs.Spotlight as SpotlightSurface
-// import qs.Magnifier as MagnifierSurface
-// import qs.Launcher as Launcher
-// import qs.Lock as Lock
-// import qs.Screenshot as Screenshot
-// import qs.AltTab as AltTab
-// import qs.Cheatsheet as Cheatsheet
-// import qs.Dialogs as Dialogs
-// import qs.Images as Images
+import qs.Config as Config
+import qs.Services as Services
+import qs.Background as Background
+import qs.Bar as Bar
+import qs.Notifications as Notifications
+import qs.Panels as Panels
+import qs.Settings as SettingsSurface
+import qs.Osd as Osd
+import qs.Spotlight as SpotlightSurface
+import qs.Magnifier as MagnifierSurface
+import qs.Launcher as Launcher
+import qs.Lock as Lock
+import qs.Screenshot as Screenshot
+import qs.AltTab as AltTab
+import qs.Cheatsheet as Cheatsheet
+import qs.Dialogs as Dialogs
+import qs.Images as Images
 
 // phiOS — phi-shell entry point (master plan §8.2).
 //
