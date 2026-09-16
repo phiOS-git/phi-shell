@@ -266,12 +266,23 @@ PanelWindow {
             anchors.fill: parent
 
             // --- top bar: title + close, then the search on its own line -
+            // rework-issues.md item 17a: "make the panel padding the same
+            // on all sides" — this used to reserve an extra
+            // `space2 * 2` of height beyond its own content just for the
+            // top edge, while the left edge (navFlick below) had no extra
+            // margin at all and the right/bottom edges (contentFlick,
+            // navFlick) already used `root.gap`. All four outer edges now
+            // add that same `root.gap` beyond Widgets/Panel.qml's own
+            // uniform `paddingV`/`paddingH` (Config.Appearance.panelPadding,
+            // applied equally on every side already) — see navFlick's new
+            // `anchors.leftMargin` below for the matching left-edge fix.
             Item {
                 id: topBar
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: parent.top
-                height: topBarCol.implicitHeight + root.chWidth * Config.Appearance.space2 * 2
+                anchors.topMargin: root.gap
+                height: topBarCol.implicitHeight
 
                 Column {
                     id: topBarCol
@@ -395,6 +406,10 @@ PanelWindow {
             Flickable {
                 id: navFlick
                 anchors.left: parent.left
+                // rework-issues.md item 17a: matches contentFlick's own
+                // leftMargin/rightMargin — this was the one outer edge
+                // with no extra margin beyond Panel's base paddingH.
+                anchors.leftMargin: root.gap
                 anchors.top: topSep.bottom
                 // panels-ux-rework: the nav column and the content pane now
                 // start on the same line below the rule (both root.gap),
@@ -402,7 +417,7 @@ PanelWindow {
                 anchors.topMargin: root.gap
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: root.gap
-                width: root.navW
+                width: root.navW - root.gap
                 contentWidth: width
                 contentHeight: navCol.implicitHeight
                 clip: true

@@ -148,6 +148,64 @@ PanelWindow {
         Services.SettingsPanel.reveal(optionId)
         Services.BarPopout.hide()
     }
+
+    // rework-issues.md item 6: "the 'settings button' that usually appears
+    // at the end, should instead be a settings icon in the header aligned
+    // with the title" — for every single-topic card (one settings
+    // destination each), that "header" is this shared cardBody title row
+    // below, not a per-section one. The "network" card is the one
+    // exception left alone: it merges four independent settings
+    // destinations (Wi-Fi/Tailscale/VPN/Ethernet) into ONE card, so each
+    // of ITS OWN inner section headers keeps its own icon — already
+    // converted to Widgets.IconButton above, not a duplicate of this.
+    function _headerSettingsTarget(which) {
+        switch (which) {
+        case "wifi": return "connectivity.wifi.speed"
+        case "bluetooth": return "connectivity.bluetooth"
+        case "timer": return "notifications.timers"
+        case "microphone": return "security.sensors"
+        case "camera": return "security.sensors"
+        }
+        return ""
+    }
+    // "brightness" deep-links to a whole section (Theme), not one
+    // Settings/options.js option id — its own call shape (openSection, not
+    // reveal) predates this header icon and is kept as-is rather than
+    // forcing a fake options.js id into existence just to fit the
+    // single-function mapping above.
+    function _headerSettingsActivate(which) {
+        if (which === "brightness") {
+            Services.SettingsPanel.openSection("theme")
+            Services.BarPopout.hide()
+            return
+        }
+        root._showInSettings(root._headerSettingsTarget(which))
+    }
+    function _hasHeaderSettings(which) {
+        return which === "brightness" || root._headerSettingsTarget(which).length > 0
+    }
+
+    // rework-issues.md "New requests" item 2. Interface rework Phase 2
+    // removed btop's old dedicated-workspace pinning entirely (rework.md,
+    // "Features to be removed": "there will be no more workspaces
+    // specific for a certain program") — this is an ordinary, one-off
+    // workspace switch plus a plain launch, not a revival of that
+    // mechanism. `hl.dsp.focus({ workspace = N })` and
+    // `hl.dsp.exec_cmd(...)` are both already real, in-production
+    // dispatchers on this Lua-eval install (hyprland.lua.tmpl's own
+    // keybinds use the identical two calls).
+    function _openBtopInNewWorkspace() {
+        var wss = Services.HyprlandBridge.workspaces
+        var values = wss && wss.values ? wss.values : []
+        var maxId = 0
+        for (var i = 0; i < values.length; i++) {
+            if (values[i].id > maxId) maxId = values[i].id
+        }
+        var target = maxId + 1
+        Services.HyprlandBridge.dispatch('hl.dsp.focus({ workspace = ' + target + ' })')
+        Services.HyprlandBridge.dispatch('hl.dsp.exec_cmd("kitty -e btop")')
+        Services.BarPopout.hide()
+    }
     function _fmtRate(kbps) {
         if (kbps >= 1000) return (kbps / 1000).toFixed(1) + " Mb/s"
         return Math.round(kbps) + " kb/s"
@@ -427,11 +485,31 @@ PanelWindow {
             // (its per-section headers, "Ethernet"/"Wi-Fi"/etc., are
             // already real headers), so an empty title() return hides
             // this row entirely instead of showing a blank line.
-            Widgets.StyledText {
-                kind: "title"
-                sizeStep: 2
-                text: Services.BarPopout.title(root.which)
-                visible: text.length > 0
+            Item {
+                width: parent.width
+                visible: Services.BarPopout.title(root.which).length > 0
+                implicitHeight: Math.max(cardTitle.implicitHeight, cardSettingsBtn.implicitHeight)
+
+                Widgets.StyledText {
+                    id: cardTitle
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    kind: "title"
+                    sizeStep: 2
+                    text: Services.BarPopout.title(root.which)
+                }
+                // rework-issues.md item 6: one settings-icon slot in the
+                // shared card header — see root._headerSettingsTarget's
+                // own comment for why this only covers single-topic cards.
+                Widgets.IconButton {
+                    id: cardSettingsBtn
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: root._hasHeaderSettings(root.which)
+                    sizeStep: 1
+                    glyph: Glyphs.settings
+                    onActivated: root._headerSettingsActivate(root.which)
+                }
             }
             Widgets.Separator { width: parent.width; visible: Services.BarPopout.title(root.which).length > 0 }
 
@@ -570,14 +648,8 @@ PanelWindow {
                     kind: "label"; sizeStep: 0
                     text: "No ambient light sensor on this host."
                 }
-                Widgets.SmallButton {
-                    width: parent.width
-                    label: "Display settings…"
-                    onClicked: {
-                        Services.SettingsPanel.openSection("theme")
-                        Services.BarPopout.hide()
-                    }
-                }
+                // rework-issues.md item 6: moved into the shared card
+                // header's own settings icon (root._headerSettingsActivate).
             }
 
             // wifi — SSID, the live flow-style speed graph + stats, and
@@ -620,11 +692,8 @@ PanelWindow {
                     label: "Manage networks…"
                     onClicked: { Quickshell.execDetached(["kitty", "-e", "nmtui"]); Services.BarPopout.hide() }
                 }
-                Widgets.SmallButton {
-                    width: parent.width
-                    label: "Show in settings…"
-                    onClicked: root._showInSettings("connectivity.wifi.speed")
-                }
+                // rework-issues.md item 6: moved into the shared card
+                // header's own settings icon (root._headerSettingsActivate).
             }
 
             // ethernet (docs/TODO.md: "network informations should not be
@@ -687,14 +756,9 @@ PanelWindow {
                     onClicked: { Quickshell.execDetached(["kitty", "-e", "bluetuith"]); Services.BarPopout.hide() }
                 }
                 // rework.md: "Also has a small settings icon to open the
-                // 'settings panel'" — this deep-link already did exactly
-                // that; confirmed as the one real settings entry point for
-                // this overlay rather than adding a second.
-                Widgets.SmallButton {
-                    width: parent.width
-                    label: "Show in settings…"
-                    onClicked: root._showInSettings("connectivity.bluetooth")
-                }
+                // 'settings panel'" — rework-issues.md item 6: that icon
+                // now lives in the shared card header
+                // (root._headerSettingsActivate), not a trailing button.
             }
 
             // network — interface rework Phase 3: folds the standalone
@@ -754,12 +818,12 @@ PanelWindow {
                             kind: "title"
                             text: "Wi-Fi"
                         }
-                        Widgets.SmallButton {
+                        Widgets.IconButton {
                             id: wifiSettingsBtn
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
-                            label: "⚙"
-                            onClicked: root._showInSettings("connectivity.wifi")
+                            glyph: Glyphs.settings
+                            onActivated: root._showInSettings("connectivity.wifi")
                         }
                     }
                     Widgets.ToggleRow {
@@ -838,12 +902,12 @@ PanelWindow {
                     width: parent.width
                     implicitHeight: Math.max(tsTitle.implicitHeight, tsSettings.implicitHeight)
                     Widgets.StyledText { id: tsTitle; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; kind: "title"; text: "Tailscale" }
-                    Widgets.SmallButton {
+                    Widgets.IconButton {
                         id: tsSettings
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        label: "⚙"
-                        onClicked: root._showInSettings("connectivity.tailscale")
+                        glyph: Glyphs.settings
+                        onActivated: root._showInSettings("connectivity.tailscale")
                     }
                 }
                 Widgets.ToggleRow {
@@ -866,12 +930,12 @@ PanelWindow {
                     width: parent.width
                     implicitHeight: Math.max(vpnTitle.implicitHeight, vpnSettings.implicitHeight)
                     Widgets.StyledText { id: vpnTitle; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; kind: "title"; text: "VPN" }
-                    Widgets.SmallButton {
+                    Widgets.IconButton {
                         id: vpnSettings
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        label: "⚙"
-                        onClicked: root._showInSettings("connectivity.vpn")
+                        glyph: Glyphs.settings
+                        onActivated: root._showInSettings("connectivity.vpn")
                     }
                 }
                 Repeater {
@@ -894,6 +958,51 @@ PanelWindow {
                     width: parent.width
                     kind: "label"; sizeStep: 0
                     text: "VPN — no tunnels configured"
+                }
+
+                // rework-issues.md "New requests" item 3: "in the network
+                // panel, add a section to toggle the firewall and, when
+                // enabled, to set the firewall profile" — the full
+                // control surface (rules, logging, blocked-connections
+                // log) already exists in Settings/sections/
+                // Connectivity.qml (Services/Firewall.qml, a real
+                // nftables backend); this is the compact on/off + preset
+                // picker the bar card gets, same shape as every other
+                // section here, with the header icon deep-linking to the
+                // rest.
+                Widgets.Separator { width: parent.width }
+                Item {
+                    width: parent.width
+                    implicitHeight: Math.max(fwTitle.implicitHeight, fwSettings.implicitHeight)
+                    Widgets.StyledText { id: fwTitle; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; kind: "title"; text: "Firewall" }
+                    Widgets.IconButton {
+                        id: fwSettings
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        glyph: Glyphs.settings
+                        onActivated: root._showInSettings("connectivity.firewall")
+                    }
+                }
+                Widgets.ToggleRow {
+                    width: parent.width
+                    label: "Inbound firewall"
+                    checked: Services.Firewall.enabled
+                    enabled: Services.Firewall.nftAvailable && !Services.Firewall.busy
+                    onToggled: (v) => v ? Services.Firewall.enable() : Services.Firewall.disable()
+                }
+                Row {
+                    spacing: root.chWidth * Config.Appearance.space2
+                    visible: Services.Firewall.enabled
+                    Repeater {
+                        model: Services.Firewall.presetNames
+                        Widgets.SmallButton {
+                            required property string modelData
+                            label: modelData
+                            active: Services.Firewall.preset === modelData
+                            enabled: !Services.Firewall.busy
+                            onClicked: Services.Firewall.setPreset(modelData)
+                        }
+                    }
                 }
             }
 
@@ -938,11 +1047,8 @@ PanelWindow {
                     text: "Nothing scheduled. Set one from the runner bar: \"timer 5m\", \"alarm 7:30\"."
                     wrapMode: Text.WordWrap
                 }
-                Widgets.SmallButton {
-                    width: parent.width
-                    label: "Show in settings…"
-                    onClicked: root._showInSettings("notifications.timers")
-                }
+                // rework-issues.md item 6: moved into the shared card
+                // header's own settings icon (root._headerSettingsActivate).
             }
 
             // stopwatch — docs/TODO.md: "the timer, alarm and stopwatch
@@ -1070,11 +1176,8 @@ PanelWindow {
                         }
                     }
                 }
-                Widgets.SmallButton {
-                    width: parent.width
-                    label: "Show in settings…"
-                    onClicked: root._showInSettings("security.sensors")
-                }
+                // rework-issues.md item 6: moved into the shared card
+                // header's own settings icon (root._headerSettingsActivate).
             }
 
             Widgets.StaggerReveal {
@@ -1120,11 +1223,8 @@ PanelWindow {
                         }
                     }
                 }
-                Widgets.SmallButton {
-                    width: parent.width
-                    label: "Show in settings…"
-                    onClicked: root._showInSettings("security.sensors")
-                }
+                // rework-issues.md item 6: moved into the shared card
+                // header's own settings icon (root._headerSettingsActivate).
             }
 
             // gpu — the live util/temp readout is on the bar button
@@ -1655,6 +1755,21 @@ PanelWindow {
                         maxHint: 100
                     }
                     Widgets.StyledText { kind: "label"; sizeStep: 0; text: Services.GpuStats.tempC + "°C" }
+                }
+
+                // rework-issues.md "New requests" item 2: "add to the
+                // 'stats overlay' a button to open btop in a new
+                // workspace (simply add one to the currently highest and
+                // focus that)."
+                Widgets.Separator { width: parent.width }
+                Column {
+                    width: parent.width
+                    spacing: root.chWidth * Config.Appearance.space1
+                    Widgets.SmallButton {
+                        width: parent.width
+                        label: "Open btop in a new workspace"
+                        onClicked: root._openBtopInNewWorkspace()
+                    }
                 }
             }
         }

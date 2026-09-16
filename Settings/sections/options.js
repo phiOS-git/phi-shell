@@ -74,6 +74,7 @@ var OPTIONS = [
     { id: "theme.shape.radius-large", title: "Radius, large",          keywords: "corner rounding shape runner" },
     { id: "theme.shape.panel-gap",    title: "Panel gap",              keywords: "spacing inset margin dock overlay popout calendar bar edge gap" },
     { id: "theme.shape.panel-radius", title: "Panel corner radius",    keywords: "corner rounding shape dock overlay popout panel" },
+    { id: "theme.shape.terminal-padding", title: "Terminal window padding", keywords: "kitty inset spacing window padding" },
     { id: "theme.animations",         title: "Animations",             keywords: "motion transition duration easing bezier curve editor" },
     { id: "theme.wallpaper.color",    title: "Wallpaper solid colour", keywords: "background base fill" },
     { id: "theme.wallpaper.image",    title: "Wallpaper image",        keywords: "background picture photo folder pick add" },

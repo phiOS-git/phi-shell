@@ -47,11 +47,14 @@ Widgets.Segment {
 
     visible: root.present
     // Interface rework Phase 2 (rework.md, "Features to be removed": "no
-    // icon has text next to it anymore"): the "80%" text label is gone —
-    // BatteryIcon's own `level` fill already carries the value visually
-    // (and the real percentage is still a click away, in the BarPopout
-    // card); the anomaly/saver `tone` colouring below is unchanged.
-    label: ""
+    // icon has text next to it anymore"): the "80%" text label was gone by
+    // default — BatteryIcon's own `level` fill already carries the value
+    // visually (and the real percentage is still a click away, in the
+    // BarPopout card); the anomaly/saver `tone` colouring below is
+    // unchanged either way. rework-issues.md "New requests" item 1 brings
+    // it back as an opt-in (Settings › Devices › Battery), not a reversal
+    // of the default.
+    label: Services.PowerBridge.showPercentInBar ? (root.percent + "%") : ""
     // docs/TODO.md: "have a battery saving mode ... must have visual
     // feedback on the battery in the status bar." anomaly still wins when
     // both apply — a critically low or high-discharge-rate battery stays

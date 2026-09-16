@@ -242,12 +242,9 @@ Item {
         .filter((e) => !Services.Clipboard.isPinned(e.id) && root.matches(e))
     readonly property var navList: root.pinned.concat(root.rest)
 
-    function fmtTime(ts) {
-        return new Date(ts).toLocaleString(Qt.locale(), "ddd d MMM  HH:mm")
-    }
-
-    // The preview overlay's "extra informations" get seconds too — the
-    // card itself stays on fmtTime's minute resolution.
+    // rework-issues.md "New requests" item 4 removed the card's own time
+    // row entirely (kept only in the hover preview below) — the minute-
+    // resolution fmtTime() that row used to call is gone with it.
     function fmtTimeFull(ts) {
         return new Date(ts).toLocaleString(Qt.locale(), "ddd d MMM yyyy  HH:mm:ss")
     }
@@ -453,7 +450,14 @@ Item {
         // dock's own width keeps it comfortably clear of that edge case
         // while still reading as "roughly the same size as the sidebar."
         width: root.width * 0.8
-        height: Math.min(previewCol.implicitHeight + padding * 2, root.screenHeight * 0.5)
+        // rework-issues.md "New requests" item 5: "make the hover
+        // overlays larger with a range 100px-300px based on the
+        // content" — was unclamped on the small end (a one-line entry
+        // could shrink the whole card down to almost nothing) and capped
+        // at 50% of screen height on the large end; now a literal
+        // 100-300px range, the content height only ever chosen between
+        // those two bounds.
+        height: Math.max(100, Math.min(previewCol.implicitHeight + padding * 2, 300))
         radius: Config.Appearance.radiusLarge
         visible: opacity > 0
         opacity: (root.previewVisible && root.previewEntryData !== null) ? 1 : 0
@@ -519,17 +523,35 @@ Item {
                     ? "file://" + Services.Clipboard.contentPath(root.previewEntryData.id) : ""
             }
 
-            Widgets.StyledText {
+            // rework-issues.md "New requests" item 5: "make the time
+            // signature and the source spaced between" — was one text
+            // blob joined by " · " separators; now the timestamp sits at
+            // the left edge and the source (mime type + pinned/truncated
+            // flags) at the right, spread across the row instead of
+            // chained together.
+            Item {
                 width: parent.width
-                kind: "label"
-                sizeStep: 0
-                color: Config.Appearance.textMuted
-                text: root.previewEntryData !== null
-                    ? (root.fmtTimeFull(root.previewEntryData.timestamp)
-                        + " · " + root.previewMime
+                visible: root.previewEntryData !== null
+                implicitHeight: Math.max(previewTime.implicitHeight, previewSource.implicitHeight)
+
+                Widgets.StyledText {
+                    id: previewTime
+                    anchors.left: parent.left
+                    kind: "label"
+                    sizeStep: 0
+                    color: Config.Appearance.textMuted
+                    text: root.previewEntryData !== null ? root.fmtTimeFull(root.previewEntryData.timestamp) : ""
+                }
+                Widgets.StyledText {
+                    id: previewSource
+                    anchors.right: parent.right
+                    kind: "label"
+                    sizeStep: 0
+                    color: Config.Appearance.textMuted
+                    text: root.previewMime
                         + (root.previewPinned ? " · pinned" : "")
-                        + (root.previewTruncated ? " · truncated" : ""))
-                    : ""
+                        + (root.previewTruncated ? " · truncated" : "")
+                }
             }
         }
     }
@@ -613,24 +635,23 @@ Item {
                     width: parent.width
                     spacing: root.gap / 2
 
+                    // rework-issues.md "New requests" item 4: "reduce
+                    // entries to a single line with trimming (ellipsis,
+                    // '...') and remove the time in the list. Leave the
+                    // time information in the hover overlay" — was a
+                    // 2-line wrap plus a second, separate time row; the
+                    // hover overlay below already shows the time
+                    // (fmtTimeFull), so dropping it here loses nothing.
                     Widgets.StyledText {
                         width: parent.width - pinBtn.width - root.chWidth
                         mono: !card.isImage
                         elide: Text.ElideRight
-                        maximumLineCount: 2
-                        wrapMode: Text.Wrap
+                        maximumLineCount: 1
+                        wrapMode: Text.NoWrap
                         color: card.contentColor
                         text: card.isImage ? "[image]"
                             : (card.modelData.preview && card.modelData.preview.length > 0
                                 ? card.modelData.preview : "(empty)")
-                    }
-                    Widgets.StyledText {
-                        width: parent.width
-                        horizontalAlignment: Text.AlignRight
-                        kind: "label"
-                        sizeStep: 0
-                        color: card.selected ? card.contentColor : Config.Appearance.textMuted
-                        text: root.fmtTime(card.modelData.timestamp)
                     }
                 }
 

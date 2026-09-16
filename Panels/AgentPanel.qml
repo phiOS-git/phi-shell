@@ -6,6 +6,7 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 import "tabs/agent" as Agent
+import "../Bar/glyphs.js" as Glyphs
 
 // phiOS — Panels/AgentPanel (OOP-27, phios-agente-delta.md D-06). The
 // shell-summoned phi agent surface: a left-edge dock that slides in, with
@@ -306,12 +307,16 @@ PanelWindow {
                 // already use for this exact "deep link to Settings"
                 // affordance (Panels/BarPopout.qml's per-section "⚙"
                 // SmallButtons).
-                Widgets.SmallButton {
+                // rework-issues.md item 6: "the same should be applied to
+                // the settings icon in the chat panel" — a plain
+                // Widgets.IconButton (opacity-on-hover, no background/
+                // border/padding), not a SmallButton.
+                Widgets.IconButton {
                     id: panelSettingsBtn
                     anchors.top: parent.top
                     anchors.right: parent.right
-                    label: "⚙"
-                    onClicked: Services.SettingsPanel.openSection("aiAgent")
+                    glyph: Glyphs.settings
+                    onActivated: Services.SettingsPanel.openSection("aiAgent")
                 }
 
                 Row {

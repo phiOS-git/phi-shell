@@ -56,7 +56,12 @@ Singleton {
     property string chargeCycles: "unknown"
 
     function refreshCycles() { cyclesProbe.running = true }
-    Component.onCompleted: refreshCycles()
+    Component.onCompleted: {
+        refreshCycles()
+        Config.Settings.get("bar.battery-percent", (v, code) => {
+            if (v === "true") root.showPercentInBar = true
+        })
+    }
 
     Process {
         id: cyclesProbe
@@ -77,6 +82,16 @@ Singleton {
     // settings surface (not built here) has something real to bind to.
     property real dischargeRateThreshold: 15
     property real lowPercentThreshold: 0.20
+
+    // rework-issues.md "New requests" item 1: opt-in "80%" text label next
+    // to the bar icon (Bar/modules/Battery.qml reads this) — interface
+    // rework Phase 2 removed that label outright, this settings toggle
+    // brings it back as a choice rather than reverting the decision.
+    property bool showPercentInBar: false
+    function setShowPercentInBar(v) {
+        root.showPercentInBar = !!v
+        Config.Settings.set("bar.battery-percent", v ? "true" : "false")
+    }
 
     readonly property real dischargeRatePerHour: _dischargeRate()
     readonly property bool anomaly: root.present

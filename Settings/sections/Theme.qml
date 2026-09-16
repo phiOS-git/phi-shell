@@ -712,6 +712,27 @@ Column {
             tokenKey: "panel-radius"; title: "Panel corner radius"; step: 1; suffix: "px"; from: 0; to: 24
             description: "Corner rounding of those same below-the-bar surfaces."
         }
+        // rework-issues.md "New requests" item 16. Not a TokenNumberRow/
+        // ThemeOverrides value like its siblings above — those only ever
+        // affect phi-shell's own rendering, but this one has to reach
+        // kitty (a separate process, its own config file), so it goes
+        // through `phi state` (Services/Terminal.qml) and a real
+        // `phi theme set` re-render instead, reusing this section's own
+        // `setVariant` plumbing to apply immediately rather than only on
+        // the next manual theme switch.
+        SettingsRow {
+            optionId: "theme.shape.terminal-padding"
+            title: "Terminal window padding"
+            description: "kitty's own window_padding_width. Applies to new windows; already-open ones pick it up on their next theme re-render."
+            Widgets.NumberField {
+                value: Services.Terminal.padding
+                step: 4; suffix: "px"; from: 0; to: 120
+                onCommitted: (v) => {
+                    Services.Terminal.setPadding(v)
+                    root.setVariant(Config.Appearance.variant)
+                }
+            }
+        }
     }
 
     // --- Animations --------------------------------------------

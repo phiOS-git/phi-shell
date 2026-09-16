@@ -256,6 +256,19 @@ Column {
             ? ("Last sound error: " + Services.PowerBridge.chargingSoundError)
             : "Plays through pw-play (pipewire). The name resolves to /usr/share/sounds/freedesktop/stereo/<name>.oga, or give an absolute path. The freedesktop set needs sound-theme-freedesktop installed."
 
+        // rework-issues.md "New requests" item 1: "add a setting ... to
+        // toggle the battery charge amount in the status bar" —
+        // interface rework Phase 2 removed the "80%" text label
+        // (rework.md: "no icon has text next to it anymore") from
+        // Bar/modules/Battery.qml; this brings it back as an opt-in.
+        SettingsRow {
+            title: "Show the charge percentage in the status bar"
+            description: "The battery icon otherwise carries the value only as a fill, with the number a click away in its own overlay."
+            Widgets.Toggle {
+                checked: Services.PowerBridge.showPercentInBar
+                onToggled: (v) => Services.PowerBridge.setShowPercentInBar(v)
+            }
+        }
         SettingsRow {
             title: "Play a sound when the charger is plugged in"
             description: "Fires once per plug-in event."

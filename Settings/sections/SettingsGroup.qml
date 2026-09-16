@@ -30,8 +30,20 @@ import "options.js" as Options
 // so `reveal("connectivity.bluetooth")` or a search selection scrolls the
 // content pane to the whole group and pulses it — for a section (General,
 // the package lists) whose "options" are groups, not individual rows.
+//
+// rework-issues.md item 17b: "separate inner sections using a shade
+// background" — reopens OOP-52's own "the bordered Panel card is gone"
+// decision, but only halfway: a flat shade fill (`Config.Appearance.
+// surface1`, the same recessed-surface token the `preview` variant already
+// uses below), no border, is enough to separate one group from the next
+// without bringing back OOP-52's heavier bordered-card look. Restructured
+// from a plain `Column` to an `Item` wrapping an inset inner `Column`
+// (`innerCol`) so the shade `Rectangle` can sit behind uniform padding on
+// all four sides — every external caller only ever bound `width:
+// parent.width` and read/stacked this by its reported `height`, both of
+// which this keeps identical.
 
-Column {
+Item {
     id: root
 
     property string title: ""
@@ -64,7 +76,8 @@ Column {
 
     width: parent ? parent.width : 0
     visible: !root.advanced || Services.SettingsPanel.showAdvanced || root.highlighted
-    spacing: Config.Appearance.space2 * _ch
+    implicitHeight: outerCol.implicitHeight + root._pad * 2
+    height: root.implicitHeight
 
     TextMetrics {
         id: chMetrics
@@ -89,16 +102,37 @@ Column {
 
     function pulse() { pulseAnim.restart() }
 
+    // rework-issues.md item 17b: the shade fill separating this group from
+    // its neighbours — see this file's own header for why `root` moved
+    // from a plain `Column` to this `Item`+`outerCol` shape. `surface2`,
+    // not `surface1`: confirmed live that `surface1` is invisible here —
+    // it is already the Settings panel's OWN background colour
+    // (Widgets/Panel.qml's default "shaded" state, WidgetStates.js), so a
+    // same-shade group fill on top of it was indistinguishable from no
+    // fill at all. `surface2` is the next step up the same ramp.
+    Rectangle {
+        anchors.fill: parent
+        radius: Config.Appearance.radiusSmall
+        color: Config.Appearance.surface2
+    }
+
+    Column {
+        id: outerCol
+        x: root._pad
+        y: root._pad
+        width: parent.width - root._pad * 2
+        spacing: Config.Appearance.space2 * root._ch
+
     // --- title + caption + rule -------------------------------------
     Column {
         width: parent.width
         spacing: Math.round(root._ch * Config.Appearance.space1 * 0.6)
 
         Row {
-            // Indented to line up with the row labels below (SettingsRow's
-            // own _pad inset); the caption and rule stay full-bleed on the
-            // left, the caption text just picks up the same inset.
-            x: root._pad
+            // Every element in this group now sits inside outerCol's own
+            // uniform `_pad` inset (the shade box's padding) — no further
+            // per-element indent needed the way the old flush-left,
+            // no-background layout required.
             spacing: root._pad
             visible: root.title.length > 0
 
@@ -132,9 +166,8 @@ Column {
         }
 
         Widgets.StyledText {
-            x: root._pad
             visible: root.caption.length > 0
-            width: parent.width - root._pad * 2
+            width: parent.width
             wrapMode: Text.WordWrap
             kind: "label"
             sizeStep: 0
@@ -147,9 +180,8 @@ Column {
         }
 
         Widgets.StyledText {
-            x: root._pad
             visible: root.disabled && root.disabledReason.length > 0
-            width: parent.width - root._pad * 2
+            width: parent.width
             wrapMode: Text.WordWrap
             kind: "label"
             sizeStep: 0
@@ -219,4 +251,5 @@ Column {
             spacing: 0
         }
     }
+    } // outerCol
 }
