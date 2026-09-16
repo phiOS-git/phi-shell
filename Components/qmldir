@@ -1,7 +1,6 @@
-# Flattens the nested single-file surfaces (Bar/Bar.qml, Launcher/Launcher.qml,
-# Lock/Lock.qml, Settings/Settings.qml) so shell.qml can reach them as
-# Components.Bar etc. instead of Components.Bar.Bar. The rest of this
-# directory's files sit directly in Components/ and need no entry.
+# Maps each surface shell.qml composes to its file, so they're reachable as
+# Components.Bar, Components.Lock, ... regardless of whether the .qml sits
+# directly here or one level down in its own folder.
 
 Bar 1.0 Bar/Bar.qml
 Launcher 1.0 Launcher/Launcher.qml

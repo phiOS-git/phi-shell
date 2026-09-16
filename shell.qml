@@ -144,8 +144,8 @@ ShellRoot {
         screen: Quickshell.screens[0]
     }
 
-    // Dialogs — disabled by default, uncomment one at a time to preview
-    // on a single screen.
+    // Dialogs not yet mounted — backends exist in Services/{ConfirmDialog,
+    // PowerMenu,SensorPermissions,...}.qml.
     // Components.Dialogs.ConfirmDialog {
     //     screen: Quickshell.screens[0]
     // }
