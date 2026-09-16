@@ -1,12 +1,11 @@
 import QtQuick
 import qs.Config as Config
 
-// phiOS — Lock/Starfield (OOP-35). The calm option: a slow parallax drift
-// of faint points, twinkling. From scratch in a Canvas (I-01; no package).
+// The calm option: a slow parallax drift of faint points, twinkling. From
+// scratch in a Canvas.
 //
-// Motion category D with the same exception the other lock effects carry
-// (explicit user request, lock surface only, stops on conceal via
-// `running`).
+// Ambient animation, an exception confined to the lock surface and
+// stopped on conceal via `running`.
 //
 // Colour: tokens only — points sit between fg-3 and fg-1 by depth, the
 // nearest few tinted toward `accent`. Cheap: ~140 filled rects a frame.
@@ -16,12 +15,7 @@ Item {
 
     property bool running: true
     property real intensity: 0.9
-    // docs/TODO.md: "ambient effects... should have many settings: some
-    // shared (eg. speed)" — see Lock/LavaLamp.qml's own identical comment.
     property real speed: 1.0
-    // docs/TODO.md follow-up (user, 2026-09-15): "way more customisability"
-    // — was a fixed 140, now a real settable property (Settings/sections/
-    // Theme.qml's own "Starfield" accordion).
     property int starCount: 140
     property var stars: []
 

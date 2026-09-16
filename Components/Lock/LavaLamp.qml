@@ -1,48 +1,37 @@
 import QtQuick
 import qs.Config as Config
 
-// phiOS — Lock/LavaLamp (OOP-35; reworked 2026-09-15 on the user's own
-// "the lava lamp is the one I dislike the most, make it better looking,
-// with more liquid floating movement"). A lava-lamp field for the lock
-// screen background, the effect AngelJumbo/lavat is named after: slow
-// blobs that rise, fall and merge, with the colour drifting between two
-// tokens. Written from scratch in a Canvas (I-01; no extra package — the
-// ask was explicit).
+// A lava-lamp field for the lock screen background: slow blobs that rise,
+// fall and merge, with the colour drifting between two tokens. Written
+// from scratch in a Canvas — no extra package.
 //
-// Not true metaballs (a per-pixel threshold Canvas 2D cannot do cheaply):
-// each blob is a soft radial gradient drawn with `lighter` compositing, so
-// overlapping blobs bloom into one shape the way lamp wax does.
+// Not true metaballs (a per-pixel threshold Canvas 2D can't do cheaply):
+// each blob is a soft radial gradient drawn with `lighter` compositing,
+// so overlapping blobs bloom into one shape the way lamp wax does.
 //
-// What "more liquid" actually changed, each one a real physical cue a
-// real lava lamp has that the original version did not:
+// Real physical cues a rigid circle can't give:
 //   - each blob is drawn as an ELLIPSE that slowly stretches/squashes on
 //     two independent, out-of-phase sine waves (`morphPhase`/`morph2Phase`)
 //     — a perfect circle never wobbles, wax does. Drawn via
 //     save()/translate()/scale()/arc()/restore() rather than
-//     ctx.ellipse(): QtQuick's Canvas2D is a real but not necessarily
-//     complete mirror of the HTML5 Canvas API, and arc()+scale() is the
-//     combination this file (and every sibling effect) already relies on
-//     elsewhere, not a new, unverified method.
+//     ctx.ellipse(), the combination this file (and every sibling effect)
+//     already relies on elsewhere.
 //   - each blob's RADIUS breathes with its own vertical position — bigger
-//     near the bottom (`_heatFactor`, simulating the heat source expanding
-//     the wax), smaller near the top (cooling, contracting) — a real lava
-//     lamp's wax visibly swells as it rises and thins as it falls back.
-//   - each blob carries its own colour-phase OFFSET, not one shared global
-//     phase — the whole field no longer shifts hue in lock-step, which
-//     read as a flat colour wash rather than independent floating masses.
-//   - blob count and wobble amplitude are now real, caller-settable
-//     properties (`blobCount`, `wobble`) instead of a hardcoded 7/fixed
-//     amplitude — Settings/sections/Theme.qml's own new "Lava lamp"
-//     accordion exposes both.
+//     near the bottom (`_heatFactor`, simulating the heat source), smaller
+//     near the top (cooling, contracting).
+//   - each blob carries its own colour-phase OFFSET, not one shared
+//     global phase — the field drifts as independent floating masses,
+//     not one wash shifting hue in lockstep.
+//   - blob count and wobble amplitude are real, caller-settable
+//     properties (`blobCount`, `wobble`), exposed by Settings/sections/
+//     Theme.qml's "Lava lamp" accordion.
 //
-// Motion category D (§6.5, "ambient ... animation forbidden by default; an
-// exception has to be justified"): the exception is the user's explicit
-// request, and it is confined to the lock surface and stops on conceal
-// (`running`, cleared by Lock.qml).
+// Ambient animation, an exception confined to the lock surface and
+// stopped on conceal (`running`, cleared by Lock.qml).
 //
-// Colour: tokens only (I-05). The wax colour eases between `accent` and
-// `info` on a slow cycle — the two-colour grammar's accent plus one
-// semantic hue, nothing literal, no rainbow.
+// Colour: tokens only. The wax colour eases between `accent` and `info`
+// on a slow cycle — the two-colour grammar's accent plus one semantic
+// hue, nothing literal.
 
 Item {
     id: root
@@ -52,19 +41,12 @@ Item {
     // Peak opacity of a blob centre. Low, so the clock / password field on
     // top stay readable.
     property real intensity: 0.28
-    // docs/TODO.md: "ambient effects... should have many settings: some
-    // shared (eg. speed)" — a plain multiplier on every per-tick motion
-    // delta below, not a second timer interval: changing `interval`
-    // instead would also change how often the colour phase and gradient
-    // repaint happen, coupling "how fast it moves" to "how smooth it
-    // looks" for no reason.
+    // A plain multiplier on every per-tick motion delta below, not a
+    // second timer interval: changing `interval` instead would also
+    // change how often the colour phase and gradient repaint happen,
+    // coupling "how fast it moves" to "how smooth it looks" for no reason.
     property real speed: 1.0
 
-    // docs/TODO.md follow-up (user, 2026-09-15): "way more customisability"
-    // — both now real settable properties (Settings/sections/Theme.qml's
-    // "Lava lamp" accordion), not hardcoded. A denser default field (9, was
-    // a fixed 7) reads more like a real lamp's many small masses than a
-    // handful of isolated blobs.
     property int blobCount: 9
     // Multiplier on the elliptical morph amplitude and the horizontal
     // drift wobble — 0 would be perfectly circular, motionless-shape blobs
@@ -105,8 +87,8 @@ Item {
     Component.onCompleted: seed()
 
     Timer {
-        // Reuses the Category-C character step as the frame interval, the
-        // constant Widgets/ScrambleText and Lock/MatrixRain already reuse.
+        // Reuses the character-step constant Widgets/ScrambleText and
+        // Lock/MatrixRain already reuse as the frame interval.
         interval: Config.Appearance.motionCTypeStep
         running: root.running && root.visible && root.width > 0 && root.height > 0
         repeat: true
