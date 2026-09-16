@@ -34,18 +34,17 @@ PanelWindow {
     color: "transparent"
     visible: root.shown || fadeRoot.opacity > 0
 
-    // rework-status-bar.md Style item 10: restrict this window's own INPUT
-    // region to the visible card — see Services/OverlayGrab.qml's own
-    // header for the full mechanism and why this, together with that
-    // component below, replaces the old fullscreen
-    // `MouseArea { onClicked: hide() }`.
-    mask: Region { item: cardWrap }
-
+    // rework-status-bar.md Style item 10: reverted 2026-09-16 — see
+    // Panels/BarPopout.qml's own header comment for why (the mask/
+    // HyprlandFocusGrab mechanism could not be verified interactively in
+    // this environment, did not fix the reported blocking, and introduced
+    // a new close-transition glitch). Back to the known-stable fullscreen
+    // `MouseArea` below.
+    //
     // Style pass 2026-09-14: no Escape handling existed — click-outside
     // was the only way to close this panel, unlike its sibling small
     // corner surfaces (QuickNote already has it).
     Services.LayerFocus { target: root }
-    Services.OverlayGrab { window: root; active: root.shown; onDismissed: Services.Calendar.hide() }
 
     TextMetrics {
         id: chMetrics
@@ -143,6 +142,12 @@ PanelWindow {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
+        // Click anywhere outside the small panel closes it.
+        MouseArea {
+            anchors.fill: parent
+            onClicked: Services.Calendar.hide()
+        }
+
         Item {
             id: cardWrap
             anchors.top: parent.top
@@ -161,6 +166,9 @@ PanelWindow {
             // clock line above it.
             width: root.chWidth * 38
             height: panel.height
+
+            // Swallow clicks on the card (border included).
+            MouseArea { anchors.fill: parent }
 
             Widgets.Panel {
             id: panel

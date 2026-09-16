@@ -19,12 +19,7 @@ import qs.Services as Services
 // changed is the shape it owns: two independent shown flags instead of one
 // shown+tab pair, since the two are no longer one surface.
 //
-// Entry points, both equivalent — rework-status-bar.md Style item 4: the
-// two overlays used to open at a different position depending on which of
-// these triggered them (an x under the clicked icon vs. the screen corner
-// for the keybind/IPC path); both now always resolve to the fixed corner
-// position Panels/NotificationsOverlay.qml / Panels/ClipboardOverlay.qml
-// compute for themselves, so neither entry point needs to pass anything.
+// Entry points:
 //   - the bar bell (Bar/modules/Notifications.qml) / the bar clipboard icon
 //     (Bar/modules/Clipboard.qml)
 //   - Super+N / Super+Shift+V (hyprland.lua.tmpl → `ipc call notifications
@@ -33,12 +28,36 @@ import qs.Services as Services
 //     "registered once regardless of where it's declared" shape Services/
 //     Timers.qml's own "timer" IpcHandler already uses for a true
 //     singleton).
+//
+// rework-status-bar.md Style item 4, corrected 2026-09-16 (a prior pass
+// here misread the report): the click path was already correct — an icon
+// click passed its own `rightX()`, and the overlay aligned to it. The bug
+// was the KEYBIND path, which had no icon to read a position from and fell
+// back to the screen corner — a different, worse-looking result than a
+// click for no reason the user asked for. Dropping the icon-anchor
+// mechanism entirely (this file's own prior revision) "fixed" that by
+// making the CLICK path corner too, i.e. matched the broken behaviour
+// instead of fixing it. The real, "global" fix — usable by any future
+// keybind the same way — is this pair of `*IconRightX` function
+// references: each bar icon registers its own `rightX()` once, at
+// Component.onCompleted, and open()/toggle() always calls whichever is
+// registered, fresh, regardless of what triggered it. A click and a
+// keybind now go through the exact same call and land at the exact same
+// position — there is no separate "keybind path" left to diverge.
+// `mapToItem` (what `rightX()` calls) is not a trackable QML binding
+// dependency on its own (confirmed elsewhere in this repo), so this has
+// to be a function reference invoked fresh on each open, not a live
+// property binding computed once.
 
 Singleton {
     id: root
 
     property bool notificationsShown: false
     property bool clipboardShown: false
+    property real notificationsAnchorX: 0
+    property real clipboardAnchorX: 0
+    property var notificationsIconRightX: null
+    property var clipboardIconRightX: null
 
     // Kept for the peers that only ever watched (or called .hide() on) the
     // OLD single `shown` — Services/Calendar.qml's own Connections block
@@ -67,31 +86,21 @@ Singleton {
         Services.HyprlandBridge.leaveReservedWorkspace()
     }
 
-    // rework-status-bar.md Style item 4: "overlays that have a keybinding
-    // ... open ... in the screen corner, rather than aligned with their
-    // icon [click] ... this should be a global fix as I might add new
-    // keybind[s] in future" — these two open from a bar icon click as well
-    // as a keybinding/IPC call, and used to compute a different position
-    // for each (an x under the clicked icon vs. the screen corner for the
-    // keybind path with no icon to anchor under). One trigger source
-    // getting a different result than the other is exactly what read as
-    // wrong; the "global" fix is not to special-case either overlay's own
-    // math but to drop the icon-anchor parameter entirely, so every
-    // trigger — today's icon click and keybind, and any future keybind
-    // added the same way — lands on the one fixed corner position Panels/
-    // NotificationsOverlay.qml and Panels/ClipboardOverlay.qml already
-    // compute for themselves.
     function openNotifications() {
+        root.notificationsAnchorX = (typeof root.notificationsIconRightX === "function") ? root.notificationsIconRightX() : 0
         root.notificationsShown = true
     }
     function openClipboard() {
+        root.clipboardAnchorX = (typeof root.clipboardIconRightX === "function") ? root.clipboardIconRightX() : 0
         root.clipboardShown = true
     }
     function toggleNotifications() {
-        root.notificationsShown = !root.notificationsShown
+        if (root.notificationsShown) root.notificationsShown = false
+        else root.openNotifications()
     }
     function toggleClipboard() {
-        root.clipboardShown = !root.clipboardShown
+        if (root.clipboardShown) root.clipboardShown = false
+        else root.openClipboard()
     }
 
     // Every peer's own onShownChanged still just calls this one function —

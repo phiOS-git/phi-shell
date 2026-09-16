@@ -15,14 +15,16 @@ import "tabs" as Tabs
 // click-outside-closes, Services.LayerFocus, Escape handling) rather than a
 // tab inside a shared full-height right-edge dock.
 //
-// Anchoring: rework-status-bar.md Style item 4 ("overlays that have a
-// keybinding ... open ... in the screen corner, rather than aligned with
-// their icon") — the card's RIGHT edge sits at the fixed top-right screen
-// corner, the same position Calendar.qml's own card uses for its corner,
-// regardless of whether a bar-icon click or a keybinding opened it. This
-// used to track the triggering bar icon's own right edge instead (the
-// same per-icon mechanism Panels/BarPopout.qml's own popouts still use);
-// see Services/NotificationPanel.qml's own header for why that changed.
+// Anchoring: the card's RIGHT edge tracks the triggering bar icon's own
+// right edge, clamped to the screen — the same mechanism Panels/
+// BarPopout.qml's own `cardWrap.x` binding already established for every
+// right-isle bar popout. rework-status-bar.md Style item 4 (corrected
+// 2026-09-16): a prior pass here made this always open at the screen
+// corner regardless of trigger, on the mistaken reading that the corner
+// was the desired end state — the actual report was that only the
+// KEYBIND path incorrectly fell back to the corner while a click already
+// aligned correctly; see Services/NotificationPanel.qml's own header for
+// the real fix (both paths now compute the same real icon position).
 //
 // Height: rework-issues.md item 3 overrides this file's earlier reading of
 // rework.md ("not full height ... no maximum height") — real hardware
@@ -48,15 +50,13 @@ PanelWindow {
     color: "transparent"
     visible: root.shown || fadeRoot.opacity > 0
 
-    // rework-status-bar.md Style item 10: restrict this window's own INPUT
-    // region to the visible card — see Services/OverlayGrab.qml's own
-    // header for the full mechanism and why this, together with that
-    // component below, replaces the old fullscreen
-    // `MouseArea { onClicked: hide() }`.
-    mask: Region { item: cardWrap }
-
+    // rework-status-bar.md Style item 10: reverted 2026-09-16 — see
+    // Panels/BarPopout.qml's own header comment for why (the mask/
+    // HyprlandFocusGrab mechanism could not be verified interactively in
+    // this environment, did not fix the reported blocking, and introduced
+    // a new close-transition glitch). Back to the known-stable fullscreen
+    // `MouseArea` below.
     Services.LayerFocus { target: root }
-    Services.OverlayGrab { window: root; active: root.shown; onDismissed: Services.NotificationPanel.notificationsShown = false }
 
     TextMetrics {
         id: chMetrics
@@ -76,6 +76,11 @@ PanelWindow {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
+        MouseArea {
+            anchors.fill: parent
+            onClicked: Services.NotificationPanel.notificationsShown = false
+        }
+
         Item {
             id: cardWrap
             anchors.top: parent.top
@@ -93,10 +98,22 @@ PanelWindow {
                 root.height * 0.75,
                 cardWrap._maxAvailable)
 
-            // rework-status-bar.md Style item 4: always the screen corner
-            // now, whether a bar-icon click or a keybinding opened this —
-            // see Services/NotificationPanel.qml's own header.
-            x: parent.width - width - Config.Appearance.panelGap
+            // rework-status-bar.md Style item 4 (corrected): the card's
+            // RIGHT edge tracks the triggering bar icon's own right edge,
+            // clamped to the screen — same mechanism Panels/BarPopout.qml's
+            // own `cardWrap.x` uses. `notificationsAnchorX` is now always
+            // computed fresh (Services/NotificationPanel.qml's registered
+            // `notificationsIconRightX` getter), whether a click or the
+            // Super+N keybind opened this, so both land at the same real
+            // position — 0 only if the icon has genuinely never completed
+            // (falls back to the screen corner).
+            x: Services.NotificationPanel.notificationsAnchorX > 0
+                ? Math.max(Config.Appearance.panelGap,
+                    Math.min(parent.width - width - Config.Appearance.panelGap,
+                        Services.NotificationPanel.notificationsAnchorX - width))
+                : parent.width - width - Config.Appearance.panelGap
+
+            MouseArea { anchors.fill: parent }
 
             Widgets.Panel {
                 id: panel

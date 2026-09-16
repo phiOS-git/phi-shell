@@ -33,15 +33,13 @@ PanelWindow {
     color: "transparent"
     visible: root.shown || fadeRoot.opacity > 0
 
-    // rework-status-bar.md Style item 10: restrict this window's own INPUT
-    // region to the visible card — see Services/OverlayGrab.qml's own
-    // header for the full mechanism and why this, together with that
-    // component below, replaces the old fullscreen
-    // `MouseArea { onClicked: hide() }`.
-    mask: Region { item: cardWrap }
-
+    // rework-status-bar.md Style item 10: reverted 2026-09-16 — see
+    // Panels/BarPopout.qml's own header comment for why (the mask/
+    // HyprlandFocusGrab mechanism could not be verified interactively in
+    // this environment, did not fix the reported blocking, and introduced
+    // a new close-transition glitch). Back to the known-stable fullscreen
+    // `MouseArea` below.
     Services.LayerFocus { target: root }
-    Services.OverlayGrab { window: root; active: root.shown; onDismissed: Services.NotificationPanel.clipboardShown = false }
 
     TextMetrics {
         id: chMetrics
@@ -61,6 +59,11 @@ PanelWindow {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
+        MouseArea {
+            anchors.fill: parent
+            onClicked: Services.NotificationPanel.clipboardShown = false
+        }
+
         Item {
             id: cardWrap
             anchors.top: parent.top
@@ -78,10 +81,21 @@ PanelWindow {
                 root.height - anchors.topMargin - Config.Appearance.panelGap,
                 root.height * 0.75)
 
-            // rework-status-bar.md Style item 4: always the screen corner
-            // now, whether a bar-icon click or a keybinding opened this —
-            // see Services/NotificationPanel.qml's own header.
-            x: parent.width - width - Config.Appearance.panelGap
+            // rework-status-bar.md Style item 4 (corrected): the card's
+            // RIGHT edge tracks the triggering bar icon's own right edge,
+            // clamped to the screen. `clipboardAnchorX` is now always
+            // computed fresh (Services/NotificationPanel.qml's registered
+            // `clipboardIconRightX` getter), whether a click or the
+            // Super+Shift+V keybind opened this, so both land at the same
+            // real position — 0 only if the icon has genuinely never
+            // completed (falls back to the screen corner).
+            x: Services.NotificationPanel.clipboardAnchorX > 0
+                ? Math.max(Config.Appearance.panelGap,
+                    Math.min(parent.width - width - Config.Appearance.panelGap,
+                        Services.NotificationPanel.clipboardAnchorX - width))
+                : parent.width - width - Config.Appearance.panelGap
+
+            MouseArea { anchors.fill: parent }
 
             Widgets.Panel {
                 id: panel

@@ -130,8 +130,24 @@ Item {
     opacity: WidgetStates.opacityFor(resolvedState)
 
     readonly property real _borderWidth: (!root.invalid && root.borderWidthOverride >= 0) ? root.borderWidthOverride : Config.Appearance.borderWidthStrong
-    readonly property color _borderColor: (!root.invalid && root.borderColorOverride !== "transparent") ? root.borderColorOverride : root.stateColors.border
-    readonly property color _bgColor: (!root.invalid && root.bgColorOverride !== "transparent") ? root.bgColorOverride : root.stateColors.bg
+    // Real bug, confirmed live (2026-09-16): `color !== "transparent"` is a
+    // strict QML/JS comparison between a `color` value and a plain string —
+    // it never coerces, so it evaluated to `true` unconditionally, even for
+    // an untouched default override (verified with a throwaway `qs -p` run:
+    // `Qt.rgba(0,0,0,0) !== "transparent"` prints `true`). That silently
+    // made EVERY Widgets.Panel in the shell — not just ones that actually
+    // set an override — read `_borderColor`/`_bgColor` as the (transparent)
+    // override instead of its real state colour the moment `_bgColor` was
+    // added, which is what took the Settings panel/runner bar/agent panel's
+    // background out entirely. `borderColorOverride` carried this exact
+    // same defective comparison since before this session; nothing ever
+    // exercised it with a real value so it went unnoticed. Fixed by
+    // checking the override's own alpha channel instead of comparing
+    // against a sentinel string — a real override is always fully opaque,
+    // the untouched default is always `a === 0`, and colour components are
+    // ordinary numeric comparisons, not a type mismatch.
+    readonly property color _borderColor: (!root.invalid && root.borderColorOverride.a > 0) ? root.borderColorOverride : root.stateColors.border
+    readonly property color _bgColor: (!root.invalid && root.bgColorOverride.a > 0) ? root.bgColorOverride : root.stateColors.bg
 
     // Fast path: every Panel whose four corners still agree (the default,
     // and every call site as of this phase) keeps the plain native
