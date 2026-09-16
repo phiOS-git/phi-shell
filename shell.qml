@@ -53,7 +53,7 @@ ShellRoot {
         }
     }
 
-    // Status Bar
+    // Status Bar - Top
     Variants {
         model: Quickshell.screens
 
@@ -63,21 +63,16 @@ ShellRoot {
         }
     }
 
-    // // Interface rework Phase 2 (rework.md's "## Status bars": "There will
-    // // be 2 status bars, one on the top and one on the bottom of the
-    // // screen"). Same per-screen Variants shape as the top bar above (ADR
-    // // 077); only `edge` differs — Bar/Bar.qml's own new property picks
-    // // Bar/modules-bottom.json and the mirrored anchors/slide-direction/
-    // // corner-radius behaviour its own header documents.
-    // Variants {
-    //     model: Quickshell.screens
+    // Status Bar - Bottom
+    Variants {
+        model: Quickshell.screens
 
-    //     Bar.Bar {
-    //         required property ShellScreen modelData
-    //         screen: modelData
-    //         edge: "bottom"
-    //     }
-    // }
+        Bar.Bar {
+            required property ShellScreen modelData
+            screen: modelData
+            edge: "bottom"
+        }
+    }
 
     // // S-30: one toast surface per screen, same per-monitor instantiation
     // // as Bar.Bar above (ADR 077) — see Notifications/Toast.qml for why
