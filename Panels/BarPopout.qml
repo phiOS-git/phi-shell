@@ -184,6 +184,28 @@ PanelWindow {
     function _hasHeaderSettings(which) {
         return which === "brightness" || root._headerSettingsTarget(which).length > 0
     }
+
+    // rework-issues.md "New requests" item 2. Interface rework Phase 2
+    // removed btop's old dedicated-workspace pinning entirely (rework.md,
+    // "Features to be removed": "there will be no more workspaces
+    // specific for a certain program") — this is an ordinary, one-off
+    // workspace switch plus a plain launch, not a revival of that
+    // mechanism. `hl.dsp.focus({ workspace = N })` and
+    // `hl.dsp.exec_cmd(...)` are both already real, in-production
+    // dispatchers on this Lua-eval install (hyprland.lua.tmpl's own
+    // keybinds use the identical two calls).
+    function _openBtopInNewWorkspace() {
+        var wss = Services.HyprlandBridge.workspaces
+        var values = wss && wss.values ? wss.values : []
+        var maxId = 0
+        for (var i = 0; i < values.length; i++) {
+            if (values[i].id > maxId) maxId = values[i].id
+        }
+        var target = maxId + 1
+        Services.HyprlandBridge.dispatch('hl.dsp.focus({ workspace = ' + target + ' })')
+        Services.HyprlandBridge.dispatch('hl.dsp.exec_cmd("kitty -e btop")')
+        Services.BarPopout.hide()
+    }
     function _fmtRate(kbps) {
         if (kbps >= 1000) return (kbps / 1000).toFixed(1) + " Mb/s"
         return Math.round(kbps) + " kb/s"
@@ -1688,6 +1710,21 @@ PanelWindow {
                         maxHint: 100
                     }
                     Widgets.StyledText { kind: "label"; sizeStep: 0; text: Services.GpuStats.tempC + "°C" }
+                }
+
+                // rework-issues.md "New requests" item 2: "add to the
+                // 'stats overlay' a button to open btop in a new
+                // workspace (simply add one to the currently highest and
+                // focus that)."
+                Widgets.Separator { width: parent.width }
+                Column {
+                    width: parent.width
+                    spacing: root.chWidth * Config.Appearance.space1
+                    Widgets.SmallButton {
+                        width: parent.width
+                        label: "Open btop in a new workspace"
+                        onClicked: root._openBtopInNewWorkspace()
+                    }
                 }
             }
         }
