@@ -19,6 +19,7 @@ import qs.Services as Services
 // `-format "%[pixel:p{X,Y}]" info:` — real, documented ImageMagick syntax.
 // Unverified end-to-end off-machine (no compositor to grim from here).
 
+// @deprecated
 PanelWindow {
     id: root
 

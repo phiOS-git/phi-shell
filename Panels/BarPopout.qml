@@ -2095,7 +2095,7 @@ PanelWindow {
                     width: parent.width
                     Widgets.SmallButton {
                         width: parent.width
-                        label: "Open btop in a new workspace"
+                        label: "More details"
                         onClicked: root._openBtopInNewWorkspace()
                     }
                 }
