@@ -2,11 +2,9 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/Accordion (Out-of-plan: settings-overhaul batch G). A
-// titled disclosure: a header row that toggles an inline body open and
+// A titled disclosure: a header row that toggles an inline body open and
 // shut. Used by Settings/sections/Devices.qml for each Chroma integration's
-// extra settings (the user's directive: "a setting button that opens extra
-// settings with an accordion").
+// extra settings.
 //
 // Inline, not a popover — the settings content pane is a clipped Flickable
 // (same constraint Widgets/ColorField.qml calls out). The body's height
@@ -14,8 +12,8 @@ import "WidgetStates.js" as WidgetStates
 //
 // Stateless w.r.t. persistence: `expanded` is plain view state the caller
 // can seed or ignore. The seven transverse states exist on the header for
-// interface uniformity (§8.6); only default/hover/disabled/loading have a
-// defined look for a disclosure header.
+// interface uniformity; only default/hover/disabled/loading have a defined
+// look for a disclosure header.
 
 Column {
     id: root
@@ -24,12 +22,7 @@ Column {
     property bool expanded: false
     property bool loading: false
     default property alias content: body.data
-    // Style pass 2026-09-14: an optional header-trailing action (a "clear"
-    // button, say) — the gap this widget's own header comment left open
-    // for docs/TODO.md's "sometimes have the arrow icon and sometimes
-    // don't" complaint: Panels/tabs/Notifications.qml's own notification-
-    // group header needed exactly this and grew a hand-rolled disclosure
-    // instead, one more grammar the shell had to reconcile. Empty by
+    // An optional header-trailing action (a "clear" button, say). Empty by
     // default so every existing caller (Devices.qml, Updates.qml) is
     // unaffected.
     property alias trailingAction: trailingSlot.data
@@ -58,10 +51,9 @@ Column {
         height: caret.implicitHeight + root._pad * 2
 
         // The trailing slot's own footprint, measured so the toggle area
-        // below can stop short of it — same non-overlapping-regions shape
-        // Panels/tabs/Notifications.qml's own group header already used,
-        // so a trailing "clear" doesn't also toggle the disclosure (or vice
-        // versa) the way one shared full-width TapHandler would.
+        // below can stop short of it — a trailing "clear" doesn't also
+        // toggle the disclosure (or vice versa) the way one shared
+        // full-width TapHandler would.
         readonly property real _trailingW: trailingSlot.children.length > 0 ? trailingSlot.width : 0
 
         Item {
@@ -76,11 +68,7 @@ Column {
 
             HoverHandler { id: hover; enabled: root.enabled; cursorShape: Qt.PointingHandCursor }
             TapHandler { id: tap; enabled: root.enabled; onTapped: root.expanded = !root.expanded }
-            // Style pass 2026-09-14: a shared, reused widget (Devices'
-            // Chroma integrations, Updates' package lists) with no
-            // keyboard path to its own only action — see Widgets/
-            // StyledButton.qml's identical comment for the general gap
-            // this pass found and fixed across every shared widget type.
+            // Same keyboard-activation fix as Widgets/StyledButton.qml.
             activeFocusOnTab: true
             Keys.onReturnPressed: if (root.enabled) root.expanded = !root.expanded
             Keys.onSpacePressed: if (root.enabled) root.expanded = !root.expanded
@@ -126,12 +114,10 @@ Column {
     }
 
     // Clipped wrapper so the body's own height can be animated without its
-    // content spilling while collapsed. Style pass: "accordions don't
-    // differentiate the body" (docs/TODO.md) — a hairline rule on the left
-    // edge, inset from the header's own caret column, is the one piece of
-    // chrome every collapsible surface in this shell can share regardless
-    // of what its body actually holds (a settings sub-group, a list of
-    // notification cards, …), so a body always reads as "inside" its
+    // content spilling while collapsed. A hairline rule on the left edge,
+    // inset from the header's own caret column, is the one piece of chrome
+    // every collapsible surface in this shell shares regardless of what
+    // its body actually holds, so a body always reads as "inside" its
     // header rather than just another block of content below it.
     Item {
         width: parent.width

@@ -2,14 +2,10 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/TextField (Out-of-plan: settings-overhaul batch A). The
-// one text-entry primitive. Before this, three sections each inlined their
-// own bare TextInput + placeholder + focus-border Rectangle
-// (Settings/sections/Theme.qml, Keybindings.qml, Devices.qml), every copy
-// noting "no text-entry widget exists in this library yet". This is that
-// widget: a bordered box, a placeholder that clears on input, a focus ring
-// (the one control state that still shows accent, §8.6 / OOP-02), and an
-// `invalid` tint for a field validating free text (a hex colour, a number).
+// The one text-entry primitive: a bordered box, a placeholder that clears
+// on input, a focus ring (the one control state that still shows accent),
+// and an `invalid` tint for a field validating free text (a hex colour, a
+// number).
 //
 // Controlled, like Widgets/Toggle: `text` is a plain property the caller owns;
 // editing emits `edited(text)` continuously and `committed(text)` on Enter
@@ -23,8 +19,7 @@ Item {
     // `text` is the field's own text, aliased straight to the TextInput so
     // there is no model/view copy to keep in sync and no binding loop
     // between them: the caller seeds it (Component.onCompleted / a reset)
-    // and reads it back, the same imperative shape Settings/sections/
-    // Theme.qml's inlined field already used.
+    // and reads it back.
     property alias text: input.text
     property string placeholder: ""
     property bool mono: true
@@ -34,23 +29,21 @@ Item {
     property alias inputMethodHints: input.inputMethodHints
     property alias horizontalAlignment: input.horizontalAlignment
     property alias readOnly: input.readOnly
-    // docs/TODO.md, style pass: "no clear/clean button for searchbars." Any
-    // TextField can opt in — on by default, since every real caller of this
-    // widget so far is either a search/filter field or a short value entry
-    // where clearing in one tap is welcome either way; a caller that truly
-    // never wants it (a secrets field, say) can turn it off.
+    // On by default, since most callers of this widget are either a
+    // search/filter field or a short value entry where clearing in one tap
+    // is welcome either way; a caller that truly never wants it (a
+    // secrets field, say) can turn it off.
     property bool clearable: true
 
     readonly property bool keyboardFocus: input.activeFocus
 
     signal edited(string text)
     signal committed(string text)
-    // docs/TODO.md: "ESC ... should only close a panel if nothing is
-    // focused inside them" — Escape here blurs the field rather than
-    // reaching whatever the field sits inside (a panel, a dialog, a list
-    // row). A caller that wants a second Escape to then close its own
-    // surface listens for this and re-focuses its own fallback handler,
-    // the same shape Panels/AgentPanel.qml uses for its Dashboard fields.
+    // Escape here blurs the field rather than reaching whatever the field
+    // sits inside (a panel, a dialog, a list row) — a panel should only
+    // close on Escape when nothing inside it is still focused. A caller
+    // that wants a second Escape to then close its own surface listens for
+    // this and re-focuses its own fallback handler.
     signal escaped()
 
     TextMetrics {
@@ -61,8 +54,8 @@ Item {
     }
     readonly property real chWidth: chMetrics.width
     readonly property real padH: WidgetStates.chToPixels(Config.Appearance.space1, chWidth)
-    // features-change: the shared field/button height, so a TextField and a
-    // StyledButton in the same Row match instead of the button towering.
+    // The shared field/button height, so a TextField and a StyledButton in
+    // the same Row match instead of the button towering.
     readonly property real _controlHeight: WidgetStates.controlHeight(Config.Appearance, chWidth)
     readonly property bool _showClear: root.clearable && input.text.length > 0 && !root.readOnly
     readonly property real _clearSlot: _showClear ? (_controlHeight * 0.8 + padH) : 0
@@ -141,9 +134,7 @@ Item {
     // loss, not just Enter — so `input.focus = false` here would otherwise
     // also fire root.committed(text), turning Escape into a silent commit
     // of whatever half-typed text is in the field. Escape means cancel,
-    // not commit (a half-typed hex should not reach Config.ThemeOverrides,
-    // this file's own header already says as much about `edited` vs
-    // `committed` — the same principle extends to Escape).
+    // not commit.
     property bool _escaping: false
 
     TextInput {
