@@ -3,21 +3,17 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// phiOS — Tailscale status for the bar's "network" module (S-23, master
-// plan §8.4: "rete (icona solo su stato Tailscale)" on zotac, "rete" on
-// razer). Not a Quickshell service surface at all — Tailscale has no
-// compositor-level integration, this is a plain CLI probe via
-// `tailscale status --json`, the same Quickshell.Io.Process pattern
-// Config/Settings.qml and Config/Capabilities.qml already use — but it
-// lives under Services/ anyway, alongside every other "external data a bar
-// module reads," matching master plan §8.2's own repository tree.
+// Tailscale status for the bar's network module. Not a Quickshell service
+// surface — Tailscale has no compositor-level integration, this is a
+// plain CLI probe via `tailscale status --json`, the same
+// Quickshell.Io.Process pattern Config/Settings.qml and
+// Config/Capabilities.qml use.
 //
-// ADR 067: this file's own contract is that it NEVER reads or exposes
+// SECURITY CONTRACT: this file must NEVER read or expose
 // `Self.TailscaleIPs` (or any peer's) from the JSON — only `BackendState`
-// and `Self.HostName`, the name used for addressing inside the tailnet,
-// never the address itself. A future property added here that touches an
-// IP field would be the violation, not anything a consumer does with what
-// this file already exposes.
+// and `Self.HostName`, the tailnet-internal name, never the address
+// itself. A future property added here that touches an IP field would be
+// the violation, not anything a consumer does with what's already exposed.
 
 Singleton {
     id: root
@@ -30,10 +26,8 @@ Singleton {
 
     function refresh() { probe.running = true }
 
-    // Out-of-plan: settings-overhaul batch F — the Connectivity section's
-    // Tailscale group and the bar's tailscale+vpn module. `tailscale up` /
-    // `down` may need root unless the tailscale operator is set to this
-    // user; a failure surfaces as lastError, not a silent no-op.
+    // `tailscale up`/`down` may need root unless the tailscale operator is
+    // set to this user; a failure surfaces as lastError, not a silent no-op.
     function up() { root.lastError = ""; actionProc.command = ["tailscale", "up"]; actionProc.running = true }
     function down() { root.lastError = ""; actionProc.command = ["tailscale", "down"]; actionProc.running = true }
 
@@ -56,14 +50,10 @@ Singleton {
     Process {
         id: probe
         command: ["tailscale", "status", "--json"]
-        // running=false in onExited: found during S-36 while auditing
-        // every Process in this repo for a class of bug this file also
-        // had, uncorrected, since S-23 — Process.onFinished()
-        // (io/process.cpp) calls startProcessIfReady() unconditionally on
-        // exit, so refresh()'s "probe.running = true" was never actually a
-        // 30-second poll: once the first run completed, this process
-        // respawned itself immediately and kept doing so in a tight loop,
-        // completely decoupled from the Timer above.
+        // running=false in onExited: Process.onFinished() restarts
+        // automatically if `running` is still true on exit — without
+        // this, the process respawns immediately in a tight loop,
+        // completely decoupled from the 30-second Timer above.
         onExited: probe.running = false
         stdout: StdioCollector {
             onStreamFinished: {

@@ -3,29 +3,19 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// phiOS — Services/SysStats (interface rework Phase 3, Stats overlay:
-// rework.md "disks usage, ram usage, cpu usage ... CPU temp, graph").
-// Checked first: Services/SystemInfo.qml's own RAM/disk fields (S-40, the
-// Settings General section) are static TOTALS read once for a "hardware
-// shape" report, not a live usage percentage or a sampled graph — not the
-// same data, so this is a genuinely new small read, not a duplicate of an
-// existing one. Same `sh -c` KEY=VALUE-lines shape every other
-// Services/*.qml system probe in this repo already uses (Config/
-// Capabilities.qml, Services/SystemInfo.qml itself) — one script, parsed
-// once, rather than three separate Process objects for three fast local
-// reads.
+// Live usage percentages and a sampled graph for the Stats overlay —
+// distinct from Services/SystemInfo.qml's static hardware-shape totals.
+// Same `sh -c` KEY=VALUE-lines shape every other system probe in this
+// repo uses: one script, parsed once, rather than three separate Process
+// objects for three fast local reads.
 //
 // CPU temperature reads /sys/class/thermal/thermal_zone0/temp — the plain
 // kernel ACPI/thermal sysfs interface, present with no extra package
-// (unlike lm_sensors, which this project's fan-control investigation
-// already confirmed is NOT a guaranteed-installed dependency here).
-// thermal_zone0 is the conventional first zone, not independently
-// confirmed to be specifically the CPU PACKAGE sensor on every host this
-// runs on — flagged for the screenshot pass, same convention this project
-// already uses for every hardware read it cannot verify without the real
-// machine.
+// (unlike lm_sensors, not guaranteed installed here). thermal_zone0 is
+// the conventional first zone, not independently confirmed to be
+// specifically the CPU package sensor on every host this runs on.
 //
-// Watched-gated like Services/NetStats.qml: only polls while the Stats
+// Watch-gated like Services/NetStats.qml: only polls while the Stats
 // overlay is actually open.
 
 Singleton {
@@ -68,9 +58,8 @@ Singleton {
 
     // One instantaneous snapshot of /proc/stat's own cumulative jiffy
     // counters per poll — the delta against the LAST snapshot (computed in
-    // QML below, not a second `sleep 1` sample inside the script) is what
-    // turns this into a rate, the same technique Services/NetStats.qml's
-    // own devProc already uses for network throughput.
+    // QML below) is what turns this into a rate, the same technique
+    // Services/NetStats.qml uses for network throughput.
     Process {
         id: poll
         command: ["sh", "-c", [
