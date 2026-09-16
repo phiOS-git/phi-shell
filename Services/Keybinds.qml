@@ -3,30 +3,21 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// phiOS — Services/Keybinds (S-40; Out-of-plan: settings-overhaul batch H).
-// `hyprctl binds -j` parsing, factored out of Cheatsheet/Cheatsheet.qml
-// (S-37) so the settings panel's read-only Keybindings section (master plan
-// §9.12: "vista di reference... sola lettura e ricerca") reads the exact
-// same data through the exact same parsing rather than a second copy — the
-// same "share it, do not build it twice" instruction S-37's own card gave
-// for the PATH-command case applies here for its sibling one. Cheatsheet.qml
-// now reads this file instead of running its own Process.
+// `hyprctl binds -j` parsing, factored out of Components/Cheatsheet.qml so
+// the settings panel's read-only Keybindings section reads the exact same
+// data through the exact same parsing rather than a second copy.
+// Cheatsheet.qml reads this file instead of running its own Process.
 //
-// Still READ-ONLY and still fetched fresh on every refresh() call, never
-// cached across a real config edit — the property that made Cheatsheet
-// correct-by-construction (S-37: "there is no second place holding it")
-// only holds if this file behaves the same way its single caller used to.
+// Still read-only and fetched fresh on every refresh() call, never cached
+// across a real config edit — there is no second place holding this data.
 //
-// batch H: context() derives a group label per binding, and groups()
-// buckets the live list into ordered sections. This is a DERIVATION over
-// the one live query, not a stored second copy — S-37's closed decision
-// (read-only, no duplicate of the bindings) is intact: nothing here is
-// written, and a binding that cannot be classified goes to "Other" rather
-// than being dropped. `hyprctl binds -j` carries no context field of its
-// own, so the signal is, in priority order: the `description` string
-// (every phi-shell bind sets one — see hyprland.lua.tmpl's own note on why
-// that flag was needed), then the dispatcher + arg, then the submap, then
-// the raw keysym (the XF86* media keys).
+// context() derives a group label per binding, and groups() buckets the
+// live list into ordered sections — a derivation over the one live query,
+// not a stored second copy. `hyprctl binds -j` carries no context field of
+// its own, so the signal is, in priority order: the `description` string
+// (every phi-shell bind sets one), then the dispatcher + arg, then the
+// submap, then the raw keysym (the XF86* media keys). A binding that
+// can't be classified goes to "Other" rather than being dropped.
 
 Singleton {
     id: root
@@ -59,10 +50,9 @@ Singleton {
         }
     }
 
-    // Modifier-bit decoding (SHIFT=1, CTRL=4, ALT=8, SUPER=64): standard
-    // XKB/wlroots modifier bit convention, not confirmed against a real
-    // `hyprctl binds -j` capture — same flag Cheatsheet.qml carried since
-    // S-37, carried forward unchanged rather than re-litigated.
+    // Modifier-bit decoding (SHIFT=1, CTRL=4, ALT=8, SUPER=64): the
+    // standard XKB/wlroots modifier bit convention, not independently
+    // confirmed against a real `hyprctl binds -j` capture.
     function modText(modmask) {
         if (!modmask) return ""
         const names = []
