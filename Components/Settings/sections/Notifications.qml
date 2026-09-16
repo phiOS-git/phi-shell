@@ -3,12 +3,10 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Settings/sections/Notifications (S-40; Out-of-plan: settings-
-// overhaul batch I, master plan §9.12): "modalità non disturbare (durata o
-// a richiesta) · regole per applicazione · blink Chroma su notifica."
-// Everything reads Services/Notifications (S-30's daemon) directly — DND
-// reuses phi state's toggle.dnd (that file's header on why), per-app rules
-// and the seen-app list live in Services/Notifications too.
+// Do-not-disturb (duration or on-demand), per-app rules, Chroma blink on
+// arrival. Everything reads Services/Notifications directly — DND reuses
+// phi state's toggle.dnd, per-app rules and the seen-app list live there
+// too.
 
 Column {
     id: root
@@ -126,14 +124,11 @@ Column {
             Column {
                 width: parent.width
                 spacing: root.gap
-                // Style pass 2026-09-14: was the NumberField alone — a
-                // bare number-of-days entry for a setting almost always
-                // picked from a small set of common spans, the same
-                // "awful UX standard" complaint docs/TODO.md raised about
-                // this exact field. Preset buttons first (this file's own
-                // "Silence for a while" row, just above, already
-                // established this pattern for a duration choice), the
-                // NumberField kept below for anything in between.
+                // Preset buttons first, since retention is almost always
+                // picked from a small set of common spans (the same
+                // pattern "Silence for a while" above already
+                // establishes), the NumberField kept below for anything
+                // in between.
                 Row {
                     spacing: root.gap
                     Repeater {
@@ -163,9 +158,6 @@ Column {
             title: "Clear now"
             Widgets.StyledButton {
                 label: "Clear all notifications"
-                // docs/TODO.md: "sensible settings ... should ask
-                // confirmation with a blocking alert" — the whole
-                // notification history, not one entry.
                 onClicked: Services.ConfirmDialog.open({
                     title: "Clear all notifications",
                     message: "Deletes the whole notification history now. This cannot be undone.",
@@ -234,28 +226,20 @@ Column {
     }
 
     // --- Timers, alarms & stopwatch -----------------------------------
-    // docs/TODO.md: "add a timer and alarm feature to phi ... It should
-    // have a ringtone. The two features must be customisable in the
-    // settings." Services/Timers.qml owns the state; set up new timers/
-    // alarms from the runner bar ("timer 5m", "alarm 7:30 wake up") —
-    // this group is ringtone customisation plus managing what is already
-    // running, not where a new one is created.
-    //
-    // docs/TODO.md: "the timer, alarm and stopwatch features need to be
-    // implemented... can be called from the runner as well." The
-    // stopwatch (Services/Stopwatch.qml) has no customisable state of its
-    // own — no ringtone, nothing persisted — so it gets no dedicated row
-    // here, only a mention in this group's own caption, the exact spot a
-    // user reading "how do I start one of these from the runner" already
-    // lands on for timer/alarm.
+    // Services/Timers.qml owns the state; set up new timers/alarms from
+    // the runner bar ("timer 5m", "alarm 7:30 wake up") — this group is
+    // ringtone customisation plus managing what's already running, not
+    // where a new one is created. The stopwatch (Services/Stopwatch.qml)
+    // has no customisable state of its own, so it gets no dedicated row,
+    // only a mention in this group's own caption.
     SettingsGroup {
         title: "Timers, alarms & stopwatch"
         optionId: "notifications.timers"
-        // Empty state folded into the caption (Per-app rules group's own
-        // shape, just above), not a separate invisible-when-non-empty
-        // SettingsRow: a hidden-but-still-child-0 row would draw the first
-        // real row's separator against nothing above it (SettingsRow's own
-        // `_first` check reads position in `children`, not visibility).
+        // Empty state folded into the caption, not a separate invisible-
+        // when-non-empty SettingsRow: a hidden-but-still-child-0 row
+        // would draw the first real row's separator against nothing
+        // above it (SettingsRow's own `_first` check reads position in
+        // `children`, not visibility).
         caption: Services.Timers.soundError.length > 0
             ? ("Last sound error: " + Services.Timers.soundError)
             : (Services.Timers.items.length === 0 ? "No timers or alarms running. " : "") +
