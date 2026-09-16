@@ -72,6 +72,18 @@ PanelWindow {
     // note) — the fade lives on fadeRoot; `visible` holds until it settles.
     visible: root.shown || fadeRoot.opacity > 0
 
+    // rework-issues.md "New requests" item 15a: "pressing ESC should
+    // close it" — real, but only for the gesture-opened, persistent mode
+    // (OOP-24's own `heldOpen: false`). The Alt+Tab (held) mode already
+    // gets Escape for free: hyprland.lua.tmpl's own "alttab" submap binds
+    // it to the same `cancel()` IPC call below, at the COMPOSITOR level,
+    // before this surface would ever see a key event. The gesture path
+    // never enters that submap — this surface never held real Wayland
+    // keyboard focus at all until now, the same fix (Services.LayerFocus
+    // + a focused child's Keys.onEscapePressed) every other overlay in
+    // this shell already uses (e.g. Screenshot/Screenshot.qml).
+    Services.LayerFocus { target: root }
+
     IpcHandler {
         target: "alttab"
         function next(): void { root._cycle(1) }
@@ -423,6 +435,8 @@ PanelWindow {
         id: fadeRoot
         anchors.fill: parent
         opacity: root.shown ? 1 : 0
+        focus: root.shown
+        Keys.onEscapePressed: root._close()
 
         Behavior on opacity {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
