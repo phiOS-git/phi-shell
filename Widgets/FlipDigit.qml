@@ -2,61 +2,39 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/FlipDigit (docs/TODO.md follow-up, user 2026-09-11: "the
-// calendar overlay (the open that appears when clicking the clock) should
-// have time animating like a flip clock"). A single character cell that
-// plays a split-flap style flip whenever its own `value` changes — not the
-// whole clock re-flipping every second, each cell flips independently and
-// only when the character it shows actually changes (so on a real clock,
-// the seconds cell flips every tick, the minutes cell only once a minute,
-// the hours cell rarer still). Panels/Calendar.qml is the first consumer,
-// one instance per digit of "HH:mm:ss"; Bar/modules/Clock.qml is the
-// second, at `showCard: false`.
+// A single character cell that plays a split-flap style flip whenever its
+// own `value` changes — each cell flips independently and only when the
+// character it shows actually changes, not the whole clock re-flipping
+// every second. Bar/modules/Clock.qml is the live caller, at
+// `showCard: false`.
 //
-// docs/TODO.md follow-up (2026-09-13): "shows a flip clock, it should have
-// the real flip animation, not a slot" — the first version of this widget
-// (a single Text squashed toward its own bottom edge via one `Scale`) read
-// as a slot-machine reel, not a flip, because the WHOLE glyph — both the
-// half that is supposed to move and the half that is supposed to stay
-// completely still — squashed together as one unit; there was no genuinely
-// motionless anchor for the eye to read the moving half against. Rewritten
-// so the cell is two INDEPENDENT pieces, each clipped to exactly half the
-// cell's height, both reading the SAME `_shown` character (one source, two
-// clipped views of it — see below): `topFlap`, which is the only thing
-// that ever moves (it folds down toward the centerline, then unfolds back
-// up — the same squash-swap-unsquash shape as before, just now confined
-// to its own half), and `bottomStatic`, which never has a transform
-// applied to it at all. The static half being pixel-still for the entire
-// flip — not just anchored at one edge of a shared squash like the old
-// version — is what a flip needs and a slot doesn't have.
+// The cell is two INDEPENDENT pieces, each clipped to exactly half the
+// cell's height, both reading the SAME `_shown` character: `topFlap`,
+// which is the only thing that ever moves (it folds down toward the
+// centerline, then unfolds back up), and `bottomStatic`, which never has a
+// transform applied to it at all. The static half being pixel-still for
+// the whole flip — rather than the whole glyph squashing together as one
+// unit — is what makes this read as a flip rather than a slot-machine reel:
+// there has to be a genuinely motionless anchor for the eye to read the
+// moving half against.
 //
-// Deliberately still not a true two-piece split-flap (a physical card that
-// also visibly unfolds INTO the bottom half, replacing it with motion
-// rather than an instant swap): the prior version of this same TODO entry,
-// already implemented and signed off once, asked for exactly this
-// half-static shape in the user's own words — "it folds the number from
-// both top and bottom, it should only be the top part folding over the
-// bottom" — so a bottom that also visibly animates would be re-opening a
-// design question the user already settled, not a fix to what they flagged
-// this time. If the top-only version still doesn't read as convincingly as
-// a flip once seen, a genuine two-leg fold (the bottom unfolding into
-// place instead of snapping) is the next step up, not a rewrite of this
-// one — flag it if that's needed.
+// Deliberately not a true two-piece split-flap (a physical card that also
+// visibly unfolds INTO the bottom half, replacing it with motion rather
+// than an instant swap) — the bottom stays static by design, folding only
+// from the top.
 //
 // Technique: `topFlap` squashes to near-zero vertical scale via a plain
-// `Scale` transform — a `Scale` rather than an X-axis `Rotation` — without
-// an explicit perspective matrix the two project identically here, so
-// `Scale` is the simpler spelling of the same result — then, at the fully-
-// squashed midpoint, `_shown` (the one property both halves' Text read)
-// advances to the new value, then unsquashes. Motion category B
-// throughout — a discrete value change, the same category every other
-// one-shot transition in this session uses; split into two legs so the
-// TOTAL flip duration is one category-B duration, not two. `cardBorder` is
-// the static outer frame (a sibling of both halves, never transformed);
-// `seamLine`, new in this rewrite, is a thin static line at the centerline
-// where the two halves meet — the visible seam a real split-flap card has
-// between its two physical pieces, gated to `showCard` (the bar clock's
-// tiny sizeStep-0 digits have no room for it and no card frame either).
+// `Scale` transform — a `Scale` rather than an X-axis `Rotation`, since
+// without an explicit perspective matrix the two project identically here
+// — then, at the fully-squashed midpoint, `_shown` (the one property both
+// halves' Text read) advances to the new value, then unsquashes. Motion
+// category B throughout, split into two legs so the TOTAL flip duration is
+// one category-B duration, not two. `cardBorder` is the static outer frame
+// (a sibling of both halves, never transformed); `seamLine` is a thin
+// static line at the centerline where the two halves meet — the visible
+// seam a real split-flap card has between its two physical pieces, gated
+// to `showCard` (the bar clock's tiny sizeStep-0 digits have no room for
+// it and no card frame either).
 
 Item {
     id: root
@@ -77,15 +55,14 @@ Item {
 
     // Card padding for `cardBorder`/`seamLine` — same chToPixels(space-
     // token, chWidth) pattern Widgets/Panel.qml and Widgets/Segment.qml
-    // already use, so the outline reads as a card around the digit instead
-    // of hugging its glyph edges. `fontSize1`, not `root._fontSize`: both
-    // existing ch-reference consumers (Widgets/Segment.qml, Panels/
-    // Calendar.qml) deliberately measure against the same fixed
-    // `fontSize1`, not whatever size the widget itself happens to render
-    // at, so a `space-N` token resolves to one consistent physical size
+    // use, so the outline reads as a card around the digit instead of
+    // hugging its glyph edges. `fontSize1`, not `root._fontSize`: measured
+    // against the same fixed `fontSize1` every other ch-reference consumer
+    // uses, not whatever size this widget itself happens to render at, so
+    // a `space-N` token resolves to one consistent physical size
     // everywhere in the shell. Measuring against this cell's own (much
     // larger, sizeStep 4) font would have inflated `space1` well past
-    // what "thin border" asked for.
+    // what a thin border needs.
     TextMetrics {
         id: chMetrics
         font.family: Config.Appearance.fontMono

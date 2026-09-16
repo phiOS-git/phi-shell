@@ -2,9 +2,8 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/BatteryIcon (docs/TODO.md, status-bar rework: "battery
-// states"). Same dumb/reusable Canvas-icon family as SunMoonIcon and
-// VolumeIcon — every value is external, Bar/modules/Battery.qml owns the
+// Same dumb/reusable Canvas-icon family as SunMoonIcon and VolumeIcon —
+// every value is external, Bar/modules/Battery.qml owns the
 // Services/PowerBridge.qml reads.
 //
 // A classic pill-outline battery body (fixed silhouette, stroked) with an
@@ -19,12 +18,10 @@ import "WidgetStates.js" as WidgetStates
 // but the split stays available here rather than assumed away.
 //
 // `chargingAmount` (0..1, not a bool) drives a small bolt glyph that
-// breathes in and out continuously while charging — motion category A
-// ("tracking feedback... continuous and light", design/tokens.common.sh
-// §6.5), the right category for an ONGOING state rather than a discrete
-// transition: charging is not a one-off event, it persists for as long
-// as the cable is in, so a linear breathing loop (PHI_MOTION_A_PERIOD)
-// is the documented fit, not category B.
+// breathes in and out continuously while charging — motion category A,
+// the right category for an ONGOING state rather than a discrete
+// transition: charging persists for as long as the cable is in, so a
+// linear breathing loop fits, not category B.
 
 Item {
     id: root
@@ -34,16 +31,13 @@ Item {
     property int sizeStep: 2
     property real level: 1.0        // 0..1, the caller wraps Behavior (category B)
     property real chargingAmount: 0.0 // 0..1: >0 means "charging", drives the bolt's breathing
-    // docs/TODO.md: "the battery icon does not have different states for
-    // battery saving mode" — before this, saver mode only recoloured the
-    // whole glyph via the caller's `tone` (Bar/modules/Battery.qml's own
-    // "info" tone), the exact same mechanism every OTHER anomaly already
-    // used for a completely different meaning (low charge / high
-    // discharge rate) — a colour-only cue with no shape difference is easy
-    // to miss and easy to confuse with those other tones. 0..1, category B
-    // (a discrete on/off, not an ongoing ambient state the way charging
-    // is) — the caller wraps it in a Behavior the same way it already does
-    // for `level`/`chargingAmount`.
+    // A shape difference (hatching, drawn below), not just a colour —
+    // `tone` alone is the same mechanism every other anomaly (low charge,
+    // high discharge rate) already uses for a completely different
+    // meaning, so a colour-only cue here would be easy to confuse with
+    // those. 0..1, category B (a discrete on/off, not an ongoing ambient
+    // state the way charging is) — the caller wraps it in a Behavior the
+    // same way it already does for `level`/`chargingAmount`.
     property real saverAmount: 0.0
 
     readonly property real _boxSize: WidgetStates.drawnIconBoxSize(Config.Appearance, root.sizeStep)

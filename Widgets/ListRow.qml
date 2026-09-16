@@ -2,35 +2,23 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/ListRow (S-21). A row inside a list, popover or launcher
-// result set. The one place in this widget library that renders the ">"
-// glyph: the affordance rule (§8.6) reserves it for the active input point
-// only, so no other widget in this directory draws it. Here it marks
-// keyboard-navigation position specifically (the resolved "focus" state),
-// which is distinct from `active` (a persisted selection, e.g. "this is
-// the current tab") — the two can coexist on the same row without
-// conflict, since resolve() already gives active/pressed precedence over a
-// bare focus state. The row has one leading slot: it shows ">" while
-// focused, else the row's own `glyph` if it has one, else nothing — never
-// both, so the glyph never appears as ambient decoration.
+// A row inside a list, popover or launcher result set. The one place in
+// this widget library that renders the ">" glyph, reserved for the active
+// input point only: it marks keyboard-navigation position specifically
+// (the resolved "focus" state), distinct from `active` (a persisted
+// selection, e.g. "this is the current tab") — the two can coexist on the
+// same row without conflict, since resolve() already gives active/pressed
+// precedence over a bare focus state. The row has one leading slot: it
+// shows ">" while focused, else the row's own `glyph` if it has one, else
+// nothing — never both, so the glyph never appears as ambient decoration.
 //
-// User bug report, 2026-09-16: a "thin" restyle (rework-issues.md "New
-// requests" item 14 — plain text, a highlighter pill, no resting box) was
-// built directly into this widget's own DEFAULT look — but ListRow is the
+// `thin` (opt-in, default false — plain text, a highlighter pill, no
+// resting box) is a distinct compact style for a status-bar-overlay device
+// list (Widgets/WifiNetworkList.qml and similar), set explicitly only at
+// those call sites, never as this widget's own default — ListRow is the
 // SHARED row used everywhere (Settings nav, the agent panel's project
-// list, the memory-notice picker, …), not just the status bar overlays'
-// device lists it was actually reported against, so every one of those
-// unrelated surfaces silently changed shape too. "The sections should
-// have never change, those are specific elements for a custom panel, not
-// simple entries in a list. The devices lists instead can stay as they
-// are. All the previous changes were meant for the status bar overlays
-// only." `thin` (opt-in, default false) is the fix: false reproduces this
-// widget's original panel-button look byte-for-byte (verified against
-// commit 4494290, the last one before this ever changed), true is the new
-// look — set explicitly only at the call sites that are genuinely a
-// status-bar-overlay device list (Widgets/WifiNetworkList.qml, and
-// Panels/BarPopout.qml's bluetooth/ethernet/tailscale/firewall/timer/
-// stopwatch rows), never as this widget's own default.
+// list, the memory-notice picker, …), and every one of those surfaces
+// wants the original panel-button look.
 
 Item {
     id: root
@@ -41,10 +29,10 @@ Item {
     property bool active: false
     property bool loading: false
     property bool invalid: false
-    // Out-of-plan: settings-overhaul batch A. A search-match wash, distinct
-    // from `active` (a persisted selection): the settings nav highlights an
-    // entry whose section matches the query without hiding the others.
-    // Additive and default-off — every existing caller is unaffected.
+    // A search-match wash, distinct from `active` (a persisted selection):
+    // the settings nav highlights an entry whose section matches the query
+    // without hiding the others. Default-off — every existing caller is
+    // unaffected.
     property bool highlighted: false
     // See this file's own header — opt-in, default false (the original
     // look). True is the status-bar-overlay device-list style.
@@ -61,13 +49,11 @@ Item {
         active: root.active, keyboardFocus: root.keyboardFocus,
         loading: root.loading, invalid: root.invalid
     })
-    // rework-issues.md "New requests" item 14: "a list of texts, with the
-    // 'highlight' hover and selection (same effect used in the runner
-    // bar)" — the "list" ambient (WidgetStates.js) is the thin-text/
-    // highlighter recipe, read only when `thin` is set; every other
-    // ambient's `default` case (the plain, no-ambient call below) still
-    // paints a full-contrast block behind the row at rest, this widget's
-    // original look.
+    // The "list" ambient (WidgetStates.js) is the thin-text/highlighter
+    // recipe, read only when `thin` is set; every other ambient's
+    // `default` case (the plain, no-ambient call below) still paints a
+    // full-contrast block behind the row at rest, this widget's original
+    // look.
     readonly property var stateColors: root.thin
         ? WidgetStates.surfaceColors(Config.Appearance, resolvedState, "list")
         : WidgetStates.surfaceColors(Config.Appearance, resolvedState)
@@ -80,19 +66,17 @@ Item {
         && (root.resolvedState === "default" || root.resolvedState === "disabled")
         ? 0.7 : 1.0
 
-    // OOP-19: when the row background inverts (the "active"/selected state,
+    // When the row background inverts (the "active"/selected state,
     // surfaceColors() → bg: contrast), the label, value and leading glyph
-    // must invert with it or the row reads as invisible same-on-same — the
-    // bug the user reported for every ListRow-based selection surface
-    // (Settings nav, the agent project list, the memory-notice picker).
-    // Segment (OOP-03) and StyledButton already recolour their own content
-    // this way; ListRow did not. `labelColor` tracks the resolved fg in
-    // every state (which is the ordinary full-contrast ink except when
-    // inverted or invalid); `valueColor` keeps the §8.6 affordance split —
-    // a value stays low-contrast monochrome at rest — and only follows the
-    // inversion when the whole row is selected (`thin` also follows it on
-    // keyboard-focus, since that state gets its own highlighter pill there
-    // too — the original look has no such pill to match).
+    // must invert with it or the row reads as invisible same-on-same —
+    // Segment and StyledButton already recolour their own content this
+    // way. `labelColor` tracks the resolved fg in every state (which is
+    // the ordinary full-contrast ink except when inverted or invalid);
+    // `valueColor` keeps the affordance split — a value stays low-contrast
+    // monochrome at rest — and only follows the inversion when the whole
+    // row is selected (`thin` also follows it on keyboard-focus, since
+    // that state gets its own highlighter pill there too — the original
+    // look has no such pill to match).
     readonly property color labelColor: root.stateColors.fg
     readonly property color valueColor: (root.resolvedState === "active"
             || (root.thin && root.resolvedState === "focus"))
@@ -115,26 +99,18 @@ Item {
     // (`hpad: root.chWidth * 0.6`), not this row's `inset` above.
     readonly property real hpad: root.chWidth * 0.6
 
-    // `thin` rows are noticeably denser: Launcher.qml's own result row
-    // (the "runner bar" reference the original report cited) is
-    // `chMetrics.height + space1` (1ch total), against this row's
-    // original `space2 * 2` (4ch). The original look is unchanged.
+    // `thin` rows are noticeably denser: Launcher.qml's own result row is
+    // `chMetrics.height + space1` (1ch total), against this row's original
+    // `space2 * 2` (4ch). The original look is unchanged.
     implicitHeight: Math.max(labelText.implicitHeight, valueText.implicitHeight)
         + WidgetStates.chToPixels(root.thin ? Config.Appearance.space1 : Config.Appearance.space2, chWidth)
         * (root.thin ? 1 : 2)
-    // rework-status-bar.md Style item 7a, root cause: this widget never
-    // reported an `implicitWidth` at all — harmless for every EXISTING
-    // caller (Settings nav, the agent panel's lists, every status-bar
-    // overlay device list), since every one of them explicitly binds
-    // `width:` and never reads this back. Widgets/ContextMenu.qml
-    // (Style item 7a's actual caller) is the first consumer that needs
-    // it: its own `layout` Column sizes the popup window from
-    // `layout.implicitWidth`, which for a Column is the max of its
-    // children's own `implicitWidth` — never their assigned `width` — so
-    // with this unset every row (and the whole menu) collapsed to zero
-    // width, rendering the menu as an unreadable sliver: the actual cause
-    // behind "the context menu ... has no option inside" surviving this
-    // file's own earlier width/height fix on the popup window itself.
+    // Most callers explicitly bind `width:` and never read this back, but
+    // Widgets/ContextMenu.qml's `layout` Column sizes the popup window from
+    // `layout.implicitWidth` — for a Column that's the max of its
+    // children's own `implicitWidth`, never their assigned `width` — so
+    // leaving this unset collapses every row (and the whole menu) to zero
+    // width.
     implicitWidth: (root.thin ? 0 : root.inset)
         + (leading.visible ? leading.implicitWidth + root.gap : 0)
         + labelText.implicitWidth
@@ -187,8 +163,8 @@ Item {
     StyledIcon {
         id: leading
         // The only glyph in this widget library carrying the "active input
-        // point" meaning (§8.6) — shown for the focus state specifically,
-        // never for hover/active/pressed, and never anywhere else.
+        // point" meaning — shown for the focus state specifically, never
+        // for hover/active/pressed, and never anywhere else.
         glyph: root.resolvedState === "focus" ? ">" : root.glyph
         visible: glyph.length > 0
         color: root.labelColor
@@ -235,9 +211,7 @@ Item {
         onTapped: root.activated()
     }
 
-    // Style pass 2026-09-14: see Widgets/StyledButton.qml's identical
-    // comment — a systemic keyboard-activation gap, fixed the same way
-    // here.
+    // Same keyboard-activation fix as Widgets/StyledButton.qml.
     Keys.onReturnPressed: if (root.enabled && !root.loading) root.activated()
     Keys.onSpacePressed: if (root.enabled && !root.loading) root.activated()
 
