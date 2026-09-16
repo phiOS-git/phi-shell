@@ -3,23 +3,22 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// phiOS — Services/Firewall (Out-of-plan: firewall). Inbound-firewall state
-// for the Connectivity settings section. CLI-driven, exactly like
-// Services/Vpn.qml — `phi firewall` (internal/firewall) is the control
-// surface, this file only polls it and forwards the verbs.
+// Inbound-firewall state for the Connectivity settings section.
+// CLI-driven, exactly like Services/Vpn.qml — `phi firewall` is the
+// control surface, this file only polls it and forwards the verbs, backed
+// by nftables directly (one `table inet phi`).
 //
-// architettura §6.6 chose nftables directly. `phi firewall` owns one
-// `table inet phi`; `status --json` reports enabled / preset / logging /
-// the allow-rules, plus a live `enforced` probe (is the table actually
-// loaded?) so a drift — a denied sudo, a manual `nft flush` — is visible.
+// `status --json` reports enabled/preset/logging/allow-rules, plus a live
+// `enforced` probe (is the table actually loaded?) so a drift — a denied
+// sudo, a manual `nft flush` — is visible.
 //
 // enable/disable/preset/allow/remove/log shell out to `phi firewall`,
 // which runs `sudo -n nft` + `sudo -n tee /etc/nftables.conf`. That needs
 // the sudoers drop-in (profiles/desktop/system/etc/sudoers.d/49-phi-firewall);
-// a failure surfaces as `lastError` for the section to show, never a
-// silent no-op — and never a GUI polkit prompt.
+// a failure surfaces as `lastError`, never a silent no-op and never a GUI
+// polkit prompt.
 //
-// ADR 067 analog: `phi firewall` never emits one of the user's own
+// SECURITY CONTRACT: `phi firewall` never emits one of the user's own
 // addresses. `blocked` reports only a dropped packet's own source and
 // destination port — a scanner's fields, requested explicitly by
 // refreshBlocked(), not polled.
