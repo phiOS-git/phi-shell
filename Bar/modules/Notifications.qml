@@ -50,7 +50,11 @@ Widgets.Segment {
     readonly property bool hasPending: !root.dnd && Services.Notifications.activeCount > 0
     tone: root.hasPending ? "info" : ""
 
-    onActivated: Services.NotificationPanel.toggleNotifications(root.rightX())
+    // rework-status-bar.md Style item 4: the overlay always opens at its
+    // own fixed screen corner now (Panels/NotificationsOverlay.qml), same
+    // position regardless of whether this icon or a keybinding triggered
+    // it — see Services/NotificationPanel.qml's own header.
+    onActivated: Services.NotificationPanel.toggleNotifications()
 
     property real dndAmount: 0
     Behavior on dndAmount {

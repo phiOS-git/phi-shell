@@ -16,12 +16,17 @@ import qs.Services as Services
 // their own mutual-exclusion `onShownChanged` handler, and Services/
 // Calendar.qml also watches `onShownChanged` on the derived `shown` below —
 // renaming the file would touch all four for no functional gain. What
-// changed is the shape it owns: two independent shown/anchor-x pairs
-// instead of one shown+tab pair, since the two are no longer one surface.
+// changed is the shape it owns: two independent shown flags instead of one
+// shown+tab pair, since the two are no longer one surface.
 //
-// Entry points:
+// Entry points, both equivalent — rework-status-bar.md Style item 4: the
+// two overlays used to open at a different position depending on which of
+// these triggered them (an x under the clicked icon vs. the screen corner
+// for the keybind/IPC path); both now always resolve to the fixed corner
+// position Panels/NotificationsOverlay.qml / Panels/ClipboardOverlay.qml
+// compute for themselves, so neither entry point needs to pass anything.
 //   - the bar bell (Bar/modules/Notifications.qml) / the bar clipboard icon
-//     (Bar/modules/Clipboard.qml) — each passes its own button's rightX()
+//     (Bar/modules/Clipboard.qml)
 //   - Super+N / Super+Shift+V (hyprland.lua.tmpl → `ipc call notifications
 //     notifications` / `ipc call notifications clipboard`) — unchanged
 //     IPC targets, moved here from the retired Panels/Sidebar.qml (same
@@ -34,8 +39,6 @@ Singleton {
 
     property bool notificationsShown: false
     property bool clipboardShown: false
-    property real notificationsAnchorX: 0
-    property real clipboardAnchorX: 0
 
     // Kept for the peers that only ever watched (or called .hide() on) the
     // OLD single `shown` — Services/Calendar.qml's own Connections block
@@ -64,21 +67,31 @@ Singleton {
         Services.HyprlandBridge.leaveReservedWorkspace()
     }
 
-    function openNotifications(x) {
-        root.notificationsAnchorX = x || 0
+    // rework-status-bar.md Style item 4: "overlays that have a keybinding
+    // ... open ... in the screen corner, rather than aligned with their
+    // icon [click] ... this should be a global fix as I might add new
+    // keybind[s] in future" — these two open from a bar icon click as well
+    // as a keybinding/IPC call, and used to compute a different position
+    // for each (an x under the clicked icon vs. the screen corner for the
+    // keybind path with no icon to anchor under). One trigger source
+    // getting a different result than the other is exactly what read as
+    // wrong; the "global" fix is not to special-case either overlay's own
+    // math but to drop the icon-anchor parameter entirely, so every
+    // trigger — today's icon click and keybind, and any future keybind
+    // added the same way — lands on the one fixed corner position Panels/
+    // NotificationsOverlay.qml and Panels/ClipboardOverlay.qml already
+    // compute for themselves.
+    function openNotifications() {
         root.notificationsShown = true
     }
-    function openClipboard(x) {
-        root.clipboardAnchorX = x || 0
+    function openClipboard() {
         root.clipboardShown = true
     }
-    function toggleNotifications(x) {
-        if (root.notificationsShown) root.notificationsShown = false
-        else root.openNotifications(x)
+    function toggleNotifications() {
+        root.notificationsShown = !root.notificationsShown
     }
-    function toggleClipboard(x) {
-        if (root.clipboardShown) root.clipboardShown = false
-        else root.openClipboard(x)
+    function toggleClipboard() {
+        root.clipboardShown = !root.clipboardShown
     }
 
     // Every peer's own onShownChanged still just calls this one function —
@@ -90,24 +103,22 @@ Singleton {
     }
 
     // Moved from the retired Panels/Sidebar.qml verbatim (same targets,
-    // same function names) — x omitted (0) falls back to the screen
-    // corner, the same convention Services/BarPopout.qml's own anchor-x
-    // parameters already use for a caller with no button to anchor under.
+    // same function names).
     IpcHandler {
         target: "notifications"
-        function toggle(): void { root.toggleNotifications(0) }
-        function open(): void { root.openNotifications(0) }
+        function toggle(): void { root.toggleNotifications() }
+        function open(): void { root.openNotifications() }
         function close(): void { root.hide() }
-        function clipboard(): void { root.toggleClipboard(0) }
-        function notifications(): void { root.toggleNotifications(0) }
+        function clipboard(): void { root.toggleClipboard() }
+        function notifications(): void { root.toggleNotifications() }
     }
 
     // Kept for back-compatibility with anything still calling the old
     // "sidebar" target (a stale `qs ipc call sidebar` habit).
     IpcHandler {
         target: "sidebar"
-        function toggle(): void { root.toggleNotifications(0) }
-        function open(): void { root.openNotifications(0) }
+        function toggle(): void { root.toggleNotifications() }
+        function open(): void { root.openNotifications() }
         function close(): void { root.hide() }
     }
 }

@@ -52,7 +52,11 @@ Widgets.Segment {
 
     property bool _pulse: false
 
-    onActivated: Services.NotificationPanel.toggleClipboard(root.rightX())
+    // rework-status-bar.md Style item 4: the overlay always opens at its
+    // own fixed screen corner now (Panels/ClipboardOverlay.qml), same
+    // position regardless of whether this icon or a keybinding triggered
+    // it — see Services/NotificationPanel.qml's own header.
+    onActivated: Services.NotificationPanel.toggleClipboard()
 
     Timer {
         id: pulseOffTimer

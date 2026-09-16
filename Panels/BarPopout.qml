@@ -73,12 +73,23 @@ PanelWindow {
     color: "transparent"
     visible: root.shown || fadeRoot.opacity > 0
 
+    // rework-status-bar.md Style item 10: this window still spans the
+    // whole screen (needed so `cardWrap` below can land anywhere along the
+    // bar), but its own INPUT region no longer does — restricted to just
+    // the visible card, so a click anywhere else (another bar icon, the
+    // desktop) passes straight through to whatever real window is there
+    // instead of being swallowed here. See Services/OverlayGrab.qml's own
+    // header for the full mechanism and why this replaces the old
+    // fullscreen `MouseArea { onClicked: hide() }`.
+    mask: Region { item: cardWrap }
+
     // Style pass 2026-09-14: this surface had no keyboard focus and no
     // Escape handling at all — the one way to close it was clicking
     // outside or re-clicking the same bar icon, unlike virtually every
     // other overlay in this shell (Settings, Launcher, Cheatsheet, AltTab,
     // Sidebar, AgentPanel, Screenshot as of last round). Same fix.
     Services.LayerFocus { target: root }
+    Services.OverlayGrab { window: root; active: root.shown; onDismissed: Services.BarPopout.hide() }
 
     TextMetrics {
         id: chMetrics
@@ -406,11 +417,6 @@ PanelWindow {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
-        MouseArea {
-            anchors.fill: parent
-            onClicked: Services.BarPopout.hide()
-        }
-
         Item {
             id: cardWrap
 
@@ -448,12 +454,14 @@ PanelWindow {
                             Services.BarPopout.anchorRightX - width))
                     : parent.width - width - Config.Appearance.panelGap
 
-            MouseArea { anchors.fill: parent }
-
             Widgets.Panel {
                 id: panel
                 width: parent.width
                 height: bodyLoader.item ? bodyLoader.item.implicitHeight + padding * 2 : 0
+                // rework-status-bar.md Style item 1: the overlay shell's own
+                // background matches the status bar's, not the generic
+                // "shaded" surface1 every other Panel resolves to.
+                bgColorOverride: Config.Appearance.colorMain
 
                 // Interface rework Phase 3 (rework.md, "## Status bar
                 // overlays" intro): the ONE corner nearest the triggering
@@ -544,47 +552,53 @@ PanelWindow {
             }
             Widgets.Separator { width: parent.width; strong: true; visible: Services.BarPopout.title(root.which).length > 0 }
 
-            // volume
+            // volume — rework-status-bar.md Style item 1: "Level" and
+            // "Output device" are two distinct inner sections, each its
+            // own Widgets.OverlaySection card.
             Widgets.StaggerReveal {
                 shown: root.which === "volume"
                 width: parent.width
                 spacing: root.chWidth * Config.Appearance.space2
                 visible: root.which === "volume"
 
-                Item {
+                Widgets.OverlaySection {
                     width: parent.width
-                    implicitHeight: Math.max(volMeter.implicitHeight, volPct.implicitHeight)
-                    Widgets.StyledText {
-                        id: volPct
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        mono: true
-                        kind: "title"
-                        sizeStep: 1
-                        horizontalAlignment: Text.AlignRight
-                        width: 4 * root.chWidth
-                        text: root._volumePct() + "%"
+                    Item {
+                        width: parent.width
+                        implicitHeight: Math.max(volMeter.implicitHeight, volPct.implicitHeight)
+                        Widgets.StyledText {
+                            id: volPct
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            mono: true
+                            kind: "title"
+                            sizeStep: 1
+                            horizontalAlignment: Text.AlignRight
+                            width: 4 * root.chWidth
+                            text: root._volumePct() + "%"
+                        }
+                        Widgets.Meter {
+                            id: volMeter
+                            anchors.left: parent.left
+                            anchors.right: volPct.left
+                            anchors.rightMargin: root.chWidth * Config.Appearance.space2
+                            anchors.verticalCenter: parent.verticalCenter
+                            interactive: true
+                            value: Services.AudioBridge.volume
+                            fillColor: Services.AudioBridge.muted
+                                ? Config.Appearance.textFaint : Config.Appearance.textPrimary
+                            // A Pipewire volume property — a cheap live set.
+                            onMoved: (v) => Services.AudioBridge.setVolume(v)
+                        }
                     }
-                    Widgets.Meter {
-                        id: volMeter
-                        anchors.left: parent.left
-                        anchors.right: volPct.left
-                        anchors.rightMargin: root.chWidth * Config.Appearance.space2
-                        anchors.verticalCenter: parent.verticalCenter
-                        interactive: true
-                        value: Services.AudioBridge.volume
-                        fillColor: Services.AudioBridge.muted
-                            ? Config.Appearance.textFaint : Config.Appearance.textPrimary
-                        // A Pipewire volume property — a cheap live set.
-                        onMoved: (v) => Services.AudioBridge.setVolume(v)
+                    Widgets.ToggleRow {
+                        width: parent.width
+                        label: "Mute"
+                        checked: Services.AudioBridge.muted
+                        onToggled: Services.AudioBridge.toggleMute()
                     }
                 }
-                Widgets.ToggleRow {
-                    width: parent.width
-                    label: "Mute"
-                    checked: Services.AudioBridge.muted
-                    onToggled: Services.AudioBridge.toggleMute()
-                }
+
                 // rework.md's sound overlay: "the list of output devices
                 // (pressing one activates it)" — Services/AudioBridge.qml
                 // already exposes a real Pipewire sink list (`sinks`,
@@ -592,23 +606,26 @@ PanelWindow {
                 // (`setDefaultSink`); this is the first UI consumer of the
                 // list specifically (the Devices settings section reads
                 // `sinks`/`sources` too, for its own mixer rows).
-                Widgets.StyledText { kind: "label"; sizeStep: 0; text: "Output device" }
-                Repeater {
-                    model: Services.AudioBridge.sinks
-                    Widgets.ListRow {
-                        thin: true
-                        required property var modelData
-                        width: parent.width
-                        label: Services.AudioBridge.nodeLabel(modelData)
-                        active: Services.AudioBridge.sink !== null && modelData === Services.AudioBridge.sink
-                        onActivated: Services.AudioBridge.setDefaultSink(modelData)
-                    }
-                }
-                Widgets.StyledText {
+                Widgets.OverlaySection {
                     width: parent.width
-                    visible: Services.AudioBridge.sinks.length === 0
-                    kind: "label"; sizeStep: 0
-                    text: "No output devices found."
+                    Widgets.StyledText { kind: "label"; sizeStep: 0; text: "Output device" }
+                    Repeater {
+                        model: Services.AudioBridge.sinks
+                        Widgets.ListRow {
+                            thin: true
+                            required property var modelData
+                            width: parent.width
+                            label: Services.AudioBridge.nodeLabel(modelData)
+                            active: Services.AudioBridge.sink !== null && modelData === Services.AudioBridge.sink
+                            onActivated: Services.AudioBridge.setDefaultSink(modelData)
+                        }
+                    }
+                    Widgets.StyledText {
+                        width: parent.width
+                        visible: Services.AudioBridge.sinks.length === 0
+                        kind: "label"; sizeStep: 0
+                        text: "No output devices found."
+                    }
                 }
                 // User bug report, 2026-09-16: the trailing "Sound
                 // settings…" button here was the one card rework-issues.md
@@ -617,65 +634,73 @@ PanelWindow {
                 // now does exactly what this button used to.
             }
 
-            // brightness
+            // brightness — rework-status-bar.md Style item 1: "Level" and
+            // "Night mode" as two distinct inner-section cards.
             Widgets.StaggerReveal {
                 shown: root.which === "brightness"
                 width: parent.width
                 spacing: root.chWidth * Config.Appearance.space2
                 visible: root.which === "brightness"
 
-                Item {
+                Widgets.OverlaySection {
                     width: parent.width
-                    implicitHeight: Math.max(briMeter.implicitHeight, briPct.implicitHeight)
+                    Item {
+                        width: parent.width
+                        implicitHeight: Math.max(briMeter.implicitHeight, briPct.implicitHeight)
+                        Widgets.StyledText {
+                            id: briPct
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            mono: true
+                            kind: "title"
+                            sizeStep: 1
+                            horizontalAlignment: Text.AlignRight
+                            width: 4 * root.chWidth
+                            text: Services.Brightness.percent + "%"
+                        }
+                        Widgets.Meter {
+                            id: briMeter
+                            anchors.left: parent.left
+                            anchors.right: briPct.left
+                            anchors.rightMargin: root.chWidth * Config.Appearance.space2
+                            anchors.verticalCenter: parent.verticalCenter
+                            interactive: true
+                            value: Services.Brightness.percent / 100
+                            fillColor: Config.Appearance.textPrimary
+                            // brightnessctl spawns a process — commit on release.
+                            onReleased: (v) => Services.Brightness.set(Math.round(v * 100))
+                        }
+                    }
+                }
+
+                Widgets.OverlaySection {
+                    width: parent.width
+                    Widgets.ToggleRow {
+                        width: parent.width
+                        label: "Night mode"
+                        checked: Services.NightShift.enabled
+                        onToggled: (v) => Services.NightShift.setEnabled(v)
+                    }
+                    Widgets.ToggleRow {
+                        width: parent.width
+                        label: "True Tone"
+                        checked: Services.NightShift.trueTone
+                        // Interface rework Phase 3 (rework.md's screen overlay:
+                        // "a true tone switch (disabled if not available)") —
+                        // this row had no such gate; Settings/sections/
+                        // Theme.qml's own True Tone row already establishes the
+                        // real capability check (`Config.Capabilities.
+                        // ambientLight`, an actual ambient-light-sensor probe,
+                        // not a placeholder), reused verbatim here.
+                        enabled: Config.Capabilities.ambientLight
+                        onToggled: (v) => Services.NightShift.setTrueTone(v)
+                    }
                     Widgets.StyledText {
-                        id: briPct
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        mono: true
-                        kind: "title"
-                        sizeStep: 1
-                        horizontalAlignment: Text.AlignRight
-                        width: 4 * root.chWidth
-                        text: Services.Brightness.percent + "%"
+                        width: parent.width
+                        visible: !Config.Capabilities.ambientLight
+                        kind: "label"; sizeStep: 0
+                        text: "No ambient light sensor on this host."
                     }
-                    Widgets.Meter {
-                        id: briMeter
-                        anchors.left: parent.left
-                        anchors.right: briPct.left
-                        anchors.rightMargin: root.chWidth * Config.Appearance.space2
-                        anchors.verticalCenter: parent.verticalCenter
-                        interactive: true
-                        value: Services.Brightness.percent / 100
-                        fillColor: Config.Appearance.textPrimary
-                        // brightnessctl spawns a process — commit on release.
-                        onReleased: (v) => Services.Brightness.set(Math.round(v * 100))
-                    }
-                }
-                Widgets.ToggleRow {
-                    width: parent.width
-                    label: "Night mode"
-                    checked: Services.NightShift.enabled
-                    onToggled: (v) => Services.NightShift.setEnabled(v)
-                }
-                Widgets.ToggleRow {
-                    width: parent.width
-                    label: "True Tone"
-                    checked: Services.NightShift.trueTone
-                    // Interface rework Phase 3 (rework.md's screen overlay:
-                    // "a true tone switch (disabled if not available)") —
-                    // this row had no such gate; Settings/sections/
-                    // Theme.qml's own True Tone row already establishes the
-                    // real capability check (`Config.Capabilities.
-                    // ambientLight`, an actual ambient-light-sensor probe,
-                    // not a placeholder), reused verbatim here.
-                    enabled: Config.Capabilities.ambientLight
-                    onToggled: (v) => Services.NightShift.setTrueTone(v)
-                }
-                Widgets.StyledText {
-                    width: parent.width
-                    visible: !Config.Capabilities.ambientLight
-                    kind: "label"; sizeStep: 0
-                    text: "No ambient light sensor on this host."
                 }
                 // rework-issues.md item 6: moved into the shared card
                 // header's own settings icon (root._headerSettingsActivate).
@@ -745,59 +770,69 @@ PanelWindow {
                 }
             }
 
-            // bluetooth
+            // bluetooth — rework-status-bar.md Style item 1: "Adapter" and
+            // "Devices" as two distinct inner-section cards.
             Widgets.StaggerReveal {
                 shown: root.which === "bluetooth"
                 width: parent.width
-                spacing: root.chWidth * Config.Appearance.space1
+                spacing: root.chWidth * Config.Appearance.space2
                 visible: root.which === "bluetooth"
-                Widgets.ToggleRow {
+
+                Widgets.OverlaySection {
                     width: parent.width
-                    label: "Adapter"
-                    checked: Services.BluetoothBridge.adapterEnabled
-                    onToggled: (v) => Services.BluetoothBridge.setEnabled(v)
-                }
-                // rework.md: "When active shows the list of available
-                // devices, clicking on one connects/disconnects it" — see
-                // Services/BluetoothBridge.qml's own new `adapterDevices`/
-                // `toggleConnected()` for why the OLD single "Connected"
-                // readout line above is not enough on its own; kept as a
-                // quick-glance summary, the real list follows.
-                Widgets.StyledText { kind: "label"; sizeStep: 0; text: "Devices" }
-                // User bug report, 2026-09-16: "the list entries in the
-                // bluetooth panel and network panel (wifi list) are
-                // different. Use the same style from the network panel."
-                // Widgets/WifiNetworkList.qml's own ListRow never sets
-                // `active` — a connected network is conveyed by its VALUE
-                // text alone ("Connected · 87%"), never by the highlighter
-                // pill (that's reserved for hover/keyboard-focus/selection
-                // on an actionable row). This row set `active:
-                // modelData.connected`, which pinned a permanent highlight
-                // on the connected device — the one real visual mismatch
-                // between the two lists. Dropped, matching wifi: the
-                // "connected"/"paired" value text alone now carries that
-                // state.
-                Repeater {
-                    model: Services.BluetoothBridge.adapterDevices ? Services.BluetoothBridge.adapterDevices.values : []
-                    Widgets.ListRow {
-                        thin: true
-                        required property var modelData
+                    Widgets.ToggleRow {
                         width: parent.width
-                        label: modelData.name && modelData.name.length > 0 ? modelData.name : modelData.address
-                        value: modelData.connected ? "connected" : (modelData.paired ? "paired" : "")
-                        onActivated: Services.BluetoothBridge.toggleConnected(modelData)
+                        label: "Adapter"
+                        checked: Services.BluetoothBridge.adapterEnabled
+                        onToggled: (v) => Services.BluetoothBridge.setEnabled(v)
                     }
                 }
-                Widgets.StyledText {
+
+                Widgets.OverlaySection {
                     width: parent.width
-                    visible: !Services.BluetoothBridge.adapterDevices || Services.BluetoothBridge.adapterDevices.values.length === 0
-                    kind: "label"; sizeStep: 0
-                    text: "No devices known to this adapter yet."
-                }
-                Widgets.SmallButton {
-                    width: parent.width
-                    label: "Manage devices…"
-                    onClicked: { Quickshell.execDetached(["kitty", "-e", "bluetuith"]); Services.BarPopout.hide() }
+                    // rework.md: "When active shows the list of available
+                    // devices, clicking on one connects/disconnects it" —
+                    // see Services/BluetoothBridge.qml's own new
+                    // `adapterDevices`/`toggleConnected()` for why the OLD
+                    // single "Connected" readout line above is not enough
+                    // on its own; kept as a quick-glance summary, the real
+                    // list follows.
+                    Widgets.StyledText { kind: "label"; sizeStep: 0; text: "Devices" }
+                    // User bug report, 2026-09-16: "the list entries in the
+                    // bluetooth panel and network panel (wifi list) are
+                    // different. Use the same style from the network panel."
+                    // Widgets/WifiNetworkList.qml's own ListRow never sets
+                    // `active` — a connected network is conveyed by its VALUE
+                    // text alone ("Connected · 87%"), never by the highlighter
+                    // pill (that's reserved for hover/keyboard-focus/selection
+                    // on an actionable row). This row set `active:
+                    // modelData.connected`, which pinned a permanent highlight
+                    // on the connected device — the one real visual mismatch
+                    // between the two lists. Dropped, matching wifi: the
+                    // "connected"/"paired" value text alone now carries that
+                    // state.
+                    Repeater {
+                        model: Services.BluetoothBridge.adapterDevices ? Services.BluetoothBridge.adapterDevices.values : []
+                        Widgets.ListRow {
+                            thin: true
+                            required property var modelData
+                            width: parent.width
+                            label: modelData.name && modelData.name.length > 0 ? modelData.name : modelData.address
+                            value: modelData.connected ? "connected" : (modelData.paired ? "paired" : "")
+                            onActivated: Services.BluetoothBridge.toggleConnected(modelData)
+                        }
+                    }
+                    Widgets.StyledText {
+                        width: parent.width
+                        visible: !Services.BluetoothBridge.adapterDevices || Services.BluetoothBridge.adapterDevices.values.length === 0
+                        kind: "label"; sizeStep: 0
+                        text: "No devices known to this adapter yet."
+                    }
+                    Widgets.SmallButton {
+                        width: parent.width
+                        label: "Manage devices…"
+                        onClicked: { Quickshell.execDetached(["kitty", "-e", "bluetuith"]); Services.BarPopout.hide() }
+                    }
                 }
                 // rework.md: "Also has a small settings icon to open the
                 // 'settings panel'" — rework-issues.md item 6: that icon
@@ -829,183 +864,255 @@ PanelWindow {
                 // NetworkStatus.qml's own header already documents and
                 // justifies for the bar icon itself, reused here so the
                 // overlay never disagrees with the icon that opened it.
-                Column {
+                // rework-status-bar.md Style item 1: both branches (mutually
+                // exclusive) share one "Network" inner-section card.
+                Widgets.OverlaySection {
                     width: parent.width
-                    spacing: root.chWidth * Config.Appearance.space1
-                    visible: Services.EthernetBridge.present
 
-                    // No settings deep-link here — no `connectivity.ethernet`
-                    // section exists yet in Settings/sections/
-                    // Connectivity.qml (same gap the old standalone
-                    // "ethernet" BarPopout section's own comment already
-                    // flagged), so there is nowhere real for one to point.
-                    Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Ethernet" }
-                    Widgets.ListRow {
-                        thin: true
-                        width: parent.width
-                        label: "Status"
-                        value: Services.EthernetBridge.connected ? Services.EthernetBridge.device.name : "not connected"
-                    }
-                }
-
-                Column {
-                    width: parent.width
-                    spacing: root.chWidth * Config.Appearance.space1
-                    visible: !Services.EthernetBridge.present
-
-                    Item {
-                        width: parent.width
-                        implicitHeight: Math.max(wifiTitle.implicitHeight, wifiSettingsBtn.implicitHeight)
-                        Widgets.StyledText {
-                            id: wifiTitle
-                            anchors.left: parent.left
-                            anchors.verticalCenter: parent.verticalCenter
-                            kind: "title"
-                            sizeStep: 0
-                            text: "Wi-Fi"
-                        }
-                        Widgets.IconButton {
-                            id: wifiSettingsBtn
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            glyph: Glyphs.settings
-                            onActivated: root._showInSettings("connectivity.wifi")
-                        }
-                    }
-                    Widgets.ToggleRow {
-                        width: parent.width
-                        label: "Wi-Fi radio"
-                        checked: Services.WifiBridge.radioEnabled
-                        onToggled: (v) => Services.WifiBridge.setRadioEnabled(v)
-                    }
                     Column {
                         width: parent.width
                         spacing: root.chWidth * Config.Appearance.space1
-                        visible: Services.WifiBridge.radioEnabled
+                        visible: Services.EthernetBridge.present
 
+                        // No settings deep-link here — no `connectivity.ethernet`
+                        // section exists yet in Settings/sections/
+                        // Connectivity.qml (same gap the old standalone
+                        // "ethernet" BarPopout section's own comment already
+                        // flagged), so there is nowhere real for one to point.
+                        Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Ethernet" }
                         Widgets.ListRow {
                             thin: true
                             width: parent.width
-                            label: "Network"
-                            value: Services.WifiBridge.connected ? Services.WifiBridge.ssid : "not connected"
+                            label: "Status"
+                            value: Services.EthernetBridge.connected ? Services.EthernetBridge.device.name : "not connected"
                         }
-                        Widgets.AreaChart {
+                    }
+
+                    Column {
+                        width: parent.width
+                        spacing: root.chWidth * Config.Appearance.space1
+                        visible: !Services.EthernetBridge.present
+
+                        Item {
                             width: parent.width
-                            height: root.chWidth * 5
-                            values: Services.NetStats.downSamples
+                            implicitHeight: Math.max(wifiTitle.implicitHeight, wifiSettingsBtn.implicitHeight)
+                            Widgets.StyledText {
+                                id: wifiTitle
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                kind: "title"
+                                sizeStep: 0
+                                text: "Wi-Fi"
+                            }
+                            Widgets.IconButton {
+                                id: wifiSettingsBtn
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                glyph: Glyphs.settings
+                                onActivated: root._showInSettings("connectivity.wifi")
+                            }
                         }
-                        Row {
-                            spacing: root.chWidth * Config.Appearance.space2
-                            Widgets.StyledText { kind: "label"; sizeStep: 0
-                                text: "↓ " + root._fmtRate(Services.NetStats.downKbps) }
-                            Widgets.StyledText { kind: "label"; sizeStep: 0
-                                text: "↑ " + root._fmtRate(Services.NetStats.upKbps) }
-                            Widgets.StyledText { kind: "label"; sizeStep: 0
-                                text: "ping " + (Services.NetStats.pingMs >= 0 ? Services.NetStats.pingMs + " ms" : "—") }
-                        }
-                        // docs/TODO.md: rework.md's "status (with
-                        // speedtest)" — a real active-speedtest trigger
-                        // (Services/SpeedTest.qml, speedtest-cli). Kept
-                        // separate from the passive live-rate graph above
-                        // (Services.NetStats) — a real bandwidth test
-                        // actually saturates the link for a few seconds,
-                        // so it only runs on demand, never polled.
-                        Row {
+                        Widgets.ToggleRow {
                             width: parent.width
-                            spacing: root.chWidth * Config.Appearance.space2
-                            Widgets.SmallButton {
-                                label: Services.SpeedTest.running ? "Testing…" : "Speed test"
-                                enabled: !Services.SpeedTest.running
-                                onClicked: Services.SpeedTest.run()
+                            label: "Wi-Fi radio"
+                            checked: Services.WifiBridge.radioEnabled
+                            onToggled: (v) => Services.WifiBridge.setRadioEnabled(v)
+                        }
+                        Column {
+                            width: parent.width
+                            spacing: root.chWidth * Config.Appearance.space1
+                            visible: Services.WifiBridge.radioEnabled
+
+                            Widgets.ListRow {
+                                thin: true
+                                width: parent.width
+                                label: "Network"
+                                value: Services.WifiBridge.connected ? Services.WifiBridge.ssid : "not connected"
+                            }
+                            Widgets.AreaChart {
+                                width: parent.width
+                                height: root.chWidth * 5
+                                values: Services.NetStats.downSamples
+                            }
+                            Row {
+                                spacing: root.chWidth * Config.Appearance.space2
+                                Widgets.StyledText { kind: "label"; sizeStep: 0
+                                    text: "↓ " + root._fmtRate(Services.NetStats.downKbps) }
+                                Widgets.StyledText { kind: "label"; sizeStep: 0
+                                    text: "↑ " + root._fmtRate(Services.NetStats.upKbps) }
+                                Widgets.StyledText { kind: "label"; sizeStep: 0
+                                    text: "ping " + (Services.NetStats.pingMs >= 0 ? Services.NetStats.pingMs + " ms" : "—") }
+                            }
+                            // docs/TODO.md: rework.md's "status (with
+                            // speedtest)" — a real active-speedtest trigger
+                            // (Services/SpeedTest.qml, speedtest-cli). Kept
+                            // separate from the passive live-rate graph above
+                            // (Services.NetStats) — a real bandwidth test
+                            // actually saturates the link for a few seconds,
+                            // so it only runs on demand, never polled.
+                            Row {
+                                width: parent.width
+                                spacing: root.chWidth * Config.Appearance.space2
+                                Widgets.SmallButton {
+                                    label: Services.SpeedTest.running ? "Testing…" : "Speed test"
+                                    enabled: !Services.SpeedTest.running
+                                    onClicked: Services.SpeedTest.run()
+                                }
+                                Widgets.StyledText {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    visible: !Services.SpeedTest.running && Services.SpeedTest.error.length === 0 && Services.SpeedTest.downloadMbps >= 0
+                                    kind: "label"; sizeStep: 0; mono: true
+                                    text: "↓ " + Services.SpeedTest.downloadMbps.toFixed(1) + " Mb/s  ↑ "
+                                        + Services.SpeedTest.uploadMbps.toFixed(1) + " Mb/s  "
+                                        + Services.SpeedTest.pingMs.toFixed(0) + " ms"
+                                }
                             }
                             Widgets.StyledText {
-                                anchors.verticalCenter: parent.verticalCenter
-                                visible: !Services.SpeedTest.running && Services.SpeedTest.error.length === 0 && Services.SpeedTest.downloadMbps >= 0
-                                kind: "label"; sizeStep: 0; mono: true
-                                text: "↓ " + Services.SpeedTest.downloadMbps.toFixed(1) + " Mb/s  ↑ "
-                                    + Services.SpeedTest.uploadMbps.toFixed(1) + " Mb/s  "
-                                    + Services.SpeedTest.pingMs.toFixed(0) + " ms"
+                                width: parent.width
+                                visible: Services.SpeedTest.error.length > 0
+                                kind: "label"; sizeStep: 0
+                                tone: "error"
+                                text: Services.SpeedTest.error
+                                wrapMode: Text.WordWrap
+                            }
+                            Widgets.WifiNetworkList {
+                                width: parent.width
+                                active: root.which === "network"
                             }
                         }
-                        Widgets.StyledText {
-                            width: parent.width
-                            visible: Services.SpeedTest.error.length > 0
-                            kind: "label"; sizeStep: 0
-                            tone: "error"
-                            text: Services.SpeedTest.error
-                            wrapMode: Text.WordWrap
-                        }
-                        Widgets.WifiNetworkList {
-                            width: parent.width
-                            active: root.which === "network"
-                        }
                     }
                 }
-
-                Widgets.Separator { width: parent.width; strong: true }
 
                 // --- Tailscale ---------------------------------------
-                Item {
+                Widgets.OverlaySection {
                     width: parent.width
-                    implicitHeight: Math.max(tsTitle.implicitHeight, tsSettings.implicitHeight)
-                    Widgets.StyledText { id: tsTitle; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; kind: "title"; sizeStep: 0; text: "Tailscale" }
-                    Widgets.IconButton {
-                        id: tsSettings
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        glyph: Glyphs.settings
-                        onActivated: root._showInSettings("connectivity.tailscale")
+                    Item {
+                        width: parent.width
+                        implicitHeight: Math.max(tsTitle.implicitHeight, tsSettings.implicitHeight)
+                        Widgets.StyledText { id: tsTitle; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; kind: "title"; sizeStep: 0; text: "Tailscale" }
+                        Widgets.IconButton {
+                            id: tsSettings
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            glyph: Glyphs.settings
+                            onActivated: root._showInSettings("connectivity.tailscale")
+                        }
+                    }
+                    Widgets.ToggleRow {
+                        width: parent.width
+                        label: "Tailscale"
+                        checked: Services.Tailscale.connected
+                        onToggled: (v) => v ? Services.Tailscale.up() : Services.Tailscale.down()
+                    }
+                    // rework-status-bar.md Style item 9d: "the tailscale
+                    // 'overlay name' has no interaction, it shouldn't have
+                    // an hover state, pointer cursor, selected state and
+                    // so on. It's just status text." Was a Widgets.ListRow
+                    // — ListRow is always interactive (its own
+                    // HoverHandler/TapHandler/cursor/focus are not
+                    // optional), so this read as clickable with nothing
+                    // wired behind it. Plain label+value text instead,
+                    // matching ListRow's own "thin" look with none of its
+                    // interaction machinery.
+                    Item {
+                        width: parent.width
+                        visible: Services.Tailscale.connected
+                        implicitHeight: Math.max(tsNameLabel.implicitHeight, tsNameValue.implicitHeight)
+                        Widgets.StyledText {
+                            id: tsNameLabel
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            sizeStep: 0
+                            text: "Overlay name"
+                        }
+                        Widgets.StyledText {
+                            id: tsNameValue
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            kind: "label"
+                            sizeStep: 0
+                            color: Config.Appearance.textMuted
+                            text: Services.Tailscale.hostName
+                        }
                     }
                 }
-                Widgets.ToggleRow {
-                    width: parent.width
-                    label: "Tailscale"
-                    checked: Services.Tailscale.connected
-                    onToggled: (v) => v ? Services.Tailscale.up() : Services.Tailscale.down()
-                }
-                Widgets.ListRow {
-                    thin: true
-                    width: parent.width
-                    visible: Services.Tailscale.connected
-                    label: "Overlay name"
-                    value: Services.Tailscale.hostName
-                }
-
-                Widgets.Separator { width: parent.width; strong: true }
 
                 // --- VPN (WireGuard) ----------------------------------
-                Item {
+                // rework-status-bar.md Style item 9c: "VPN should have a
+                // generic activation switch, then the configurations
+                // should appear in a list of elements that can be
+                // selected (like the list of wifi or sound devices)" —
+                // was one Widgets.ToggleRow PER tunnel (a switch per
+                // config, no single on/off). The master switch reflects
+                // Services.Vpn.anyUp; switching it off brings every
+                // currently-up tunnel down, switching it on with none up
+                // brings the first configured one up (the same "no single
+                // config to prefer" limitation a bare on/off runs into
+                // that Bluetooth's own "Adapter" switch doesn't have to
+                // resolve — Services.Vpn exposes no "bring up whichever
+                // was last active" concept to defer to instead). Below it,
+                // each tunnel is a tap-to-toggle Widgets.ListRow, the same
+                // select-one-of-several shape Widgets/WifiNetworkList.qml
+                // and the bluetooth device list both already use.
+                Widgets.OverlaySection {
                     width: parent.width
-                    implicitHeight: Math.max(vpnTitle.implicitHeight, vpnSettings.implicitHeight)
-                    Widgets.StyledText { id: vpnTitle; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; kind: "title"; sizeStep: 0; text: "VPN" }
-                    Widgets.IconButton {
-                        id: vpnSettings
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        glyph: Glyphs.settings
-                        onActivated: root._showInSettings("connectivity.vpn")
-                    }
-                }
-                Repeater {
-                    model: Services.Vpn.tunnels
-                    Widgets.ToggleRow {
-                        required property var modelData
+                    Item {
                         width: parent.width
-                        label: modelData.name
-                        checked: modelData.up
-                        onToggled: (v) => v ? Services.Vpn.up(modelData.name) : Services.Vpn.down(modelData.name)
+                        implicitHeight: Math.max(vpnTitle.implicitHeight, vpnSettings.implicitHeight)
+                        Widgets.StyledText { id: vpnTitle; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; kind: "title"; sizeStep: 0; text: "VPN" }
+                        Widgets.IconButton {
+                            id: vpnSettings
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            glyph: Glyphs.settings
+                            onActivated: root._showInSettings("connectivity.vpn")
+                        }
                     }
-                }
-                // Style pass 2026-09-14 (docs/TODO.md: "the VPN switch looks
-                // on and transparent when no available configs are there,
-                // that makes no sense, if it's not available it should not
-                // show"). Unchanged reasoning, carried over from the old
-                // standalone "network" section this replaces.
-                Widgets.StyledText {
-                    visible: Services.Vpn.tunnels.length === 0
-                    width: parent.width
-                    kind: "label"; sizeStep: 0
-                    text: "VPN — no tunnels configured"
+                    Widgets.ToggleRow {
+                        width: parent.width
+                        visible: Services.Vpn.tunnels.length > 0
+                        label: "VPN"
+                        checked: Services.Vpn.anyUp
+                        onToggled: (v) => {
+                            if (v) {
+                                if (!Services.Vpn.anyUp && Services.Vpn.tunnels.length > 0)
+                                    Services.Vpn.up(Services.Vpn.tunnels[0].name)
+                            } else {
+                                for (let i = 0; i < Services.Vpn.tunnels.length; i++) {
+                                    const t = Services.Vpn.tunnels[i]
+                                    if (t.up) Services.Vpn.down(t.name)
+                                }
+                            }
+                        }
+                    }
+                    Widgets.StyledText {
+                        width: parent.width
+                        visible: Services.Vpn.tunnels.length > 0
+                        kind: "label"; sizeStep: 0
+                        text: "Configurations"
+                    }
+                    Repeater {
+                        model: Services.Vpn.tunnels
+                        Widgets.ListRow {
+                            thin: true
+                            required property var modelData
+                            width: parent.width
+                            label: modelData.name
+                            active: modelData.up
+                            onActivated: modelData.up ? Services.Vpn.down(modelData.name) : Services.Vpn.up(modelData.name)
+                        }
+                    }
+                    // Style pass 2026-09-14 (docs/TODO.md: "the VPN switch looks
+                    // on and transparent when no available configs are there,
+                    // that makes no sense, if it's not available it should not
+                    // show"). Unchanged reasoning, carried over from the old
+                    // standalone "network" section this replaces.
+                    Widgets.StyledText {
+                        visible: Services.Vpn.tunnels.length === 0
+                        width: parent.width
+                        kind: "label"; sizeStep: 0
+                        text: "VPN — no tunnels configured"
+                    }
                 }
 
                 // rework-issues.md "New requests" item 3: "in the network
@@ -1018,47 +1125,49 @@ PanelWindow {
                 // picker the bar card gets, same shape as every other
                 // section here, with the header icon deep-linking to the
                 // rest.
-                Widgets.Separator { width: parent.width; strong: true }
-                Item {
+                Widgets.OverlaySection {
                     width: parent.width
-                    implicitHeight: Math.max(fwTitle.implicitHeight, fwSettings.implicitHeight)
-                    Widgets.StyledText { id: fwTitle; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; kind: "title"; sizeStep: 0; text: "Firewall" }
-                    Widgets.IconButton {
-                        id: fwSettings
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        glyph: Glyphs.settings
-                        onActivated: root._showInSettings("connectivity.firewall")
+                    Item {
+                        width: parent.width
+                        implicitHeight: Math.max(fwTitle.implicitHeight, fwSettings.implicitHeight)
+                        Widgets.StyledText { id: fwTitle; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; kind: "title"; sizeStep: 0; text: "Firewall" }
+                        Widgets.IconButton {
+                            id: fwSettings
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            glyph: Glyphs.settings
+                            onActivated: root._showInSettings("connectivity.firewall")
+                        }
                     }
-                }
-                Widgets.ToggleRow {
-                    width: parent.width
-                    label: "Inbound firewall"
-                    checked: Services.Firewall.enabled
-                    enabled: Services.Firewall.nftAvailable && !Services.Firewall.busy
-                    onToggled: (v) => v ? Services.Firewall.enable() : Services.Firewall.disable()
-                }
-                // User bug report, 2026-09-16: "entries still are large
-                // 'button-like' elements ... simple text, with highlighter
-                // effect and hover opacity" — this is a select-one option
-                // list (exactly the same shape as the Wi-Fi network list
-                // and the bluetooth device list a few sections up, both
-                // already ListRow), not a labelled action per preset, so
-                // it gets the same thin-list treatment instead of a row of
-                // SmallButtons.
-                Column {
-                    width: parent.width
-                    visible: Services.Firewall.enabled
-                    Repeater {
-                        model: Services.Firewall.presetNames
-                        Widgets.ListRow {
-                            thin: true
-                            required property string modelData
-                            width: parent.width
-                            label: modelData
-                            active: Services.Firewall.preset === modelData
-                            enabled: !Services.Firewall.busy
-                            onActivated: Services.Firewall.setPreset(modelData)
+                    Widgets.ToggleRow {
+                        width: parent.width
+                        label: "Inbound firewall"
+                        checked: Services.Firewall.enabled
+                        enabled: Services.Firewall.nftAvailable && !Services.Firewall.busy
+                        onToggled: (v) => v ? Services.Firewall.enable() : Services.Firewall.disable()
+                    }
+                    // User bug report, 2026-09-16: "entries still are large
+                    // 'button-like' elements ... simple text, with highlighter
+                    // effect and hover opacity" — this is a select-one option
+                    // list (exactly the same shape as the Wi-Fi network list
+                    // and the bluetooth device list a few sections up, both
+                    // already ListRow), not a labelled action per preset, so
+                    // it gets the same thin-list treatment instead of a row of
+                    // SmallButtons.
+                    Column {
+                        width: parent.width
+                        visible: Services.Firewall.enabled
+                        Repeater {
+                            model: Services.Firewall.presetNames
+                            Widgets.ListRow {
+                                thin: true
+                                required property string modelData
+                                width: parent.width
+                                label: modelData
+                                active: Services.Firewall.preset === modelData
+                                enabled: !Services.Firewall.busy
+                                onActivated: Services.Firewall.setPreset(modelData)
+                            }
                         }
                     }
                 }
@@ -1161,9 +1270,9 @@ PanelWindow {
             }
 
             // battery
-            Column {
+            // rework-status-bar.md Style item 1: one inner-section card.
+            Widgets.OverlaySection {
                 width: parent.width
-                spacing: root.chWidth * Config.Appearance.space1
                 visible: root.which === "battery"
                 Widgets.ListRow {
                     thin: true
@@ -1383,36 +1492,37 @@ PanelWindow {
                 visible: root.which === "status"
 
                 // --- profile row --------------------------------------
-                Row {
+                Widgets.OverlaySection {
                     width: parent.width
-                    spacing: root.chWidth * Config.Appearance.space2
+                    Row {
+                        width: parent.width
+                        spacing: root.chWidth * Config.Appearance.space2
 
-                    Rectangle {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: root.chWidth * 4
-                        height: width
-                        radius: width / 2
-                        color: Config.Appearance.colorOpposite
-                        Widgets.StyledText {
-                            anchors.centerIn: parent
-                            mono: true
-                            sizeStep: 3
-                            color: Config.Appearance.colorMain
-                            text: root._profileName.length > 0 ? root._profileName.charAt(0).toUpperCase() : "?"
+                        Rectangle {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: root.chWidth * 4
+                            height: width
+                            radius: width / 2
+                            color: Config.Appearance.colorOpposite
+                            Widgets.StyledText {
+                                anchors.centerIn: parent
+                                mono: true
+                                sizeStep: 3
+                                color: Config.Appearance.colorMain
+                                text: root._profileName.length > 0 ? root._profileName.charAt(0).toUpperCase() : "?"
+                            }
                         }
-                    }
-                    Column {
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: root.chWidth * Config.Appearance.space1 * 0.5
-                        Widgets.StyledText { kind: "title"; text: root._profileName }
-                        Widgets.StyledText {
-                            kind: "label"; sizeStep: 0
-                            text: "Uptime " + (Services.SystemInfo.uptime.length > 0 ? Services.SystemInfo.uptime : "—")
+                        Column {
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: root.chWidth * Config.Appearance.space1 * 0.5
+                            Widgets.StyledText { kind: "title"; text: root._profileName }
+                            Widgets.StyledText {
+                                kind: "label"; sizeStep: 0
+                                text: "Uptime " + (Services.SystemInfo.uptime.length > 0 ? Services.SystemInfo.uptime : "—")
+                            }
                         }
                     }
                 }
-
-                Widgets.Separator { width: parent.width; strong: true }
 
                 // --- power icons row -----------------------------------
                 // User bug report, 2026-09-16: "you didn't align the power
@@ -1423,76 +1533,81 @@ PanelWindow {
                 // sensor-icon row (a few sections down) already uses,
                 // distributes the six icons edge-to-edge across the card
                 // instead.
-                Row {
-                    id: pwrRow
+                Widgets.OverlaySection {
                     width: parent.width
-                    readonly property int _count: 6
-                    readonly property real _btnSize: root.chWidth * 3
-                    spacing: _count > 1 ? (width - _count * _btnSize) / (_count - 1) : 0
-                    Repeater {
-                        model: ["lock", "suspend", "hibernate", "logout", "reboot", "shutdown"]
-                        Item {
-                            id: pwrBtn
-                            required property string modelData
-                            width: pwrRow._btnSize
-                            height: width
+                    Row {
+                        id: pwrRow
+                        width: parent.width
+                        readonly property int _count: 6
+                        readonly property real _btnSize: root.chWidth * 3
+                        spacing: _count > 1 ? (width - _count * _btnSize) / (_count - 1) : 0
+                        Repeater {
+                            model: ["lock", "suspend", "hibernate", "logout", "reboot", "shutdown"]
+                            Item {
+                                id: pwrBtn
+                                required property string modelData
+                                width: pwrRow._btnSize
+                                height: width
 
-                            Widgets.StyledIcon {
-                                anchors.centerIn: parent
-                                glyph: root._powerGlyph(pwrBtn.modelData)
-                                sizeStep: 3
-                                color: pwrHover.hovered ? root._powerTone(pwrBtn.modelData) : Config.Appearance.textPrimary
-                                Behavior on color {
-                                    ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                                Widgets.StyledIcon {
+                                    anchors.centerIn: parent
+                                    glyph: root._powerGlyph(pwrBtn.modelData)
+                                    sizeStep: 3
+                                    color: pwrHover.hovered ? root._powerTone(pwrBtn.modelData) : Config.Appearance.textPrimary
+                                    Behavior on color {
+                                        ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                                    }
                                 }
+                                HoverHandler { id: pwrHover; cursorShape: Qt.PointingHandCursor }
+                                TapHandler { onTapped: root._requestPowerAction(pwrBtn.modelData) }
                             }
-                            HoverHandler { id: pwrHover; cursorShape: Qt.PointingHandCursor }
-                            TapHandler { onTapped: root._requestPowerAction(pwrBtn.modelData) }
                         }
                     }
                 }
-
-                Widgets.Separator { width: parent.width; strong: true }
 
                 // --- media control (only while a source is available) --
-                Column {
+                Widgets.OverlaySection {
                     width: parent.width
-                    spacing: root.chWidth * Config.Appearance.space1
                     visible: Services.Mpris.active !== null
-
-                    Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Media control" }
-                    Widgets.StyledText {
+                    Column {
                         width: parent.width
-                        sizeStep: 0
-                        elide: Text.ElideRight
-                        text: Services.Mpris.active !== null
-                            ? (Services.Mpris.active.trackArtist + " — " + Services.Mpris.active.trackTitle)
-                            : ""
-                    }
-                    Row {
-                        spacing: root.chWidth * Config.Appearance.space2
-                        Widgets.SmallButton {
-                            label: "Previous"
-                            enabled: Services.Mpris.active !== null && Services.Mpris.active.canGoPrevious
-                            onClicked: Services.Mpris.active.previous()
+                        spacing: root.chWidth * Config.Appearance.space1
+
+                        Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Media control" }
+                        Widgets.StyledText {
+                            width: parent.width
+                            sizeStep: 0
+                            elide: Text.ElideRight
+                            text: Services.Mpris.active !== null
+                                ? (Services.Mpris.active.trackArtist + " — " + Services.Mpris.active.trackTitle)
+                                : ""
                         }
-                        Widgets.SmallButton {
-                            label: (Services.Mpris.active !== null && Services.Mpris.active.isPlaying) ? "Pause" : "Play"
-                            enabled: Services.Mpris.active !== null
-                                && (Services.Mpris.active.canPlay || Services.Mpris.active.canPause)
-                            onClicked: Services.Mpris.active.togglePlaying()
-                        }
-                        Widgets.SmallButton {
-                            label: "Next"
-                            enabled: Services.Mpris.active !== null && Services.Mpris.active.canGoNext
-                            onClicked: Services.Mpris.active.next()
+                        Row {
+                            spacing: root.chWidth * Config.Appearance.space2
+                            Widgets.SmallButton {
+                                label: "Previous"
+                                enabled: Services.Mpris.active !== null && Services.Mpris.active.canGoPrevious
+                                onClicked: Services.Mpris.active.previous()
+                            }
+                            Widgets.SmallButton {
+                                label: (Services.Mpris.active !== null && Services.Mpris.active.isPlaying) ? "Pause" : "Play"
+                                enabled: Services.Mpris.active !== null
+                                    && (Services.Mpris.active.canPlay || Services.Mpris.active.canPause)
+                                onClicked: Services.Mpris.active.togglePlaying()
+                            }
+                            Widgets.SmallButton {
+                                label: "Next"
+                                enabled: Services.Mpris.active !== null && Services.Mpris.active.canGoNext
+                                onClicked: Services.Mpris.active.next()
+                            }
                         }
                     }
                 }
-                Widgets.Separator { width: parent.width; strong: true; visible: Services.Mpris.active !== null }
 
                 // --- system control -------------------------------------
-                Column {
+                Widgets.OverlaySection {
+                    width: parent.width
+                    Column {
                     width: parent.width
                     spacing: root.chWidth * Config.Appearance.space2
 
@@ -1738,45 +1853,84 @@ PanelWindow {
                         kind: "label"; sizeStep: 0; tone: "error"
                         text: "Microphone in use"
                     }
+                    }
                 }
 
-                Widgets.Separator { width: parent.width; strong: true }
-
                 // --- tiling options grid --------------------------------
-                Column {
+                Widgets.OverlaySection {
                     width: parent.width
-                    spacing: root.chWidth * Config.Appearance.space1
+                    Column {
+                        width: parent.width
+                        spacing: root.chWidth * Config.Appearance.space1
 
-                    Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Tiling" }
-                    Widgets.StyledText {
-                        width: parent.width
-                        kind: "label"; sizeStep: 0
-                        wrapMode: Text.WordWrap
-                        text: "Stock Hyprland has no native X/Y-scroll, Center or Fair "
-                            + "layout — only Tile (dwindle/master) and Floating are real "
-                            + "here, applied to every window on the current workspace; "
-                            + "the rest only highlight."
-                    }
-                    Grid {
-                        width: parent.width
-                        columns: 3
-                        columnSpacing: root.chWidth * Config.Appearance.space2
-                        rowSpacing: root.chWidth * Config.Appearance.space2
-                        Repeater {
-                            model: [
-                                { id: "xscroll", label: "X scroll" },
-                                { id: "yscroll", label: "Y scroll" },
-                                { id: "tile", label: "Tile" },
-                                { id: "center", label: "Center" },
-                                { id: "fair", label: "Fair" },
-                                { id: "floating", label: "Floating" },
-                            ]
-                            Widgets.SmallButton {
-                                required property var modelData
-                                width: (parent.width - root.chWidth * Config.Appearance.space2 * 2) / 3
-                                label: modelData.label
-                                active: root._tilingMode === modelData.id
-                                onClicked: root._applyTilingMode(modelData.id)
+                        Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Tiling" }
+                        Widgets.StyledText {
+                            width: parent.width
+                            kind: "label"; sizeStep: 0
+                            wrapMode: Text.WordWrap
+                            text: "Stock Hyprland has no native X/Y-scroll, Center or Fair "
+                                + "layout — only Tile (dwindle/master) and Floating are real "
+                                + "here, applied to every window on the current workspace; "
+                                + "the rest only highlight."
+                        }
+                        Grid {
+                            width: parent.width
+                            columns: 3
+                            columnSpacing: root.chWidth * Config.Appearance.space2
+                            rowSpacing: root.chWidth * Config.Appearance.space2
+                            Repeater {
+                                // rework-status-bar.md Style item 6: "add a
+                                // fitting icon for each option, centred
+                                // above the text" — Widgets/SmallButton has
+                                // no icon slot (it is a plain single-line
+                                // label button, used in ~40 other places
+                                // that don't want one), so this is a small
+                                // inline delegate built directly on
+                                // Widgets.Panel instead: Panel already
+                                // supplies exactly the hover/active "shaded"
+                                // chrome SmallButton's own resting/active
+                                // look comes from, just with a two-row
+                                // icon-over-label content slot instead of a
+                                // single StyledText.
+                                model: [
+                                    { id: "xscroll", label: "X scroll", glyph: Glyphs.tilingXScroll },
+                                    { id: "yscroll", label: "Y scroll", glyph: Glyphs.tilingYScroll },
+                                    { id: "tile", label: "Tile", glyph: Glyphs.tilingTile },
+                                    { id: "center", label: "Center", glyph: Glyphs.tilingCenter },
+                                    { id: "fair", label: "Fair", glyph: Glyphs.tilingFair },
+                                    { id: "floating", label: "Floating", glyph: Glyphs.tilingFloating },
+                                ]
+                                Widgets.Panel {
+                                    id: tilingBtn
+                                    required property var modelData
+                                    width: (parent.width - root.chWidth * Config.Appearance.space2 * 2) / 3
+                                    height: tilingCol.implicitHeight + padding * 2
+                                    radius: Config.Appearance.radiusSmall
+                                    hovered: tilingHover.hovered
+                                    active: root._tilingMode === tilingBtn.modelData.id
+
+                                    Column {
+                                        id: tilingCol
+                                        anchors.centerIn: parent
+                                        spacing: root.chWidth * Config.Appearance.space1 * 0.5
+                                        Widgets.StyledIcon {
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            glyph: tilingBtn.modelData.glyph
+                                            sizeStep: 2
+                                            color: tilingBtn.contentColor
+                                        }
+                                        Widgets.StyledText {
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            kind: "label"
+                                            sizeStep: 0
+                                            color: tilingBtn.contentColor
+                                            text: tilingBtn.modelData.label
+                                        }
+                                    }
+
+                                    HoverHandler { id: tilingHover; cursorShape: Qt.PointingHandCursor }
+                                    TapHandler { onTapped: root._applyTilingMode(tilingBtn.modelData.id) }
+                                }
                             }
                         }
                     }
@@ -1793,9 +1947,8 @@ PanelWindow {
 
                 // --- network speed + ping (reuses Services.NetStats,
                 // watched via root._syncNetWatch() above) ----------------
-                Column {
+                Widgets.OverlaySection {
                     width: parent.width
-                    spacing: root.chWidth * Config.Appearance.space1
                     Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Network" }
                     Widgets.AreaChart {
                         width: parent.width
@@ -1812,12 +1965,10 @@ PanelWindow {
                             text: "ping " + (Services.NetStats.pingMs >= 0 ? Services.NetStats.pingMs + " ms" : "—") }
                     }
                 }
-                Widgets.Separator { width: parent.width; strong: true }
 
                 // --- disk usage (Services/SysStats.qml, new this phase) -
-                Column {
+                Widgets.OverlaySection {
                     width: parent.width
-                    spacing: root.chWidth * Config.Appearance.space1
                     Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Disk" }
                     Widgets.Meter {
                         width: parent.width
@@ -1832,12 +1983,10 @@ PanelWindow {
                                 : "")
                     }
                 }
-                Widgets.Separator { width: parent.width; strong: true }
 
                 // --- ram / cpu / gpu usage -------------------------------
-                Column {
+                Widgets.OverlaySection {
                     width: parent.width
-                    spacing: root.chWidth * Config.Appearance.space1
                     Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Usage" }
                     Widgets.ListRow { thin: true; width: parent.width; label: "RAM"; value: Math.round(Services.SysStats.ramPercent) + "%" }
                     Widgets.Meter { width: parent.width; value: Services.SysStats.ramPercent / 100; fillColor: Config.Appearance.textPrimary }
@@ -1857,7 +2006,6 @@ PanelWindow {
                         fillColor: Config.Appearance.textPrimary
                     }
                 }
-                Widgets.Separator { width: parent.width; strong: true }
 
                 // --- CPU temp + graph + 4 fan-profile buttons -----------
                 // rework.md: "4 fan profile buttons with active state
@@ -1867,9 +2015,8 @@ PanelWindow {
                 // `available` still reads false on hardware with no
                 // PWM-controllable channel (most laptops), shown plainly
                 // rather than hidden.
-                Column {
+                Widgets.OverlaySection {
                     width: parent.width
-                    spacing: root.chWidth * Config.Appearance.space1
                     Widgets.StyledText { kind: "title"; sizeStep: 0; text: "CPU" }
                     Widgets.AreaChart {
                         width: parent.width
@@ -1912,11 +2059,9 @@ PanelWindow {
                 }
 
                 // --- GPU temp + graph (if available) --------------------
-                Column {
+                Widgets.OverlaySection {
                     width: parent.width
                     visible: Config.Capabilities.nvidiaGpu
-                    spacing: root.chWidth * Config.Appearance.space1
-                    Widgets.Separator { width: parent.width; strong: true }
                     Widgets.StyledText { kind: "title"; sizeStep: 0; text: "GPU" }
                     Widgets.AreaChart {
                         width: parent.width
@@ -1931,10 +2076,8 @@ PanelWindow {
                 // 'stats overlay' a button to open btop in a new
                 // workspace (simply add one to the currently highest and
                 // focus that)."
-                Widgets.Separator { width: parent.width; strong: true }
-                Column {
+                Widgets.OverlaySection {
                     width: parent.width
-                    spacing: root.chWidth * Config.Appearance.space1
                     Widgets.SmallButton {
                         width: parent.width
                         label: "Open btop in a new workspace"
