@@ -71,10 +71,24 @@ Item {
     // rework-issues.md item 8: "the list itself should have a little
     // padding" — the same space1 unit every other bar-module gap in this
     // file already uses, not a new token.
+    //
+    // User bug report, 2026-09-16: "the top bar still has large padding
+    // that it should not have, it should look like the bottom bar."
+    // Root cause: this padding was added to BOTH axes, including
+    // `implicitHeight` — and `Bar/Bar.qml`'s own bar height is
+    // `Math.max(..., leftIsle.implicitHeight, rightIsle.implicitHeight)`,
+    // so inflating one module's height inflates the WHOLE bar (both
+    // isles, both bars share one `height`) to match, not just the
+    // breathing room around this one list. Confirmed live: the top bar
+    // measured 44px tall against the bottom bar's 30px, a 14px gap that
+    // is exactly `padding * 2` for this token/font combination. Horizontal
+    // only now — a list reads padding as a left/right inset in the first
+    // place, and the vertical axis was never what "a little padding"
+    // needed to fix.
     readonly property real padding: chMetrics.width * Config.Appearance.space1
 
     implicitWidth: row.implicitWidth + root.padding * 2
-    implicitHeight: row.implicitHeight + root.padding * 2
+    implicitHeight: row.implicitHeight
 
     // Interface rework Phase 2 (rework.md: "the selected workspace has
     // slightly more width") — how much wider the active square gets,
@@ -84,7 +98,7 @@ Item {
     Row {
         id: row
         x: root.padding
-        y: root.padding
+        y: 0
         spacing: chMetrics.width * Config.Appearance.space1
 
         Repeater {
