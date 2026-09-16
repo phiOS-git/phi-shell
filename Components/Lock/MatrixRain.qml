@@ -1,33 +1,25 @@
 import QtQuick
 import qs.Config as Config
 
-// phiOS — Lock/MatrixRain (OOP-31). A falling-glyph field for the lock
-// screen background, in the spirit of AngelJumbo/lavat (a cmatrix with a
-// slowly drifting brightness band — the "lava"). Written from scratch in a
-// Canvas: I-01 forbids importing another project's code, and the request
-// was explicit that no extra package or external tool may be added, so
-// this is not a wrapper around cmatrix/lavat/unimatrix — it is QML.
+// A falling-glyph field for the lock screen background, with a slowly
+// drifting brightness band. Written from scratch in a Canvas — no
+// external tool or package.
 //
-// Motion category D (§6.5): "ambient indicators ... animation is forbidden
-// by default; an exception has to be justified where it is taken." The
-// exception here is a direct user request for this effect on this one
-// surface. It is confined to the lock screen and stops the moment the
-// surface begins to conceal (`running` is cleared by Lock.qml), so it
-// never animates over a live desktop.
+// Ambient animation, an exception confined to the lock screen and
+// stopped the moment the surface begins to conceal (`running` is cleared
+// by Lock.qml), so it never animates over a live desktop.
 //
-// Colour: design tokens only (I-05), and the two-colour B&W grammar holds
-// — the trail runs fg-3 → fg-2, the leading glyph and any glyph inside the
-// drifting band lift toward `accent`. No literal colour, and no green:
-// lavat's lava is carried by the moving band, not by hue.
+// Colour: design tokens only, and the two-colour B&W grammar holds — the
+// trail runs fg-3 → fg-2, the leading glyph and any glyph inside the
+// drifting band lift toward `accent`. No literal colour, and no green.
 //
 // Charset: ASCII plus Greek (φ Φ λ π Σ …). Source Code Pro covers both.
-// NOT katakana — phiOS ships noto-fonts as Greek + Latin only (Q-18, no
-// noto-fonts-cjk), so katakana would render as tofu.
+// NOT katakana — phiOS ships noto-fonts as Greek + Latin only, so
+// katakana would render as tofu.
 //
-// UNVERIFIED (no compositor here): Canvas throughput at this cell count on
-// the Iris Xe (razer), and whether QQuickContext2D.fillStyle takes a
-// `color` object directly — both are screenshot-pass checks. `cell` and
-// the frame interval are the two dials if it needs to be lighter.
+// UNVERIFIED (no compositor here): Canvas throughput at this cell count,
+// and whether QQuickContext2D.fillStyle takes a `color` object directly.
+// `cell` and the frame interval are the two dials if it needs to be lighter.
 
 Item {
     id: root
@@ -39,13 +31,9 @@ Item {
     // Overall wash. Kept low so the clock and the password field layered
     // on top stay legible; the head glyphs still punch through it.
     property real intensity: 0.18
-    // docs/TODO.md: "ambient effects... should have many settings: some
-    // shared (eg. speed)" — see Lock/LavaLamp.qml's own identical comment.
     property real speed: 1.0
-    // docs/TODO.md follow-up (user, 2026-09-15): "way more customisability"
-    // — a multiplier on the column density, inverse on the cell size (>1 =
-    // smaller cells = more columns = denser rain; <1 = sparser). Settings/
-    // sections/Theme.qml's own "Matrix" accordion exposes this.
+    // Multiplier on the column density, inverse on the cell size (>1 =
+    // smaller cells = more columns = denser rain; <1 = sparser).
     property real density: 1.0
 
     readonly property string glyphs:
@@ -87,10 +75,9 @@ Item {
     Component.onCompleted: reseed()
 
     Timer {
-        // Two Category-C character-steps per frame (~20 fps): fast enough
-        // for the fall to read as fluid, half the fill cost of one step
-        // per frame. Reuses the motion constant Widgets/ScrambleText
-        // already reuses — no new literal.
+        // Two character-steps per frame (~20 fps): fast enough for the
+        // fall to read as fluid, half the fill cost of one step per
+        // frame. Reuses the motion constant Widgets/ScrambleText also uses.
         interval: Config.Appearance.motionCTypeStep * 2
         running: root.running && root.visible && root.width > 0 && root.height > 0
         repeat: true
