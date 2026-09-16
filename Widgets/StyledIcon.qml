@@ -2,25 +2,22 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/StyledIcon (S-21). A single glyph from the icon-only
-// symbol font (design/tokens §6.4's font-symbol role), never a text font —
+// A single glyph from the icon-only symbol font, never a text font —
 // mixing an icon glyph into a text font risks a "missing glyph" box the
 // moment fontconfig's fallback chain does not carry it. Same colour and
 // opacity treatment as StyledText, through the same shared functions, so
 // an icon and its neighbouring label never disagree about what "muted" or
 // "disabled" looks like.
 //
-// The ">" active-input-point glyph (affordance rule, §8.6: reserved for
-// the active input point ONLY) is deliberately not a named property here.
-// A property like `activeMarker` would let every widget in this directory
-// render it; ListRow is the one place that glyph belongs, and renders it
-// directly rather than through this type.
+// The ">" active-input-point glyph is deliberately not a named property
+// here — that would let every widget in this directory render it, when
+// ListRow is the one place it belongs.
 
 Text {
     id: root
 
     property string glyph: ""
-    property string kind: "value" // "label" | "value" | "title" (OOP-10: no colour role — accent is fine detail only)
+    property string kind: "value" // "label" | "value" | "title" (no colour role — accent is fine detail only)
     property string tone: "" // "" | "error" | "warn" | "success" | "info"
     property bool invalid: false
     property bool loading: false

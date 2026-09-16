@@ -2,24 +2,22 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/StyledText (S-21). Style-plan §12 states: default,
-// disabled and loading fade together via WidgetStates.opacityFor(); invalid
-// forces the error colour regardless of tone. hover/pressed/active/
-// keyboardFocus are exposed for a parent to drive — §8.6 mandates all seven
-// on every component — but have no colour effect of their own here beyond
-// that shared opacity precedence: a passive label has no defined "pressed"
-// look of its own, only an "invalid" one.
+// Default, disabled and loading fade together via WidgetStates.opacityFor();
+// invalid forces the error colour regardless of tone. hover/pressed/active/
+// keyboardFocus are exposed for a parent to drive, but have no colour
+// effect of their own here beyond that shared opacity precedence: a
+// passive label has no defined "pressed" look of its own, only an
+// "invalid" one.
 //
-// Affordance rule (§8.6): a system label is low-contrast monochrome by
-// default (`kind: "label"`); a value is full-contrast text by default
-// (`kind: "value"`, the default). A Tier-2 semantic colour (`tone`) is
-// opt-in and never the default — the caller decides when a threshold is
-// crossed, this widget only renders that decision.
+// A system label is low-contrast monochrome by default (`kind: "label"`);
+// a value is full-contrast text by default (`kind: "value"`, the default).
+// A semantic colour (`tone`) is opt-in and never the default — the caller
+// decides when a threshold is crossed, this widget only renders that
+// decision.
 //
-// OOP-10: `kind: "title"` is full-contrast ink (like "value"), set apart
-// from body text by a heavier weight and — at the call site — a larger
-// sizeStep. It no longer carries accent (WidgetStates.contentColor): the
-// R2 directive keeps accent for fine detail only.
+// `kind: "title"` is full-contrast ink (like "value"), set apart from body
+// text by a heavier weight and — at the call site — a larger sizeStep. It
+// does not carry accent: accent is fine detail only, never a text colour.
 
 Text {
     id: root
@@ -43,7 +41,7 @@ Text {
 
     font.family: mono ? Config.Appearance.fontMono : Config.Appearance.fontUi
     font.pixelSize: WidgetStates.fontPixelSize(Config.Appearance, sizeStep)
-    // OOP-10: a title reads as a title by weight, not colour.
+    // A title reads as a title by weight, not colour.
     font.weight: kind === "title" ? Font.DemiBold : Font.Normal
     color: WidgetStates.contentColor(Config.Appearance, kind, tone, invalid)
     opacity: WidgetStates.opacityFor(resolvedState)
