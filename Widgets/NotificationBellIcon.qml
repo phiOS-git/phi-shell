@@ -2,21 +2,14 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/NotificationBellIcon (docs/TODO.md, status-bar rework:
-// "notifications (DND state as well)"). Same dumb/reusable icon family as
-// the rest of Widgets/*Icon — Bar/modules/Notifications.qml owns the
-// Services/Notifications.qml reads.
+// Same dumb/reusable icon family as the rest of Widgets/*Icon —
+// Bar/modules/Notifications.qml owns the Services/Notifications.qml reads.
 //
-// Replaces Bar/modules/Notifications.qml's earlier flash-overlay
-// technique outright, not just its symptom: that Rectangle was a CHILD
-// added after Widgets/Segment.qml's own internal `layout` Item, which
-// renders the glyph — anything appended later paints on top of it, so
-// the old flash partially obscured the bell it was meant to highlight
-// (found and documented while building Widgets/SunMoonIcon.qml, not
-// fixed there since that file wasn't touching Notifications.qml). Moving
-// the bell itself behind `iconDelegate` removes the whole overlay
-// mechanism: there is nothing left to sit on top of the glyph, because
-// the animation IS the glyph moving.
+// The animation IS the glyph moving, rather than an overlay drawn on top
+// of it: a flash overlay added as a Rectangle child after
+// Widgets/Segment.qml's own internal `layout` Item paints on top of the
+// glyph and partially obscures it. Rendering through `iconDelegate`
+// instead removes that whole overlay mechanism.
 //
 // `dnd` crossfades between the bell and bell-slashed glyphs (two Nerd
 // Font shapes, same verified-against-glyphnames.json rune each already
@@ -112,8 +105,8 @@ Item {
     }
 
     // A short, damped swing — call arrived() once per notification.
-    // Overlapping calls restart rather than queue (SF-4's own original
-    // reasoning: a burst of notifications should not stack effects).
+    // Overlapping calls restart rather than queue: a burst of
+    // notifications should not stack effects.
     function arrived() { swingAnim.restart() }
     SequentialAnimation {
         id: swingAnim

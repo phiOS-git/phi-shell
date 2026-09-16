@@ -1,18 +1,13 @@
 import QtQuick
 import qs.Config as Config
 
-// phiOS — Widgets/AsymmetricPanel. Out-of-plan: interface rework Phase 1
-// (rework.md, status bar overlays: "Overlays have 3 corners of 4px and 1
-// corner of 1px [...]"; status bars: "1px border radius on the outward
-// corners, 4px border radius on the inward corners"). Both specs need a
-// box whose four corners round at genuinely independent radii — plain
+// A box whose four corners round at genuinely independent radii. Plain
 // QtQuick `Rectangle` only exposes that as `topLeftRadius`/`topRightRadius`/
-// `bottomLeftRadius`/`bottomRightRadius`, added in Qt 6.7. Nothing in this
-// workspace pins an exact qt6-declarative version (phios-dotfiles'
-// packages.txt just lists `quickshell`, unpinned), so relying on those
-// per-corner Rectangle properties would be a silent trap the day this
-// shell runs against an older Qt — this component avoids the question
-// entirely with a technique that has worked since Canvas existed (Qt 5).
+// `bottomLeftRadius`/`bottomRightRadius`, added in Qt 6.7 — this workspace
+// pins no exact qt6-declarative version, so relying on those per-corner
+// Rectangle properties would be a silent trap the day this shell runs
+// against an older Qt. This component avoids the question entirely with a
+// technique that has worked since Canvas existed (Qt 5).
 //
 // Technique: draws one continuous rounded-rect path on a QtQuick `Canvas`
 // (the standard HTML5-2D-context arcTo() recipe for a per-corner rounded
@@ -23,9 +18,8 @@ import qs.Config as Config
 // clamped to half of whichever side it sits on, so two large radii on a
 // small box never overlap into a bowtie.
 //
-// Usage — a box rounded PHI_RADIUS_SMALL on its top-left corner and
-// PHI_RADIUS_LARGE everywhere else (the overlay spec's "1 corner of 1px,
-// 3 corners of 4px", here for the corner nearest its parent icon):
+// Usage — a box rounded radiusSmall on its top-left corner (the corner
+// nearest its parent icon) and radiusLarge everywhere else:
 //
 //   AsymmetricPanel {
 //       anchors.fill: parent
