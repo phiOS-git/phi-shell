@@ -3,21 +3,11 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Settings/sections/Security (S-40, master plan §9.12, closes
-// C-08). "ClamAV: stato, freschezza firme, toggle on-access, percorsi
-// sorvegliati, ultimo esito, avvio scansione, quarantena · face unlock:
-// enroll, DISABILITATO finché Q-01 resta rimandata · gestione segreti
-// (punto di ingresso)." Every row here is a placeholder by design, not by
-// omission: ClamAV is M6 (S-65, not built), face unlock is explicitly
-// excluded (master plan §3.3: howdy/howdy-next are AUR/T4, Q-01 deferred —
-// this is not a missing feature, it is a closed decision), and the secrets
-// entry point depends on Q-F02 (KeePassXC vs Vaultwarden), still [HOLD] in
-// §9.13.
-//
-// features-change (item 1): rebuilt onto SettingsGroup like every other
-// section — it was the one section still using bare sizeStep-3 labels as
-// headers and a different outer spacing, so it read as a different panel.
-// No row removed, every value is the same placeholder it was.
+// Every row in the ClamAV/Face-unlock/Secrets groups is a placeholder by
+// design, not by omission: ClamAV isn't built yet, face unlock is
+// explicitly excluded (howdy/howdy-next are AUR-only, out of scope for
+// this project), and the secrets entry point depends on a password-
+// manager choice not yet made.
 
 Column {
     id: root
@@ -62,18 +52,12 @@ Column {
         }
     }
 
-    // docs/TODO.md: "there is not way to set rules for what should not be
-    // saved in the clipboard history." A real, working group — unlike its
-    // siblings above, which are placeholders for a not-yet-built
-    // subsystem — placed here rather than a new top-level section since
-    // its whole point is keeping sensitive content (the kind this
-    // section's own "Secrets" group is about) out of a persisted history.
-    // Services/Clipboard.qml already excludes one thing before it ever
-    // touches disk (KeePassXC's password-manager MIME hint, a fixed
-    // built-in case) — these are the user-added rules layered on top of
-    // it, checked in QML the instant an entry is first observed as new,
-    // not inside the capture script itself (that file's own header
-    // explains why).
+    // A real, working group — unlike its siblings above, which are
+    // placeholders — placed here since its whole point is keeping
+    // sensitive content out of a persisted history. Services/Clipboard.qml
+    // already excludes one thing before it ever touches disk (KeePassXC's
+    // MIME hint); these are the user-added rules layered on top of it,
+    // checked in QML the instant an entry is first observed as new.
     SettingsGroup {
         title: "Clipboard history rules"
         optionId: "security.clipboard"
@@ -151,11 +135,6 @@ Column {
             }
         }
 
-        // rework-status-bar.md Features item 3: "in the settings panel for
-        // clipboard history, add an option to clear clipboard history
-        // (does not delete pinned options)." Same confirm-then-delete
-        // shape Panels/tabs/Notifications.qml's own "Clear all" already
-        // uses for an identical "delete a whole history at once" action.
         SettingsRow {
             title: "Clear clipboard history"
             description: "Deletes every clipboard entry except pinned ones. This cannot be undone."
@@ -171,16 +150,14 @@ Column {
         }
     }
 
-    // docs/TODO.md's app-permission system: "add settings for killswitches
-    // and permission rules." UI AND INTERACTIONS ONLY, by explicit
-    // instruction (2026-09-15) — see Services/SensorPermissions.qml's own
+    // UI and interactions only — see Services/SensorPermissions.qml's own
     // header for the full scope note: the killswitches below are real
     // (mic bridges to Services.AudioBridge's actual Pipewire mute; camera
     // is a real session flag with no device backend to gate yet), the
     // rules list is real storage with no real detection to populate it
-    // automatically yet, and "Send a test prompt" is a deliberate preview
-    // affordance — it exercises the real Dialogs/SensorPermissionPrompt.qml
-    // end to end without pretending an app actually asked.
+    // automatically yet, and "Send a test prompt" exercises the real
+    // Components/Dialogs/SensorPermissionPrompt.qml end to end without
+    // pretending an app actually asked.
     SettingsGroup {
         title: "Sensor permissions"
         optionId: "security.sensors"
