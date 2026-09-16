@@ -333,6 +333,41 @@ function surfaceColors(appearance, resolvedState, ambient) {
         }
     }
 
+    // `ambient: "list"` — rework-issues.md "New requests" item 14: "in all
+    // status bar overlays, replace list of option with thinner style.
+    // Instead of bulky buttons it should be a list of texts, with the
+    // 'highlight' hover and selection (same effect used in the runner
+    // bar)." Widgets/ListRow.qml called this function with no ambient at
+    // all, which fell through to the generic block below — that recipe's
+    // own `default` case fills a full-contrast `panelBackground` block
+    // behind EVERY row at rest, not just a selected one, which is exactly
+    // the "bulky bordered entries" reported live against the network/
+    // bluetooth/sound device lists (all three already use ListRow — the
+    // bug was in this shared recipe, not any one caller). No resting or
+    // hover fill at all now — a plain text row — and `active`/`focus` use
+    // `selectionBackground`/`selectionText`, the same pair Launcher.qml's
+    // own result-row highlight already reads, so a selected ListRow entry
+    // matches "the runner bar's own effect" by construction, not by a
+    // separately chosen colour that could drift from it. The opacity half
+    // of "hover effect (opacity)" is deliberately NOT here — ListRow.qml
+    // itself resolves that (its own row-level dimming), since it is a
+    // presentation choice about THIS widget specifically, not a colour
+    // recipe shared across ambients the way bg/fg/border are.
+    if (ambient === "list") {
+        switch (resolvedState) {
+        case "active":
+            return { bg: appearance.selectionBackground, fg: appearance.selectionText, border: "transparent" }
+        case "invalid":
+            return { bg: "transparent", fg: appearance.error, border: "transparent" }
+        case "focus":
+            return { bg: appearance.selectionBackground, fg: appearance.selectionText, border: "transparent" }
+        case "hover":
+            return { bg: "transparent", fg: appearance.colorOpposite, border: "transparent" }
+        default:
+            return { bg: "transparent", fg: appearance.colorOpposite, border: "transparent" }
+        }
+    }
+
     var surface = appearance.panelBackground
     var contrast = appearance.colorOpposite
     var hoverBg = appearance.panelHover
