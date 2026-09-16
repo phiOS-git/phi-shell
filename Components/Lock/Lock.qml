@@ -14,7 +14,7 @@ import "." as Local
 // Dialogs/PowerActionsRow (2026-09-15) — the pill row shared with
 // Dialogs/PowerMenu.qml, reached the same namespaced-relative way Local
 // above reaches this directory's own siblings.
-import "./Dialogs" as Dialogs
+import "../Dialogs" as Dialogs
 
 // phiOS — Lock/Lock.qml (S-34, master plan §8.3 surface 7). The session-
 // stays-locked guarantee comes from the ext-session-lock PROTOCOL, not
