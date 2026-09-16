@@ -10,3 +10,4 @@ Osd 1.0 Osd.qml
 ImageViewer 1.0 ImageViewer.qml
 Background 1.0 Background.qml
 Overview 1.0 Overview.qml
+ImageWindow 1.0 ImageWindow.qml

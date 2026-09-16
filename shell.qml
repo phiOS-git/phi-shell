@@ -43,7 +43,7 @@ ShellRoot {
     Variants {
         model: Quickshell.screens
         
-        Components.Bar.Bar {
+        Components.Bar {
             required property ShellScreen modelData
             screen: modelData
         }
@@ -53,7 +53,7 @@ ShellRoot {
     Variants {
         model: Quickshell.screens
         
-        Components.Bar.Bar {
+        Components.Bar {
             required property ShellScreen modelData
             screen: modelData
             edge: "bottom"
@@ -66,10 +66,10 @@ ShellRoot {
     }
     
     // Lockscreen
-    Components.Lock.Lock {}
+    Componentsß.Lock {}
     
     // Settings
-    Components.Settings.Settings {
+    Components.Settings {
         screen: Quickshell.screens[0]
     }
     
