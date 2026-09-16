@@ -5,35 +5,26 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Dialogs/BatteryAlert. docs/TODO.md: "full screen alert should
-// appear when battery level is low (2 thresholds warn and danger,
-// configurable)". Services/PowerBridge.qml owns both thresholds and the
-// dismiss/escalation state machine (`alertLevel`/`alertShown`/
-// `dismissAlert()`) — this file is presentation only, same split as every
-// other Services-backed surface in this repo.
+// Services/PowerBridge.qml owns both thresholds and the dismiss/
+// escalation state machine (`alertLevel`/`alertShown`/`dismissAlert()`) —
+// this file is presentation only.
 //
-// Layer-shell/scrim/fade plumbing copied verbatim from Dialogs/
-// ConfirmDialog.qml, the closest existing full-screen modal. Deliberately
-// its OWN dialog rather than a call into Services.ConfirmDialog: that
-// singleton force-closes every other panel on open (Services/
-// ConfirmDialog.qml's own `open()`) — correct for a user-initiated
-// confirmation, wrong for a spontaneous alert that must not eat whatever
-// the user was doing in another panel.
+// Layer-shell/scrim/fade plumbing copied verbatim from Components/
+// Dialogs/ConfirmDialog.qml. Deliberately its OWN dialog rather than a
+// call into Services.ConfirmDialog: that singleton force-closes every
+// other panel on open, correct for a user-initiated confirmation, wrong
+// for a spontaneous alert that must not eat whatever the user was doing
+// in another panel.
 //
-// Single instance on screens[0] (shell.qml), not one per screen like Bar/
-// Toast: the underlying fact (one battery, one percentage) is global, not
-// per-monitor ambient data, and duplicating a BLOCKING modal across every
+// Single instance on screens[0], not one per screen like Bar/Toast: the
+// underlying fact (one battery, one percentage) is global, not per-
+// monitor ambient data, and duplicating a blocking modal across every
 // monitor would mean dismissing it N times on a multi-monitor desktop for
-// one real event. Same category as Dialogs.ConfirmDialog/Panels.Sidebar/
-// SettingsSurface.Settings — a focused, toggled surface, not an ambient
-// per-monitor indicator (flagged for cheap veto, same as every prior
-// single-vs-per-screen call in this repo).
+// one real event.
 //
-// Takes keyboard focus (Services.LayerFocus) and requires an explicit
-// Dismiss click/Enter/Escape — a "full screen alert" reads as meant to
-// interrupt, the same judgment this repo's other modals (ConfirmDialog,
-// Cheatsheet) already make. Flagged for cheap veto if a non-blocking
-// toast-style nudge was actually wanted instead.
+// Takes keyboard focus and requires an explicit Dismiss click/Enter/
+// Escape — a "full screen alert" is meant to interrupt, the same
+// judgment this repo's other modals make.
 PanelWindow {
     id: root
 
@@ -54,8 +45,8 @@ PanelWindow {
     Widgets.Scrim {
         anchors.fill: parent
         shown: root.shown
-        // docs/TODO.md, style pass: a battery/warning alert is one of the
-        // "covers the bar" dims — gets the stronger intensity.
+        // A battery/warning alert is one of the "covers the bar" dims —
+        // gets the stronger intensity.
         strong: true
     }
 
