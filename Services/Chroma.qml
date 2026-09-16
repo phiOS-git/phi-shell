@@ -6,46 +6,38 @@ import Quickshell.Io
 import qs.Config as Config
 import qs.Services as Services
 
-// phiOS — Services/Chroma (S-46; Out-of-plan: settings-overhaul batch G).
 // Writes directly to the org.razer session-bus DBus service via
 // `busctl`/Quickshell.Io — no razer-cli, no polychromatic, no Quickshell
-// DBus client type (none exists in the 0.3.x services/ listing).
+// DBus client type exists for this.
 //
-// ============================================================
 // NAMES TO CONFIRM ON HARDWARE. Every interface/method string below is a
 // named constant precisely so a correction after
 //     busctl --user introspect org.razer /org/razer/device/<serial>
-// is a one-line edit, not a hunt. They are taken from openrazer daemon
-// source (dbus_services/dbus_methods/chroma_keyboard.py, misc_methods.py)
-// and python-openrazer's advanced-matrix path, which the USER has confirmed
-// works end to end on this Razer Blade — but no org.razer service is
-// reachable from this machine to call, so this file has never run.
-// ============================================================
+// is a one-line edit, not a hunt. Taken from the openrazer daemon source
+// and python-openrazer's advanced-matrix path, which the user has
+// confirmed works end to end on this Razer Blade — but UNVERIFIED from
+// this file's own side: no org.razer service is reachable from this
+// machine, so this file has never actually run.
 //
-// ARCHITECTURE (batch G rewrite). Five things want to drive one keyboard:
-// the static base colour, the per-key override map, the battery power-key
-// indicator, the notification blink, and the neovim mode tint. They are NOT
-// five writers. Every one of them only sets state; a single _render()
-// composes the current state into one frame, and a single Process pushes
-// it. That is what makes "blink then restore" automatic — the blink flag
-// flips, _render() runs, the timer clears the flag, _render() runs again —
+// ARCHITECTURE. Five things want to drive one keyboard: the static base
+// colour, the per-key override map, the battery power-key indicator, the
+// notification blink, and the neovim mode tint. They are NOT five
+// writers — every one only sets state, a single _render() composes the
+// current state into one frame, and a single Process pushes it. That's
+// what makes "blink then restore" automatic: the blink flag flips,
+// _render() runs, the timer clears the flag, _render() runs again —
 // rather than a second code path that has to remember what was underneath.
 //
-// A frame is either one setStatic (no per-key content) or N setKeyRow calls
-// plus one setCustom (per-key / an integration that paints specific keys).
-// All of it goes out as ONE `sh -c "busctl … && busctl … && …"`: assigning
-// Process.command in a loop would clobber each call before it ran
-// (Quickshell does not queue command reassignments).
+// A frame is either one setStatic (no per-key content) or N setKeyRow
+// calls plus one setCustom. All of it goes out as ONE
+// `sh -c "busctl … && busctl … && …"`: assigning Process.command in a loop
+// would clobber each call before it ran (Quickshell doesn't queue command
+// reassignments).
 //
-// PANEL: Settings/sections/Devices.qml — the toggle, the static colour, the
-// advanced per-key grid (Widgets/KeyboardMap), and the three integrations
-// with their accordion settings.
-//
-// STORAGE: the two scalars that already have `phi state` keys stay there
-// (toggle.chroma, chroma.color — one value, one writer). The open-ended
-// data — the per-key map and the integration config — is one JSON object
-// at Config.Paths.chromaConfigFile, same shape/mechanism as
-// Config/ThemeOverrides.qml's theme-overrides.json.
+// Panel: Settings/sections/Devices.qml. Storage: the two scalars that
+// already have `phi state` keys stay there (toggle.chroma, chroma.color).
+// The open-ended data — the per-key map and integration config — is one
+// JSON object at Config.Paths.chromaConfigFile.
 
 Singleton {
     id: root
@@ -399,8 +391,6 @@ Singleton {
 
     // ==================================================================
     // battery link — re-render the power key when the level crosses a band
-    // (Services/Idle.qml sets the precedent for a Services singleton
-    // importing qs.Services to read a sibling).
     // ==================================================================
     Connections {
         target: Services.PowerBridge
