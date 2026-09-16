@@ -2,36 +2,28 @@ pragma Singleton
 import Quickshell
 import qs.Services as Services
 
-// phiOS — Services/ConfirmDialog. docs/TODO.md: "confirmation modals (like
-// the one for power options) should be centered in the screen, with a dim
-// and block the screen until they are resolved. Also make them a reusable
-// component as other task (eg. the battery saving mode, see below) will
-// use it." One owner for the shown/content state of the single shared
-// full-screen dialog surface (Dialogs/ConfirmDialog.qml), same one-owner
+// One owner for the shown/content state of the single shared full-screen
+// dialog surface (Components/Dialogs/ConfirmDialog.qml), same one-owner
 // shape as Services/AgentPanel.qml, Services/Calendar.qml.
 //
 // Any caller anywhere in the shell opens it with `open({...})`; the caller
 // hands over what to show and a plain JS callback for the confirm action —
 // this file never knows what "reboot" or "disable battery saving" means,
-// same separation Services/PowerActions.qml already keeps between the
-// action and whatever asks for it.
+// the same separation Services/PowerActions.qml keeps between the action
+// and whatever asks for it.
 Singleton {
     id: root
 
     property bool shown: false
 
-    // This dialog and Sidebar/AgentPanel/Settings all raise themselves to
+    // This dialog and the agent panel/settings panel raise themselves to
     // WlrLayer.Overlay and grab keyboard focus (Services/LayerFocus.qml)
-    // while shown — unlike Services/Spotlight.qml, which is deliberately
-    // meant to layer OVER an already-open panel (shell.qml's own header:
-    // "the cursor-locator dim comes up above an already-open settings /
-    // notification / chat panel"), this dialog must be the ONLY such
+    // while shown — unlike Services/Spotlight.qml, which is meant to layer
+    // OVER an already-open panel, this dialog must be the ONLY such
     // surface holding focus, or which of two same-layer windows actually
     // receives a keypress is undefined — dangerous when one of them
-    // defaults Enter to a destructive confirm. "block the screen until
-    // resolved" (the TODO's own words) means exclusive, not layered-over,
-    // so opening this closes every other panel rather than coexisting with
-    // them the way Spotlight does.
+    // defaults Enter to a destructive confirm. So opening this closes
+    // every other panel rather than coexisting with them.
     onShownChanged: if (root.shown) {
         Services.NotificationPanel.hide()
         Services.AgentPanel.hide()
@@ -45,16 +37,15 @@ Singleton {
     property string confirmLabel: "Confirm"
     property string cancelLabel: "Cancel"
 
-    // Not exposed to consumers outside this file — Dialogs/ConfirmDialog.qml
-    // reads it only through confirm() below, never directly, so a caller
-    // can never be left with a stale reference after hide() clears it.
+    // Not exposed to consumers outside this file — the dialog reads it
+    // only through confirm() below, never directly, so a caller can never
+    // be left with a stale reference after hide() clears it.
     property var _onConfirm: null
 
     // opts: { title, message, confirmLabel, cancelLabel, onConfirm }.
     // confirmLabel/cancelLabel default to "Confirm"/"Cancel" when omitted —
     // most callers (destructive system actions) want the action's own name
-    // there instead ("Reboot", "Shut down"), same as the inline confirm
-    // this replaces already did.
+    // there instead ("Reboot", "Shut down").
     function open(opts) {
         var o = opts || {}
         root.title = o.title || ""
@@ -66,10 +57,9 @@ Singleton {
     }
 
     // Runs the callback AFTER hiding, not before: a callback that itself
-    // opens another dialog (a real, expected case — the battery-saving
-    // settings toggle mentioned in the TODO could chain a second confirm)
-    // must not have its own open() immediately undone by this one's own
-    // cleanup running afterwards.
+    // opens another dialog (chaining a second confirm) must not have its
+    // own open() immediately undone by this one's own cleanup running
+    // afterwards.
     function confirm() {
         var cb = root._onConfirm
         root.hide()
