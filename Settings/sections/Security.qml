@@ -150,6 +150,25 @@ Column {
                 }
             }
         }
+
+        // rework-status-bar.md Features item 3: "in the settings panel for
+        // clipboard history, add an option to clear clipboard history
+        // (does not delete pinned options)." Same confirm-then-delete
+        // shape Panels/tabs/Notifications.qml's own "Clear all" already
+        // uses for an identical "delete a whole history at once" action.
+        SettingsRow {
+            title: "Clear clipboard history"
+            description: "Deletes every clipboard entry except pinned ones. This cannot be undone."
+            Widgets.StyledButton {
+                label: "Clear history"
+                onClicked: Services.ConfirmDialog.open({
+                    title: "Clear clipboard history",
+                    message: "Deletes every clipboard entry except pinned ones now. This cannot be undone.",
+                    confirmLabel: "Clear history",
+                    onConfirm: () => Services.Clipboard.clearHistory()
+                })
+            }
+        }
     }
 
     // docs/TODO.md's app-permission system: "add settings for killswitches
