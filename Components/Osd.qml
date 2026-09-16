@@ -3,7 +3,7 @@ import Quickshell
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "../Bar/glyphs.js" as Glyphs
+import "Bar/glyphs.js" as Glyphs
 
 // phiOS — Osd/Osd.qml (S-43, master plan §8.3 surface 15). Purely
 // reactive: watches Services.AudioBridge (volume/muted) and

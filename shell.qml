@@ -61,7 +61,7 @@ ShellRoot {
     }
 
     // OSD
-    Tools.Osd {
+    Component.Osd {
         screen: Quickshell.screens[0]
     }
     
@@ -202,9 +202,9 @@ ShellRoot {
         screen: Quickshell.screens[0]
     }
     // Dialog Prompt
-    Components.Dialogs.SensorPermissionPrompt {
-        screen: Quickshell.screens[0]
-    }
+    // Components.Dialogs.SensorPermissionPrompt {
+    //     screen: Quickshell.screens[0]
+    // }
     // Dialog Battery Alert
     Components.Dialogs.BatteryAlert {
         screen: Quickshell.screens[0]
