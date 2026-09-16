@@ -4,33 +4,25 @@ import Quickshell
 import Quickshell.Io
 import qs.Config as Config
 
-// phiOS — Services/NightShift (S-42, master plan §9.8/§9.9): drives
-// hyprsunset via `hyprctl hyprsunset` IPC (real, documented syntax —
-// hyprwm/hyprland-wiki, hypr-ecosystem/user/hyprsunset.md, fetched and
-// quoted verbatim before writing this file, not guessed):
+// Drives hyprsunset via `hyprctl hyprsunset` IPC:
 //   hyprctl hyprsunset temperature <K>   warm shift to K
 //   hyprctl hyprsunset identity          no shift (True Tone's "off" state
 //                                        and the plain on/off toggle's own
 //                                        off state both resolve here)
 //
-// Owns toggle.night-mode / toggle.true-tone / nightmode.temp itself — same
-// shape as Services/Notifications.qml owning toggle.dnd (S-30's own
-// precedent: "S-40's settings panel and this toast queue both toggle the
-// same value... reuses phi state's existing key rather than inventing a
-// second flag"). Settings/sections/Theme.qml (S-40) called Config.Settings
-// directly for these three keys before this step existed to own them;
-// refactored here to call this file's functions instead, so there is one
-// place — not two — that knows what changing night-mode/True-Tone/
-// temperature actually DOES.
+// Owns toggle.night-mode / toggle.true-tone / nightmode.temp itself, the
+// same way Services/Notifications.qml owns toggle.dnd — the settings panel
+// calls this file's functions rather than Config.Settings directly, so
+// there is one place, not two, that knows what changing night-mode/
+// True-Tone/temperature actually does.
 //
 // True Tone reads ambient lux from /sys/bus/iio/devices/iio:device0/
-// in_illuminance_raw on a timer, mapped to a target temperature by a
-// PLAIN LINEAR HEURISTIC this file invents (dark room -> warm 2700K,
-// bright daylight -> neutral 6500K) — S-06 confirmed the device and its
-// name ("als") on razer, but never captured a raw value or its actual
-// range/unit, so both the sysfs attribute name and the mapping curve are
-// UNVERIFIED against real hardware. The attribute-name probe below tries
-// the two common IIO conventions (in_illuminance_raw, in_illuminance_input)
+// in_illuminance_raw on a timer, mapped to a target temperature by a plain
+// linear heuristic this file invents (dark room -> warm 2700K, bright
+// daylight -> neutral 6500K). UNVERIFIED against real hardware — the
+// sysfs attribute name and the mapping curve have never been checked
+// against a captured raw value. The attribute-name probe below tries the
+// two common IIO conventions (in_illuminance_raw, in_illuminance_input)
 // and reports which one worked, rather than assuming.
 
 Singleton {
@@ -42,21 +34,16 @@ Singleton {
     property bool trueTone: false
     property int targetTemp: 4500
 
-    // docs/TODO.md: "add option for automated night mode (automatic time
-    // at nighttime or manual hours range), with settings" — a clock-driven
-    // alternative to flipping `enabled` by hand, distinct from True Tone
-    // above (which reacts to ambient light, not the wall clock).
+    // A clock-driven alternative to flipping `enabled` by hand, distinct
+    // from True Tone above (which reacts to ambient light, not the clock).
     //
-    // "off": `enabled` is purely manual, unchanged from before this.
+    // "off": `enabled` is purely manual.
     // "auto": a fixed default window (autoStartHour..autoEndHour) turns it
     //   on/off automatically. No location/sunset calculation exists
-    //   anywhere in this repo (real "sunset in your city" would need
-    //   geolocation this project has never had a source for), so "auto"
-    //   is scoped as a sensible fixed evening-to-morning default rather
-    //   than something computed — the same kind of scope call as True
-    //   Tone's own linear lux-to-temperature heuristic just above. Flagged
-    //   for cheap veto if a real sunset calculation was actually wanted.
-    // "custom": same automatic on/off toggling, using scheduleStartHour/
+    //   anywhere in this repo (that needs geolocation this project has no
+    //   source for), so "auto" is a fixed evening-to-morning default
+    //   rather than something computed.
+    // "custom": same automatic toggling, using scheduleStartHour/
     //   scheduleEndHour instead of the fixed default.
     property string scheduleMode: "off"
     readonly property int autoStartHour: 20
@@ -88,13 +75,11 @@ Singleton {
         root._evaluateSchedule()
     }
 
-    // These three keys are new (added alongside this feature) — unlike
-    // every other Config.Settings.set() call in this file, whose keys have
-    // shipped in every phi build this shell has ever run against, `phi
-    // state set` rejects an unknown key outright until the user rebuilds
-    // and reinstalls phi from the commit that declares them. Silently
-    // dropping that failure would make the schedule reset to its default
-    // on every shell restart with no visible cause, so this one warns.
+    // `phi state set` rejects an unknown key outright until phi is
+    // rebuilt and reinstalled from the commit that declares the schedule
+    // keys. Silently dropping that failure would make the schedule reset
+    // to its default on every shell restart with no visible cause, so
+    // this warns.
     function _warnIfRejected(v, code) {
         if (code !== 0)
             console.warn("phi-shell: night-mode schedule setting was not saved (phi state rejected it, exit " + code + ") — is phi up to date?")
@@ -165,17 +150,9 @@ Singleton {
     }
 
     // A single reusable Process (command reassigned, then running set true
-    // again), not a dynamically Component.created one per call — the exact
-    // shape every OTHER Process-reuse in this repo already uses
-    // (Settings/sections/Theme.qml's own setProc for `phi theme set`,
-    // called repeatedly the same way). Simplified here, after the first
-    // real-hardware round found hyprsunset's own colour shift not visibly
-    // happening at all: the createObject(parent, {command: ...}) + inline
-    // `running: true` shape was unproven in this codebase (no working
-    // precedent used it) and is one plausible source of the failure,
-    // removed rather than left as an open question alongside the real
-    // hyprsunset-autostart timing issue this same round also surfaced
-    // (see PROGRESS.md).
+    // again), not a dynamically Component.created one per call — the same
+    // shape Settings/sections/Theme.qml's own setProc uses for
+    // `phi theme set`.
     function _run(command) {
         proc.command = command
         proc.running = true
