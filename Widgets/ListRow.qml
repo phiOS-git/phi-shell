@@ -85,8 +85,18 @@ Item {
     readonly property real inset: WidgetStates.chToPixels(Config.Appearance.space2, chWidth)
     readonly property real gap: WidgetStates.chToPixels(Config.Appearance.space1, chWidth)
 
+    // User bug report, 2026-09-16: "entries still are large 'button-like'
+    // elements ... simple text, with highlighter effect and hover opacity."
+    // The "list" ambient (2026-09-16, same round) already removed the
+    // resting box, but this row's own HEIGHT was still button-sized: two
+    // full `space2` (2ch) units of vertical padding on top of the other —
+    // Launcher.qml's own result row (the exact reference cited, "same
+    // effect used in the runner bar") is `chMetrics.height + space1` (1ch
+    // total, not 2ch per side), a genuinely denser row. Matched exactly —
+    // this is what "simple text" actually looks like at this row's own
+    // font size, not a value chosen freeer-hand.
     implicitHeight: Math.max(labelText.implicitHeight, valueText.implicitHeight)
-        + WidgetStates.chToPixels(Config.Appearance.space2, chWidth) * 2
+        + WidgetStates.chToPixels(Config.Appearance.space1, chWidth)
     activeFocusOnTab: true
     opacity: WidgetStates.opacityFor(resolvedState) * root.restEmphasis
 

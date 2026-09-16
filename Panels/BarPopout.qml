@@ -1007,17 +1007,26 @@ PanelWindow {
                     enabled: Services.Firewall.nftAvailable && !Services.Firewall.busy
                     onToggled: (v) => v ? Services.Firewall.enable() : Services.Firewall.disable()
                 }
-                Row {
-                    spacing: root.chWidth * Config.Appearance.space2
+                // User bug report, 2026-09-16: "entries still are large
+                // 'button-like' elements ... simple text, with highlighter
+                // effect and hover opacity" — this is a select-one option
+                // list (exactly the same shape as the Wi-Fi network list
+                // and the bluetooth device list a few sections up, both
+                // already ListRow), not a labelled action per preset, so
+                // it gets the same thin-list treatment instead of a row of
+                // SmallButtons.
+                Column {
+                    width: parent.width
                     visible: Services.Firewall.enabled
                     Repeater {
                         model: Services.Firewall.presetNames
-                        Widgets.SmallButton {
+                        Widgets.ListRow {
                             required property string modelData
+                            width: parent.width
                             label: modelData
                             active: Services.Firewall.preset === modelData
                             enabled: !Services.Firewall.busy
-                            onClicked: Services.Firewall.setPreset(modelData)
+                            onActivated: Services.Firewall.setPreset(modelData)
                         }
                     }
                 }
