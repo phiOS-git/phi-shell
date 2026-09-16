@@ -1,13 +1,9 @@
 import QtQuick
 import qs.Config as Config
 
-// phiOS — Widgets/AreaChart (Out-of-plan: settings-overhaul batch F). A
-// filled-area sparkline for the Wi-Fi speed graph, in the settings section
-// and mirrored in the wifi bar overlay — the visual from
-// github.com/programmersd21/flow (not cloned; a plain Canvas area path
-// here). Ambient by nature (category D): it just redraws when a new sample
-// lands, no spring smoothing this pass (noted — flow's own selling point,
-// a later polish).
+// A filled-area sparkline for the Wi-Fi speed graph, used in the settings
+// section and mirrored in the wifi bar overlay. Ambient motion category D:
+// it just redraws when a new sample lands, no spring smoothing.
 //
 // Pure QtQuick Canvas, no shader / GraphicalEffects.
 

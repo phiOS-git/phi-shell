@@ -1,19 +1,17 @@
 import QtQuick
 import qs.Config as Config
 
-// phiOS — Widgets/Reveal (Out-of-plan: panels-ux-rework). A headerless
-// clipped wrapper that animates its content in and out on the shell's one
-// shared transition category (B): height 0 ↔ content height, with a short
-// opacity fade over the same curve.
+// A headerless clipped wrapper that animates its content in and out on the
+// shell's one shared transition category (B): height 0 ↔ content height,
+// with a short opacity fade over the same curve.
 //
 // Widgets/Accordion is the disclosure WITH a header row the user toggles;
 // this is the piece for content whose visibility a binding already drives —
 // a settings row that only applies to one mode, an error line, an inline
-// editor. The settings content pane is a clipped Flickable, so a block that
-// simply flips `visible` pops the whole column with no motion (the user's
-// "there is no transition for the appearing elements"). Wrapping it here
-// gives every such block the same easing the Accordion body already has,
-// without each call site re-deriving the animation.
+// editor. A block that simply flips `visible` pops the whole column with no
+// motion inside a clipped Flickable; wrapping it here gives every such
+// block the same easing the Accordion body already has, without each call
+// site re-deriving the animation.
 //
 // The child stays in the scene while closed (height 0, not visible:false)
 // so its implicitHeight is known the instant `shown` flips true and the
