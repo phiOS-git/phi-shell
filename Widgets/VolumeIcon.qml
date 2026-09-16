@@ -2,10 +2,9 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/VolumeIcon (docs/TODO.md, status-bar rework: "volume
-// amount and muted"). Same family as Widgets/SunMoonIcon: a dumb,
-// reusable, Canvas-drawn icon driven entirely by external properties, no
-// Services/ reads of its own — Bar/modules/Volume.qml owns the state.
+// Same family as Widgets/SunMoonIcon: a dumb, reusable, Canvas-drawn icon
+// driven entirely by external properties, no Services/ reads of its own —
+// Bar/modules/Volume.qml owns the state.
 //
 // A speaker body (fixed silhouette) + up to three sound-wave arcs whose
 // combined extent is a smooth, continuous function of `level` (0..1),

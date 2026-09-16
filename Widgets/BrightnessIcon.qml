@@ -2,19 +2,12 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/BrightnessIcon (interface rework, rework.md's "Features
-// to be removed": "the brightness icon does not have the moon/sun icon
-// with filling, instead just a brightness icon"). Replaces
-// Widgets/SunMoonIcon as Bar/modules/Brightness.qml's `iconDelegate` — a
-// plain brightness glyph (a disc + eight rays, always fully drawn, no
-// day/night eclipse morph) with the same liquid-level fill gauge
-// SunMoonIcon used for `fillLevel`, since the Status Bar Elements list
-// still wants "brightness icon (fill animation on change)" — only the
-// night-mode-driven eclipse is what rework.md asks to remove, not the
-// brightness-level animation itself. SunMoonIcon.qml itself is untouched
-// and kept (still a real, reusable night-mode on/off indicator for
-// wherever this shell wants one, e.g. the status overlay's own night-mode
-// toggle) — this is a new, separate, simpler widget, not an edit to it.
+// Bar/modules/Brightness.qml's `iconDelegate` — a plain brightness glyph
+// (a disc + eight rays, always fully drawn, no day/night eclipse morph)
+// with the same liquid-level fill gauge Widgets/SunMoonIcon uses for
+// `fillLevel`. A separate, simpler widget rather than an edit to
+// SunMoonIcon — that one stays the real reusable night-mode on/off
+// indicator; this one has no day/night state of its own.
 //
 // Technique lifted directly from SunMoonIcon's own sun-drawing + fill-gauge
 // code (see that file's header for the full reasoning on the gauge

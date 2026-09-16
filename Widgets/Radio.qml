@@ -2,27 +2,22 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/Radio (docs/TODO.md, design system: "radio (square
-// border with inner small filled square)"). Same shape and reasoning as
-// the sibling Widgets/Checkbox just added for the same TODO entry — same
-// controlled-component contract (`checked`/`toggled(bool)`), same seven-
-// state resolution, same outline-only box (never Toggle's full-inversion
-// grammar). Deliberately square, not round: the TODO is explicit that
-// this design system's "radio" reads as a smaller sibling of the
-// checkbox's square, not the usual circular radio dot.
+// Same shape and reasoning as the sibling Widgets/Checkbox — same
+// controlled-component contract (`checked`/`toggled(bool)`), same
+// seven-state resolution, same outline-only box (never Toggle's
+// full-inversion grammar). Deliberately square, not round: this design
+// system's "radio" is a smaller sibling of the checkbox's square, not the
+// usual circular radio dot.
 //
 // Grouping/exclusivity (only one Radio in a set checked at a time) is
 // deliberately NOT built in here, for the same reason Widgets/Toggle does
 // not own the boolean it displays: this is a controlled, stateless
-// indicator, and every real caller already has its own single source of
-// truth (a Services/*.qml or Config/*Prefs.qml singleton's current
-// choice) to bind `checked` against and a setter to call from `onToggled`
-// — the same pattern the existing button-based choice groups in
+// indicator, and every real caller has its own single source of truth (a
+// Services/*.qml or Config/*Prefs.qml singleton's current choice) to bind
+// `checked` against and a setter to call from `onToggled` — the same
+// pattern the existing button-based choice groups in
 // Settings/sections/Theme.qml (variant, lock-screen effect, clock date
-// style) already use. Nothing in the current codebase was migrated to use
-// this widget — the TODO asks to add it "to the design system", not to
-// re-style an existing, working chooser; see docs/VERIFICATION.md for
-// this scoping call.
+// style) already use. No caller has been migrated to it yet.
 
 Item {
     id: root
@@ -103,9 +98,7 @@ Item {
         onTapped: root.toggled(!root.checked)
     }
 
-    // Style pass 2026-09-14: see Widgets/StyledButton.qml's identical
-    // comment — a systemic keyboard-activation gap, fixed the same way
-    // here.
+    // Same keyboard-activation fix as Widgets/StyledButton.qml.
     Keys.onReturnPressed: if (root.enabled && !root.loading) root.toggled(!root.checked)
     Keys.onSpacePressed: if (root.enabled && !root.loading) root.toggled(!root.checked)
 }

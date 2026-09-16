@@ -1,17 +1,13 @@
 import QtQuick
 import qs.Config as Config
 
-// phiOS — Widgets/ScrambleText (S-52, master plan §6.5 Category C:
-// "random-letters (scramble che si risolve nella parola finale)"). One of
-// exactly two effects Category C admits — the taxonomy's own words, not
-// this widget's invention: "due soli effetti ammessi". Reusable so every
-// Category C surface the style plan's own closed list names (unlock, first
-// run — boot is Plymouth's own script language, not QML, and gets its own
-// implementation at S-53) reads from one component instead of a bespoke
-// scramble loop per caller.
+// Random letters that resolve into the final word — one of exactly two
+// motion-category-C effects this shell admits (see Widgets/TypingText.qml
+// for the other). Reusable so every category-C surface (unlock, first run)
+// reads from one component instead of a bespoke scramble loop per caller.
 //
 // Resolves left-to-right over motionCScramble total, in steps of
-// motionCTypeStep — the OTHER Category C token, reused here as the frame
+// motionCTypeStep — the OTHER category-C token, reused here as the frame
 // interval rather than inventing a third motion constant: one already
 // means "how fast a character reveals", which is exactly what a scramble's
 // own frame rate needs too. A character already locked in never goes back
@@ -19,13 +15,10 @@ import qs.Config as Config
 // happens to stop.
 //
 // play() is the ONLY thing that starts the effect. Deliberately not
-// re-triggered by every `finalText` change: §6.5 is explicit that "un
-// indicatore di caricamento è ammesso in categoria C solo se la
-// risoluzione coincide col completamento reale di un processo" — a value
-// that updates on its own (a clock, a live counter) is a frequent event,
-// and re-scrambling on every such update would be exactly the DONE WHEN
-// violation ("no category-C effect fires on a frequent event") this step
-// exists to prevent. A `finalText` change while idle just updates the
+// re-triggered by every `finalText` change: a category-C effect may only
+// fire when its resolution coincides with a real process actually
+// completing, never on a frequent event like a clock or live counter
+// updating on its own. A `finalText` change while idle just updates the
 // displayed text plainly, no animation.
 //
 // Unverified: no compositor here to confirm the reveal reads as intended
@@ -65,9 +58,8 @@ Item {
         // No `text: root.finalText` binding: this widget reassigns `text`
         // imperatively every animation frame below, and QML permanently
         // drops a declarative binding the instant anything assigns to the
-        // same property once — the exact class of bug Widgets/Toggle.qml (ex-Pill)
-        // own S-40 note already found and fixed for `checked`. Never
-        // declaring the binding here means there is nothing to drop.
+        // same property once. Never declaring the binding here means there
+        // is nothing to drop.
     }
 
     Timer {
