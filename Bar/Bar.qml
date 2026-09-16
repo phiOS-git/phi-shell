@@ -426,6 +426,29 @@ PanelWindow {
                 // visible at the hidden module's implicitWidth and the
                 // isle's Row reserves a blank gap plus its spacing for it.
                 visible: !item || item.visible
+                // User bug report, 2026-09-16: the Φ icon, the isle
+                // separators and (before their own per-module fix) the
+                // current-app-name label all sat pinned to the TOP of the
+                // isle rather than vertically centred. Root cause: `Row`
+                // (Widgets/BarIsle.qml's `row`) only ever manages its
+                // children's X position — every child is implicitly
+                // top-aligned at its own y:0 unless told otherwise — and a
+                // module shorter than its tallest sibling (the workspace
+                // list's squared, taller Segment is usually the tallest)
+                // was never told otherwise. This Loader IS the actual
+                // Row-managed child (each module's real root sits one
+                // level further in, as this Loader's own `item`), so a
+                // plain `y` binding here — not an anchor, which Row's own
+                // children cannot use without vanishing entirely, confirmed
+                // live against Bar/modules/Separator.qml's identical fix —
+                // centres every module generically, current and future,
+                // in one place instead of a per-module hack. Row's own
+                // `implicitHeight` is the max of its children's `height`
+                // (confirmed against Qt's own qquickpositioners.cpp —
+                // `doPositioning()` reads `child->height()`, never `y`),
+                // so this binding cannot create a feedback loop with the
+                // isle's own size.
+                y: parent ? Math.round((parent.height - height) / 2) : 0
             }
         }
     }
@@ -445,6 +468,9 @@ PanelWindow {
                 // See the left isle's Loader — mirror a self-hiding
                 // module's visibility so the Row does not keep a blank gap.
                 visible: !item || item.visible
+                // See the left isle's Loader — same generic vertical-centre
+                // fix, same reasoning.
+                y: parent ? Math.round((parent.height - height) / 2) : 0
             }
         }
     }
