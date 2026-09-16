@@ -3,7 +3,7 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 import "../Bar/glyphs.js" as Glyphs
-import "../Widgets/WidgetStates.js" as WidgetStates
+import "../../Widgets/WidgetStates.js" as WidgetStates
 
 // phiOS — Dialogs/PowerActionsRow (2026-09-15). A horizontal row of
 // icon+label power-action pills, styled after references/
