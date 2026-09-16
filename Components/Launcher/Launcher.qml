@@ -7,31 +7,21 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "prefixes.js" as Prefixes
 
-// phiOS — Launcher/Launcher.qml (S-33, master plan §8.3 surface 6, ADR 018:
-// ranking and providers live in `phi query` — internal/query, this file
+// Ranking and providers live in `phi query` (internal/query) — this file
 // only renders what that process prints and performs whatever Action the
-// user picks). Every keystroke debounces (queryDebounce, 80ms) before
-// spawning `phi query <text>` as a fresh Process — matching the cold-start
-// contract phi/CLAUDE.md sets for that verb ("invoked on every keystroke,
-// order of milliseconds"): the debounce bounds how OFTEN a process spawns
-// while typing fast, it does not change what one invocation must do.
+// user picks. Every keystroke debounces (queryDebounce, 80ms) before
+// spawning `phi query <text>` as a fresh Process: the debounce bounds how
+// OFTEN a process spawns while typing fast, it doesn't change what one
+// invocation must do.
 //
-// NAVIGATION STACK (S-33 AGENT: "sub-views that are not plain lists... the
-// real requirement"): `views` is a plain array, level 0 always the search
+// NAVIGATION STACK: `views` is a plain array, level 0 always the search
 // field plus result list. Tab on a highlighted "command" result pushes a
 // simple editable sub-view (a text field pre-filled with the command, a
-// Run button) — the one concrete sub-view this step has real grounds to
-// build; translate and any other richer sub-view are out of scope (the
-// card explicitly defers dictionary/translation to a system backend that
-// does not exist yet). Escape pops one level, or closes the launcher
-// entirely from level 0.
+// Run button). Escape pops one level, or closes the launcher entirely
+// from level 0.
 //
-// Anchored top-center, not a PopupWindow: Bar/modules/Volume.qml's own
-// S-23 comment already flagged PopupWindow as "confirmed to exist... but
-// never used by any step to date" — still true after S-31's context-menu
-// investigation (built, deliberately left unwired). A fixed-position
-// PanelWindow is the same proven mechanism Bar.Bar, Notifications/Toast and
-// Panels/Sidebar already use.
+// A fixed-position PanelWindow, not a PopupWindow — the same proven
+// mechanism Bar.Bar, Toast and other overlays in this shell use.
 
 PanelWindow {
     id: root
@@ -41,22 +31,18 @@ PanelWindow {
     property var results: []
     property int highlightedIndex: 0
 
-    // docs/TODO.md's runner-bar prefix feature: the keyword Tab has
-    // "locked" (empty when nothing is locked). Once set, queryText no
-    // longer holds the keyword itself — locking strips it from the visible
-    // field, leaving only the remainder being typed; _runQuery()
-    // reconstructs "key + remainder" for the actual `phi query` argv (see
-    // its own comment) and adds --prefix key so only that category's
-    // provider(s) answer (phi/internal/query/query.go's Run()).
+    // The keyword Tab has "locked" (empty when nothing is locked). Once
+    // set, queryText no longer holds the keyword itself — locking strips
+    // it from the visible field, leaving only the remainder being typed;
+    // _runQuery() reconstructs "key + remainder" for the actual
+    // `phi query` argv and adds --prefix key so only that category's
+    // provider(s) answer.
     property string lockedPrefix: ""
-    // Backspace-to-cancel timing: an input threshold, not a design token
-    // (rule 6 only covers colour/font/size/radius/motion) — same
-    // documented-functional-constant precedent as Services/PowerBridge.qml's
-    // sampling interval and Services/Timers.qml's tick. Two genuine,
-    // distinct backspace presses within this window cancel the lock; see
-    // searchField's Keys.onPressed for why isAutoRepeat is what actually
-    // keeps a HELD key from doing this on its own, this window only bounds
-    // how far apart the two real presses may be.
+    // Backspace-to-cancel timing: an input threshold, not a design token.
+    // Two genuine, distinct backspace presses within this window cancel
+    // the lock; see searchField's Keys.onPressed for why isAutoRepeat is
+    // what actually keeps a HELD key from doing this on its own — this
+    // window only bounds how far apart the two real presses may be.
     readonly property int backspaceCancelWindowMs: 500
     property real _lastBackspaceAt: 0
 
@@ -65,20 +51,15 @@ PanelWindow {
     // views[0] is implicit (the search field itself); views[1..] are
     // pushed sub-views. Two shapes: { kind: "command", command: "..." }
     // (Tab on a "command" result) and { kind: "confirm", action: "..." }
-    // (Enter on a destructive "system" result — docs/TODO.md: "Reboot and
-    // Shutdown should require confirmation", added alongside the command
-    // sub-view rather than as a separate mechanism, since `views` was
-    // already documented as kind-tagged and extensible for exactly this).
+    // (Enter on a destructive "system" result).
     property var views: []
     readonly property bool atRoot: views.length === 0
     readonly property var currentView: root.views.length > 0 ? root.views[root.views.length - 1] : null
 
-    // OOP-05: full-screen transparent window so a click anywhere outside
-    // the runner box can close it (same shape as Cheatsheet). The box
-    // itself is positioned by `panelBox` inside fadeRoot.
-    // R3 #1: exclusiveZone -1 + Overlay so a click on the bar strip also
-    // dismisses the runner and the box sits above the bar. (No scrim on
-    // the runner — it stays a light overlay.)
+    // Full-screen transparent window so a click anywhere outside the
+    // runner box can close it. exclusiveZone -1 + Overlay so a click on
+    // the bar strip also dismisses the runner and the box sits above the
+    // bar. (No scrim on the runner — it stays a light overlay.)
     anchors { top: true; bottom: true; left: true; right: true }
     exclusiveZone: -1
     color: "transparent"
@@ -94,20 +75,16 @@ PanelWindow {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
-    // OOP-12: wider than OOP-05's 25% (user R2: "width should be larger"),
-    // with a mono floor so it never collapses on a narrow display.
+    // A mono floor so the box never collapses on a narrow display.
     readonly property real launcherWidth: Math.max(chWidth * 48, (root.screen ? root.screen.width : 0) * 0.34)
-    // OOP-12 opened the box at a fixed tall height always, "so the box
-    // opens at full height and never grows/shrinks as results change."
-    // docs/TODO.md reverses that: "the runner should resize its height
-    // when there are not enough options to fill it (anchored on the
-    // top)." rowH is one result line; visibleRows/maxListBoxHeight are the
-    // unchanged cap OOP-12 set (up to 20 rows, or 62% of the screen,
-    // whichever is smaller) — currentListBoxHeight below is the new part,
-    // shrinking that cap to fit the actual result count. See panelWrap's
-    // own comment for how the box stays centred on screen exactly as
-    // OOP-12 put it, top-anchored only in the sense that the top edge no
-    // longer moves as the box's height changes.
+    // The box resizes its height to the actual result count rather than
+    // always opening at a fixed tall height. rowH is one result line;
+    // visibleRows/maxListBoxHeight are the cap (up to 20 rows, or 62% of
+    // the screen, whichever is smaller) — currentListBoxHeight below
+    // shrinks that cap to fit the actual result count. See panelWrap's
+    // own comment for how the box stays centred on screen, top-anchored
+    // only in the sense that the top edge doesn't move as the box's
+    // height changes.
     readonly property real rowH: chMetrics.height + chWidth * Config.Appearance.space1
     readonly property int visibleRows: 20
     readonly property real maxListBoxHeight: Math.min(root.rowH * root.visibleRows,
@@ -115,7 +92,7 @@ PanelWindow {
     // Shrinks to fit resultList's own implicitHeight (n rows, or the
     // "no results" label's height, or 0 when neither is showing — Column
     // excludes invisible children from that sum on its own), capped at
-    // maxListBoxHeight so it never grows past what OOP-12 originally set.
+    // maxListBoxHeight so it never grows past that maximum.
     readonly property real currentListBoxHeight: Math.min(resultList.implicitHeight, root.maxListBoxHeight)
     // The box's full reserved footprint at maxListBoxHeight — used only by
     // panelWrap below to compute a height-independent anchor position, not
@@ -125,10 +102,7 @@ PanelWindow {
         + root.maxListBoxHeight + panel.padding * 2
 
     // The input prefix and the pixel width it occupies — the result
-    // options are indented to start exactly where the typed text does
-    // (user directive). OOP-09: capital Φ (the identity mark's own
-    // codepoint, §6.6). OOP-12: more air around the Φ (user R2: "the phi
-    // character should have more spacing on the sides").
+    // options are indented to start exactly where the typed text does.
     readonly property string inputPrefix: "Φ   :   "
     TextMetrics {
         id: prefixMetrics
@@ -138,18 +112,14 @@ PanelWindow {
     }
     readonly property real inputPrefixWidth: prefixMetrics.width
 
-    // PanelWindow has no `opacity` property (confirmed against the real
-    // source, src/window/windowinterface.hpp — no `opacity` in its
-    // Q_PROPERTY list at all) — found on real hardware, not by reading the
-    // source first; see Notifications/Toast.qml's own note on this, the
-    // first file in this repo where it surfaced. The fade lives on
-    // `fadeRoot` below instead, a plain Item with a real, animatable
-    // opacity; `visible` stays true until that fade-out finishes.
+    // PanelWindow has no `opacity` property — see Components/Toast.qml's
+    // own note. The fade lives on `fadeRoot` below instead, a plain Item
+    // with a real, animatable opacity; `visible` stays true until that
+    // fade-out finishes.
     visible: root.shown || fadeRoot.opacity > 0
 
-    // Needed for keyboard input to reach searchField/commandField at all —
-    // see Services/LayerFocus.qml's own header for why (found on real
-    // hardware: typing went to whatever window was underneath instead).
+    // Needed for keyboard input to reach searchField/commandField at all
+    // — see Services/LayerFocus.qml's own header for why.
     Services.LayerFocus { target: root }
 
     IpcHandler {
@@ -169,10 +139,9 @@ PanelWindow {
     // shape and the identical reason.
     function setShown(v) {
         root.shown = v
-        // rework-issues.md item 11: mirrors into Services/Launcher.qml so
-        // Bar/modules/Lens.qml (a different component tree) can bind its
-        // own `active` state to whether the runner bar is open — see that
-        // file's own header for why this needed a new singleton at all.
+        // Mirrors into Services/Launcher.qml so Bar/modules/Runner.qml (a
+        // different component tree) can bind its own `active` state to
+        // whether the runner bar is open.
         Services.Launcher.shown = v
         if (v) {
             searchField.forceActiveFocus()
@@ -223,12 +192,10 @@ PanelWindow {
         queryComponent.createObject(root, { queryArg: root.queryText, prefixArg: root.lockedPrefix })
     }
 
-    // OOP-12: with nothing typed, browse the installed applications
-    // (Quickshell.DesktopEntries — the same freedesktop .desktop source
-    // phi's own ApplicationsProvider scans; `phi query ""` returns nothing
-    // by design and the packaged binary is frozen for M7, so the browse
-    // list is built shell-side). A typed query still goes to `phi query`
-    // for real ranking.
+    // With nothing typed, browse the installed applications
+    // (Quickshell.DesktopEntries) rather than querying `phi query ""`,
+    // which returns nothing by design. A typed query still goes to
+    // `phi query` for real ranking.
     readonly property var browseResults: {
         var apps = (DesktopEntries.applications && DesktopEntries.applications.values) || []
         var out = []
@@ -251,15 +218,14 @@ PanelWindow {
     // What the list and the keyboard navigation actually read: the browse
     // list when nothing is typed and no prefix is locked, the ranked `phi
     // query` results otherwise. A locked prefix never falls back to the
-    // browse list even with an empty remainder — docs/TODO.md: "while a
-    // prefix word is selected, the only results shown will be determined
-    // by the prefix," which the unfiltered app-browse list is not.
+    // browse list even with an empty remainder — results are restricted
+    // to that prefix's category, which the unfiltered app-browse list isn't.
     readonly property var displayResults: (root.lockedPrefix.length === 0 && root.queryText.trim().length === 0)
         ? root.browseResults : root.results
 
-    // OOP-49: the `rich` payload of the currently highlighted result, if it
-    // has one (calculator steps / roots / plot / a converter's alternate
-    // units). Drives the side card in fadeRoot below.
+    // The `rich` payload of the currently highlighted result, if it has
+    // one (calculator steps/roots/plot, a converter's alternate units).
+    // Drives the side card in fadeRoot below.
     readonly property var highlightedRich: {
         var r = root.displayResults[root.highlightedIndex]
         return (r && r.rich) ? r.rich : null
@@ -269,14 +235,13 @@ PanelWindow {
         Process {
             id: queryProc
             property string queryArg: ""
-            // docs/TODO.md's runner-bar prefix feature: the locked keyword
-            // at the moment this Process was spawned. When set, --prefix
-            // restricts phi to that keyword's provider(s)
-            // (internal/query/query.go's Run()), and queryArg (the visible
-            // remainder, keyword already stripped by _lockPrefix()) has the
-            // keyword put back in front for the actual argv — every routed
-            // provider expects to see its own keyword leading the text it
-            // strips itself (see phi's own prefixProviders comment).
+            // The locked keyword at the moment this Process was spawned.
+            // When set, --prefix restricts phi to that keyword's
+            // provider(s), and queryArg (the visible remainder, keyword
+            // already stripped by _lockPrefix()) has the keyword put back
+            // in front for the actual argv — every routed provider
+            // expects to see its own keyword leading the text it strips
+            // itself.
             property string prefixArg: ""
             command: prefixArg.length > 0
                 ? ["phi", "query", "--prefix", prefixArg, prefixArg + " " + queryArg]
@@ -291,11 +256,11 @@ PanelWindow {
                             // Stale response guard: this Process was
                             // spawned for queryProc.queryArg/prefixArg, but
                             // the user may have kept typing — or locked/
-                            // unlocked a prefix — since. root.queryText and
-                            // root.lockedPrefix are the CURRENT state; both
-                            // must still match, not just the text, or a
-                            // response computed before a lock (or after an
-                            // unlock) could render into the wrong UI state.
+                            // unlocked a prefix — since. Both must still
+                            // match the current state, not just the text,
+                            // or a response computed before a lock (or
+                            // after an unlock) could render into the wrong
+                            // UI state.
                             if (queryProc.queryArg === root.queryText && queryProc.prefixArg === root.lockedPrefix) {
                                 root.results = parsed
                                 root.highlightedIndex = 0
@@ -335,11 +300,9 @@ PanelWindow {
         }
     }
 
-    // kitty is this project's confirmed default terminal (hyprland.lua's
-    // own `local terminal = "kitty"`, profiles/desktop/packages.txt) —
-    // hardcoded here for lack of any config surface phi-shell can read a
-    // "default terminal" preference from yet; flagged for cheap veto if
-    // that ever needs to become configurable.
+    // kitty is this project's confirmed default terminal — hardcoded here
+    // for lack of any config surface phi-shell can read a "default
+    // terminal" preference from yet.
     function _performAction(action) {
         if (!action) return
         switch (action.kind) {
@@ -347,7 +310,7 @@ PanelWindow {
             Quickshell.execDetached(["sh", "-c", action.data.command])
             break
         case "desktopEntry": {
-            // OOP-12: browse-mode result — prefer Quickshell's own
+            // Browse-mode result — prefer Quickshell's own
             // DesktopEntry.execute() (handles Terminal=, field codes,
             // DBusActivatable); fall back to its cleaned exec string.
             var ent = action.data.entry
@@ -360,13 +323,9 @@ PanelWindow {
             Quickshell.execDetached(["kitty", "--hold", "-e", "sh", "-c", action.data.command])
             break
         case "activateWindow":
-            // 2026-09-14: was `hyprctl dispatch focuswindow address:...`
-            // as a subprocess — broken on this exact Hyprland build the
-            // same way AltTab.qml's identical old line was (see its own
-            // updated comment): this install's Lua config rejects the
-            // traditional dispatcher-string form entirely. Fixed the same
-            // way — dispatch the Lua-call form directly over Quickshell's
-            // own Hyprland IPC, confirmed live end to end there.
+            // The Lua-call dispatch form — this build's Lua config
+            // rejects the traditional dispatcher-string form (see
+            // HyprlandBridge.dispatch()'s own comment).
             Services.HyprlandBridge.dispatch("hl.dsp.focus({ window = \"address:" + action.data.address + "\" })")
             break
         case "openURL":
@@ -379,13 +338,12 @@ PanelWindow {
             Quickshell.execDetached(["kitty", "--directory", action.data.path])
             break
         case "system":
-            // docs/TODO.md: "Reboot and Shutdown should require
-            // confirmation" — those two push a confirm sub-view instead
-            // of running immediately; the other four (lock/suspend/
-            // hibernate/logout) run straight away, same as before this
-            // entry. Services/PowerActions.qml is the one owner of both
-            // the actual commands and this needsConfirm policy, shared
-            // with Panels/BarPopout.qml's "power" section.
+            // Reboot and shutdown push a confirm sub-view instead of
+            // running immediately; the other four (lock/suspend/
+            // hibernate/logout) run straight away. Services/PowerActions.qml
+            // is the one owner of both the actual commands and this
+            // needsConfirm policy, shared with the bar popout's "power"
+            // section.
             if (Services.PowerActions.needsConfirm(action.data.action))
                 root.pushConfirmView(action.data.action)
             else
@@ -408,10 +366,10 @@ PanelWindow {
         root.highlightedIndex = next
     }
 
-    // docs/TODO.md's runner-bar prefix feature: Tab "locks" the keyword
-    // currently leading the typed text — strips it from the visible field
-    // (it becomes the chip instead) and restricts results to that
-    // category (queryComponent above puts it back for the actual query).
+    // Tab "locks" the keyword currently leading the typed text — strips
+    // it from the visible field (it becomes the chip instead) and
+    // restricts results to that category (queryComponent above puts it
+    // back for the actual query).
     function _lockPrefix(key) {
         root.lockedPrefix = key
         root._lastBackspaceAt = 0
@@ -425,10 +383,10 @@ PanelWindow {
         }
     }
 
-    // The two cancel paths docs/TODO.md names: clicking the chip's "×"
-    // calls this directly; searchField's Keys.onPressed calls it only
-    // after two genuine backspace presses on an already-empty field (see
-    // that handler's own comment).
+    // Two cancel paths: clicking the chip's "×" calls this directly;
+    // searchField's Keys.onPressed calls it only after two genuine
+    // backspace presses on an already-empty field (see that handler's
+    // own comment).
     function _cancelPrefix() {
         root.lockedPrefix = ""
         root._lastBackspaceAt = 0
@@ -467,8 +425,7 @@ PanelWindow {
 
     Item {
         id: panelWrap
-        // OOP-12: centred on screen (user R2: "the runner should be
-        // centred"), biased a little above dead centre.
+        // Centred on screen, biased a little above dead centre.
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
         anchors.verticalCenterOffset: -parent.height * 0.06
@@ -500,11 +457,11 @@ PanelWindow {
         anchors.top: parent.top
         width: parent.width
         height: layout.implicitHeight + panel.padding * 2
-        // OOP-05: the runner rounds more than every other panel.
+        // The runner rounds more than every other panel.
         radius: Config.Appearance.radiusLarge
-        // R3 #4: the runner carries more inner padding than a normal
-        // panel — the input and the option list breathe away from the
-        // frame, left and right especially.
+        // The runner carries more inner padding than a normal panel — the
+        // input and the option list breathe away from the frame, left
+        // and right especially.
         padding: root.chWidth * Config.Appearance.space3
 
         Column {
@@ -530,15 +487,10 @@ PanelWindow {
                     text: root.inputPrefix
                 }
 
-                // docs/TODO.md's runner-bar prefix feature: the locked
-                // keyword's chip — "gets background (like the highlighted
-                // option)" (the same filled-rounded-rect shape the result
-                // list's own selection highlight uses, radiusSmall
-                // included) coloured per-prefix instead of the generic
-                // selectionBackground, plus a "×" to remove it (reusing
-                // Settings.qml's own established close-glyph, not a
-                // guessed Nerd Font codepoint — this repo has shipped two
-                // wrong ones before, Bar/glyphs.js's own history).
+                // The locked keyword's chip — the same filled-rounded-
+                // rect shape the result list's own selection highlight
+                // uses, coloured per-prefix instead of the generic
+                // selectionBackground, plus a "×" to remove it.
                 Item {
                     id: prefixChip
                     visible: root.lockedPrefix.length > 0
@@ -592,14 +544,11 @@ PanelWindow {
                     }
                 }
 
-                // docs/TODO.md, style pass: "no clear/clean button for
-                // searchbars." Same muted-till-hovered "×" grammar
-                // Widgets/TextField's own clear button now uses, kept as a
-                // separate glyph here rather than migrating this field to
-                // TextField — this input's arrow-key/Tab/Escape wiring
-                // above is load-bearing launcher behaviour TextField does
-                // not forward, and re-plumbing it is a bigger, riskier
-                // change than this entry asks for.
+                // Same muted-till-hovered "×" grammar Widgets/TextField's
+                // own clear button uses, kept as a separate glyph here
+                // rather than migrating this field to TextField — this
+                // input's arrow-key/Tab/Escape wiring above is load-
+                // bearing launcher behaviour TextField doesn't forward.
                 Widgets.StyledIcon {
                     id: clearGlyph
                     visible: searchField.text.length > 0
@@ -649,28 +598,27 @@ PanelWindow {
                     Keys.onUpPressed: root.moveHighlight(-1)
                     Keys.onEscapePressed: root.setShown(false)
                     Keys.onReturnPressed: root.activate(root.displayResults[root.highlightedIndex])
-                    // docs/TODO.md: "if TAB is pressed after the prefix,
-                    // the prefix will be 'locked'". Only meaningful once,
-                    // from the unlocked state — the keyword is stripped
-                    // from the field the moment it locks, so there is
-                    // never a leading keyword left to detect a second time.
+                    // Tab locks the prefix currently leading the typed
+                    // text. Only meaningful once, from the unlocked state
+                    // — the keyword is stripped from the field the moment
+                    // it locks, so there's never a leading keyword left to
+                    // detect a second time.
                     Keys.onTabPressed: {
                         if (root.lockedPrefix.length === 0) {
                             const detected = Prefixes.detect(root.queryText)
                             if (detected) root._lockPrefix(detected)
                         }
                     }
-                    // docs/TODO.md: cancelling the lock "requires a double
-                    // click of backspace (to prevent removing it when
-                    // holding down backspace)". event.isAutoRepeat is what
-                    // actually satisfies "holding down" — Qt's own
-                    // mechanism for telling a held key's synthetic repeat
-                    // stream apart from a genuine second press, which a
-                    // press-timestamp window alone cannot do (a held key's
-                    // repeats land inside any window short enough to still
-                    // feel like a deliberate double-tap). Only armed when
-                    // the field is already empty: backspace still deletes
-                    // normally otherwise, exactly as before this feature.
+                    // Cancelling the lock needs a double backspace press,
+                    // to avoid removing it while holding backspace down.
+                    // event.isAutoRepeat is what actually satisfies
+                    // "holding down" — Qt's own mechanism for telling a
+                    // held key's synthetic repeat stream apart from a
+                    // genuine second press, which a press-timestamp window
+                    // alone can't do (a held key's repeats land inside any
+                    // window short enough to still feel like a deliberate
+                    // double-tap). Only armed when the field is already
+                    // empty: backspace still deletes normally otherwise.
                     Keys.onPressed: (event) => {
                         if (event.key !== Qt.Key_Backspace || root.lockedPrefix.length === 0 || searchField.text.length > 0) {
                             root._lastBackspaceAt = 0
@@ -691,12 +639,11 @@ PanelWindow {
                 }
             }
 
-            // R3 #4: no rule between the input and the options — the
-            // gap alone separates them.
+            // No rule between the input and the options — the gap alone
+            // separates them.
 
-            // Shrinks to fit the current result count (root.
-            // currentListBoxHeight), capped at the ~20-row maximum OOP-12
-            // originally made this always be.
+            // Shrinks to fit the current result count
+            // (root.currentListBoxHeight), capped at the ~20-row maximum.
             Flickable {
                 id: resultFlick
                 width: parent.width
@@ -740,8 +687,8 @@ PanelWindow {
                             width: resultList.width
                             height: root.rowH
 
-                            // OOP-05: highlight is on the NAME text only.
-                            // OOP-12: a quick fade, not an instant snap.
+                            // Highlight is on the name text only, a
+                            // quick fade rather than an instant snap.
                             Rectangle {
                                 x: root.inputPrefixWidth - opt.hpad
                                 width: nameText.implicitWidth + opt.hpad * 2
@@ -767,12 +714,12 @@ PanelWindow {
                                 opacity: opt.isLoading ? 0.45 : 1
                             }
 
-                            // Item 7: the name and the directory sit at
-                            // opposite ends of the row — the space between
-                            // them is maxed out, not a fixed gap after the
-                            // name. Anchored from the name's right edge to
-                            // the panel's right padding and right-aligned,
-                            // so a path hugs the right edge (tail visible,
+                            // The name and the directory sit at opposite
+                            // ends of the row — the space between them is
+                            // maxed out, not a fixed gap after the name.
+                            // Anchored from the name's right edge to the
+                            // panel's right padding and right-aligned, so
+                            // a path hugs the right edge (tail visible,
                             // elided from the left) however short the name.
                             Widgets.StyledText {
                                 id: dirText
@@ -789,20 +736,16 @@ PanelWindow {
                                 elide: Text.ElideLeft
                             }
 
-                            // Style pass 2026-09-14: this row had a
-                            // TapHandler and nothing else — no hover
-                            // feedback, no cursor, on the single most-used
-                            // surface in this shell. Hovering moves the
-                            // keyboard highlight to match, the conventional
-                            // behaviour every launcher this shape takes
-                            // after (rofi/wofi/Spotlight/Raycast) already
-                            // uses, so Enter activates whatever the pointer
-                            // is over — deliberately NOT the same choice
-                            // AltTab's own hover fix made (kept separate
-                            // from keyboard selection there), since that is
-                            // a grid a user tabs through independently of
-                            // where the mouse happens to rest, not a single
-                            // flowing list like this one.
+                            // Hovering moves the keyboard highlight to
+                            // match, the conventional behaviour launchers
+                            // this shape take (rofi/wofi/Spotlight/
+                            // Raycast), so Enter activates whatever the
+                            // pointer is over — deliberately NOT the same
+                            // choice Overview.qml's own hover fix makes
+                            // (kept separate from keyboard selection
+                            // there), since that's a grid a user tabs
+                            // through independently of the mouse, not a
+                            // single flowing list like this one.
                             HoverHandler {
                                 cursorShape: Qt.PointingHandCursor
                                 onHoveredChanged: if (hovered) root.highlightedIndex = opt.index
@@ -828,16 +771,13 @@ PanelWindow {
             }
 
             // Level 1: two sub-view shapes. "command" — an editable
-            // command line reached by Tab on a "command" result (ADR 022:
-            // Tab is an accelerator on the same object, not a separate
-            // feature). "confirm" — docs/TODO.md's "Reboot and Shutdown
-            // should require confirmation", reached by Enter on either of
-            // those two "system" results (root.pushConfirmView). Both
-            // live in the same Panel/Column so only one height calc is
-            // needed; each block's own `visible` (keyed off
-            // root.currentView.kind) is what a Column positioner already
-            // excludes from `implicitHeight` when false, the same pattern
-            // Panels/BarPopout.qml's per-`which` Columns already use.
+            // command line reached by Tab on a "command" result. "confirm"
+            // — reached by Enter on a destructive "system" result
+            // (root.pushConfirmView). Both live in the same Panel/Column
+            // so only one height calc is needed; each block's own
+            // `visible` (keyed off root.currentView.kind) is what a
+            // Column positioner already excludes from `implicitHeight`
+            // when false.
             Widgets.Panel {
                 width: parent.width
                 height: subviewLayout.implicitHeight + padding * 2
@@ -941,15 +881,12 @@ PanelWindow {
         }
     }
 
-    // docs/TODO.md's runner-bar prefix feature: "the runner bar will
-    // transition to that color for the borders when a prefix is active"
-    // (active = locked, same "active" the chip's own background text
-    // describes two sentences earlier). A separate overlay rather than a
-    // new override property on Widgets.Panel itself — Panel's border
-    // colour is entirely computed from its own hover/active/focus state
-    // machine (Widgets/WidgetStates.js's surfaceColors()), shared by every
+    // The runner bar's border transitions to the locked prefix's colour.
+    // A separate overlay rather than a new override property on
+    // Widgets.Panel itself — Panel's border colour is entirely computed
+    // from its own hover/active/focus state machine, shared by every
     // consumer in the shell; adding an arbitrary-colour override there
-    // would be a shared-component change this one feature does not need,
+    // would be a shared-component change this one feature doesn't need,
     // when a same-geometry sibling drawn on top does the same job with no
     // risk to any other Panel user.
     Rectangle {
@@ -969,10 +906,10 @@ PanelWindow {
     }
     } // panelWrap
 
-    // OOP-49: the rich-result card. Sits to the right of the runner box,
-    // top-aligned, only when the highlighted result carries a `rich`
-    // payload — the result list and its navigation are untouched. On a
-    // narrow screen it drops below the box instead of running off-edge.
+    // The rich-result card. Sits to the right of the runner box, top-
+    // aligned, only when the highlighted result carries a `rich` payload
+    // — the result list and its navigation are untouched. On a narrow
+    // screen it drops below the box instead of running off-edge.
     Item {
         id: richWrap
         readonly property bool narrow: root.screen && root.screen.width < (root.launcherWidth + width + root.chWidth * 8)
