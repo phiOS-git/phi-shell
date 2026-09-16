@@ -197,26 +197,26 @@ ShellRoot {
     // Dialogs /////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
     
-    // Dialog Confirmation
-    Components.Dialogs.ConfirmDialog {
-        screen: Quickshell.screens[0]
-    }
-    // Dialog Prompt
-    // Components.Dialogs.SensorPermissionPrompt {
+    // // Dialog Confirmation
+    // Components.Dialogs.ConfirmDialog {
     //     screen: Quickshell.screens[0]
     // }
-    // Dialog Battery Alert
-    Components.Dialogs.BatteryAlert {
-        screen: Quickshell.screens[0]
-    }
-    // Dialog Power Menu
-    Components.Dialogs.PowerMenu {
-        screen: Quickshell.screens[0]
-    }
-    // Dialog Timer Alert
-    Components.Dialogs.TimerAlert {
-        screen: Quickshell.screens[0]
-    }
+    // // Dialog Prompt
+    // // Components.Dialogs.SensorPermissionPrompt {
+    // //     screen: Quickshell.screens[0]
+    // // }
+    // // Dialog Battery Alert
+    // Components.Dialogs.BatteryAlert {
+    //     screen: Quickshell.screens[0]
+    // }
+    // // Dialog Power Menu
+    // Components.Dialogs.PowerMenu {
+    //     screen: Quickshell.screens[0]
+    // }
+    // // Dialog Timer Alert
+    // Components.Dialogs.TimerAlert {
+    //     screen: Quickshell.screens[0]
+    // }
     
     ////////////////////////////////////////////////////////////////////////
     // OPRHANS - TO BE DELETED /////////////////////////////////////////////
