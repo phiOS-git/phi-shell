@@ -245,7 +245,7 @@ PanelWindow {
                     width: parent.width
                     spacing: root.chWidth * Config.Appearance.space1
 
-                    Widgets.StyledText { kind: "title"; text: "Timer" }
+                    Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Timer" }
 
                     Row {
                         spacing: root.chWidth * Config.Appearance.space2
@@ -276,6 +276,7 @@ PanelWindow {
                                 anchors.right: timerValue.left
                                 anchors.rightMargin: root.chWidth
                                 anchors.verticalCenter: parent.verticalCenter
+                                sizeStep: 0
                                 elide: Text.ElideRight
                                 text: (timerRow.modelData.kind === "alarm" ? "Alarm — " : "Timer — ") + timerRow.modelData.label
                             }
@@ -284,7 +285,7 @@ PanelWindow {
                                 anchors.right: timerCancel.left
                                 anchors.rightMargin: root.chWidth
                                 anchors.verticalCenter: parent.verticalCenter
-                                kind: "label"; mono: true
+                                kind: "label"; mono: true; sizeStep: 0
                                 text: timerRow.modelData.kind === "alarm"
                                     ? Qt.formatDateTime(new Date(timerRow.modelData.targetMs), "HH:mm")
                                     : root._fmtCountdown(timerRow.modelData.targetMs)
@@ -336,6 +337,7 @@ PanelWindow {
                             id: monthLabel
                             anchors.centerIn: parent
                             kind: "title"
+                            sizeStep: 1
                             text: Qt.formatDateTime(new Date(root.viewYear, root.viewMonth, 1), "MMMM yyyy")
                         }
                         Widgets.SmallButton {

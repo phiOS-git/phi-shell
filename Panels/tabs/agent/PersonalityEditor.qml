@@ -98,7 +98,7 @@ Item {
             Row {
                 width: parent.width
                 spacing: root.gap
-                Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "name" }
+                Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; sizeStep: 1; text: "name" }
                 Widgets.TextField {
                     id: nameField
                     width: 24 * root.chWidth
