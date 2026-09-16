@@ -175,6 +175,13 @@ Singleton {
         rmComponent.createObject(root, { entryId: id })
     }
 
+    // rework-status-bar.md Features item 3: "add an option to clear
+    // clipboard history (does not delete pinned options)."
+    function clearHistory() {
+        const ids = root.entries.filter((e) => !root.isPinned(e.id)).map((e) => e.id)
+        for (let i = 0; i < ids.length; i++) root.deleteEntry(ids[i])
+    }
+
     property Component rmComponent: Component {
         Process {
             id: rmProc
@@ -314,6 +321,74 @@ done
                         return true
                     })
                     for (let i = 0; i < toDelete.length; i++) root.deleteEntry(toDelete[i])
+                }
+
+                // rework-status-bar.md Features item 1: "the clipboard
+                // history should automatically filter out 'empty' values."
+                // Applied on every pass (not gated by `_everLoaded` the way
+                // the exclusion rules above deliberately are — those are a
+                // user-authored rule that should only ever act going
+                // forward; "no empty entries" is a standing invariant, the
+                // same kind of ongoing housekeeping `_sweepExpired` below
+                // already does), so a stray empty entry from before this
+                // existed gets cleaned up too, not just future ones. An
+                // image is never "empty" in this sense — `preview` (this
+                // file's only synchronously-available content signal, see
+                // this file's own header) is the one thing to check, and
+                // only for text. A pinned entry is protected, the same
+                // "pins survive automatic deletion" rule `_sweepExpired`
+                // already follows.
+                const emptyIds = filtered
+                    .filter((e) => e.mime !== "image/png" && e.preview.trim().length === 0 && !root.isPinned(e.id))
+                    .map((e) => e.id)
+                if (emptyIds.length > 0) {
+                    filtered = filtered.filter((e) => emptyIds.indexOf(e.id) === -1)
+                    for (let i = 0; i < emptyIds.length; i++) root.deleteEntry(emptyIds[i])
+                }
+
+                // rework-status-bar.md Features item 2: "the clipboard
+                // history should check for duplicate entries, if any is
+                // found the details are changed, it gets pushed as first
+                // element, but there must not be entries with the same
+                // value." Grouped by `preview` (same content-signal
+                // limitation as above — this file has no cheaper way to
+                // compare full content synchronously across every entry).
+                // An id IS a capture time, not a field that can be renamed
+                // in place, so "the details are changed, pushed as first"
+                // is realised by keeping the NEWEST capture in each
+                // duplicate group (already at/near the front of this
+                // already-newest-first list) and deleting every older
+                // duplicate outright — not just hiding it, so it stops
+                // occupying a real TTL slot on disk. Whichever member of a
+                // group is pinned is kept instead, protecting the pin the
+                // same way `_sweepExpired` already does; images are exempt
+                // (two different screenshots can share the same 200-byte
+                // preview snippet with genuinely different full content).
+                const byValue = {}
+                for (let i = 0; i < filtered.length; i++) {
+                    const e = filtered[i]
+                    if (e.mime === "image/png" || e.preview.length === 0) continue
+                    if (!byValue[e.preview]) byValue[e.preview] = []
+                    byValue[e.preview].push(e)
+                }
+                const dupIds = []
+                for (const key in byValue) {
+                    const group = byValue[key]
+                    if (group.length < 2) continue
+                    let keep = group[0]
+                    for (let i = 1; i < group.length; i++) {
+                        const cand = group[i]
+                        const candPinned = root.isPinned(cand.id)
+                        const keepPinned = root.isPinned(keep.id)
+                        if (candPinned && !keepPinned) keep = cand
+                        else if (candPinned === keepPinned && cand.timestamp > keep.timestamp) keep = cand
+                    }
+                    for (let i = 0; i < group.length; i++)
+                        if (group[i].id !== keep.id) dupIds.push(group[i].id)
+                }
+                if (dupIds.length > 0) {
+                    filtered = filtered.filter((e) => dupIds.indexOf(e.id) === -1)
+                    for (let i = 0; i < dupIds.length; i++) root.deleteEntry(dupIds[i])
                 }
 
                 // "not already present anywhere in the old list", not

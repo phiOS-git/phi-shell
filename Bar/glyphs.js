@@ -115,3 +115,16 @@ var copy            = _c(0xF018F)   // nf-md-content_copy (chat bubble: copy thi
 var lens            = _c(0xF0349)   // nf-md-magnify (Bar/modules/Lens.qml — opens the runner bar)
 var settings        = _c(0xF0493)   // nf-md-cog (Bar/modules/StatusMenu.qml — opens the "status overlay")
 var stats           = _c(0xF0128)   // nf-md-chart_bar (Bar/modules/Stats.qml — opens the "stats overlay")
+
+// rework-status-bar.md Style item 6: "in the 'titling' section of the
+// status overlay, add a fitting icon for each option, centred above the
+// text" (Panels/BarPopout.qml's "status" card, the six tiling-mode
+// buttons). Confirmed 2026-09-16 against a live fetch of nerd-fonts' own
+// glyphnames.json (raw.githubusercontent.com), this file's standing rule
+// — not recalled.
+var tilingXScroll   = _c(0xF084E)   // nf-md-arrow_expand_horizontal — a horizontal scrolling strip
+var tilingYScroll   = _c(0xF084F)   // nf-md-arrow_expand_vertical — the vertical counterpart above
+var tilingTile      = _c(0xF0570)   // nf-md-view_grid — the classic tiled-grid pictogram
+var tilingCenter    = _c(0xF0F4F)   // nf-md-focus_field — a camera-style focus frame: one centred window
+var tilingFair      = _c(0xF05D1)   // nf-md-scale_balance — a balance scale for "fair" (even) distribution
+var tilingFloating  = _c(0xF05B2)   // nf-md-window_restore — an overlapping-windows pictogram

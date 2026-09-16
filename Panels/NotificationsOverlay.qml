@@ -15,14 +15,14 @@ import "tabs" as Tabs
 // click-outside-closes, Services.LayerFocus, Escape handling) rather than a
 // tab inside a shared full-height right-edge dock.
 //
-// Anchoring: the card's RIGHT edge tracks the triggering bar icon's own
-// right edge, clamped to the screen — the exact mechanism Panels/
-// BarPopout.qml's own `cardWrap.x` binding already established for every
-// right-isle bar popout (see Services/BarPopout.qml's `anchorRightX`),
-// reused here via Services/NotificationPanel.qml's own
-// `notificationsAnchorX` rather than Calendar's fixed top-right corner
-// position, since this icon does not always sit where Calendar's clock
-// does.
+// Anchoring: rework-status-bar.md Style item 4 ("overlays that have a
+// keybinding ... open ... in the screen corner, rather than aligned with
+// their icon") — the card's RIGHT edge sits at the fixed top-right screen
+// corner, the same position Calendar.qml's own card uses for its corner,
+// regardless of whether a bar-icon click or a keybinding opened it. This
+// used to track the triggering bar icon's own right edge instead (the
+// same per-icon mechanism Panels/BarPopout.qml's own popouts still use);
+// see Services/NotificationPanel.qml's own header for why that changed.
 //
 // Height: rework-issues.md item 3 overrides this file's earlier reading of
 // rework.md ("not full height ... no maximum height") — real hardware
@@ -48,7 +48,15 @@ PanelWindow {
     color: "transparent"
     visible: root.shown || fadeRoot.opacity > 0
 
+    // rework-status-bar.md Style item 10: restrict this window's own INPUT
+    // region to the visible card — see Services/OverlayGrab.qml's own
+    // header for the full mechanism and why this, together with that
+    // component below, replaces the old fullscreen
+    // `MouseArea { onClicked: hide() }`.
+    mask: Region { item: cardWrap }
+
     Services.LayerFocus { target: root }
+    Services.OverlayGrab { window: root; active: root.shown; onDismissed: Services.NotificationPanel.notificationsShown = false }
 
     TextMetrics {
         id: chMetrics
@@ -68,11 +76,6 @@ PanelWindow {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
-        MouseArea {
-            anchors.fill: parent
-            onClicked: Services.NotificationPanel.notificationsShown = false
-        }
-
         Item {
             id: cardWrap
             anchors.top: parent.top
@@ -90,22 +93,17 @@ PanelWindow {
                 root.height * 0.75,
                 cardWrap._maxAvailable)
 
-            // Same right-edge-under-the-button clamp Panels/BarPopout.qml
-            // already uses (Services.BarPopout.anchorRightX there),
-            // reading Services.NotificationPanel.notificationsAnchorX
-            // instead — 0 (no bar icon, e.g. the IPC entry point) falls
-            // back to the screen corner.
-            x: Services.NotificationPanel.notificationsAnchorX > 0
-                ? Math.max(Config.Appearance.panelGap,
-                    Math.min(parent.width - width - Config.Appearance.panelGap,
-                        Services.NotificationPanel.notificationsAnchorX - width))
-                : parent.width - width - Config.Appearance.panelGap
-
-            MouseArea { anchors.fill: parent }
+            // rework-status-bar.md Style item 4: always the screen corner
+            // now, whether a bar-icon click or a keybinding opened this —
+            // see Services/NotificationPanel.qml's own header.
+            x: parent.width - width - Config.Appearance.panelGap
 
             Widgets.Panel {
                 id: panel
                 anchors.fill: parent
+                // rework-status-bar.md Style item 1: match the status bar's
+                // own background instead of the generic "shaded" surface1.
+                bgColorOverride: Config.Appearance.colorMain
                 cornerRadiusTopLeft: Config.Appearance.radiusLarge
                 cornerRadiusTopRight: Config.Appearance.radiusSmall
                 cornerRadiusBottomLeft: Config.Appearance.radiusLarge

@@ -120,42 +120,19 @@ Item {
                     && modelData.monitor !== null && modelData.monitor.name === root.screen.name
                 label: modelData.name.length > 0 ? modelData.name : String(modelData.id)
                 active: modelData.active
+                // rework-status-bar.md Style item 3: "remove the bouncing
+                // animation, it should only enlarge in width, no bounce" —
+                // this reopens rework-issues.md item 8's own "grow only in
+                // width, not in height" fix, but further: the whole
+                // overshoot-scale pop (`popScale`/the `Scale` transform/
+                // `wsPop`) is gone outright, not just made X-only. The
+                // enlarge-on-select effect is `widthBoost` alone now —
+                // Widgets/Segment.qml already animates it with its own
+                // `Behavior on widthBoost` (Config.Appearance.
+                // motionBDuration/motionBCurve), a plain width change with
+                // no overshoot, which is exactly the "no bounce" ask.
                 widthBoost: wsButton.active ? root.activeWidthBoost : 0
                 onActivated: modelData.activate()
-
-                // Follow-up (user, 2026-09-11): "change steam, btop and
-                // desktop number animations as well" — clarified via
-                // question to mean a switch transition: the button that
-                // just became active plays a brief scale pop, same
-                // technique (and duration) as every other one-shot pop
-                // this session (NotificationBellIcon's dndPop, NetworkIcon/
-                // ClipboardIcon's pop). Keyed off the discrete `active`
-                // bool directly, not a Behavior-animated float, so it
-                // can't hit the restart-storm bug those two pops originally
-                // had and were fixed for.
-                //
-                // rework-issues.md item 8: "the active workspace grow only
-                // in width, not in height as well" — a plain `scale`
-                // property scales both axes uniformly, so the pop's
-                // momentary overshoot was visibly growing the button
-                // taller too. An X-only `Scale` transform (same technique
-                // Widgets/FlipDigit.qml's own flap squash already uses)
-                // keeps the bounce purely horizontal.
-                property real popScale: 1.0
-                transform: Scale {
-                    origin.x: wsButton.width / 2
-                    origin.y: wsButton.height / 2
-                    xScale: wsButton.popScale
-                    yScale: 1.0
-                }
-                onActiveChanged: if (active) wsPop.restart()
-                SequentialAnimation {
-                    id: wsPop
-                    NumberAnimation { target: wsButton; property: "popScale"; to: 1.18
-                        duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
-                    NumberAnimation { target: wsButton; property: "popScale"; to: 1.0
-                        duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
-                }
             }
         }
 

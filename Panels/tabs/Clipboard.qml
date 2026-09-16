@@ -85,7 +85,11 @@ Item {
     property var _cardItems: ({})
     property real previewTargetX: 0    // root's own absolute X
     property real previewRootY: 0      // root's own absolute Y
-    property real previewTargetY: 0    // the dwelled card's absolute Y (center)
+    // rework-status-bar.md Style item 7c: "aligned with the respective
+    // option not on the vertical center but on the top or bottom side" —
+    // needs the card's own top/bottom edges, not just its centre.
+    property real previewTargetTop: 0    // the dwelled card's absolute top Y
+    property real previewTargetBottom: 0 // the dwelled card's absolute bottom Y
 
     // Whichever entry the preview should show once its dwell elapses: the
     // hovered card while the mouse is over one, else the keyboard
@@ -137,7 +141,8 @@ Item {
         root.previewTargetX = root.dockItem.mapToItem(null, 0, 0).x
         const item = root._cardItems[root.dwellTargetId]
         if (!item) return
-        root.previewTargetY = item.mapToItem(null, 0, item.height / 2).y
+        root.previewTargetTop = item.mapToItem(null, 0, 0).y
+        root.previewTargetBottom = item.mapToItem(null, 0, item.height).y
     }
 
     readonly property var previewEntryData: {
@@ -451,23 +456,33 @@ Item {
     // CLAUDE.md), same caveat as everything else in this file.
     Widgets.Panel {
         id: preview
-        // Narrower than the dock itself (was root.width, i.e. full dock
-        // width, in an earlier draft): dockWidth is already up to 42% of
-        // the screen, so a same-width preview plus the gap on both sides
-        // leaves only ~16% of screen width for it to sit in before the
-        // left-edge clamp below kicks in — on a narrower output that
-        // clamp wins, and the preview would silently slide UNDER the dock
-        // instead of sitting beside it, rather than erroring. 80% of the
-        // dock's own width keeps it comfortably clear of that edge case
-        // while still reading as "roughly the same size as the sidebar."
-        width: root.width * 0.8
+
+        // rework-status-bar.md Style item 7d: "variable width (from 100px
+        // minimum up to 600px) based on its content" — was a fixed 80% of
+        // the dock's own width regardless of what the entry actually
+        // held. Measured off the same text the content Text below renders
+        // (TextMetrics resolves a multi-line string's width as its widest
+        // line, the same measurement Qt's own Text/TextMetrics use to lay
+        // it out — good enough for a size estimate, not pixel-exact).
+        TextMetrics {
+            id: previewTextMetrics
+            font.family: Config.Appearance.fontMono
+            font.pixelSize: Config.Appearance.fontSize2
+            text: root.previewIsImage ? "[image]"
+                : (root.previewFullText.length > 0 ? root.previewFullText : "(empty)")
+        }
+        width: Math.max(100, Math.min(previewTextMetrics.width + padding * 2, 600))
         // rework-issues.md "New requests" item 5: "make the hover
         // overlays larger with a range 100px-300px based on the
         // content" — was unclamped on the small end (a one-line entry
         // could shrink the whole card down to almost nothing) and capped
         // at 50% of screen height on the large end; now a literal
         // 100-300px range, the content height only ever chosen between
-        // those two bounds.
+        // those two bounds. Style item 7e re-confirms this same content-
+        // driven formula (padding is already uniform on all sides via
+        // Panel's own single `padding` value — nothing to change there);
+        // its only real ask, "add spacing between the content and the
+        // details line", is `previewCol`'s own structure below.
         height: Math.max(100, Math.min(previewCol.implicitHeight + padding * 2, 300))
         radius: Config.Appearance.radiusLarge
         visible: opacity > 0
@@ -476,20 +491,43 @@ Item {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
+        // rework-status-bar.md Style item 7b: "should have some spacing
+        // from the original overlay" — was `Config.Appearance.panelGap`
+        // alone (2px, the flat token every chrome-to-chrome gap in this
+        // shell already uses for a MINIMAL separation, e.g. the bar-to-
+        // overlay gap) between the preview's right edge and the dock's
+        // left edge; too tight to read as real breathing room between two
+        // independent floating surfaces. `panelGap` plus one real spacing
+        // unit (`space1`) keeps the same structural minimum while adding
+        // a visible gap on top of it.
+        readonly property real _gapX: Config.Appearance.panelGap + root.chWidth * Config.Appearance.space1
         // Desired position in ABSOLUTE screen coordinates: just to the
-        // left of root's own current left edge (previewTargetX), vertical
-        // centre on the dwelled card (previewTargetY), each independently
-        // clamped inside [panelGap, screen edge - own size - panelGap] so
-        // neither axis can push the panel off-screen — the TODO's own
-        // explicit ask. Converted to root-relative x/y (what this Item's
-        // own x/y actually mean, since it stays root's child) by
-        // subtracting root's own absolute position.
+        // left of root's own current left edge (previewTargetX). Style
+        // item 7c: "aligned with the respective option not on the
+        // vertical center but on the top or bottom side (based on the
+        // screen position)" — was vertically centred on the dwelled
+        // card; now flips to whichever edge actually has more screen
+        // room to grow into (top-aligned, growing down, when there's more
+        // space below the card than above it; bottom-aligned, growing up,
+        // otherwise), same "flip to the side that fits" rule a tooltip or
+        // context menu already uses. Both axes independently clamped
+        // inside [panelGap, screen edge - own size - panelGap] so neither
+        // can push the panel off-screen. Converted to root-relative x/y
+        // (what this Item's own x/y actually mean, since it stays root's
+        // child) by subtracting root's own absolute position.
+        readonly property real _spaceAbove: root.previewTargetTop
+        readonly property real _spaceBelow: root.screenHeight - root.previewTargetBottom
+        readonly property bool _alignBottom: preview._spaceBelow < preview._spaceAbove
         readonly property real _absX: Math.max(Config.Appearance.panelGap,
             Math.min(root.screenWidth - width - Config.Appearance.panelGap,
-                root.previewTargetX - width - Config.Appearance.panelGap))
-        readonly property real _absY: Math.max(Config.Appearance.panelGap,
-            Math.min(root.screenHeight - height - Config.Appearance.panelGap,
-                root.previewTargetY - height / 2))
+                root.previewTargetX - width - preview._gapX))
+        readonly property real _absY: preview._alignBottom
+            ? Math.max(Config.Appearance.panelGap,
+                Math.min(root.screenHeight - height - Config.Appearance.panelGap,
+                    root.previewTargetBottom - height))
+            : Math.max(Config.Appearance.panelGap,
+                Math.min(root.screenHeight - height - Config.Appearance.panelGap,
+                    root.previewTargetTop))
         x: preview._absX - root.previewTargetX
         y: preview._absY - root.previewRootY
 
@@ -504,34 +542,48 @@ Item {
         // stray click landing on a covered card instead is the smaller
         // problem, and this Panel already paints opaquely over it.
 
+        // rework-status-bar.md Style item 7e: "add spacing between the
+        // content and the details line" — the main content (text/image)
+        // and the trailing time/source row used to share one flat
+        // Column's uniform `spacing`, so the row read as just another
+        // content line rather than a distinct footer. Split into an inner
+        // "content" Column (its own original, tighter spacing) and the
+        // details row as this outer Column's second child, so only the
+        // one gap this item actually asks about grows.
         Column {
             id: previewCol
             width: parent.width
-            spacing: root.gap / 2
+            spacing: root.gap
 
-            Widgets.StyledText {
+            Column {
+                id: previewContentCol
                 width: parent.width
-                mono: !root.previewIsImage
-                wrapMode: Text.Wrap
-                maximumLineCount: 14
-                elide: Text.ElideRight
-                color: preview.contentColor
-                text: root.previewIsImage ? "[image]"
-                    : (root.previewFullText.length > 0 ? root.previewFullText : "(empty)")
-            }
+                spacing: root.gap / 2
 
-            Image {
-                width: parent.width
-                // Not Math.min(implicitHeight, ...): implicitHeight is the
-                // source pixel height, unrelated to the fitted height at
-                // this width — fixing height outright and letting
-                // PreserveAspectFit scale into it is what actually caps
-                // the size.
-                height: root.height * 0.35
-                fillMode: Image.PreserveAspectFit
-                visible: root.previewIsImage && root.previewEntryData !== null
-                source: (root.previewIsImage && root.previewEntryData !== null)
-                    ? "file://" + Services.Clipboard.contentPath(root.previewEntryData.id) : ""
+                Widgets.StyledText {
+                    width: parent.width
+                    mono: !root.previewIsImage
+                    wrapMode: Text.Wrap
+                    maximumLineCount: 14
+                    elide: Text.ElideRight
+                    color: preview.contentColor
+                    text: root.previewIsImage ? "[image]"
+                        : (root.previewFullText.length > 0 ? root.previewFullText : "(empty)")
+                }
+
+                Image {
+                    width: parent.width
+                    // Not Math.min(implicitHeight, ...): implicitHeight is the
+                    // source pixel height, unrelated to the fitted height at
+                    // this width — fixing height outright and letting
+                    // PreserveAspectFit scale into it is what actually caps
+                    // the size.
+                    height: root.height * 0.35
+                    fillMode: Image.PreserveAspectFit
+                    visible: root.previewIsImage && root.previewEntryData !== null
+                    source: (root.previewIsImage && root.previewEntryData !== null)
+                        ? "file://" + Services.Clipboard.contentPath(root.previewEntryData.id) : ""
+                }
             }
 
             // rework-issues.md "New requests" item 5: "make the time

@@ -34,10 +34,18 @@ PanelWindow {
     color: "transparent"
     visible: root.shown || fadeRoot.opacity > 0
 
+    // rework-status-bar.md Style item 10: restrict this window's own INPUT
+    // region to the visible card — see Services/OverlayGrab.qml's own
+    // header for the full mechanism and why this, together with that
+    // component below, replaces the old fullscreen
+    // `MouseArea { onClicked: hide() }`.
+    mask: Region { item: cardWrap }
+
     // Style pass 2026-09-14: no Escape handling existed — click-outside
     // was the only way to close this panel, unlike its sibling small
     // corner surfaces (QuickNote already has it).
     Services.LayerFocus { target: root }
+    Services.OverlayGrab { window: root; active: root.shown; onDismissed: Services.Calendar.hide() }
 
     TextMetrics {
         id: chMetrics
@@ -135,12 +143,6 @@ PanelWindow {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
-        // Click anywhere outside the small panel closes it.
-        MouseArea {
-            anchors.fill: parent
-            onClicked: Services.Calendar.hide()
-        }
-
         Item {
             id: cardWrap
             anchors.top: parent.top
@@ -160,13 +162,13 @@ PanelWindow {
             width: root.chWidth * 38
             height: panel.height
 
-            // Swallow clicks on the card (border included).
-            MouseArea { anchors.fill: parent }
-
             Widgets.Panel {
             id: panel
             width: parent.width
             height: bodyCol.implicitHeight + padding * 2
+            // rework-status-bar.md Style item 1: match the status bar's own
+            // background instead of the generic "shaded" surface1.
+            bgColorOverride: Config.Appearance.colorMain
             // rework.md's ONE named exception to the general overlay
             // corner-radius rule: "This overlay has both the top corner at
             // 1px (only exception to the general rule)" — it opens from
@@ -192,12 +194,14 @@ PanelWindow {
                 anchors.top: parent.top
                 spacing: root.chWidth * Config.Appearance.space2
 
-                Widgets.StyledText {
-                    kind: "title"
-                    sizeStep: 3
-                    text: Qt.formatDateTime(clockTimer.now, "dddd d MMMM yyyy")
-                }
-
+                // rework-status-bar.md Style item 2: "make the time larger
+                // and centered" — the flip-clock Row moves into a
+                // full-width Item so `anchors.horizontalCenter` actually
+                // has something to centre against (Column, StaggerReveal's
+                // own base type, always left-aligns a direct child at its
+                // own x — a bare `anchors.` on the Row itself would be
+                // ignored). `sizeStep` raised 4 → 5 for "larger".
+                //
                 // Follow-up (user, 2026-09-11): "the calendar overlay...
                 // should have time animating like a flip clock" — six
                 // Widgets.FlipDigit cells (H H : m m : s s), each flipping
@@ -217,98 +221,37 @@ PanelWindow {
                 // padding, leaving every cell the same height as a plain
                 // Text at this font/size — the same colon glyph the digits
                 // already reuse internally — so the row aligns without it.
-                Row {
-                    readonly property string hh: Qt.formatDateTime(clockTimer.now, "HH")
-                    readonly property string mm: Qt.formatDateTime(clockTimer.now, "mm")
-                    readonly property string ss: Qt.formatDateTime(clockTimer.now, "ss")
-
-                    Widgets.FlipDigit { sizeStep: 4; showCard: false; value: parent.hh.charAt(0) }
-                    Widgets.FlipDigit { sizeStep: 4; showCard: false; value: parent.hh.charAt(1) }
-                    Widgets.StyledText { mono: true; sizeStep: 4; text: ":" }
-                    Widgets.FlipDigit { sizeStep: 4; showCard: false; value: parent.mm.charAt(0) }
-                    Widgets.FlipDigit { sizeStep: 4; showCard: false; value: parent.mm.charAt(1) }
-                    Widgets.StyledText { mono: true; sizeStep: 4; text: ":" }
-                    Widgets.FlipDigit { sizeStep: 4; showCard: false; value: parent.ss.charAt(0) }
-                    Widgets.FlipDigit { sizeStep: 4; showCard: false; value: parent.ss.charAt(1) }
-                }
-                Widgets.Separator { width: parent.width }
-
-                // --- Timer ---------------------------------------------
-                // rework.md: "a timer" — Services.Timers is the exact same
-                // singleton/API Panels/BarPopout.qml's own "timer" card
-                // already uses; this is a new home for the same data
-                // (creation control + the existing countdown-list
-                // rendering), not a second timer mechanism. A full HH:MM
-                // alarm and repeating alarms stay a runner-bar-only
-                // creation path, same as BarPopout's own card.
-                Column {
+                Item {
                     width: parent.width
-                    spacing: root.chWidth * Config.Appearance.space1
-
-                    Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Timer" }
+                    implicitHeight: clockRow.implicitHeight
 
                     Row {
-                        spacing: root.chWidth * Config.Appearance.space2
-                        Widgets.NumberField {
-                            anchors.verticalCenter: parent.verticalCenter
-                            value: root._newTimerMinutes
-                            step: 1; from: 1; to: 180; suffix: " min"
-                            onCommitted: (v) => root._newTimerMinutes = v
-                        }
-                        Widgets.StyledButton {
-                            anchors.verticalCenter: parent.verticalCenter
-                            label: "Start"
-                            onClicked: Services.Timers.add(root._newTimerMinutes * 60, "Timer")
-                        }
-                    }
+                        id: clockRow
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        readonly property string hh: Qt.formatDateTime(clockTimer.now, "HH")
+                        readonly property string mm: Qt.formatDateTime(clockTimer.now, "mm")
+                        readonly property string ss: Qt.formatDateTime(clockTimer.now, "ss")
 
-                    Repeater {
-                        model: Services.Timers.items.slice().sort((a, b) => a.targetMs - b.targetMs)
-                        Item {
-                            id: timerRow
-                            required property var modelData
-                            width: parent.width
-                            implicitHeight: Math.max(timerLabel.implicitHeight, timerCancel.implicitHeight)
-
-                            Widgets.StyledText {
-                                id: timerLabel
-                                anchors.left: parent.left
-                                anchors.right: timerValue.left
-                                anchors.rightMargin: root.chWidth
-                                anchors.verticalCenter: parent.verticalCenter
-                                sizeStep: 0
-                                elide: Text.ElideRight
-                                text: (timerRow.modelData.kind === "alarm" ? "Alarm — " : "Timer — ") + timerRow.modelData.label
-                            }
-                            Widgets.StyledText {
-                                id: timerValue
-                                anchors.right: timerCancel.left
-                                anchors.rightMargin: root.chWidth
-                                anchors.verticalCenter: parent.verticalCenter
-                                kind: "label"; mono: true; sizeStep: 0
-                                text: timerRow.modelData.kind === "alarm"
-                                    ? Qt.formatDateTime(new Date(timerRow.modelData.targetMs), "HH:mm")
-                                    : root._fmtCountdown(timerRow.modelData.targetMs)
-                            }
-                            Widgets.SmallButton {
-                                id: timerCancel
-                                anchors.right: parent.right
-                                anchors.verticalCenter: parent.verticalCenter
-                                label: "Cancel"
-                                onClicked: Services.Timers.cancel(timerRow.modelData.id)
-                            }
-                        }
-                    }
-                    Widgets.StyledText {
-                        visible: Services.Timers.items.length === 0
-                        kind: "label"; sizeStep: 0
-                        text: "Nothing scheduled. Set one above, or an alarm from the runner bar: \"alarm 7:30\"."
-                        wrapMode: Text.WordWrap
-                        width: parent.width
+                        Widgets.FlipDigit { sizeStep: 5; showCard: false; value: parent.hh.charAt(0) }
+                        Widgets.FlipDigit { sizeStep: 5; showCard: false; value: parent.hh.charAt(1) }
+                        Widgets.StyledText { mono: true; sizeStep: 5; text: ":" }
+                        Widgets.FlipDigit { sizeStep: 5; showCard: false; value: parent.mm.charAt(0) }
+                        Widgets.FlipDigit { sizeStep: 5; showCard: false; value: parent.mm.charAt(1) }
+                        Widgets.StyledText { mono: true; sizeStep: 5; text: ":" }
+                        Widgets.FlipDigit { sizeStep: 5; showCard: false; value: parent.ss.charAt(0) }
+                        Widgets.FlipDigit { sizeStep: 5; showCard: false; value: parent.ss.charAt(1) }
                     }
                 }
 
-                Widgets.Separator { width: parent.width }
+                // rework-status-bar.md Style item 2: "add day, month, year
+                // below the time, smaller then the time, centred".
+                Widgets.StyledText {
+                    width: parent.width
+                    horizontalAlignment: Text.AlignHCenter
+                    kind: "label"
+                    sizeStep: 1
+                    text: Qt.formatDateTime(clockTimer.now, "dddd d MMMM yyyy")
+                }
 
                 // --- Interactive calendar --------------------------------
                 // rework.md: "an interactive calendar". A read-only month
@@ -318,9 +261,10 @@ PanelWindow {
                 // fabricated. Prev/next navigate the VIEWED month; today
                 // and the current selection are both tracked independently
                 // so navigating away and back does not lose either.
-                Column {
+                // rework-status-bar.md Style item 1: its own inner-section
+                // card.
+                Widgets.OverlaySection {
                     width: parent.width
-                    spacing: root.chWidth * Config.Appearance.space1
 
                     Item {
                         width: parent.width
@@ -411,6 +355,85 @@ PanelWindow {
                                 }
                             }
                         }
+                    }
+                }
+
+                // rework-status-bar.md Style item 2c: "move the timer
+                // sections below the calendar" — was above it.
+                // --- Timer ---------------------------------------------
+                // rework.md: "a timer" — Services.Timers is the exact same
+                // singleton/API Panels/BarPopout.qml's own "timer" card
+                // already uses; this is a new home for the same data
+                // (creation control + the existing countdown-list
+                // rendering), not a second timer mechanism. A full HH:MM
+                // alarm and repeating alarms stay a runner-bar-only
+                // creation path, same as BarPopout's own card.
+                // rework-status-bar.md Style item 1: its own inner-section
+                // card, same as every other status-bar overlay's own
+                // logically distinct groups.
+                Widgets.OverlaySection {
+                    width: parent.width
+
+                    Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Timer" }
+
+                    Row {
+                        spacing: root.chWidth * Config.Appearance.space2
+                        Widgets.NumberField {
+                            anchors.verticalCenter: parent.verticalCenter
+                            value: root._newTimerMinutes
+                            step: 1; from: 1; to: 180; suffix: " min"
+                            onCommitted: (v) => root._newTimerMinutes = v
+                        }
+                        Widgets.StyledButton {
+                            anchors.verticalCenter: parent.verticalCenter
+                            label: "Start"
+                            onClicked: Services.Timers.add(root._newTimerMinutes * 60, "Timer")
+                        }
+                    }
+
+                    Repeater {
+                        model: Services.Timers.items.slice().sort((a, b) => a.targetMs - b.targetMs)
+                        Item {
+                            id: timerRow
+                            required property var modelData
+                            width: parent.width
+                            implicitHeight: Math.max(timerLabel.implicitHeight, timerCancel.implicitHeight)
+
+                            Widgets.StyledText {
+                                id: timerLabel
+                                anchors.left: parent.left
+                                anchors.right: timerValue.left
+                                anchors.rightMargin: root.chWidth
+                                anchors.verticalCenter: parent.verticalCenter
+                                sizeStep: 0
+                                elide: Text.ElideRight
+                                text: (timerRow.modelData.kind === "alarm" ? "Alarm — " : "Timer — ") + timerRow.modelData.label
+                            }
+                            Widgets.StyledText {
+                                id: timerValue
+                                anchors.right: timerCancel.left
+                                anchors.rightMargin: root.chWidth
+                                anchors.verticalCenter: parent.verticalCenter
+                                kind: "label"; mono: true; sizeStep: 0
+                                text: timerRow.modelData.kind === "alarm"
+                                    ? Qt.formatDateTime(new Date(timerRow.modelData.targetMs), "HH:mm")
+                                    : root._fmtCountdown(timerRow.modelData.targetMs)
+                            }
+                            Widgets.SmallButton {
+                                id: timerCancel
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                label: "Cancel"
+                                onClicked: Services.Timers.cancel(timerRow.modelData.id)
+                            }
+                        }
+                    }
+                    Widgets.StyledText {
+                        visible: Services.Timers.items.length === 0
+                        kind: "label"; sizeStep: 0
+                        text: "Nothing scheduled. Set one above, or an alarm from the runner bar: \"alarm 7:30\"."
+                        wrapMode: Text.WordWrap
+                        width: parent.width
                     }
                 }
             }

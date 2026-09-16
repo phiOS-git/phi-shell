@@ -204,34 +204,36 @@ Item {
             }
             Widgets.Separator { width: parent.width; strong: true }
 
-            Widgets.ToggleRow {
+            // rework-status-bar.md Style item 1: its own inner-section card.
+            Widgets.OverlaySection {
                 width: parent.width
-                label: "Do not disturb"
-                checked: Services.Notifications.dnd
-                onToggled: (v) => { if (v !== Services.Notifications.dnd) Services.Notifications.toggleDnd() }
-            }
+                Widgets.ToggleRow {
+                    width: parent.width
+                    label: "Do not disturb"
+                    checked: Services.Notifications.dnd
+                    onToggled: (v) => { if (v !== Services.Notifications.dnd) Services.Notifications.toggleDnd() }
+                }
 
-            // rework.md: "as well as triggers for DND 30mins, 1h, 4h (with
-            // visible end time when enabled with timer)" —
-            // Services.Notifications.dndFor(minutes) already exists
-            // (Settings/sections/Notifications.qml's own identical row);
-            // reused verbatim, not a second timed-DND mechanism.
-            Row {
-                spacing: root.chWidth * Config.Appearance.space2
-                Widgets.SmallButton { label: "30 min"; onClicked: Services.Notifications.dndFor(30) }
-                Widgets.SmallButton { label: "1 h"; onClicked: Services.Notifications.dndFor(60) }
-                Widgets.SmallButton { label: "4 h"; onClicked: Services.Notifications.dndFor(240) }
-            }
+                // rework.md: "as well as triggers for DND 30mins, 1h, 4h (with
+                // visible end time when enabled with timer)" —
+                // Services.Notifications.dndFor(minutes) already exists
+                // (Settings/sections/Notifications.qml's own identical row);
+                // reused verbatim, not a second timed-DND mechanism.
+                Row {
+                    spacing: root.chWidth * Config.Appearance.space2
+                    Widgets.SmallButton { label: "30 min"; onClicked: Services.Notifications.dndFor(30) }
+                    Widgets.SmallButton { label: "1 h"; onClicked: Services.Notifications.dndFor(60) }
+                    Widgets.SmallButton { label: "4 h"; onClicked: Services.Notifications.dndFor(240) }
+                }
 
-            Widgets.StyledText {
-                width: parent.width
-                visible: Services.Notifications.dndRemainingLabel.length > 0
-                kind: "label"
-                sizeStep: 0
-                text: "Timed session: " + Services.Notifications.dndRemainingLabel
+                Widgets.StyledText {
+                    width: parent.width
+                    visible: Services.Notifications.dndRemainingLabel.length > 0
+                    kind: "label"
+                    sizeStep: 0
+                    text: "Timed session: " + Services.Notifications.dndRemainingLabel
+                }
             }
-
-            Widgets.Separator { width: parent.width }
 
             // Active header — the title on the left, the one destructive
             // action right-aligned on the same line.

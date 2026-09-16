@@ -159,6 +159,11 @@ PanelWindow {
         Widgets.Panel {
             id: card
             anchors.fill: parent
+            // rework-status-bar.md Style item 1: match the status bar's own
+            // background instead of the generic "shaded" surface1 — the
+            // inner `textPanel` below keeps the default and now reads as a
+            // genuinely distinct inner section against it.
+            bgColorOverride: Config.Appearance.colorMain
             focus: root.shown
             Keys.onEscapePressed: Services.QuickNote.hide()
 

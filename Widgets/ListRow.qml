@@ -122,6 +122,24 @@ Item {
     implicitHeight: Math.max(labelText.implicitHeight, valueText.implicitHeight)
         + WidgetStates.chToPixels(root.thin ? Config.Appearance.space1 : Config.Appearance.space2, chWidth)
         * (root.thin ? 1 : 2)
+    // rework-status-bar.md Style item 7a, root cause: this widget never
+    // reported an `implicitWidth` at all — harmless for every EXISTING
+    // caller (Settings nav, the agent panel's lists, every status-bar
+    // overlay device list), since every one of them explicitly binds
+    // `width:` and never reads this back. Widgets/ContextMenu.qml
+    // (Style item 7a's actual caller) is the first consumer that needs
+    // it: its own `layout` Column sizes the popup window from
+    // `layout.implicitWidth`, which for a Column is the max of its
+    // children's own `implicitWidth` — never their assigned `width` — so
+    // with this unset every row (and the whole menu) collapsed to zero
+    // width, rendering the menu as an unreadable sliver: the actual cause
+    // behind "the context menu ... has no option inside" surviving this
+    // file's own earlier width/height fix on the popup window itself.
+    implicitWidth: (root.thin ? 0 : root.inset)
+        + (leading.visible ? leading.implicitWidth + root.gap : 0)
+        + labelText.implicitWidth
+        + (valueText.visible ? root.gap + valueText.implicitWidth : 0)
+        + (root.thin ? 0 : root.inset)
     activeFocusOnTab: true
     opacity: WidgetStates.opacityFor(resolvedState) * root.restEmphasis
 

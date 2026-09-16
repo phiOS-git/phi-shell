@@ -102,10 +102,22 @@ Widgets.Segment {
     Component.onCompleted: root._sync()
 
     iconDelegate: Component {
+        // rework-status-bar.md Style item 8: "the network element in the
+        // status bar has multiple icons overlapping (wifi/ethernet,
+        // tailscale, etc). They should be well positioned" — the VPN/
+        // Tailscale badge used to anchor to this Item's own bottom-right
+        // CORNER while the main wifi/ethernet glyph, centred in that SAME
+        // box, already filled nearly all of it: the two painted on top of
+        // each other. `pivot` now reserves real, permanent room for the
+        // badge beside the main glyph (always, whether or not a tunnel is
+        // currently up) instead of stacking both into one shared box — a
+        // fixed reservation, not conditional on `tunnelAmount`, so the
+        // main glyph never shifts position as the badge fades in/out.
         Item {
             id: pivot
-            implicitWidth: ethIcon.implicitWidth
-            implicitHeight: ethIcon.implicitHeight
+            readonly property real _badgeGap: root.gap / 2
+            implicitWidth: ethIcon.implicitWidth + badgeIcon.implicitWidth + pivot._badgeGap
+            implicitHeight: Math.max(ethIcon.implicitHeight, badgeIcon.implicitHeight)
 
             // Primary glyph: the hand-drawn ethernet plug (Widgets/
             // EthernetIcon, matching that widget's own no-guessed-codepoint
@@ -117,7 +129,8 @@ Widgets.Segment {
             Widgets.EthernetIcon {
                 id: ethIcon
                 visible: root.usingEthernet
-                anchors.centerIn: parent
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
                 iconColor: root.contentColor
                 sizeStep: root.sizeStep
                 connectAmount: root.connectAmount
@@ -125,29 +138,31 @@ Widgets.Segment {
             Widgets.WifiIcon {
                 id: wifiIcon
                 visible: !root.usingEthernet
-                anchors.centerIn: parent
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
                 iconColor: root.contentColor
                 sizeStep: root.sizeStep
                 connectAmount: root.connectAmount
                 connecting: root.wifiConnecting
             }
 
-            // VPN/Tailscale badge — a small corner glyph, same idea as
-            // Widgets/BluetoothIcon's own connected-badge, faded in only
-            // while a tunnel is up. One shared glyph for both Tailscale and
-            // a plain WireGuard tunnel (Glyphs.vpn) — rework.md asks for "a
-            // VPN icon if active, tailscale icon if connected" (i.e. two
-            // distinct glyphs); this first pass uses one, flagged here as a
+            // VPN/Tailscale badge — sits in its own reserved slot to the
+            // main glyph's right now, faded in only while a tunnel is up.
+            // One shared glyph for both Tailscale and a plain WireGuard
+            // tunnel (Glyphs.vpn) — rework.md asks for "a VPN icon if
+            // active, tailscale icon if connected" (i.e. two distinct
+            // glyphs); this first pass uses one, flagged here as a
             // simplification for a later phase to split if it matters
             // enough to justify a second badge glyph and the extra
             // precedence logic for "both up at once".
             Widgets.StyledIcon {
+                id: badgeIcon
                 glyph: Glyphs.vpn
                 sizeStep: Math.max(0, root.sizeStep - 1)
                 color: root.contentColor
                 opacity: root.tunnelAmount
                 anchors.right: parent.right
-                anchors.bottom: parent.bottom
+                anchors.verticalCenter: parent.verticalCenter
             }
         }
     }

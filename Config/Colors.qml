@@ -118,6 +118,21 @@ Singleton {
         id: colorsFile
         path: Qt.resolvedUrl("./Colors.json")
         watchChanges: true
+        // rework-status-bar.md Style item 5 ("shells don't change until
+        // hyprland is reloaded completely"): root-caused live, by actually
+        // running this exact Quickshell build (`qs -p` against a throwaway
+        // test file, watchChanges: true) and rewriting the watched file
+        // in-place mid-run. Confirmed: `watchChanges: true` alone only
+        // fires the `fileChanged` signal — it does NOT re-read the file or
+        // re-emit `loaded` by itself, so `text()`/`onLoaded` kept serving
+        // the stale content that was current at process start, forever,
+        // exactly matching the reported symptom (only a full `qs`
+        // restart — which `hyprctl reload`'s own Hyprland-autostart path
+        // causes — ever picked up a new variant). `FileView.reload()` (a
+        // real method, confirmed in quickshell-io.qmltypes and exercised
+        // live) forces the re-read and DOES re-emit `loaded` with the new
+        // content, confirmed in the same test.
+        onFileChanged: colorsFile.reload()
         onLoaded: {
             try {
                 var c = JSON.parse(colorsFile.text())

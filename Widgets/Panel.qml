@@ -94,6 +94,16 @@ Item {
     property color borderColorOverride: "transparent"
     property real borderWidthOverride: -1
 
+    // rework-status-bar.md Style item 1: "the overlay shells seem to use a
+    // different background color from the status bar ... the overlay
+    // itself should not [differ]." An overlay's outermost Panel sets this
+    // to Config.Appearance.colorMain (the bar's own background) so the
+    // shell reads as a continuation of the bar; any Panel nested inside it
+    // (an inner section, e.g. QuickNote's own `textPanel`) leaves this at
+    // its default and keeps the ordinary "shaded" surface1/2/3 ramp, which
+    // is what actually gives an inner section its own distinct background.
+    property color bgColorOverride: "transparent"
+
     readonly property string resolvedState: WidgetStates.resolve({
         enabled: root.enabled, hovered: root.hovered, pressed: root.pressed,
         active: root.active, keyboardFocus: root.keyboardFocus,
@@ -121,6 +131,7 @@ Item {
 
     readonly property real _borderWidth: (!root.invalid && root.borderWidthOverride >= 0) ? root.borderWidthOverride : Config.Appearance.borderWidthStrong
     readonly property color _borderColor: (!root.invalid && root.borderColorOverride !== "transparent") ? root.borderColorOverride : root.stateColors.border
+    readonly property color _bgColor: (!root.invalid && root.bgColorOverride !== "transparent") ? root.bgColorOverride : root.stateColors.bg
 
     // Fast path: every Panel whose four corners still agree (the default,
     // and every call site as of this phase) keeps the plain native
@@ -129,7 +140,7 @@ Item {
         visible: !root._asymmetric
         anchors.fill: parent
         radius: root.radius
-        color: root.stateColors.bg
+        color: root._bgColor
         border.width: root._borderWidth
         border.color: root._borderColor
 
@@ -146,7 +157,7 @@ Item {
     AsymmetricPanel {
         visible: root._asymmetric
         anchors.fill: parent
-        color: root.stateColors.bg
+        color: root._bgColor
         borderColor: root._borderColor
         borderWidth: root._borderWidth
         radiusTopLeft: root.cornerRadiusTopLeft

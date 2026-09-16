@@ -52,28 +52,47 @@ Item {
         width: parent.width
         spacing: root.gap
 
-        Row {
+        // rework-status-bar.md Style item 9b: "the 'Refresh' button is not
+        // aligned correctly (should be on the right side, instead of
+        // close to the title)" — was a plain `Row` with a fixed `spacing`,
+        // which packs every child snug against the previous one from the
+        // left edge (Refresh included) rather than pushing the last one
+        // to the far side. An `Item` with the status text/indicator
+        // anchored left and the button anchored right gives the button a
+        // real right-aligned position, same shape this file's own sibling
+        // status-bar-overlay headers already use for "label left, control
+        // right".
+        Item {
             width: parent.width
-            spacing: root.gap
-            StyledText {
-                anchors.verticalCenter: parent.verticalCenter
-                kind: "label"
-                visible: !Services.WifiBridge.scanning
-                text: Services.WifiBridge.scannedNetworks.length + (Services.WifiBridge.scannedNetworks.length === 1 ? " network found" : " networks found")
-            }
-            // Style pass 2026-09-14: a real animated "still working" cue
-            // (Widgets/Dots, promoted from the agent panel this pass) in
-            // place of a static "Scanning…" that never visibly changed —
-            // one more small instance of the same "trigger buttons don't
-            // show loading states" gap, here on the row NEXT TO the
-            // button rather than the button itself.
+            implicitHeight: Math.max(scanStatusRow.implicitHeight, refreshBtn.height)
+
             Row {
-                visible: Services.WifiBridge.scanning
+                id: scanStatusRow
+                anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
-                StyledText { kind: "label"; text: "Scanning" }
-                Dots {}
+                StyledText {
+                    anchors.verticalCenter: parent.verticalCenter
+                    kind: "label"
+                    visible: !Services.WifiBridge.scanning
+                    text: Services.WifiBridge.scannedNetworks.length + (Services.WifiBridge.scannedNetworks.length === 1 ? " network found" : " networks found")
+                }
+                // Style pass 2026-09-14: a real animated "still working" cue
+                // (Widgets/Dots, promoted from the agent panel this pass) in
+                // place of a static "Scanning…" that never visibly changed —
+                // one more small instance of the same "trigger buttons don't
+                // show loading states" gap, here on the row NEXT TO the
+                // button rather than the button itself.
+                Row {
+                    visible: Services.WifiBridge.scanning
+                    anchors.verticalCenter: parent.verticalCenter
+                    StyledText { kind: "label"; text: "Scanning" }
+                    Dots {}
+                }
             }
             SmallButton {
+                id: refreshBtn
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
                 label: "Refresh"
                 loading: Services.WifiBridge.scanning
                 onClicked: Services.WifiBridge.rescan()

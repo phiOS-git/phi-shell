@@ -33,7 +33,15 @@ PanelWindow {
     color: "transparent"
     visible: root.shown || fadeRoot.opacity > 0
 
+    // rework-status-bar.md Style item 10: restrict this window's own INPUT
+    // region to the visible card — see Services/OverlayGrab.qml's own
+    // header for the full mechanism and why this, together with that
+    // component below, replaces the old fullscreen
+    // `MouseArea { onClicked: hide() }`.
+    mask: Region { item: cardWrap }
+
     Services.LayerFocus { target: root }
+    Services.OverlayGrab { window: root; active: root.shown; onDismissed: Services.NotificationPanel.clipboardShown = false }
 
     TextMetrics {
         id: chMetrics
@@ -53,11 +61,6 @@ PanelWindow {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
-        MouseArea {
-            anchors.fill: parent
-            onClicked: Services.NotificationPanel.clipboardShown = false
-        }
-
         Item {
             id: cardWrap
             anchors.top: parent.top
@@ -75,17 +78,17 @@ PanelWindow {
                 root.height - anchors.topMargin - Config.Appearance.panelGap,
                 root.height * 0.75)
 
-            x: Services.NotificationPanel.clipboardAnchorX > 0
-                ? Math.max(Config.Appearance.panelGap,
-                    Math.min(parent.width - width - Config.Appearance.panelGap,
-                        Services.NotificationPanel.clipboardAnchorX - width))
-                : parent.width - width - Config.Appearance.panelGap
-
-            MouseArea { anchors.fill: parent }
+            // rework-status-bar.md Style item 4: always the screen corner
+            // now, whether a bar-icon click or a keybinding opened this —
+            // see Services/NotificationPanel.qml's own header.
+            x: parent.width - width - Config.Appearance.panelGap
 
             Widgets.Panel {
                 id: panel
                 anchors.fill: parent
+                // rework-status-bar.md Style item 1: match the status bar's
+                // own background instead of the generic "shaded" surface1.
+                bgColorOverride: Config.Appearance.colorMain
                 cornerRadiusTopLeft: Config.Appearance.radiusLarge
                 cornerRadiusTopRight: Config.Appearance.radiusSmall
                 cornerRadiusBottomLeft: Config.Appearance.radiusLarge
