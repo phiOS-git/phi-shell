@@ -4,44 +4,27 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Notifications/Toast (S-30, master plan §8.3 surface 3, and the
-// closed decision in master-plan §2.3 / architettura §8.2.1: "notifica
-// come icona animata con testo scorrevole, dettaglio nel pannello" — an
-// animated icon with pager-style scrolling text, full detail lives in the
-// sidebar (S-31), not here. Not a stack of toast cards: exactly one shown
-// at a time, from Services.Notifications' own queue, so a burst of
-// notifications reads as a sequence rather than a pile of overlapping
-// boxes — matching the source sentence's singular "un'icona", not "delle
-// icone".
+// An animated icon with scrolling text; full detail lives in the sidebar,
+// not here. Not a stack of toast cards: exactly one shown at a time, from
+// Services.Notifications' own queue, so a burst of notifications reads as
+// a sequence rather than a pile of overlapping boxes.
 //
-// One instance per screen (shell.qml's Variants, same pattern as Bar.Bar,
-// ADR 077): every monitor shows the same toast, mirroring how the bar
-// itself repeats per screen rather than picking one "primary" monitor no
-// document has ever named.
+// One instance per screen (shell.qml's Variants, same pattern as Bar):
+// every monitor shows the same toast, mirroring how the bar repeats per
+// screen.
 //
-// Anchored bottom-right, not top where the bar lives: Bar.qml computes its
-// own height from tokens with no property another file can read, so
+// Anchored bottom-right, not top where the bar lives: Bar.qml computes
+// its own height from tokens with no property another file can read, so
 // anchoring a second layer-shell surface directly below it would either
-// duplicate that formula or risk overlap — bottom-right sidesteps the
-// problem entirely and is itself a conventional corner for a transient
-// notification. Flagged here for cheap veto if a screenshot says otherwise.
+// duplicate that formula or risk overlap — bottom-right sidesteps that.
 //
-// Category B governs the show/hide transition (§6.5's own table names
-// "notifiche e toast" under B): near-instant, no organic easing, via the
-// same Behavior-on-opacity idiom every Widgets/ surface already uses.
-// The marquee scroll inside is a different thing — continuous motion for
-// as long as the toast is visible, not a state transition — read as
-// Category A (§6.5: "continuo, leggero", the two named examples being
-// kitty's cursor_trail and the agent's processing indicator): linear only,
-// per A's own rule that an eased loop reads as a pulse, so no per-widget
-// easing mapping is needed the way Category B has one.
-//
-// S-52: the marquee's dwell at each end was a bare `duration: 800` — a
-// literal not sourced from design/tokens.*.sh (I-05). Reused motionAPeriod
-// for the dwell too rather than inventing a second constant: the same
-// period already governs how long this loop takes to cross the text, so
-// using it for the pause as well keeps the whole loop on one token instead
-// of a token plus a magic number next to it.
+// The show/hide transition is near-instant, no organic easing, via the
+// same Behavior-on-opacity idiom every Widgets/ surface uses. The marquee
+// scroll inside is a different thing — continuous motion for as long as
+// the toast is visible, not a state transition — so it's linear only; an
+// eased loop would read as a pulse. The marquee's dwell at each end
+// reuses motionAPeriod rather than a second magic-number constant: the
+// same period already governs how long the loop takes to cross the text.
 
 PanelWindow {
     id: root
@@ -60,9 +43,8 @@ PanelWindow {
     anchors { bottom: true; right: true }
     exclusiveZone: 0
     color: "transparent"
-    // keyboardFocus defaults to WlrKeyboardFocus.None (confirmed against
-    // the real WlrLayershell header) — a toast must never steal focus, and
-    // that is already the case with nothing set here.
+    // keyboardFocus defaults to WlrKeyboardFocus.None — a toast must
+    // never steal focus, and that's already the case with nothing set here.
 
     TextMetrics {
         id: chMetrics
@@ -78,15 +60,12 @@ PanelWindow {
 
     implicitWidth: root.toastWidth
     implicitHeight: layout.implicitHeight + panel.padding * 2
-    // PanelWindow has no `opacity` property (confirmed against the real
-    // source, src/window/windowinterface.hpp: `visible`/`color`/`width`/
-    // `height`/`screen`/`mask`/`data`/`contentItem`, no `opacity` anywhere)
-    // — found on real hardware (razer), not by reading the source first,
-    // since a `PanelWindow { opacity: ... }` binding still compiles as a
-    // dynamic property rather than failing until something animates it.
-    // The fade lives on `fadeRoot` below instead — a plain Item, which
-    // does have a real, animatable opacity — and `visible` stays true
-    // until that fade-out actually finishes, so the window doesn't vanish
+    // PanelWindow has no `opacity` property — a `PanelWindow { opacity:
+    // ... }` binding still compiles as a dynamic property rather than
+    // failing, so this is easy to miss until something tries to animate
+    // it. The fade lives on `fadeRoot` below instead — a plain Item,
+    // which does have a real, animatable opacity — and `visible` stays
+    // true until that fade-out finishes, so the window doesn't vanish
     // mid-animation the way it would if `visible` just followed
     // `root.shown` directly.
     visible: root.shown || fadeRoot.opacity > 0
@@ -105,18 +84,12 @@ PanelWindow {
             anchors.fill: parent
             hovered: toastHover.hovered
 
-            // Style pass 2026-09-14: this surface had NO interaction of any
-            // kind — no click, no hover feedback, nothing — despite being
-            // the very first thing a new notification shows. Clicking it
-            // now opens the sidebar straight onto the Notifications tab,
-            // where the closed design decision this file's own header
-            // quotes ("dettaglio nel pannello") already puts the actual
-            // detail/actions/dismiss controls — this is a shortcut TO that
-            // panel, not new content on the toast itself, so it doesn't
-            // cross the "full detail lives in the sidebar" line. A bare
-            // click does not also dismiss the toast (Services/
-            // Notifications.qml's own centrally-timed expiry, unchanged,
-            // still owns that) — opening the panel to look at something is
+            // Clicking the toast opens the notifications overlay, where
+            // the actual detail/actions/dismiss controls live — a
+            // shortcut to that panel, not new content on the toast
+            // itself. A bare click does not also dismiss the toast:
+            // Services/Notifications.qml's own centrally-timed expiry
+            // still owns that — opening the panel to look at something is
             // not the same gesture as being done with it.
             HoverHandler { id: toastHover; cursorShape: Qt.PointingHandCursor }
             TapHandler { onTapped: Services.NotificationPanel.openNotifications() }
@@ -173,12 +146,9 @@ PanelWindow {
         }
     }
 
-    // No local dismiss timer: Services/Notifications.qml now bounds every
-    // tracked notification's lifetime centrally (expireTimerComponent) and
-    // calls the real Notification.expire(), which fires `closed` and
-    // advances this queue through the same handler regardless of whether a
-    // toast was ever showing it. An earlier draft of this file dismissed
-    // only the toast's own queue slot on a local timer, leaving the
-    // underlying notification tracked forever — the same bug Services/
-    // Notifications.qml's own header now documents fixing.
+    // No local dismiss timer: Services/Notifications.qml bounds every
+    // tracked notification's lifetime centrally and calls the real
+    // Notification.expire(), which fires `closed` and advances this queue
+    // through the same handler regardless of whether a toast was ever
+    // showing it.
 }
