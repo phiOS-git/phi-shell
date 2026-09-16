@@ -5,8 +5,8 @@ import Quickshell.Wayland
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "sections" as Sections
-import "sections/options.js" as Options
+import "./sections" as Sections
+import "./sections/options.js" as Options
 
 // phiOS — Settings/Settings (S-40, master plan §8.3 surface 14, §9.12: nine
 // sections, "one canonical place for every runtime option"). Composition is
