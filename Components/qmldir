@@ -1,4 +1,7 @@
-# ~/.config/quickshell/Components/qmldir
+# Flattens the nested single-file surfaces (Bar/Bar.qml, Launcher/Launcher.qml,
+# Lock/Lock.qml, Settings/Settings.qml) so shell.qml can reach them as
+# Components.Bar etc. instead of Components.Bar.Bar. The rest of this
+# directory's files sit directly in Components/ and need no entry.
 
 Bar 1.0 Bar/Bar.qml
 Launcher 1.0 Launcher/Launcher.qml
