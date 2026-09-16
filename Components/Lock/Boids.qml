@@ -1,34 +1,26 @@
 import QtQuick
 import qs.Config as Config
 
-// phiOS — Lock/Boids. docs/TODO.md follow-up (user, 2026-09-15): "add as
-// many more options you can" (ambient effects), ideas cross-checked
-// against github.com/phlx0/drift's own scene list — a Reynolds flocking
-// simulation (separation + alignment + cohesion, the textbook "boids"
-// algorithm), drawn as small triangle-arrow heads oriented along each
-// boid's own heading, coloured by its current speed. Same
-// from-scratch-Canvas approach every existing effect uses (I-01: no
-// package), same running/intensity/speed contract every sibling effect
-// already follows.
+// A Reynolds flocking simulation (separation + alignment + cohesion, the
+// textbook "boids" algorithm), drawn as small triangle-arrow heads
+// oriented along each boid's own heading, coloured by its current speed.
 //
 // Toroidal wraparound at the edges (same choice Lock/Starfield.qml's own
-// points already make) rather than a bounce or an avoid-the-edge steering
-// force — simpler, and an ambient background never needs the flock to
-// visibly "notice" the screen edge. Neighbour distance is computed
-// toroidally too (the nearest copy across a wrapped edge, not the raw
-// straight-line distance) so the flock reads as one continuous group
-// across the seam instead of splitting near it.
+// points make) rather than a bounce or an avoid-the-edge steering force
+// — simpler, and an ambient background never needs the flock to visibly
+// "notice" the screen edge. Neighbour distance is computed toroidally too
+// (the nearest copy across a wrapped edge, not the raw straight-line
+// distance) so the flock reads as one continuous group across the seam.
 //
-// No persistent-trail buffer (drift's own boids demo leaves fading
-// trails): this effect's Canvas is composited over the real lock-screen
-// wallpaper, not a solid background, so the classic "fade the previous
-// frame toward black" trail trick would fade toward black specifically,
-// not toward transparency — visibly wrong on a light wallpaper. Left out
-// rather than shipped wrong; the flock is still clearly a flock without it.
+// No persistent-trail buffer: this effect's Canvas is composited over the
+// real lock-screen wallpaper, not a solid background, so the classic
+// "fade the previous frame toward black" trail trick would fade toward
+// black specifically, not toward transparency — visibly wrong on a light
+// wallpaper. Left out rather than shipped wrong.
 //
-// Colour: tokens only (I-05) — every boid eases between `info` (slow) and
+// Colour: tokens only — every boid eases between `info` (slow) and
 // `accent` (near top speed), the same accent/info pairing every other
-// effect in this file already uses for its own two-colour drift.
+// effect in this file uses for its own two-colour drift.
 
 Item {
     id: root
@@ -36,11 +28,9 @@ Item {
     property bool running: true
     property real intensity: 0.85
     property real speed: 1.0
-    // docs/TODO.md follow-up (user, 2026-09-15): "way more customisability"
-    // — the one exposed knob (Settings/sections/Theme.qml's own "Boids"
-    // accordion); the three Reynolds rule weights stay fixed, tuned
-    // constants, the same way LavaLamp's own morph amplitude is folded
-    // into its one "wobble" multiplier rather than each exposed
+    // The one exposed knob; the three Reynolds rule weights stay fixed,
+    // tuned constants, the same way LavaLamp's own morph amplitude is
+    // folded into its one "wobble" multiplier rather than each exposed
     // separately.
     property int boidCount: 40
 
