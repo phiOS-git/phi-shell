@@ -2,57 +2,31 @@ pragma Singleton
 import QtQuick
 import Quickshell
 
-// phiOS — semantic roles over the raw design tokens (master plan §6.2, §6.7,
-// §8.2). Config/Tokens.qml (structural: typography, spacing, radius, motion,
-// z-layers, textures) and Config/Colors.qml (everything that actually
-// differs by theme variant) both store everything as a string with its unit
-// attached, exactly as design/tokens.common.sh's own contract requires; this
-// file is the one place that turns a token's stored string ("120ms", "14px",
-// "#1a1918") into the QML type a consumer actually wants (color, real, int),
-// and the one place a future role rename or unit change has to happen.
+// Semantic roles over the raw design tokens. Config/Tokens.qml (typography,
+// spacing, radius, motion, z-layers, textures) and Config/Colors.qml
+// (everything theme-variant-dependent) store values as unit-tagged strings
+// ("120ms", "14px", "#1a1918"); this is the one place that turns a token
+// into the QML type a consumer wants (color, real, int). Every other file
+// reads Appearance — never Config/Tokens.qml or Config/Colors.qml directly.
 //
-// Interface rework (rework.md's "auto" theme option): colour used to live on
-// Tokens.qml too, until a variant switch rewriting that `pragma Singleton`
-// file's own source was found to force a destructive full re-evaluation —
-// see Config/Colors.qml's own header for the mechanism and why splitting
-// colour out onto a plain watched JSON file fixes it. Every colour property
-// below now reads Colors.X; every structural property still reads Tokens.X
-// exactly as before.
+// Two layers sit on top of the raw tokens:
+//   1. Config/ThemeOverrides.qml merges over a token at read time via
+//      _tok() — per-user edits from the settings panel's Theme section.
+//      An unset override falls through to the generated token.
+//   2. A named style-grammar layer (colorMain/colorOpposite/panel*/
+//      barIsle*/selection*/focusRing, below) so "two structural colours
+//      carry the whole shell, accent is fine detail only" lives in one
+//      place.
 //
-// S-20 AGENT contract: every other file in this shell reads Appearance,
-// never Config/Tokens.qml or Config/Colors.qml directly.
-//
-// OOP-02 (shell restyle) layered two things on here without touching that
-// contract:
-//
-//   1. Config/ThemeOverrides.qml is merged over Tokens at read time, via
-//      _tok(). The settings panel's Theme section (OOP-07) writes per-user
-//      overrides for the tokens it exposes as editable — accent, the
-//      structural + semantic palette, the font families, the font/spacing
-//      scale and the radii. An unset override falls straight through to the
-//      generated token, so nothing changes until the user sets something.
-//
-//   2. A named style-grammar layer (colorMain / colorOpposite / panel* /
-//      barIsle* / selection* / focusRing) so the restyle's rule — two
-//      structural colours carry the whole shell, accent is fine detail
-//      only, selection is a full inversion between the two — lives in
-//      exactly one file, and the settings display can enumerate it.
-//
-// Only tiers an actual shell surface can plausibly use are exposed. Tier 3
-// (syntax highlighting) and the ANSI 16 / selection / terminal-cursor tokens
-// are terminal-emulator concepts — no surface in master plan §8.3 needs them
-// — so they stay on Colors (formerly Tokens — see the interface-rework note
-// above), unexposed here, until a real consumer asks.
+// Only tiers an actual shell surface uses are exposed — syntax-highlight
+// and terminal-emulator tokens stay on Colors, unexposed here.
 
 Singleton {
     id: root
 
-    // Interface rework: colour now comes from Config/Colors.qml, not
-    // Config/Tokens.qml — see Colors.qml's own header for why (a variant
-    // switch rewrites Colors.json, never Tokens.qml's own source, so this
-    // singleton is never force-re-evaluated by `phi theme set`). Every
-    // other property on this page (typography, spacing, shape, layering,
-    // motion, wallpaper textures) is untouched: those never moved.
+    // Colors.qml, not Tokens.qml: a variant switch rewrites Colors.json,
+    // never this singleton's own source, so reading it doesn't force a
+    // destructive full re-evaluation of Appearance itself.
     readonly property string variant: Colors.variant
 
     // --- Structure ---------------------------------------------------------
@@ -67,10 +41,9 @@ Singleton {
     readonly property color border: _color(_tok("border", Colors.border))
     readonly property color borderStrong: _color(_tok("border-strong", Colors.borderStrong))
     readonly property color overlayScrim: _color(Colors.overlayScrim)
-    // Style pass 2026-09-14 (docs/TODO.md's dim-intensity split): for the
-    // small set of full-attention blocking surfaces (screenshot selection,
-    // Alt-Tab/overview, battery/timer alerts, a destructive confirmation).
-    // Same non-overridable treatment as overlayScrim itself.
+    // For full-attention blocking surfaces only (screenshot selection,
+    // Alt-Tab/overview, battery/timer alerts, destructive confirmations) —
+    // not overridable, same as overlayScrim.
     readonly property color overlayScrimStrong: _color(Colors.overlayScrimStrong)
 
     // --- Accent and semantic state ------------------------------------------
@@ -78,8 +51,8 @@ Singleton {
     readonly property color accentText: {
         var explicit = _tok("accent-fg", null)
         if (explicit !== null) return _color(explicit)
-        // Auto-flip when the accent is overridden but its text colour is
-        // not: a user-picked light accent needs dark text, and vice versa.
+        // Auto-flip when accent is overridden but its text colour is not:
+        // a user-picked light accent needs dark text, and vice versa.
         if (ThemeOverrides.value("accent") !== null) return _bestText(root.accent)
         return _color(Colors.accentFg)
     }
@@ -92,33 +65,25 @@ Singleton {
     readonly property color info: _color(_tok("info", Colors.info))
     readonly property color infoText: _color(Colors.infoFg)
 
-    // --- phiOS style grammar (OOP-02) -------------------------------------
-    // "main"     = bg-0: a warm near-black on the dark variant, a warm
-    //              near-white on the light one.
-    // "opposite" = fg-0: its inverse.
-    // These two carry the whole shell. accent is fine detail only — titles,
-    // the keyboard focus ring, the Φ agent processing state — never a
-    // generic selected/active fill. Selection is a full inversion between
-    // main and opposite.
+    // --- phiOS style grammar -------------------------------------------
+    // "main" (bg-0) and "opposite" (fg-0, its inverse) carry the whole
+    // shell. accent is fine detail only — titles, the focus ring, the Φ
+    // agent processing state — never a generic selected/active fill.
+    // Selection is a full inversion between main and opposite.
     readonly property color colorMain: root.background
     readonly property color colorOpposite: root.textPrimary
 
-    // Panels: main background, opposite border (borderWidthStrong, 2px),
-    // text in the opposite colour.
+    // Panels: main background, opposite border (borderWidthStrong), text
+    // in the opposite colour.
     readonly property color panelBackground: root.colorMain
     readonly property color panelBorder: root.colorOpposite
     readonly property color panelText: root.colorOpposite
 
-    // Status bar (OOP-21): the bar has no fill of its own — not the
-    // window (always transparent), and no longer the isles either (item
-    // 10). A bar button is just an opposite-coloured glyph/label sitting
-    // on the wallpaper; only its selected state paints a full block
-    // (opposite bg, main text — the same inversion a selected panel row
-    // uses). Item 6: the bar's colours were the inverse of a panel's;
-    // they now match. See Widgets/WidgetStates.js surfaceColors(), ambient
-    // "isle".
-    // Text placed directly on the bar (the centre isle's active-window
-    // title) — the opposite colour, readable on the wallpaper.
+    // The bar has no fill of its own (window stays transparent, isles
+    // don't paint one either). A bar button is an opposite-coloured
+    // glyph/label sitting on the wallpaper; only its selected state
+    // paints a full block (opposite bg, main text — the same inversion a
+    // selected panel row uses). See Widgets/WidgetStates.js surfaceColors().
     readonly property color barText: root.colorOpposite
 
     // Selection / active item: a block of the opposite colour, text flips
@@ -129,21 +94,13 @@ Singleton {
     // The one control state that still shows accent — a ring, not a fill.
     readonly property color focusRing: root.accent
 
-    // Subtle hover wash, one small step toward the contrast colour, per
-    // ambient surface. Not a design token: a single ratio kept in one
-    // place, the same latitude Widgets/WidgetStates.js takes for
-    // INACTIVE_OPACITY (not a colour, size or duration — the I-05 ban does
-    // not reach a bare mix ratio).
+    // Subtle hover wash, one step toward the contrast colour. A bare mix
+    // ratio, not a design token — same latitude as WidgetStates.js's
+    // INACTIVE_OPACITY.
     readonly property color panelHover: _mix(root.colorMain, root.colorOpposite, 0.08)
-    // features-change (item 3): a bar button now carries a resting surface
-    // of its own — a translucent main-coloured fill and a hairline — so
-    // each control reads as a discrete button on the wallpaper. This
-    // reverses OOP-21's "bare opposite-coloured glyph, boxed only when
-    // selected" rest state, on the user's directive. The selected state is
-    // unchanged (the full opposite/main inversion in
-    // Widgets/WidgetStates.js). Translucent so the wallpaper still shows
-    // through — a bare rgba ratio, the same latitude panelHover takes.
-    // Hover reuses panelHover (one opaque step toward the contrast colour).
+    // A bar button's resting surface: translucent main-coloured fill plus
+    // a hairline border, so the wallpaper still shows through. Hover reuses
+    // panelHover; selected state is the full opposite/main inversion above.
     readonly property color barButtonBackground: Qt.rgba(root.colorMain.r,
         root.colorMain.g, root.colorMain.b, 0.72)
     readonly property color barButtonBorder: Qt.rgba(root.colorOpposite.r,
@@ -167,11 +124,9 @@ Singleton {
     readonly property real fontSize5: _px(Tokens.fontSize5) * root.fontScale
     readonly property real fontSize6: _px(Tokens.fontSize6) * root.fontScale
 
-    // Spacing stays in units of 1ch of fontMono, not px: design/README.md
-    // is explicit that storing px here would silently break the moment
-    // Q-N01 changes the mono family. A caller that needs px measures the
-    // font itself and multiplies. One multiplier, same rationale as
-    // fontScale.
+    // Spacing stays in units of 1ch of fontMono, not px — storing px would
+    // silently break if the mono family ever changes. A caller that needs
+    // px measures the font itself and multiplies.
     readonly property real spaceScale: _scale("space-scale", Tokens.spaceScale)
     readonly property real space1: _ch(Tokens.space1) * root.spaceScale
     readonly property real space2: _ch(Tokens.space2) * root.spaceScale
@@ -189,16 +144,14 @@ Singleton {
     readonly property real borderWidthStrong: _pxOr(Tokens.borderWidthStrong, root.borderWidth)
     readonly property real panelPadding: _pxOr(Tokens.panelPadding, root.radiusBase)
 
-    // features-change: the inset the below-the-bar surfaces (the notification
-    // and chat docks, the bar popouts, the calendar) keep from the bar and
-    // the screen edges, and the corner radius they round at. Both per-user
-    // editable (Theme › Shape & spacing → panel-gap / panel-radius). The
-    // fallbacks cover the hot-reload window before `phi theme set` has
-    // regenerated Tokens.qml with the two new keys.
+    // Inset that below-the-bar surfaces (notification/chat docks, bar
+    // popouts, calendar) keep from the bar and screen edges, and the
+    // corner radius they round at. Both per-user editable (Theme › Shape
+    // & spacing). Fallbacks cover the hot-reload window before `phi theme
+    // set` regenerates Tokens.qml with these keys.
     readonly property real panelGap: _pxOr(_tok("panel-gap", Tokens.panelGap), 4)
     readonly property real panelRadius: _pxOr(_tok("panel-radius", Tokens.panelRadius), 6)
-    // features-change: the visible track height of Widgets/Meter — a thin
-    // rail (references/overlay-reference.png). Not settings-exposed.
+    // Widgets/Meter's visible track height — a thin rail. Not settings-exposed.
     readonly property real sliderThickness: _pxOr(Tokens.sliderThickness, 4)
 
     // --- Layering ------------------------------------------------------
@@ -209,23 +162,15 @@ Singleton {
     readonly property int zTooltip: parseInt(Tokens.zTooltip)
     readonly property int zNotification: parseInt(Tokens.zNotification)
 
-    // --- Motion (master plan §6.5) ------------------------------------------
-    // Easing stays a string for categories A/C/D: mapping "linear"/"ease-out"
-    // onto a QML Easing.Type enum needs the animation type it applies to in
-    // scope, which belongs to the widget that animates, not to this
-    // singleton. Category B is the exception, resolved here rather than in
-    // every widget: S-21's whole widget library animates state transitions
-    // on this one category, always as a ColorAnimation/NumberAnimation
-    // Behavior, so there is exactly one place this string-to-curve mapping
-    // happens instead of one copy per widget.
-    // OOP: settings-overhaul batch E — the durations and the category-B
-    // curve are per-user editable (the animation section of the Theme
-    // panel), merged over the generated token the same way the palette is.
-    // "All major transitions must have mapped variables to be edited": the
-    // four style-plan categories ARE that mapping — every Behavior in this
-    // shell routes its duration/curve through category B, so making B
-    // editable reaches every panel, drawer, workspace and notification
-    // transition at once.
+    // --- Motion ------------------------------------------------------
+    // Easing stays a string for categories A/C/D: mapping "linear"/
+    // "ease-out" onto a QML Easing.Type enum needs the animation type in
+    // scope, which belongs to the animating widget, not this singleton.
+    // Category B is the exception — every widget animates state
+    // transitions on it (ColorAnimation/NumberAnimation Behavior), so it's
+    // resolved once, here. Durations and the category-B curve are
+    // per-user editable (Theme panel's animation section), merged over the
+    // generated token the same way the palette is.
     readonly property int motionAPeriod: _ms(_tok("motion-a-period", Tokens.motionAPeriod))
     readonly property string motionAEasing: Tokens.motionAEasing
     readonly property int motionBDuration: _ms(_tok("motion-b-duration", Tokens.motionBDuration))
@@ -233,9 +178,8 @@ Singleton {
     // Kept for any straggler; new code uses motionBCurve. OutQuad is the
     // enum equivalent of the default bezier below.
     readonly property int motionBEasingType: motionBEasing === "linear" ? Easing.Linear : Easing.OutQuad
-    // The category-B curve as an easing.bezierCurve list: four editable
-    // control points plus the mandatory final (1,1). Default reproduces
-    // Easing.OutQuad, so nothing changes until the user edits it.
+    // Category-B curve as an easing.bezierCurve list: four editable control
+    // points plus the mandatory final (1,1). Default reproduces Easing.OutQuad.
     readonly property var motionBCurve: {
         var raw = _tok("motion-b-bezier", Tokens.motionBBezier)
         var p = String(raw || "").split(",").map(function (s) { return parseFloat(s) })
@@ -247,12 +191,10 @@ Singleton {
     readonly property string motionCEasing: Tokens.motionCEasing
     readonly property int motionDDuration: _ms(_tok("motion-d-duration", Tokens.motionDDuration))
 
-    // --- Wallpaper textures (OOP: settings-overhaul) ----------------------
-    // The catalogue is a design decision (design/tokens.common.sh
-    // PHI_TEXTURE_MODES); the settings panel's wallpaper section reads it
-    // from here rather than hardcoding the list or touching Tokens directly.
-    // Falls back to the known set for the hot-reload window before `phi
-    // theme set` has regenerated Tokens.qml with the new key.
+    // --- Wallpaper textures --------------------------------------------
+    // Catalogue is a design decision (design/tokens.common.sh
+    // PHI_TEXTURE_MODES); falls back to the known set for the hot-reload
+    // window before `phi theme set` regenerates Tokens.qml with this key.
     readonly property var textureModes: {
         var s = String(Tokens.textureModes || "").trim()
         return s.length > 0 ? s.split(/\s+/) : ["grain", "noise", "paper", "leather", "rock", "fabric"]
@@ -263,16 +205,12 @@ Singleton {
     }
 
     // --- helpers ------------------------------------------------------
-    // parseFloat with a fallback. A design-token string always carries its
-    // unit ("14px", "2px") and parseFloat stops at the unit. `_pxOr`'s
-    // fallback guards the transient window after a NEW token is added to
-    // design/tokens.*.sh but before `phi theme set` has regenerated
-    // Config/Tokens.qml on the machine: the read is `undefined`, and
-    // falling back to a value that DOES resolve (another token) is safer
-    // for one hot-reload than NaN propagating through layout math. `_px`
-    // falls back to 0 — a sharp corner / a hairline / no padding, all
-    // harmless for the same one reload, and 0 is the absence of a
-    // dimension, not a design choice the I-05 ban is about.
+    // parseFloat with a fallback. A token string always carries its unit
+    // ("14px") and parseFloat stops there. `_pxOr`'s fallback covers the
+    // transient window after a token is added to design/tokens.*.sh but
+    // before `phi theme set` has regenerated Config/Tokens.qml — the read
+    // is `undefined`, and falling back to a value that DOES resolve is
+    // safer for one hot-reload than NaN propagating through layout math.
     function _pxOr(value, fallback) {
         var n = parseFloat(value)
         return isNaN(n) ? fallback : n
@@ -284,8 +222,7 @@ Singleton {
         return isNaN(n) ? 0 : n
     }
 
-    // A scale multiplier: identity by default, never a "size" in the I-05
-    // sense — a dimensionless factor, same latitude as INACTIVE_OPACITY.
+    // A scale multiplier: identity by default, dimensionless.
     function _scale(key, tokenValue) {
         var raw = root._tok(key, (tokenValue === undefined || tokenValue === null || String(tokenValue).length === 0) ? "1" : tokenValue)
         var n = parseFloat(raw)
@@ -305,13 +242,10 @@ Singleton {
                        a.b + (b.b - a.b) * t, a.a + (b.a - a.a) * t)
     }
 
-    // OOP-08: the settings panel's editable Theme section reads and writes
-    // token overrides through Config/ThemeOverrides.qml, but it needs the
-    // generated DEFAULT for each key (to seed a field, and to restore on
-    // reset). Config/Tokens.qml / Config/Colors.qml are this file's to read,
-    // not the settings panel's (S-20 contract) — so the mapping lives here.
-    // Interface rework: the colour cases below now read Colors.X, not
-    // Tokens.X — see this file's header.
+    // Config/Tokens.qml and Config/Colors.qml are private to this file —
+    // the settings panel gets a key's generated default through here
+    // instead of reading them directly (to seed a field, and to restore
+    // on reset).
     function tokenDefault(key) {
         switch (key) {
         case "accent": return Colors.accent
@@ -363,11 +297,10 @@ Singleton {
         return lum > 0.5 ? root.colorMain : root.colorOpposite
     }
 
-    // Tokens store an 8-digit colour as #rrggbbaa (CSS order, see
-    // design/tokens.dark.sh's own note on PHI_OVERLAY_SCRIM), not Qt's
-    // #aarrggbb — parsed by hand so a scrim's alpha byte never lands in the
-    // wrong place. 6-digit values pass through with alpha 1. A malformed or
-    // still-undefined value yields transparent rather than throwing.
+    // Tokens store an 8-digit colour as #rrggbbaa (CSS order), not Qt's
+    // #aarrggbb — parsed by hand so a scrim's alpha byte never lands in
+    // the wrong place. 6-digit values pass through with alpha 1; a
+    // malformed or undefined value yields transparent.
     function _color(hex) {
         if (hex === undefined || hex === null) return Qt.rgba(0, 0, 0, 0)
         var h = String(hex).replace("#", "")

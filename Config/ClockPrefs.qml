@@ -3,22 +3,15 @@ import QtQml
 import Quickshell
 import Quickshell.Io
 
-// phiOS — Config/ClockPrefs (docs/TODO.md: "add settings for the status bar
-// time in the settings panel. Allow to set the format with day/number/
-// year/second etc."). The bar clock's display format — same mechanism and
-// reasoning as Config/LockPrefs: a single flat JSON object at
-// Paths.clockPrefsFile ($XDG_STATE_HOME/phi/clock.json), read once on load,
-// rewritten whole on change — deliberately NOT `phi state` (its key set is
-// closed, phi/internal/state/state.go, and this needs no `phi` rebuild) and
-// NOT the repository (runtime UI state, not configuration).
+// The bar clock's display format. Same mechanism as Config/LockPrefs: one
+// flat JSON object at Paths.clockPrefsFile, read once on load, rewritten
+// whole on change — not `phi state` (closed scalar-key set) and not the
+// repository (runtime UI state, not configuration).
 //
-// `dateStyle` is one of: "off" | "short" | "long". "short" adds the day
-// number and month ("13/09"); "long" adds the weekday name too, plus the
-// year ("Sat, 13 Sep 2026") — covering "day/number/year" from the TODO's
-// own list. `hour12`/`showSeconds` cover "second etc." and the 12/24-hour
-// choice. Defaults match what the bar has always shown: 24-hour, no
-// seconds, no date — this feature only adds an opt-in, it changes nothing
-// for a user who never opens the setting.
+// `dateStyle` is "off" | "short" | "long": "short" adds day + month
+// ("13/09"); "long" adds the weekday name and year too ("Sat, 13 Sep
+// 2026"). Defaults (24-hour, no seconds, no date) match what the bar
+// showed before this setting existed, so it's opt-in only.
 
 Singleton {
     id: root

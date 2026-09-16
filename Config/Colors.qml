@@ -3,54 +3,28 @@ import QtQml
 import Quickshell
 import Quickshell.Io
 
-// phiOS — Config/Colors (interface rework, rework.md's "auto" theme option:
-// "the 'phi theme set' command must be reworked not to close the active
-// quickshell session"). Companion to Config/Tokens.qml, split out of it at
-// the phios-dotfiles side (design/adapters.txt, Config/Colors.json.tmpl) —
-// see that template's own header for the full mechanism. Short version:
+// Companion to Config/Tokens.qml, holding only what differs by theme
+// variant. Config/Tokens.qml is `pragma Singleton`; rewriting a singleton's
+// own QML source file forces Quickshell to fully re-evaluate it, destroying
+// every binding and any in-flight state — so a theme-variant switch used to
+// reset the whole shell when colour lived there too.
 //
-// Config/Tokens.qml is `pragma Singleton`. Rewriting a singleton's own QML
-// SOURCE FILE forces Quickshell to fully re-evaluate it — destroying every
-// binding and any in-flight panel/session state that depended on it —
-// instead of a scoped hot-reload. That forced re-evaluation, on the file
-// that used to hold both structural tokens AND colour, was the actual cause
-// of a theme-variant switch resetting the shell out from under the user.
+// This file is also `pragma Singleton`, but its own source never changes.
+// What changes on a variant switch is Config/Colors.json, a plain generated
+// file read here via FileView with `watchChanges: true`. Rewriting that
+// JSON only updates the FileView's tracked content — a normal scoped
+// reactive update — so every existing binding (via Config/Appearance.qml)
+// just re-evaluates against the new values, and any `Behavior on color`
+// already on a widget crossfades the change for free.
 //
-// This file is ALSO `pragma Singleton`, but its own source never changes —
-// that is the entire point. What changes on a variant switch is
-// Config/Colors.json, a plain generated JSON file (not a QML singleton's
-// source), read here via FileView with `watchChanges: true`. Rewriting that
-// JSON only updates a FileView's tracked content, a normal scoped reactive
-// update: onLoaded re-parses it and assigns the plain (non-readonly)
-// properties below in place. Existing bindings elsewhere in the shell that
-// read Config.Appearance's colour properties (which in turn read this file,
-// see Config/Appearance.qml's migration) just re-evaluate against the new
-// values — no singleton re-instantiation, no lost state. Every `Behavior on
-// color` already in this shell's widgets (Widgets/Panel.qml etc.) then
-// crossfades the change for free, since it is just an ordinary bound
-// property changing, not a hot-reloaded type.
+// Properties are plain, not readonly, because onLoaded reassigns them on
+// every `phi theme set` while this process keeps running. Seeded here with
+// the dark variant's real values so the very first paint — before
+// Colors.json has ever been read — still renders real colours instead of
+// transparent.
 //
-// Properties are plain, NOT readonly — onLoaded has to be able to update
-// them after the first load (every subsequent `phi theme set` while this
-// process is still running), and `readonly property` can only be assigned
-// once. Seeded here with the dark variant's own real values (matching
-// docs/tokens-example.md) so the very first paint, before Colors.json has
-// ever been read (a fresh clone, or the FileView's one async load window),
-// still renders real colours instead of transparent everywhere — the same
-// concern Config/Appearance.qml's own `_pxOr` fallbacks already guard for
-// structural tokens.
-//
-// Same FileView + Qt.resolvedUrl("./…") + onLoaded/JSON.parse shape as
-// Bar/Bar.qml's own `registryFile` (modules-top.json/modules-bottom.json) —
-// the one difference is `watchChanges: true`: this is the first file in
-// this repo that is rewritten by an EXTERNAL process (`phi theme set`)
-// while phi-shell keeps running, so it is the first FileView here that
-// actually needs to react to an on-disk change instead of just loading
-// once at startup.
-//
-// S-20 AGENT contract carries over unchanged from Tokens.qml: only
-// Config/Appearance.qml reads this file directly; everything else reads
-// Appearance.
+// Only Config/Appearance.qml reads this file directly; everything else
+// reads Appearance.
 
 Singleton {
     id: root
@@ -83,7 +57,7 @@ Singleton {
     property string info: "#7f95ab"
     property string infoFg: "#1a1918"
 
-    // --- Syntax (Tier 3, unexposed by Appearance — see its own header) --
+    // --- Syntax (Tier 3, unexposed by Appearance) -----------------------
     property string syntax1: "#d3a0ac"
     property string syntax2: "#8fa77e"
     property string syntax3: "#c0a874"
@@ -118,20 +92,8 @@ Singleton {
         id: colorsFile
         path: Qt.resolvedUrl("./Colors.json")
         watchChanges: true
-        // rework-status-bar.md Style item 5 ("shells don't change until
-        // hyprland is reloaded completely"): root-caused live, by actually
-        // running this exact Quickshell build (`qs -p` against a throwaway
-        // test file, watchChanges: true) and rewriting the watched file
-        // in-place mid-run. Confirmed: `watchChanges: true` alone only
-        // fires the `fileChanged` signal — it does NOT re-read the file or
-        // re-emit `loaded` by itself, so `text()`/`onLoaded` kept serving
-        // the stale content that was current at process start, forever,
-        // exactly matching the reported symptom (only a full `qs`
-        // restart — which `hyprctl reload`'s own Hyprland-autostart path
-        // causes — ever picked up a new variant). `FileView.reload()` (a
-        // real method, confirmed in quickshell-io.qmltypes and exercised
-        // live) forces the re-read and DOES re-emit `loaded` with the new
-        // content, confirmed in the same test.
+        // watchChanges alone only fires fileChanged — it does not re-read
+        // the file or re-emit `loaded`. reload() forces that.
         onFileChanged: colorsFile.reload()
         onLoaded: {
             try {
@@ -193,19 +155,9 @@ Singleton {
                 console.warn("phi-shell: " + colorsFile.path + " failed to parse, keeping previous colours: " + e)
             }
         }
-        // Named `err`, not `error` (ThemeOverrides.qml's own onLoadFailed
-        // uses `error`) — this singleton has a real `error` colour
-        // property of its own, and qmllint's cross-file member resolution
-        // for `Colors.error` (Config/Appearance.qml) got confused by a
-        // same-named local parameter shadowing it in this exact scope, even
-        // though the two never actually interact. Avoided rather than
-        // relied upon.
+        // Named `err`, not `error` — this singleton has its own `error`
+        // colour property, and a same-named parameter here shadows it.
         onLoadFailed: function(err) {
-            // FileNotFound before the first `phi theme set` has ever run on
-            // this machine (or on a fresh clone before Config/Colors.json
-            // exists) — root keeps its built-in dark-variant defaults above,
-            // same fallback posture Config/Appearance.qml's own `_pxOr`
-            // takes for structural tokens.
             console.warn("phi-shell: Config/Colors.json not found — run `phi theme set <variant>` once. Using built-in defaults.")
         }
     }
