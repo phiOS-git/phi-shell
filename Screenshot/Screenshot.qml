@@ -361,9 +361,9 @@ PanelWindow {
     // pixel geometry at all (confirmed against the real header at S-33/
     // S-35's own research — only address/title/workspace/monitor), so
     // there is nothing there to route through; a raw `hyprctl -j` call,
-    // parsed for exactly the two fields this needs, is the same shape
-    // Bar/modules/Gpu.qml and others already use for a one-off external
-    // read that isn't a standing service.
+    // parsed for exactly the two fields this needs, is the same
+    // one-off-external-read shape other files in this repo already use
+    // for something that isn't a standing service.
     property Component windowQueryComponent: Component {
         Process {
             id: windowQueryProc

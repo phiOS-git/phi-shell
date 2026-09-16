@@ -70,7 +70,7 @@ Singleton {
     // already documents this for wifi/ethernet) but listed here anyway so
     // they inherit sane positioning if a later phase reconnects one.
     readonly property var _bottomKeys: ["volume", "brightness", "network", "wifi",
-        "ethernet", "bluetooth", "battery", "stats", "gpu", "microphone", "camera"]
+        "ethernet", "bluetooth", "battery", "stats", "microphone", "camera"]
     function opensFromBottom(key) { return root._bottomKeys.indexOf(key) !== -1 }
 
     function toggle(key, x, edge) {
@@ -100,7 +100,6 @@ Singleton {
         case "ethernet": return "Ethernet"
         case "bluetooth": return "Bluetooth"
         case "battery": return "Battery"
-        case "gpu": return "GPU"
         case "power": return "Power"
         case "timer": return "Timers & Alarms"
         case "stopwatch": return "Stopwatch"

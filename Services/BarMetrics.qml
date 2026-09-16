@@ -36,7 +36,7 @@ Singleton {
     // exactly this ("if a later phase needs the bottom bar's own height
     // too ... BarMetrics gets a second property then"). Needed now because
     // most of Panels/BarPopout.qml's keys (volume, brightness, network,
-    // bluetooth, battery, stats, gpu) open from a BOTTOM-bar icon as of
+    // bluetooth, battery, stats) open from a BOTTOM-bar icon as of
     // Bar/modules-bottom.json (Phase 2), so the popout has to sit ABOVE the
     // bottom bar for those, not below the top one.
     property real reportedBottom: 0

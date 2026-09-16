@@ -11,7 +11,7 @@ import "../glyphs.js" as Glyphs
 // controls, system toggles and the tiling-mode grid). Top-bar right isle.
 //
 // Icon-only bar module — same "icon + click opens a BarPopout key, no
-// local content" shape as Bar/modules/Gpu.qml/Battery.qml/this phase's own
+// local content" shape as Bar/modules/Battery.qml/this phase's own
 // Stats.qml. The overlay's real content is a later phase's job — Panels/
 // BarPopout.qml is untouched by this phase.
 //
