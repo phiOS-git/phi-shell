@@ -56,7 +56,20 @@ Item {
                 width: parent.width
                 height: root._rowH
                 radius: Config.Appearance.radiusBase
-                color: Config.Appearance.panelHover
+                // rework-status-bar.md Style item 9a: "while scanning the
+                // list appears as an empty area, that should not happen"
+                // — root cause: `panelHover` is an 8%-mix wash meant for a
+                // hover cue on top of a `colorMain` surface, not a
+                // standalone placeholder; against a card already sitting
+                // on `surface1`/`surface2` (every list this widget is
+                // used from — Wi-Fi, Bluetooth, Updates — lives inside one
+                // of this shell's own cards) that 8% mix reads as
+                // essentially invisible, which IS "an empty area" even
+                // though real placeholder rows are there. `surface2`, the
+                // same clearly-visible recessed-but-present shade
+                // Settings/sections/SettingsGroup.qml already uses for an
+                // identical "must stand out from its own card" need.
+                color: Config.Appearance.surface2
 
                 SequentialAnimation on opacity {
                     loops: Animation.Infinite
