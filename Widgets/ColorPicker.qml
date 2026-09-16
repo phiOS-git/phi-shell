@@ -2,20 +2,18 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/ColorPicker (Out-of-plan: settings-overhaul batch A). An
-// HSV picker as a plain QtQuick Item: a saturation/value square, a hue
+// An HSV picker as a plain QtQuick Item: a saturation/value square, a hue
 // strip, a hex field and a preview swatch. Pure QtQuick — no
-// Qt5Compat.GraphicalEffects, no shader (the effects/CDN surface is exactly
-// what Quickshell 0.3.x stability notes warn against). Every gradient is a
-// plain `Gradient`; the colour maths goes through Qt's own `color` type
+// Qt5Compat.GraphicalEffects, no shader. Every gradient is a plain
+// `Gradient`; the colour maths goes through Qt's own `color` type
 // (`Qt.hsva`, `.hsvHue/.hsvSaturation/.hsvValue`), not a hand-rolled
 // conversion.
 //
 // Not a floating Popover: the settings content pane is a clipped Flickable,
 // so a floating child would be cut off. ColorField embeds this inline and
-// grows the row; KeyboardMap (batch G) shows it in a small fixed panel.
-// Controlled: seed with setColor(hex); `picked(color)` fires live during a
-// drag, `committed(hex)` fires on drag release or Enter in the hex field.
+// grows the row. Controlled: seed with setColor(hex); `picked(color)`
+// fires live during a drag, `committed(hex)` fires on drag release or
+// Enter in the hex field.
 
 Item {
     id: root
@@ -66,10 +64,9 @@ Item {
         hexField.text = root.hex()
     }
 
-    // Style pass 2026-09-15: the SV box and hue strip below were drag-only
-    // — same gap Widgets/Meter.qml (fixed earlier this pass) and
-    // Widgets/BezierEditor.qml (fixed alongside this) both had. Each arrow
-    // press is one atomic commit, same shape as those two fixes.
+    // The SV box and hue strip below are drag AND keyboard driven — each
+    // arrow press is one atomic commit, same shape as Widgets/Meter.qml's
+    // keyboard nudge.
     property real keyStep: 0.02
     function _nudgeSV(dSat, dVal) {
         root._sat = Math.max(0, Math.min(1, root._sat + dSat))
@@ -152,8 +149,6 @@ Item {
             MouseArea {
                 anchors.fill: parent
                 preventStealing: true
-                // Style pass 2026-09-14: same cursor-affordance gap as
-                // every other drag surface found this pass.
                 cursorShape: Qt.CrossCursor
                 function apply(m) {
                     root._sat = Math.max(0, Math.min(1, m.x / svBox.width))
