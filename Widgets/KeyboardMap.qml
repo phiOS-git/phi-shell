@@ -1,8 +1,7 @@
 import QtQuick
 import qs.Config as Config
 
-// phiOS — Widgets/KeyboardMap (Out-of-plan: settings-overhaul batch G). The
-// per-key editor surface for Chroma's advanced mode: a plain rows×cols grid
+// The per-key editor surface for Chroma's advanced mode: a plain rows×cols grid
 // of cells, one per addressable matrix position, each showing its override
 // colour (or the unset neutral). Clicking a cell selects it and emits
 // keyPicked — Settings/sections/Devices.qml opens a Widgets/ColorPicker

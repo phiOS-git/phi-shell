@@ -2,33 +2,22 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/EthernetIcon (docs/TODO.md: "network informations should
-// not be exclusive to wifi, but for ethernet as well ... a specific icon
-// (with states and animations as usual) for ethernet connection"). Same
-// dumb/reusable Canvas-icon family as WifiIcon/SunMoonIcon/VolumeIcon/
+// Same dumb/reusable Canvas-icon family as WifiIcon/SunMoonIcon/VolumeIcon/
 // BatteryIcon — Bar/modules/Ethernet.qml owns the Services/EthernetBridge.qml
 // reads.
 //
-// Hand-drawn, not a font-symbol lookup (rule: never guess an unverified
-// Nerd Font codepoint — this project has shipped wrong guessed codepoints
-// twice before, docs/TODO.md's own SUPER+L power-menu entry is a third
-// live example of the same trap). WifiIcon.qml already establishes the
-// precedent this file copies: a simple, widely-recognisable silhouette
-// (there, the three-arc "wifi fan") is safer hand-drawn than guessed from
-// a font this project cannot render to check. Here: a plain RJ45 plug
-// silhouette — a body, a retention clip on top, four contact pins on the
-// bottom — using only rectangles, so there is no curve-fitting to get
-// subtly wrong.
+// Hand-drawn, not a font-symbol lookup — this project never guesses an
+// unverified Nerd Font codepoint, having shipped a wrong one before. A
+// plain RJ45 plug silhouette — a body, a retention clip on top, four
+// contact pins on the bottom — using only rectangles, so there is no
+// curve-fitting to get subtly wrong.
 //
 // Only a connect/disconnect fade (`connectAmount`, category B, Behavior-
-// wrapped by the caller exactly like WifiIcon's own), no separate
-// "searching" pulse: unlike Wi-Fi, Quickshell's NetworkDevice does not
-// give this project a confirmed, meaningfully-different transitional
-// state for a wired link worth animating (WifiBridge.qml's own
-// `ConnectionState.Connecting` comment is Wi-Fi-scoped; nothing here
-// claims that same transitional read applies to a wired NIC's DHCP
-// negotiation without evidence) — a plain resting-opacity fade is the
-// honest amount of animation to build on what is actually known.
+// wrapped by the caller like WifiIcon's own), no separate "searching"
+// pulse: unlike Wi-Fi, Quickshell's NetworkDevice gives no confirmed,
+// meaningfully-different transitional state for a wired link worth
+// animating — a plain resting-opacity fade is the honest amount of
+// animation to build on what is actually known.
 
 Item {
     id: root
@@ -64,13 +53,9 @@ Item {
             ctx.fillStyle = c
             ctx.globalAlpha = root._restingOpacity
 
-            // Plug body. docs/TODO.md (2026-09-14): the icon read as
-            // vertically off-centre in the bar — the silhouette (clip top at
-            // 0.06·b to pin bottom at 0.70·b, 0.64·b tall) sat inside the
-            // full 1.0·b box with only 0.06·b of margin above and 0.30·b
-            // below. bodyY shifted down by 0.12·b so the same silhouette is
-            // centred (0.18·b margin on both sides); every other proportion
-            // (body/clip/pin sizes) is unchanged.
+            // Plug body. bodyY is offset so the silhouette (clip top to pin
+            // bottom) sits centred in the box rather than crowded toward
+            // the top.
             const bodyX = 0.28 * b
             const bodyY = 0.28 * b
             const bodyW = 0.44 * b
