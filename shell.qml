@@ -174,7 +174,7 @@ ShellRoot {
     // Cursor Spotlight
     Variants {
         model: Quickshell.screens
-        SpotlightSurface.Spotlight {
+        Tools.Spotlight {
             required property ShellScreen modelData
             screen: modelData
         }
