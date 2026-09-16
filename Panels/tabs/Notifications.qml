@@ -2,6 +2,7 @@ import QtQuick
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
+import "../../Bar/glyphs.js" as Glyphs
 
 // phiOS — Panels/tabs/Notifications.qml (S-31; OOP-06 restyle; SF-4; BF-2;
 // interface rework Phase 3). Embedded directly as Panels/
@@ -168,6 +169,40 @@ Item {
             shown: root.revealShown
             width: flick.width
             spacing: root.blockGap
+
+            // User bug report, 2026-09-16: "add title 'Notifications' to
+            // the notifications overlay (with the settings button)" — this
+            // overlay never had its own header row at all (it used to be
+            // a Panels/Sidebar.qml TAB, whose own dock chrome supplied the
+            // "Notifications" label; Interface rework Phase 3 promoted it
+            // to an independent overlay with no replacement header). Same
+            // header shape every other overlay's shared card title uses
+            // (Panels/BarPopout.qml's own cardBody: a `kind: "title"` label
+            // left, an icon-button settings deep-link right, space-
+            // between) — `Services.SettingsPanel.reveal("notifications")`
+            // is the real section id (Settings/sections.json), not a
+            // guessed string.
+            Item {
+                width: parent.width
+                implicitHeight: Math.max(notifTitle.implicitHeight, notifSettingsBtn.implicitHeight)
+
+                Widgets.StyledText {
+                    id: notifTitle
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    kind: "title"
+                    sizeStep: 2
+                    text: "Notifications"
+                }
+                Widgets.IconButton {
+                    id: notifSettingsBtn
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    glyph: Glyphs.settings
+                    onActivated: Services.SettingsPanel.reveal("notifications")
+                }
+            }
+            Widgets.Separator { width: parent.width; strong: true }
 
             Widgets.ToggleRow {
                 width: parent.width

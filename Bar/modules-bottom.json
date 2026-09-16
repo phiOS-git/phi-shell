@@ -9,6 +9,5 @@
     { "type": "bluetooth", "island": "right", "position": 40, "source": "internal:bluez", "capability": "bluetooth" },
     { "type": "battery", "island": "right", "position": 50, "source": "internal:upower", "capability": "battery" },
     { "type": "separator", "island": "right", "position": 55, "source": "internal:separator", "capability": "" },
-    { "type": "stats", "island": "right", "position": 60, "source": "internal:stats", "capability": "" },
-    { "type": "gpu", "island": "right", "position": 65, "source": "internal:nvidia-smi", "capability": "nvidiaGpu" }
+    { "type": "stats", "island": "right", "position": 60, "source": "internal:stats", "capability": "" }
 ]

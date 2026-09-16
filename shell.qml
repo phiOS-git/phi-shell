@@ -128,7 +128,7 @@ ShellRoot {
 
     // OOP-11: the small placeholder panel that drops below the bar when a
     // right-isle indicator is clicked (volume, brightness, network, wifi,
-    // bluetooth, battery, gpu). Services/BarPopout owns which key.
+    // bluetooth, battery). Services/BarPopout owns which key.
     Panels.BarPopout {
         screen: Quickshell.screens[0]
     }
