@@ -158,6 +158,24 @@ PanelWindow {
                     for (let i = 0; i < arr.length; i++) {
                         const c = arr[i]
                         if (!c || !c.workspace || c.workspace.id < 0) continue
+                        // rework-issues.md "New requests" item 15c:
+                        // "the currently selected window ... should have
+                        // a clear selected state, currently they all
+                        // look the same." Root cause, confirmed live via
+                        // `hyprctl clients -j`: THIS SHELL'S OWN process
+                        // shows up in the list as a plain toplevel,
+                        // `class: "org.quickshell"`, Hyprland having
+                        // assigned it to a real workspace — not a test
+                        // artifact, a real client Hyprland tracks like
+                        // any other window. Alt+Tab's "select the window
+                        // after the currently active one" landed on this
+                        // phantom entry, which the grid never renders as
+                        // a box (its own workspace has no window boxes
+                        // worth showing it next to), so the true
+                        // selection pointed at nothing on screen — every
+                        // visible box read "not selected" forever, not a
+                        // rendering bug in the box itself.
+                        if (c.class === "org.quickshell") continue
                         out.push({
                             address: c.address,
                             title: (c.title && c.title.length > 0) ? c.title : (c.class || "window"),
@@ -415,8 +433,16 @@ PanelWindow {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
-    readonly property real cellW: chWidth * 22
-    readonly property real cellH: chWidth * 9
+    // rework-issues.md "New requests" item 15b: "the entries should be
+    // larger windows with padding, a shade background." The shade
+    // background already comes from Widgets.Panel's own default
+    // rendering (box below); bumped from 22x9ch to 28x12ch here, and the
+    // box itself now overrides Panel's base padding with a more generous
+    // explicit one (see `box.padding` below) rather than the plain 8px
+    // panelPadding default every other Panel in this shell uses for a
+    // much smaller control.
+    readonly property real cellW: chWidth * 28
+    readonly property real cellH: chWidth * 12
     readonly property real cellGap: chWidth * Config.Appearance.space2
 
     // Item 8: the same modal backdrop the notification panel / chat /
@@ -480,6 +506,7 @@ PanelWindow {
                         required property var modelData
                         width: root.cellW
                         height: root.cellH
+                        padding: root.chWidth * Config.Appearance.space3
                         active: box.modelData.address === root.selectedAddress
                         // Style pass 2026-09-14: every clickable
                         // window box had no hover feedback or
@@ -595,11 +622,20 @@ PanelWindow {
                 Widgets.Segment {
                     id: wsPill
                     required property var modelData
-                    // Same grammar as the bar's own workspace buttons
-                    // (OOP-21): a bare digit on the dim, a filled block for
-                    // the current one — this is the same control in two
-                    // places, it should not look like two different things.
-                    ambient: "isle"
+                    // rework-issues.md "New requests" item 15d: "the
+                    // workspace count on the bottom ... the active one in
+                    // the cycle should have a selected state, identical
+                    // to the workspace list in the status bar." This
+                    // file's own OLD comment already claimed that parity
+                    // ("this is the same control in two places, it
+                    // should not look like two different things") but
+                    // used `ambient: "isle"` — the plain bar-BUTTON
+                    // recipe — while Bar/modules/Workspaces.qml's real
+                    // pills use `ambient: "workspace"` plus a width boost
+                    // on the active one. Matched for real now, not just
+                    // in the comment.
+                    ambient: "workspace"
+                    widthBoost: wsPill.active ? root.chWidth * Config.Appearance.space2 : 0
                     squared: true
                     visible: wsPill.modelData.id > 0
                     label: wsPill.modelData.name.length > 0
