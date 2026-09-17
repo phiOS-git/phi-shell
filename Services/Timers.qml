@@ -4,37 +4,22 @@ import Quickshell
 import Quickshell.Io
 import qs.Config as Config
 
-// phiOS — Services/Timers. docs/TODO.md: "add a timer and alarm feature to
-// phi, also add tools to the runner to quicky setup timers and alarms.
-// They should have a custom overlay that requires to be turned off, on the
-// higher Z index in the system. It should have a ringtone. The two
-// features must be customisable in the settings."
-//
-// "to phi" read as "to the phi system", not literally a new `internal/cli`
-// verb: a timer/alarm can only actually fire from something that keeps
-// running, and phi itself is a fresh, one-shot process on every invocation
-// (phi/CLAUDE.md: "phi query on every keystroke... no heavyweight init") —
-// exactly the reasoning ADR 021 already gives for reboot/shutdown/volume/
-// brightness/screenshot never becoming phi verbs (internal/query/system.go's
-// own header). phi-shell is the one thing in this system that runs for the
-// whole session, so it owns timer/alarm state and firing here; `phi` itself
-// only gains a runner PROVIDER (internal/query/timer.go) that hands the
-// shell a plain `qs ipc call timer ...` command to run — the same shape
-// SystemActionsProvider already uses for its own shell-owned actions, and
-// still a real, literal change "to phi" (internal/query is compiled into
-// the phi binary). Flagged for cheap veto if a standalone `phi timer`
-// terminal verb was actually wanted instead.
+// Timer and alarm state and firing live here, not in `phi` itself: a
+// timer/alarm can only fire from something that keeps running, and `phi`
+// is a fresh, one-shot process on every invocation. `phi` only gains a
+// runner provider (internal/query/timer.go) that hands the shell a plain
+// `qs ipc call timer ...` command to run, the same shape
+// SystemActionsProvider already uses for its own shell-owned actions.
 //
 // Timers (relative, "5 minutes from now") and alarms (absolute wall-clock
 // time, optionally repeating on specific weekdays) share one `items` list
-// and one firing/ringtone/overlay mechanism — the TODO itself treats them
-// as "the two features" with one shared overlay and one shared ringtone,
-// not two independent subsystems.
+// and one firing/ringtone/overlay mechanism rather than two independent
+// subsystems.
 //
 // Persisted as one JSON object at Config.Paths.timersFile — a collection
 // plus its own small ringtone-prefs object, same combined shape
-// Services/Chroma.qml already uses for chroma.json. Not `phi state` (S-13's
-// closed scalar-key set has no room for an open-ended list of items).
+// Services/Chroma.qml uses for chroma.json. Not `phi state` (its closed
+// scalar-key set has no room for an open-ended list of items).
 
 Singleton {
     id: root
@@ -45,14 +30,10 @@ Singleton {
     // repeatDays is always empty — it never reschedules).
     property var items: []
 
-    // Ringtone. Defaults to "message" — not a name invented for this
-    // feature: Services/Notifications.qml already ships that exact name as
-    // its own default, so it is known-present on any host this integration
-    // already works on, unlike a semantically-nicer-sounding name this repo
-    // has never actually confirmed exists in the freedesktop sound theme
-    // (Bar/glyphs.js's own history is the standing lesson against shipping
-    // an unverified name and finding out silently wrong later — doubly bad
-    // here, since a silent alarm is the worst failure this feature could have).
+    // Ringtone. Defaults to "message", the same default
+    // Services/Notifications.qml already ships and confirmed present —
+    // not a nicer-sounding but unverified name, since a silent alarm is
+    // the worst failure this feature could have.
     property string soundName: "message"
     property int soundVolume: 100
     property string soundError: ""

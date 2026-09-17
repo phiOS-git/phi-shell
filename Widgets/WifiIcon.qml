@@ -2,24 +2,21 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/WifiIcon (docs/TODO.md, status-bar rework: "wifi
-// strenght/activation/searching"). Same dumb/reusable Canvas-icon family
-// as SunMoonIcon/VolumeIcon/BatteryIcon — Bar/modules/Wifi.qml owns the
-// Services/WifiBridge.qml reads.
+// Same dumb/reusable Canvas-icon family as SunMoonIcon/VolumeIcon/
+// BatteryIcon — Bar/modules/Wifi.qml owns the Services/WifiBridge.qml
+// reads.
 //
 // No signal-STRENGTH gauge here, deliberately: Quickshell's Network API
 // (this project's pinned v0.3.1) exposes no signal-strength property
-// anywhere (checked network.hpp/device.hpp directly, not assumed) — a
-// fabricated fluctuating strength bar would be decoration with no real
-// data behind it, which is a worse kind of "cheap" than not building it.
-// What IS real and shown here: `connectAmount` (0..1 — connected vs not,
+// anywhere — a fabricated fluctuating strength bar would be decoration
+// with no real data behind it, which is worse than not building it. What
+// IS real and shown here: `connectAmount` (0..1 — connected vs not,
 // Behavior-wrapped by the caller, category B) drives the base opacity of
 // the classic three-arc "wifi fan" silhouette, and `connecting` (a plain
-// bool — real ConnectionState.Connecting device state, WifiBridge.qml's
-// own comment) drives a continuous breathing pulse ON TOP of that while
-// active, motion category A (the same "continuous and light... a linear
-// loop reads as a pulse" reasoning Widgets/BatteryIcon.qml's charging
-// bolt already uses for the same category).
+// bool — the real ConnectionState.Connecting device state) drives a
+// continuous breathing pulse ON TOP of that while active, motion category
+// A — the same reasoning Widgets/BatteryIcon.qml's charging bolt uses for
+// the same category.
 
 Item {
     id: root

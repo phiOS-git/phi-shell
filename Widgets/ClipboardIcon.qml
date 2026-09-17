@@ -2,24 +2,15 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/ClipboardIcon (docs/TODO.md, status-bar rework follow-up:
-// the user's "all other icons" directive, applied to Bar/modules/
-// Clipboard.qml). Same dumb/reusable icon family as the rest of
-// Widgets/*Icon — Bar/modules/Clipboard.qml owns the Services/Clipboard.qml
-// reads.
+// Same dumb/reusable icon family as the rest of Widgets/*Icon —
+// Bar/modules/Clipboard.qml owns the Services/Clipboard.qml reads and calls
+// `arrived()` for the short scale pop on a new entry, same technique as
+// NotificationBellIcon's `dndPop` / NetworkIcon's `pop`.
 //
-// Bar/modules/Clipboard.qml already had a real, working "new entry"
-// signal — a `tone: "info"` pulse via Segment's own colour Behavior, added
-// earlier this session. That stays (it is not broken, nothing here
-// replaces it); what this file adds is the SHAPE-level motion the rest of
-// this rework's icons all got and the clipboard glyph did not yet: a
-// short scale pop on arrival, same technique as NotificationBellIcon's
-// `dndPop` / NetworkIcon's `pop` — call `arrived()` once per new entry.
-//
-// Kept as a real font-symbol glyph (not hand-drawn): a clipboard is a
-// simple rectangle in principle, but matching Bar/glyphs.js's own glyph
-// pixel-for-pixel by hand is unnecessary risk for a shape this generic —
-// same judgment BluetoothIcon documents for its own glyph.
+// Kept as a real font-symbol glyph rather than hand-drawn: matching
+// Bar/glyphs.js's own glyph pixel-for-pixel by hand is unnecessary risk
+// for a shape this generic — same judgment BluetoothIcon makes for its own
+// glyph.
 
 Item {
     id: root

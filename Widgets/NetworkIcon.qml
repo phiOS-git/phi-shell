@@ -2,11 +2,8 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/NetworkIcon (docs/TODO.md, status-bar rework follow-up:
-// the user's "all other icons" directive, applied to Bar/modules/Network.qml
-// — the Tailscale/VPN "on/off" glyph that used to be a static `glyph:`
-// swap between Glyphs.vpn and Glyphs.vpnOff). Same dumb/reusable icon
-// family as the rest of Widgets/*Icon — Bar/modules/Network.qml owns the
+// The Tailscale/VPN "on/off" glyph. Same dumb/reusable icon family as the
+// rest of Widgets/*Icon — Bar/modules/Network.qml owns the
 // Services.Tailscale/Services.Vpn reads.
 //
 // Same technique as Widgets/NotificationBellIcon's bell/bell-off: two
@@ -37,11 +34,9 @@ Item {
     height: implicitHeight
 
     // Not `onGlyphText`/`offGlyphText`: a property name starting with "on"
-    // followed by an uppercase letter is exactly QML's signal-handler
-    // naming convention (`onFooChanged`) — a real property named that way
-    // still works, but it is the same class of naming footgun already
-    // caught twice this session (underscore-prefixed properties needing
-    // their own `onXChanged`), not worth risking a third time.
+    // followed by an uppercase letter collides with QML's signal-handler
+    // naming convention (`onFooChanged`) — it still works, but it's a
+    // needless footgun.
     property string glyphActive: ""
     property string glyphInactive: ""
 
@@ -80,9 +75,9 @@ Item {
     // Triggered by an exposed function, called once by the caller's own
     // discrete `onAnyActiveChanged` — NOT by `onActiveAmountChanged` here:
     // activeAmount arrives wrapped in the caller's category-B Behavior,
-    // which reassigns it on every animation frame of its ~120ms ramp (see
-    // NotificationBellIcon.dndToggled's identical note — same bug class,
-    // same fix).
+    // which reassigns it on every animation frame of its ramp, so binding
+    // to its changed signal would restart the pop dozens of times per
+    // transition instead of once.
     function toggled() { pop.restart() }
     SequentialAnimation {
         id: pop

@@ -4,21 +4,17 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Bar/modules/Volume.qml (S-23; OOP-11 restyle R2). Icon + value:
-// a speaker icon and the percentage (or "mute"). A click opens the shared
-// bar popout (Services/BarPopout.qml), which owns the real mixer control
-// (a draggable Widgets.Meter) and mute toggle — this bar segment is just
-// the readout.
+// Icon + value: a speaker icon and the percentage (or "mute"). A click
+// opens the shared bar popout, which owns the real mixer control (a
+// draggable Widgets.Meter) and mute toggle — this bar segment is just the
+// readout.
 //
-// docs/TODO.md (status-bar rework): the glyph is replaced by
-// Widgets/VolumeIcon via Segment's `iconDelegate` — sound-wave arcs whose
-// extent tracks volume level continuously, and a mute slash that fades in
-// rather than snapping in. Both animated properties (`level`,
-// `mutedAmount`) go through their own category-B Behavior here, same
-// imperative-not-binding contract Bar/modules/Brightness.qml documents in
-// full for `dayness` (a plain `property real: expr` binding is NOT
-// reliably intercepted by a Behavior on re-evaluation — only an
-// imperative assignment is).
+// The glyph is Widgets/VolumeIcon — sound-wave arcs whose extent tracks
+// volume level continuously, and a mute slash that fades in rather than
+// snapping in. Both animated properties (`level`, `mutedAmount`) are set
+// imperatively (Connections, not a binding) — see Bar/modules/
+// Brightness.qml's own header for why a plain binding isn't reliably
+// intercepted by a Behavior.
 
 Widgets.Segment {
     id: root
@@ -30,11 +26,9 @@ Widgets.Segment {
     readonly property bool muted: Services.AudioBridge.muted
     readonly property int percent: Math.round(Services.AudioBridge.volume * 100)
 
-    // Interface rework Phase 2 (rework.md, "Features to be removed": "no
-    // icon has text next to it anymore"): the "50%"/"mute" text label is
-    // gone — VolumeIcon's own `level`/`mutedAmount` fill+slash already
-    // carry both states visually (and the real percentage is still a click
-    // away, in the BarPopout card).
+    // VolumeIcon's own `level`/`mutedAmount` fill+slash already carry
+    // both states visually (and the real percentage is still a click
+    // away, in the bar popout card), so no text label.
     label: ""
     tone: root.muted ? "warn" : ""
     active: Services.BarPopout.which === "volume"

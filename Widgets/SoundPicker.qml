@@ -2,20 +2,13 @@ import QtQuick
 import Quickshell.Io
 import qs.Config as Config
 
-// phiOS — Widgets/SoundPicker (style pass, 2026-09-14). docs/TODO.md:
-// "options inputs in settings like 'ringtone' are text field rather then
-// real selection elements." Two settings groups (Settings/sections/
-// Notifications.qml's own "Sound & testing" and "Timers & alarms") each
-// asked the user to type a freedesktop sound NAME from memory into a bare
-// TextField — real names exist and are enumerable
-// (/usr/share/sounds/freedesktop/stereo/*.oga, the one path both groups'
-// own captions already document), so there is no reason to make the user
-// recall or mistype one. This lists what is actually installed as a row of
-// selectable chips; tapping one both selects it AND plays it once, so
-// picking is also previewing. `committed(name)` fires on selection, the
-// same controlled-component shape every other picker in this library uses
-// (Toggle, ColorField, …) — the caller still owns the real value and its
-// own persistence.
+// Lists installed freedesktop sound names (/usr/share/sounds/freedesktop/
+// stereo/*.oga) as a row of selectable chips, rather than asking the user
+// to type a name from memory into a bare TextField. Tapping one both
+// selects it AND plays it once, so picking is also previewing.
+// `committed(name)` fires on selection, the same controlled-component shape
+// every other picker in this library uses (Toggle, ColorField, …) — the
+// caller still owns the real value and its own persistence.
 //
 // The freedesktop set is a real package (sound-theme-freedesktop) that may
 // not be installed — an empty scan just means an empty chip row, not an

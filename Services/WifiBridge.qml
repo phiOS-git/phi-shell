@@ -4,18 +4,13 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Networking
 
-// phiOS — thin wrapper over Quickshell.Networking (S-23, master plan §8.4:
-// razer's "wifi (icona stato, SSID a richiesta)"). The one file outside
-// Config/ sanctioned to touch this service surface (phi-shell/CLAUDE.md).
+// Thin wrapper over Quickshell.Networking — the one file outside Config/
+// allowed to touch this service surface.
 //
-// Real Quickshell source (git.outfoxxed.me/quickshell/quickshell,
-// src/network/{qml,network,device,wifi}.hpp), not assumed: `Networking` is
-// the NetworkManager-backed singleton, `Networking.devices` an
-// ObjectModel<NetworkDevice> with a `type` of Wifi or Wired
-// (DeviceType::Enum, enums.hpp). This wraps NOT "the network module" —
-// that is Tailscale, a separate CLI-driven concept entirely — but
-// specifically the local Wi-Fi radio, which only razer's laptop profile
-// declares (networkmanager, S-23's own packages.txt addition).
+// `Networking` is the NetworkManager-backed singleton, `Networking.devices`
+// an ObjectModel<NetworkDevice> with a `type` of Wifi or Wired. This wraps
+// NOT "the network module" (that's Tailscale, a separate CLI-driven
+// concept) but specifically the local Wi-Fi radio.
 //
 // A NetworkDevice's own `networks` model holds every network it has seen;
 // the connected one (if any) is found by its `connected` flag, not
@@ -29,23 +24,16 @@ Singleton {
     readonly property bool present: root.device !== null
     readonly property bool connected: root.present && root.device.connected
     readonly property string ssid: _connectedSsid()
-    // docs/TODO.md: "wifi ... searching" (status-bar rework, animated
-    // icon). `NetworkDevice.state` (ConnectionState enum, real Quickshell
-    // source — src/network/enums.hpp at this project's pinned v0.3.1)
-    // carries a genuine Connecting value distinct from Connected/
-    // Disconnected; this is real device state, not a fabricated
+    // `NetworkDevice.state` carries a real Connecting value distinct from
+    // Connected/Disconnected — genuine device state, not a fabricated
     // "searching" flag. Signal STRENGTH is not exposed anywhere in this
-    // Quickshell version's Network API (checked network.hpp and
-    // device.hpp directly) — Bar/modules/Wifi.qml's icon deliberately
-    // does not attempt to show a strength gauge it has no real data for.
+    // Quickshell version's Network API, so Bar/modules/Wifi.qml's icon
+    // deliberately doesn't attempt a strength gauge it has no data for.
     readonly property bool connecting: root.present && root.device.state === ConnectionState.Connecting
 
-    // Interface rework Phase 3 (network overlay, rework.md: "If in wifi a
-    // wifi switch"). No Quickshell.Networking property exposes the radio
-    // on/off state directly (this file's own header already established
-    // that signal strength is likewise absent) — `nmcli radio wifi` is the
-    // real, documented NetworkManager CLI query for exactly this (the
-    // `nmcli` binary is already a hard dependency of this file's own
+    // No Quickshell.Networking property exposes the radio on/off state
+    // directly — `nmcli radio wifi` is the documented NetworkManager CLI
+    // query for it (nmcli is already a hard dependency of this file's own
     // scan/connect calls below), polled the same lightweight way
     // Services/Tailscale.qml polls its own state.
     property bool radioEnabled: true
@@ -93,37 +81,27 @@ Singleton {
         return ""
     }
 
-    // --- available-network scan + connect (docs/TODO.md: "clicking on
-    // the wifi icon should show the list of available wifi to connect")
-    // --------------------------------------------------------------------
-    // Confirmed above (network.hpp): a Network exposes name/device/
-    // connected/known/state only — no signal strength, no security type.
-    // `nmcli`, NetworkManager's own CLI, is the only source for either —
+    // --- available-network scan + connect ---------------------------------
+    // A Network exposes name/device/connected/known/state only — no signal
+    // strength, no security type. `nmcli` is the only source for either —
     // the same tool the pre-existing "Manage networks…" button already
-    // shells out to via `nmtui` (same package, already a dependency).
+    // shells out to via `nmtui`.
     //
-    // Terse mode (`-t`) with `-e yes` (the default, made explicit) escapes
-    // literal `:` and `\` inside a field with a backslash (nmcli(1), the
-    // `-e`/`--escape` option) — `_splitTerseLine()` undoes that rather
-    // than a naive `.split(":")`, since an SSID can itself contain a colon.
+    // Terse mode (`-t -e yes`) escapes literal `:` and `\` inside a field
+    // with a backslash — `_splitTerseLine()` undoes that rather than a
+    // naive `.split(":")`, since an SSID can itself contain a colon.
     //
-    // Deliberately NO way to connect to a new SECURED network from here —
-    // `nmcli device wifi connect <ssid> password <pw>` puts the password
-    // on the process argv, world-readable via /proc/<pid>/cmdline to any
-    // local user for the life of the call. Real nmcli source checked
-    // (2026-09-14) for an argv-free path: `--ask` is documented as
-    // interactive-only ("do not use this option for non-interactive
-    // purposes like scripts" — nmcli(1)) and reads the actual controlling
-    // tty, not a redirected stdin; the one real argv-free mechanism,
-    // `passwd-file`, only works with `nmcli connection up`, which first
-    // needs a `connection add` carrying the RIGHT `wifi-sec.*` field names
-    // for whichever security type the network uses (WPA-PSK, WPA3-SAE,
-    // WEP each differ) — not something verifiable without real hardware.
-    // Connecting to an already-known or open network needs no secret at
-    // all, so that path is safe and fully built below; a new secured
-    // network still routes to the existing "Manage networks…" → `nmtui`
-    // button, which already has a real, working password prompt. See
-    // docs/TODO.md for the re-added, narrower follow-up entry.
+    // SECURITY: deliberately no way to connect to a new secured network
+    // from here. `nmcli device wifi connect <ssid> password <pw>` puts the
+    // password on the process argv, world-readable via /proc/<pid>/cmdline
+    // to any local user for the life of the call. nmcli's only argv-free
+    // mechanism (`passwd-file`) needs `nmcli connection up`, which first
+    // needs a `connection add` carrying the right `wifi-sec.*` fields for
+    // whichever security type the network uses — not safely buildable
+    // without hardware to verify against. Connecting to an already-known
+    // or open network needs no secret, so that path is safe and built
+    // below; a new secured network still routes to "Manage networks…" →
+    // `nmtui`, which already has a real password prompt.
     property var scannedNetworks: [] // [{ssid, signal, secured, known, connected}, ...], connected-first then by signal
     property bool scanning: false
     property bool busy: false

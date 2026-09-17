@@ -3,19 +3,16 @@ import QtQml
 import Quickshell
 import Quickshell.Io
 
-// phiOS — capability detection (master plan §5.2.4, ADR 074): "does a
-// battery device exist", never "is this razer". Shells out to
-// bin/phios-capabilities (phios-dotfiles, S-04), which probes /sys and
-// /proc directly and never consults the hostname or the assigned profiles.
-// This file's whole job is exposing that same output as QML properties —
-// a module in the bar or a tab in the sidebar reads a Capabilities.*
-// property and appears only where it is true, exactly ADR 074's rule; it
-// never asks "am I a laptop".
+// Capability detection: "does a battery device exist", never "is this
+// razer". Shells out to bin/phios-capabilities (phios-dotfiles), which
+// probes /sys and /proc directly rather than trusting the hostname or
+// assigned profile. A bar module or settings section reads a
+// Capabilities.* property and appears only where it's true — it never
+// checks which machine it's running on.
 //
-// phios-dotfiles is not guaranteed to be on PATH, so the probe resolves it
-// the same way the `phi` binary does (internal/tokens.Root(), S-12):
-// $PHI_DOTFILES if set, else ~/phios-dotfiles, falling back to a bare PATH
-// lookup for anyone who did put it there.
+// phios-dotfiles isn't guaranteed to be on PATH, so the probe resolves it
+// the same way the `phi` binary does: $PHI_DOTFILES if set, else
+// ~/phios-dotfiles, falling back to a bare PATH lookup.
 
 Singleton {
     id: root
@@ -31,14 +28,12 @@ Singleton {
     readonly property bool bluetooth: capRaw.bluetooth
     readonly property bool multiMonitor: capRaw.multiMonitor
 
-    // Derived, not a raw probe field (S-23): PHI_CAP_GPU_VENDOR is a
-    // comma-separated list (bin/phios-capabilities' own doc comment — a
-    // hybrid-graphics host could report "nvidia,intel"), so this checks
-    // membership, not equality. Named for the vendor, not "discreteGpu":
-    // the bar's GPU anomaly-carrier module (S-23) monitors via nvidia-smi
-    // specifically, so the real capability question is "can this host run
-    // nvidia-smi", not "does a discrete GPU exist in general" — an AMD
-    // card would need its own tool and its own capability name later.
+    // Derived, not a raw probe field: PHI_CAP_GPU_VENDOR is a comma-
+    // separated list (a hybrid-graphics host can report "nvidia,intel"),
+    // so this checks membership, not equality. Named for the vendor
+    // rather than "discreteGpu" because the bar's GPU module monitors
+    // specifically via nvidia-smi — an AMD card would need its own tool
+    // and its own capability name.
     readonly property bool nvidiaGpu: capRaw.gpuVendor.split(",").includes("nvidia")
 
     property var capRaw: ({
@@ -55,22 +50,9 @@ Singleton {
 
     Process {
         id: probe
-        // A real run on razer proved this exact command, and the
-        // environment it runs in, both correct: full, correctly-formed
-        // output every time, $HOME included. The debug-fallback echoes
-        // that earlier lived here were built on that wrong hypothesis and
-        // are gone; $PHI_DOTFILES/~/phios-dotfiles resolution is the only
-        // thing this command does.
-        //
-        // running=false in onExited: the most severe instance of a bug
-        // found and fixed across this whole repo during S-36's audit —
-        // Process.onFinished() (io/process.cpp) calls
-        // startProcessIfReady() unconditionally on exit, so without this,
-        // `probe`, left with running still true after its first
-        // completion, has been respawning itself in a tight, uninterrupted
-        // loop from the moment the shell starts, on every session since
-        // this file was written at S-20 — the most foundational and
-        // longest-running instance of this class of bug in the codebase.
+        // Process.onFinished() restarts the process automatically if
+        // `running` is still true — without this, probe would respawn in
+        // a tight, uninterrupted loop from the moment the shell starts.
         onExited: probe.running = false
         command: ["sh", "-c",
             "\"${PHI_DOTFILES:-$HOME/phios-dotfiles}/bin/phios-capabilities\" 2>/dev/null || phios-capabilities 2>/dev/null"]
@@ -100,16 +82,6 @@ Singleton {
                     case "PHI_CAP_MULTI_MONITOR": next.multiMonitor = value === "true"; break
                     }
                 }
-                // Logging next.gpuVendor here, not a read of the derived
-                // Capabilities.gpuVendor property from an onCapRawChanged
-                // handler: the parsing above was verified correct off-
-                // machine against the exact bytes a real run captured, but
-                // an earlier version of this file logged the derived
-                // property from onCapRawChanged and printed the stale
-                // default even once this parse had the right answer —
-                // some indirection through capRaw's own change signal, not
-                // a parsing bug. Logging the freshly-parsed value directly
-                // has no such indirection to go wrong.
                 console.log("phi-shell: capabilities refreshed, gpu=" + next.gpuVendor)
                 root.capRaw = next
             }

@@ -5,45 +5,26 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../glyphs.js" as Glyphs
 
-// phiOS — Bar/modules/NetworkStatus.qml (interface rework Phase 2,
-// consolidating Bar/modules/{Network,Wifi,Ethernet}.qml into the single bar
-// element rework.md's own bar spec asks for ("network icon: will show an
-// icon for either wifi, ethernet, missing. ... a VPN icon if active,
-// tailscale icon if connected") — the same consolidation docs/TODO.md's
-// "Older" bug list already describes in more detail: "tailscale/vpn and
-// network overlay and status bar icon should be merged into a single
-// element ... type of connection (LAN/WIFI), its status (enabled, disabled,
-// wifi intensity, and an X on the LAN/WIFI icon if connected but without
-// internet), and a VPN icon if active, tailscale icon if connected." Bottom-
-// bar right isle.
+// Bottom-bar right isle: a single consolidated network icon covering
+// wifi, ethernet, VPN and Tailscale, rather than a separate module per
+// connection type.
 //
-// Connection-type policy (a judgment call, rework.md does not state an
-// order): ethernet wins over Wi-Fi whenever a wired NIC exists AT ALL
-// (present, not necessarily connected) — a desktop with both reads its
-// wired port as "the real connection"; Wi-Fi's own on/searching/off states
-// only apply when there is no wired NIC at all (a laptop with Wi-Fi only),
-// or on a host that happens to have neither.
+// Connection-type policy: ethernet wins over Wi-Fi whenever a wired NIC
+// exists at all (present, not necessarily connected) — a desktop with
+// both reads its wired port as "the real connection"; Wi-Fi's own on/
+// searching/off states only apply when there is no wired NIC.
 //
-// NOT built — no real data source anywhere in this codebase, same "will
-// not fabricate it" rule Widgets/WifiIcon.qml's own header already
-// documents for signal strength:
+// NOT built — no real data source anywhere in this codebase:
 //   - a genuine "connected but no internet" reachability check (X-overlay)
 //   - a genuine Wi-Fi-radio-disabled vs. simply-disconnected distinction
 //     (Services/WifiBridge.qml exposes `present`/`connected`/`connecting`
 //     only, no radio-enabled flag)
 // Both fall back to the same plain "off" reading (the resting, low-opacity
-// Wi-Fi fan) rather than a fabricated distinct icon state. Flagged for a
-// later phase if a real signal for either becomes available.
+// Wi-Fi fan) rather than a fabricated distinct icon state.
 //
-// Reuses the shared "network" BarPopout key (Services/BarPopout.qml)
-// rather than inventing a new one — Panels/BarPopout.qml's existing
-// "network" section already exists (Tailscale-only content today) and a
-// later phase expands it into the fuller merged overlay both rework.md and
-// the docs/TODO.md entry above describe. The "wifi"/"ethernet" BarPopout
-// keys and Bar/modules/{Network,Wifi,Ethernet}.qml themselves are left
-// untouched (not deleted — see this phase's own report for why), but
-// neither new bar registry opens them any more: only "network" is
-// reachable from a bar icon as of this phase.
+// Reuses the shared "network" bar-popout key rather than inventing a new
+// one. The "wifi"/"ethernet" popout keys and Bar/modules/{Network,Wifi,
+// Ethernet}.qml are left untouched but no longer reachable from a bar icon.
 
 Widgets.Segment {
     id: root
@@ -102,13 +83,7 @@ Widgets.Segment {
     Component.onCompleted: root._sync()
 
     iconDelegate: Component {
-        // rework-status-bar.md Style item 8: "the network element in the
-        // status bar has multiple icons overlapping (wifi/ethernet,
-        // tailscale, etc). They should be well positioned" — the VPN/
-        // Tailscale badge used to anchor to this Item's own bottom-right
-        // CORNER while the main wifi/ethernet glyph, centred in that SAME
-        // box, already filled nearly all of it: the two painted on top of
-        // each other. `pivot` now reserves real, permanent room for the
+        // `pivot` reserves real, permanent room for the VPN/Tailscale
         // badge beside the main glyph (always, whether or not a tunnel is
         // currently up) instead of stacking both into one shared box — a
         // fixed reservation, not conditional on `tunnelAmount`, so the
@@ -119,13 +94,11 @@ Widgets.Segment {
             implicitWidth: ethIcon.implicitWidth + badgeIcon.implicitWidth + pivot._badgeGap
             implicitHeight: Math.max(ethIcon.implicitHeight, badgeIcon.implicitHeight)
 
-            // Primary glyph: the hand-drawn ethernet plug (Widgets/
-            // EthernetIcon, matching that widget's own no-guessed-codepoint
-            // rule) when a wired NIC exists at all; otherwise the Wi-Fi fan
-            // (Widgets/WifiIcon, its own connecting-pulse included) — off
-            // and no-radio both read through that same fan at low resting
-            // opacity, see the file header's "NOT built" note on why there
-            // is no separate disabled-vs-off glyph.
+            // Primary glyph: the ethernet plug when a wired NIC exists at
+            // all; otherwise the Wi-Fi fan (its own connecting-pulse
+            // included) — off and no-radio both read through that same
+            // fan at low resting opacity, see the file header's "NOT
+            // built" note on why there's no separate disabled-vs-off glyph.
             Widgets.EthernetIcon {
                 id: ethIcon
                 visible: root.usingEthernet
@@ -147,14 +120,10 @@ Widgets.Segment {
             }
 
             // VPN/Tailscale badge — sits in its own reserved slot to the
-            // main glyph's right now, faded in only while a tunnel is up.
-            // One shared glyph for both Tailscale and a plain WireGuard
-            // tunnel (Glyphs.vpn) — rework.md asks for "a VPN icon if
-            // active, tailscale icon if connected" (i.e. two distinct
-            // glyphs); this first pass uses one, flagged here as a
-            // simplification for a later phase to split if it matters
-            // enough to justify a second badge glyph and the extra
-            // precedence logic for "both up at once".
+            // main glyph's right, faded in only while a tunnel is up. One
+            // shared glyph for both Tailscale and a plain WireGuard
+            // tunnel (Glyphs.vpn), a simplification: separate glyphs for
+            // each would need extra precedence logic for "both up at once".
             Widgets.StyledIcon {
                 id: badgeIcon
                 glyph: Glyphs.vpn

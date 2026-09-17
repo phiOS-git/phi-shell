@@ -3,21 +3,18 @@ import QtQml
 import Quickshell
 import qs.Config as Config
 
-// phiOS — Services/Magnifier (OOP-50, revised OOP-58). Owns the screen-
-// magnifier loupe's state: shown, zoom factor and lens size, each
-// persisted through Config/Settings (`phi state`) the same way
+// Owns the screen-magnifier loupe's state: shown, zoom factor and lens
+// size, each persisted through Config/Settings (`phi state`) the same way
 // Services/Spotlight owns its own `size`.
 //
-// The loupe is centred ON the pointer (the user's OOP-58 directive). A
-// centred lens fed a *live* wlr-screencopy stream is self-referential —
-// the capture region under the pointer is the lens's own hole — so
-// Magnifier/Magnifier.qml does not use a live feed: it recaptures a still
-// (ScreencopyView.captureFrame) whenever the pointer settles, with the
-// magnified layer hidden for the grab. See that file's header for the
-// full rationale (and why the earlier OOP-50 offset lens is retired).
-// Glasscope, the reference, is a Hyprland *compositor plugin* — barred by
-// Q-01 / I-01 — and the screen-shader route is a closed finding (Q-F07);
-// the freeze-on-stop still is the best a Quickshell overlay can do.
+// The loupe is centred ON the pointer. A centred lens fed a *live*
+// wlr-screencopy stream is self-referential — the capture region under
+// the pointer is the lens's own hole — so Tools/Magnifier.qml doesn't use
+// a live feed: it recaptures a still (ScreencopyView.captureFrame)
+// whenever the pointer settles, with the magnified layer hidden for the
+// grab. A Hyprland compositor plugin (out of scope here) or a
+// screen-shader route would avoid this; the freeze-on-stop still is the
+// best a Quickshell overlay can do.
 
 Singleton {
     id: root

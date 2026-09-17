@@ -2,17 +2,14 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/StayAwakeIcon. User bug report, 2026-09-16 (rework.md's
-// status overlay: "stay-awake (amphetamine icon with 2 states)"; rework-
-// issues.md item 4b). Same hand-drawn-Canvas convention as every other icon
-// in this directory without reliable font coverage — see TrueToneIcon.qml's
-// identical header for the full "why not a font glyph" reasoning.
+// Same hand-drawn-Canvas convention as every other icon in this directory
+// without reliable font coverage — see TrueToneIcon.qml's header for the
+// full "why not a font glyph" reasoning.
 //
-// Not a literal redraw of the named third-party app's own mark (that is
-// someone else's logo, not a generic symbol this shell can reuse) — an eye
-// is the closest genuinely generic, widely legible stand-in for "this is
-// being kept awake/watched", and morphs cleanly between exactly two states:
-// open (idle inhibitor active) and a closed lid (normal, sleep allowed).
+// Not a literal redraw of any third-party app's own mark — an eye is the
+// closest genuinely generic, widely legible stand-in for "this is being
+// kept awake/watched", and morphs cleanly between exactly two states: open
+// (idle inhibitor active) and a closed lid (normal, sleep allowed).
 
 Item {
     id: root

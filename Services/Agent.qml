@@ -5,28 +5,24 @@ import Quickshell.Io
 import qs.Config as Config
 import qs.Services as Services
 
-// phiOS — Services/Agent (S-75). The ONE identifiable client point for the
-// AI agent panel (ADR 098): every call to the running A1 opencode service
-// goes through this file, and nothing here holds product logic that must
-// survive an engine change — that lives in the §8.2 files on disk, which
-// `phi agent` owns. If opencode is replaced, this file changes and the
-// panel does not.
+// The ONE client point for the AI agent panel: every call to the running
+// A1 opencode service goes through this file, and nothing here holds
+// product logic that must survive an engine change — that lives in the
+// on-disk files `phi agent` owns. If opencode is replaced, this file
+// changes and the panel does not.
 //
-// A1 runs as phi-agent-a1.service on 127.0.0.1:4199 (phios-dotfiles,
-// phi-agent-a1.service's PHI_AGENT_A1_PORT). The containment is per
-// project (§4.3): this service serves exactly one project at a time, and
-// `phi agent project use` restarts it — hence `switching`, which the panel
-// covers with a loading state (§10.1).
+// A1 runs as phi-agent-a1.service on 127.0.0.1:4199. It serves exactly one
+// project at a time, and `phi agent project use` restarts it — hence
+// `switching`, which the panel covers with a loading state.
 //
-// UNVERIFIED, all of it: no compositor here, and opencode's own /event
-// bus-event schema is documented only as "bus events" (server.txt), not a
-// stable contract. The strategy is deliberately defensive: prompt_async
-// fires the turn, the /event stream is used only to (a) notice a pending
-// permission request and (b) know when to re-read, and `GET
-// /session/:id/message` is the source of truth for the transcript. So a
+// opencode's own /event bus-event schema is documented only loosely, not
+// as a stable contract, so the strategy here is deliberately defensive:
+// prompt_async fires the turn, the /event stream is used only to (a)
+// notice a pending permission request and (b) know when to re-read, and
+// `GET /session/:id/message` is the source of truth for the transcript. A
 // wrong guess about an event shape degrades to "the transcript refreshes a
-// beat late", not "the panel is broken". Expect a week of adjustment
-// (§14.1 "assestamento ... nelle prime sessioni").
+// beat late", never to a broken panel. Unverified against a live opencode
+// instance — this environment has no compositor to run one against.
 
 Singleton {
     id: root
@@ -96,35 +92,23 @@ Singleton {
         onExited: (code) => { root.available = (code === 0); root.healthChecked = true; healthProc.running = false }
     }
     function refreshHealth() { if (!healthProc.running) healthProc.running = true }
-    // Style pass: Panels/tabs/agent/Chat.qml's "Recheck" button had a
-    // hardcoded `loading: false` — this is the real signal for it.
+    // The real loading signal for the panel's "Recheck" button.
     readonly property bool checkingHealth: healthProc.running
 
-    // docs/TODO.md: "phi agent should run automatically as the panel is
-    // opened for the first time (or on startup). It should not waste
-    // resources when not used." Lazy, not eager: nothing here starts the
-    // unit at shell startup (Component.onCompleted above only reads
-    // health, never activates) — only actually opening the panel does,
-    // and only when the service isn't already running. This fires on
-    // EVERY open where the service is down, not literally just the
-    // first — which also means it doubles as recovery if the service
-    // ever dies while the panel stays closed, not only a first-run
-    // convenience. Once `available` is true, later opens simply skip
-    // this (no retry loop, no repeated `systemctl start` calls); the
-    // existing "Start service" button in Panels/tabs/agent/Chat.qml stays
-    // as a manual fallback for whatever this doesn't catch.
+    // Lazy, not eager: nothing starts the unit at shell startup
+    // (Component.onCompleted above only reads health, never activates) —
+    // only actually opening the panel does, and only when the service
+    // isn't already running. Fires on every open where the service is
+    // down, not just the first, so it also doubles as recovery if the
+    // service dies while the panel stays closed. Once `available` is
+    // true, later opens skip this — no retry loop, no repeated
+    // `systemctl start` calls.
     //
     // Gated on `healthChecked`, not just `!available`: `available`
-    // defaults to false BEFORE the first health check ever lands, so
+    // defaults to false before the first health check ever lands, so
     // without this gate, a panel opened in the brief window right after
-    // shell startup — before Component.onCompleted's first refreshHealth()
-    // call returns — would read "down" and fire an unnecessary
-    // `systemctl start` against a service that may already be running.
-    // Given docs/TODO.md's own still-open, unexplained "ai agent a1
-    // always fails starting" report (second-start address-in-use
-    // symptom), adding a code path that could issue a redundant start
-    // under a timing condition is worth avoiding even though a systemd
-    // `start` on an already-running unit is normally idempotent.
+    // shell startup would read "down" and fire an unnecessary `systemctl
+    // start` against a service that may already be running.
     Connections {
         target: Services.AgentPanel
         function onShownChanged() {
@@ -184,13 +168,11 @@ Singleton {
         useProc.command = [root.phi, "agent", "project", "use", name]
         useProc.running = true
     }
-    // Critical self-review pass 2026-09-15: before this, "use"-ing a
-    // project from ProjectView.qml was one-way — nothing in the CLI or
-    // the shell could ever clear the marker again, so every future "New
-    // chat" silently kept routing into that project forever even after
-    // the sidebar visually looked like plain, unfiled chat again. `phi
-    // agent project use --none` (added alongside this) is the missing
-    // counterpart; ChatShell.qml's "New chat" button calls this first
+    // The counterpart to useProject(): `phi agent project use --none`
+    // clears the active-project marker again. Without it, "use"-ing a
+    // project was one-way — every future "New chat" would silently keep
+    // routing into that project even after the sidebar looked like plain,
+    // unfiled chat. ChatShell.qml's "New chat" button calls this first
     // whenever a project is currently active.
     function leaveProject() {
         if (useProc.running || root.activeProject.length === 0) return
@@ -221,9 +203,9 @@ Singleton {
                     const arr = JSON.parse(this.text)
                     const out = []
                     for (const s of arr) {
-                        // §10.2 / V-15: the inline wrapper deletes its own
-                        // session, but filter defensively in case one is
-                        // caught mid-flight.
+                        // The inline wrapper deletes its own session, but
+                        // filter defensively in case one is caught
+                        // mid-flight.
                         if (s.title === "inline (ephemeral)") continue
                         out.push({ id: s.id, title: s.title || "(untitled)" })
                     }
@@ -246,13 +228,11 @@ Singleton {
                 } catch (e) {}
             }
         }
-        // Critical self-review pass 2026-09-15: this used to fail
-        // completely silently — no id, no error, nothing. A plain
-        // `newSession()` click just did nothing (mildly confusing); but a
-        // message that was queued behind it (pendingSend, see send() above)
-        // was lost outright with the composer already cleared and the Send
-        // button spinning forever. Surface it the same way a failed
-        // prompt-send already does (root.lastError).
+        // A failed session creation used to fail silently — no id, no
+        // error — and a message queued behind it (pendingSend, see send()
+        // below) was lost outright with the Send button spinning forever.
+        // Surface it the same way a failed prompt-send already does
+        // (root.lastError).
         onExited: (code) => {
             newSessProc.running = false
             if (!newSessProc._gotId && pendingSend.armed) {
@@ -272,34 +252,23 @@ Singleton {
             root.base + "/session"]
         newSessProc.running = true
     }
-    // Critical self-review pass 2026-09-15 (no user report — a raw
-    // opencode-generated default title, "New session - 2026-09-14T15:27:
-    // 36.713Z", showing up verbatim in every session list and the chat
-    // header itself: a millisecond-precision ISO 8601 timestamp is not
-    // something a user should ever have to read). opencode assigns this
-    // default server-side before a real title exists (the first user
-    // message hasn't landed yet, or titling hasn't run) — reformatted
-    // here for DISPLAY only, every call site that shows a session/chat
-    // title routes through this so none of them can show the raw form
-    // while another shows it reformatted. The stored title itself is
-    // untouched; this never writes anything back.
+    // opencode assigns a raw default title server-side before a real one
+    // exists ("New session - 2026-09-14T15:27:36.713Z") — a millisecond-
+    // precision ISO 8601 timestamp nobody should have to read. Reformatted
+    // here for DISPLAY only; every call site that shows a session/chat
+    // title routes through this so none can show the raw form while
+    // another shows it reformatted. The stored title itself is untouched.
     function formatSessionTitle(title) {
         const m = /^New session - (.+)$/.exec(title || "")
         if (!m) return title
         const d = new Date(m[1])
         if (isNaN(d.getTime())) return title
-        // Same 24-hour, no-AM/PM convention Lock/Lock.qml's own clock
-        // already uses, for one shell-wide idea of "how time is written".
+        // Same 24-hour, no-AM/PM convention Lock/Lock.qml's own clock uses.
         return "New chat · " + Qt.formatDateTime(d, "d MMM, hh:mm")
     }
-    // Full chat-panel rework 2026-09-15 (direct instruction: "a full
-    // rework of the chat panel with UX at its core"). Groups a chat's
-    // `Updated` timestamp into the same "Today / Yesterday / Earlier"
-    // buckets every mainstream chat app's own sidebar uses — Panels/tabs/
-    // agent/ChatShell.qml's own recency-grouped list is the one reader,
-    // but it lives here so any future reader groups a timestamp exactly
-    // the same way, the same reasoning formatSessionTitle() above already
-    // follows for "how a chat's time is shown".
+    // Groups a chat's `Updated` timestamp into "Today / Yesterday /
+    // Earlier" buckets for ChatShell.qml's recency-grouped list. Lives
+    // here so any future reader groups a timestamp the same way.
     function relativeDay(updated) {
         const d = new Date(updated || "")
         if (isNaN(d.getTime())) return "Earlier"
@@ -335,11 +304,11 @@ Singleton {
                             out.push({ role: info.role || "assistant", text: text.trim() })
                             continue
                         }
-                        // A turn that failed upstream (provider billing/auth/
-                        // rate-limit rejection, ...) comes back from opencode
-                        // with an empty parts array and info.error populated
-                        // — server.txt. Used to be dropped silently here,
-                        // which made a rejected turn indistinguishable from a
+                        // A turn that failed upstream (provider billing/
+                        // auth/rate-limit rejection, ...) comes back from
+                        // opencode with an empty parts array and info.error
+                        // populated. Used to be dropped silently, which
+                        // made a rejected turn indistinguishable from a
                         // hang; surface it as its own bubble instead.
                         if (info.error) {
                             out.push({ role: "error", text: root._describeOpencodeError(info.error) })
@@ -385,13 +354,11 @@ Singleton {
         if (sendProc.running || text.trim().length === 0) return
         if (root.currentSessionId.length === 0) {
             // Create a session first, then retry once it lands. `processing`
-            // set here too (not just once the prompt itself posts below) —
-            // critical self-review pass 2026-09-15: Panels/tabs/agent/
-            // Chat.qml's doSend() only guards on `agent.processing`, so
-            // without this, hitting Send twice in the brief window before a
-            // just-created session's id lands would silently overwrite
-            // `pendingSend` with the second message, losing the first one
-            // with no error and no trace.
+            // is set here too (not just once the prompt itself posts
+            // below) because Chat.qml's doSend() only guards on
+            // `agent.processing` — without this, hitting Send twice before
+            // a just-created session's id lands would silently overwrite
+            // `pendingSend` with the second message, losing the first.
             if (pendingSend.armed) return
             root.processing = true
             root.newSession()
@@ -459,7 +426,7 @@ Singleton {
         const props = ev.properties || ev
 
         if (type.indexOf("permission") === 0) {
-            // A tool wants approval (§10.1 — nothing runs silently).
+            // A tool wants approval — nothing runs silently.
             const p = props.permission || props
             if (type.indexOf("replied") >= 0 || type.indexOf("responded") >= 0) {
                 root.pendingPermission = null
@@ -510,7 +477,7 @@ Singleton {
                 // Not a TTY, so `phi agent memory list` prints exactly one
                 // proposal file name per line and nothing else — take every
                 // non-empty line verbatim. A name the panel drops is a
-                // memory proposal that silently never gets reviewed (§8.6).
+                // memory proposal that silently never gets reviewed.
                 const out = []
                 for (const raw of this.text.split("\n")) {
                     const line = raw.trim()
@@ -530,8 +497,7 @@ Singleton {
             onStreamFinished: {
                 // `phi agent memory show` prints the current file and the
                 // literal "+"-prefixed lines it would append. Split them so
-                // the panel can render the LITERAL diff (§8.6 — never a
-                // summary).
+                // the panel can render the literal diff, never a summary.
                 const cur = [], add = []
                 let phase = ""
                 for (const raw of this.text.split("\n")) {
@@ -595,8 +561,7 @@ Singleton {
         if (closeProc.running || id.length === 0) return
         // opencode writes the summary; `phi` is asked (via a tiny inline
         // shell pipeline) to file it under archivio/ and then delete the
-        // session. This is milestone-1 territory (§14.1) and is the
-        // weakest-tested path here — see PROGRESS.md S-75.
+        // session. Comparatively undertested against the rest of this file.
         const arch = Quickshell.env("HOME") + "/.local/share/phi-agent/a1/projects/"
             + root.activeProject + "/archivio"
         const script =
@@ -619,23 +584,19 @@ Singleton {
         unitProc.command = ["systemctl", "--user", on ? "start" : "stop", "phi-agent-a1.service"]
         unitProc.running = true
     }
-    // Style pass: Panels/tabs/agent/Chat.qml's "Start service" button had a
-    // hardcoded `loading: false` — this is the real signal for it. Just the
-    // systemctl call itself, not the health re-check its own onExited
-    // chains into (checkingHealth, above) — sharing that flag between the
-    // two buttons would light up "Recheck"'s spinner on a plain Start
-    // click and vice versa, a cross-talk bug worse than the small window
-    // where Start's spinner ends slightly before the panel actually
-    // updates to "online".
+    // The real loading signal for the "Start service" button — just the
+    // systemctl call, not the health re-check its own onExited chains into
+    // (checkingHealth, above). Sharing one flag between the two buttons
+    // would light up "Recheck"'s spinner on a plain Start click and vice
+    // versa.
     readonly property bool activating: unitProc.running
 
     // =====================================================================
-    // phios-agente-delta.md — the four-section panel's data (OOP-27).
-    // Still the ONE client point (ADR 098): every `phi agent` call and every
-    // opencode call is here; product logic lives in the §8.2 files on disk.
+    // The four-section panel's data. Still the one client point: every
+    // `phi agent` call and every opencode call is here.
     // =====================================================================
 
-    // --- structured project metadata (delta D-04) -----------------------
+    // --- structured project metadata --------------------------------
 
     property var projectMeta: ({})   // {title, description, instructions[], default_personality, folders[], pins[]}
     signal projectMetaReady()
@@ -679,9 +640,8 @@ Singleton {
         projFolderProc.running = true
     }
 
-    // Context files: static copies into the project's materiali/ (§8.2 — the
-    // agent never sees the source). The client does the copy (ADR 098 §9.2:
-    // project file management is the client's job).
+    // Context files: static copies into the project's materiali/ — the
+    // agent never sees the source. The client (this file) does the copy.
     property var materials: []
     function _projectDir(name) {
         return Quickshell.env("HOME") + "/.local/share/phi-agent/a1/projects/" + name
@@ -731,7 +691,7 @@ Singleton {
         newProj2Proc.running = true
     }
 
-    // --- personalities: create / edit / delete (delta D-08) ------------
+    // --- personalities: create / edit / delete --------------------------
 
     signal personalityPromptReady(string name, string text)
 
@@ -770,7 +730,7 @@ Singleton {
         persMiscProc.running = true
     }
 
-    // --- transcript mirror + chat list (delta D-05) -------------------
+    // --- transcript mirror + chat list -----------------------------
 
     property var chats: []           // [{id,title,project,pinned,updated}]
     property var pinnedChats: []
@@ -831,7 +791,7 @@ Singleton {
         chatSyncProc.running = true
     }
 
-    // --- history search (delta D-06 / ADR 099) -----------------------
+    // --- history search ---------------------------------------------
 
     property var searchResults: ({ Groups: [] })
     property bool searching: false
@@ -855,7 +815,7 @@ Singleton {
         searchProc.running = true
     }
 
-    // --- A2 coding sessions, from phi-owned metadata (delta D-07) -----
+    // --- A2 coding sessions, from phi-owned metadata -----------------
 
     property var codingSessions: []
     property bool codingSessionsLoading: false
@@ -878,14 +838,9 @@ Singleton {
         sessListProc.running = true
     }
 
-    // 2026-09-14: focusCodingWindow used to run `hyprctl dispatch
-    // focuswindow address:...` as a subprocess — broken on this exact
-    // Hyprland build the same way AltTab.qml's identical old line was
-    // (see its own updated comment): this install's Lua config rejects
-    // the traditional dispatcher-string form entirely. Fixed the same
-    // way — dispatch the Lua-call form directly over Quickshell's own
-    // Hyprland IPC (Services.HyprlandBridge, confirmed live end to end
-    // elsewhere), no subprocess needed for this one at all any more.
+    // Dispatched through Services.HyprlandBridge, not a `hyprctl dispatch`
+    // subprocess — this build's Lua config rejects the traditional
+    // dispatcher-string form (see HyprlandBridge.dispatch()'s own comment).
     function focusCodingWindow(addr) {
         if (!addr) return
         Services.HyprlandBridge.dispatch("hl.dsp.focus({ window = \"address:" + addr + "\" })")
@@ -893,20 +848,13 @@ Singleton {
     Process { id: openSessProc; onExited: { openSessProc.running = false; root.refreshCodingSessions() } }
     function openCodingSessionInTerminal(dir) {
         if (openSessProc.running || !dir) return
-        // A fresh terminal running `phi agent code DIR`. kitty is the shell's
-        // terminal (hyprland.lua starts btop the same way, `--class phios-btop`).
-        //
-        // 2026-09-14: was `hyprctl dispatch exec "kitty ..."` as a
-        // subprocess — same broken traditional-dispatch-string bug as
-        // focusCodingWindow above, but there was never a good reason to
-        // route a plain program launch through Hyprland's dispatch socket
-        // at all: every other launch in this codebase (this file's own
-        // sessListProc just above, PowerActions.qml's suspend/hibernate/
-        // reboot/shutdown, Launcher.qml's "execTerminal" case) spawns
-        // directly via Quickshell's own Process/execDetached, which needs
-        // no Lua-string escaping of the inner `sh -c '...'` at all. Kept
-        // as its own Process (not execDetached) since onExited here also
-        // triggers refreshCodingSessions().
+        // A fresh terminal running `phi agent code DIR`. kitty is the
+        // shell's terminal (hyprland.lua starts btop the same way,
+        // `--class phios-btop`). Spawned directly via Quickshell's own
+        // Process, not routed through Hyprland's dispatch socket — a plain
+        // program launch never needs that. Kept as its own Process (not
+        // execDetached) since onExited here also triggers
+        // refreshCodingSessions().
         openSessProc.command = ["kitty", "--class", "phios-agent-code", "-e", "sh", "-c",
             "phi agent code " + JSON.stringify(dir)]
         openSessProc.running = true
@@ -930,7 +878,7 @@ Singleton {
         codeTxProc.running = true
     }
 
-    // --- multi-level memory proposals (delta D-01) -------------------
+    // --- multi-level memory proposals ---------------------------------
 
     property var proposalsByLevel: ({})   // {"system": [...], "personality:notes": [...], "project:x": [...]}
 

@@ -1,12 +1,9 @@
 import QtQuick
 import qs.Config as Config
 
-// phiOS — Widgets/Popover (S-21). The level-2 disclosure surface of the
-// three-level model (master plan §8.5, style plan §7): a Panel raised to
-// the popover z-layer with its own show/hide fade. The "max 5 info rows +
-// 2 quick actions" cap (§8.5) is enforced where the content is assembled —
-// the Segment type, S-22 — not here: this widget only knows how to be a
-// floating surface, not what a bar module puts inside one.
+// A Panel raised to the popover z-layer with its own show/hide fade. This
+// widget only knows how to be a floating surface — content caps and layout
+// are the caller's concern (Widgets/Segment), not this file's.
 //
 // `shown` deliberately owns `opacity` outright rather than combining with
 // Panel's own state-driven fade: a popover has two different "invisible"

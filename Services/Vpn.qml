@@ -3,15 +3,13 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// phiOS — Services/Vpn (Out-of-plan: settings-overhaul batch F, extended by
-// shell-features). WireGuard tunnel state for the Connectivity settings
-// section and the bar's tailscale+vpn module. CLI-driven, like
-// Services/Tailscale.qml — `phi vpn` (internal/vpn) is the control surface,
-// this file just polls it.
+// WireGuard tunnel state for the Connectivity settings section and the
+// bar's tailscale+vpn module. CLI-driven, like Services/Tailscale.qml —
+// `phi vpn` is the control surface, this file just polls it.
 //
-// ADR 067 analog: `phi vpn status --json` never emits an endpoint or an
-// address, so nothing here can expose one — the tunnel objects carry only
-// name / up / managed / origin / handshake / rx / tx.
+// SECURITY CONTRACT: `phi vpn status --json` never emits an endpoint or
+// an address, so nothing here can expose one — the tunnel objects carry
+// only name / up / managed / origin / handshake / rx / tx.
 //
 // A tunnel shows up here whether its config is in ~/.config/phi/wireguard
 // (managed — import/forget apply), in /etc/wireguard (origin "etc"), or is
@@ -21,9 +19,8 @@ import Quickshell.Io
 //
 // up()/down() shell out to `phi vpn up|down`, which runs `sudo -n
 // wg-quick`. That needs the sudoers drop-in installed; a failure surfaces
-// as `lastError` for the section to show, not a silent no-op — and NOT a
-// GUI polkit prompt (that path, Q-N10, is still open). import()/forget()
-// go through `phi vpn import|forget` and need no privilege.
+// as `lastError`, not a silent no-op and not a GUI polkit prompt.
+// import()/forget() go through `phi vpn import|forget` and need no privilege.
 
 Singleton {
     id: root

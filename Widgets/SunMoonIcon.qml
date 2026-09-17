@@ -2,27 +2,19 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/SunMoonIcon (docs/TODO.md, status-bar rework: "brightness
-// amount (sun/moon icon that fills up, based on either night mode on or
-// not, with an animation from sun to moon)"). The user's own follow-up
-// directive, verbatim: "I don't think crossfade is enough, I want subtle
-// but smooth animations" — this is a genuine eclipse transition, not two
-// glyphs cross-fading. First consumer of Widgets/Segment.qml's
-// `iconDelegate` slot (its own header comment).
+// A sun/moon icon that eclipses between the two states rather than
+// cross-fading — a genuine shape transition, not two glyphs fading into
+// each other. First consumer of Widgets/Segment.qml's `iconDelegate` slot.
 //
-// Second follow-up (same session): the original build only animated the
-// day/night state and left brightness AMOUNT unrepresented — the user
-// caught this ("the icon does not change with brightness change... it
-// should have both the sun/moon transition and fill animation for the
-// brightness level"). `fillLevel` (0..1, brightness percent/100) now
-// drives a genuine liquid-level fill inside the SAME disc, independent of
-// `dayness`: a low-opacity "track" render of the full disc is always
-// visible (so the disc's size/shape reads even near 0% brightness), with
-// a full-opacity fill clipped to the bottom `fillLevel` fraction drawn on
-// top — the classic gauge/thermometer technique, just applied to a
-// circle instead of a bar. Brightness level and day/night state are
-// orthogonal in real life (either can be high or low regardless of the
-// other), so this does not gate the fill by dayness or vice versa.
+// `fillLevel` (0..1, brightness percent/100) drives a genuine liquid-level
+// fill inside the SAME disc, independent of `dayness`: a low-opacity
+// "track" render of the full disc is always visible (so the disc's
+// size/shape reads even near 0% brightness), with a full-opacity fill
+// clipped to the bottom `fillLevel` fraction drawn on top — the classic
+// gauge/thermometer technique, applied to a circle instead of a bar.
+// Brightness level and day/night state are orthogonal in real life (either
+// can be high or low regardless of the other), so this does not gate the
+// fill by dayness or vice versa.
 //
 // Technique: two overlapping circles on a Canvas. A solid "body" disc plus
 // a same-size "shadow" disc painted with `globalCompositeOperation =
@@ -52,33 +44,23 @@ import "WidgetStates.js" as WidgetStates
 // reads Services/ directly. Bar/modules/Brightness.qml owns the
 // Services.NightShift.enabled -> dayness binding and its own Behavior.
 //
-// Motion category: B (state transition — PHI_MOTION_B_DURATION/EASING,
-// design/tokens.common.sh §6.5's four categories are binding). 120ms is
-// short; at that duration the eclipse reads as a fast, clean switch, not
-// a lingering one. That is what category B mandates for a discrete,
-// user-triggered state change (the same category notifications and
-// toasts use) — this file does not invent its own slower duration.
-// Category C is explicitly restricted to exactly two named effects
-// (typing, scramble) and does not fit; category D forbids animation by
-// default and is for passive ambient indicators, not a user-toggled
-// state. If 120ms reads as too quick once seen on real hardware, that is
-// a token change (PHI_MOTION_B_DURATION) or a documented exception for
-// the user to decide, not something to pre-empt here.
+// Motion category: B (a discrete, user-triggered state change, the same
+// category notifications and toasts use) — this widget does not invent its
+// own slower duration. Category C is restricted to exactly two named
+// effects (typing, scramble) and does not fit; category D forbids
+// animation by default and is for passive ambient indicators, not a
+// user-toggled state.
 //
 // Canvas repaint: `dayness` is expected to arrive already wrapped in a
 // `Behavior` by the caller. A Behavior-driven NumberAnimation genuinely
-// re-assigns the underlying property on every animation frame (this is
-// how Qt Quick's own property animation drives visible motion elsewhere
-// in this codebase — a Rectangle's `x` bound to an animated value moves
-// smoothly for exactly this reason), so `onDaynessChanged` below fires,
-// and therefore repaints, every frame of the transition — not just at
-// the two endpoints. That per-frame repaint is what turns this into a
-// real animated sweep instead of a two-frame jump that would look like
-// the crossfade the user explicitly ruled out.
+// re-assigns the underlying property on every animation frame, so
+// `onDaynessChanged` below fires, and therefore repaints, every frame of
+// the transition — not just at the two endpoints. That per-frame repaint
+// is what turns this into a real animated sweep instead of a two-frame
+// jump that would look like a crossfade.
 //
-// UNVERIFIED on real hardware/compositor — flagged for the screenshot
-// pass, same as every custom-drawn surface in this repo (phi-shell/
-// CLAUDE.md: "You cannot run this").
+// UNVERIFIED on real hardware/compositor, like every custom-drawn surface
+// in this repo (phi-shell/CLAUDE.md: "You cannot run this").
 
 Item {
     id: root
@@ -113,40 +95,28 @@ Item {
 
     readonly property real _cx: _boxSize / 2
     readonly property real _cy: _boxSize / 2
-    // Follow-up (user, 2026-09-11): "the moon icon is way too thin and
-    // small" — disc radius up from 0.28 to 0.34·box and ray stroke width
-    // up from 0.06 to 0.08·box. Re-derived the shadow-clearance inequality
-    // below for the new numbers rather than assuming the old constants
-    // still hold — they do, with MORE margin than before (see the comment
-    // on `_shadowOffsetX`), so that formula itself is unchanged.
     readonly property real _r: _boxSize * 0.34         // body disc radius
     readonly property real _rShadow: _r * 1.05         // shadow disc radius — slightly larger for a clean crescent edge, no thin-ring artifact
     readonly property real _rayGap: _boxSize * 0.05    // gap between disc edge and ray start
     readonly property real _rayLen: _boxSize * 0.17    // full ray length at dayness=1
     readonly property real _rayWidth: Math.max(1, _boxSize * 0.08)
-    // Linear in dayness. The two ends are picked so the shadow disc
-    // clears the OUTERMOST thing drawn at each end, not just the body
-    // disc — checked by hand, not assumed: at dayness=1 the rays reach
-    // out to R + rayGap + rayLen = 0.34+0.05+0.17 = 0.56·box = 1.647R
-    // from centre (down from 1.786R before the size increase — the disc
-    // grew more than the rays did), so the shadow's NEAR edge
-    // (shadowOffsetX - rShadow) needs to clear 1.647R for the rays to
-    // render whole, not just the 1.0R the disc alone would need — 2.9R
-    // still gives that (near edge at 2.9R - 1.05R = 1.85R, now clearing
-    // by 0.203R, MORE margin than the 0.064R this formula had at the old
-    // proportions), so the constants themselves did not need to change.
-    // At dayness=0 the offset is 0.55R, same as before: heavy overlap, a
-    // crescent left on the far side.
+    // Linear in dayness. The two ends are picked so the shadow disc clears
+    // the OUTERMOST thing drawn at each end, not just the body disc: at
+    // dayness=1 the rays reach out to R + rayGap + rayLen = 1.647R from
+    // centre, so the shadow's NEAR edge (shadowOffsetX - rShadow) needs to
+    // clear 1.647R for the rays to render whole, not just the 1.0R the
+    // disc alone would need — 2.9R gives that, with margin to spare. At
+    // dayness=0 the offset is 0.55R: heavy overlap, a crescent left on the
+    // far side.
     readonly property real _shadowOffsetX: _r * (0.55 + 2.35 * root.dayness)
 
     // `_boxSize` derives from `sizeStep` and Config.Appearance's font
     // tokens — the font-size scale never changes after this item is
     // created (only per-user font-scale settings would move it, and
     // nothing here reacts to those live either), so no handler is needed
-    // for it. Not because a theme switch restarts the shell — as of the
-    // interface rework's Colors.json split, it explicitly does not; this
-    // is just font metrics being a separate, structural token family
-    // that a colour-variant switch never touches at all.
+    // for it. A theme variant switch does not restart the shell, but font
+    // metrics are a separate, structural token family a colour-variant
+    // switch never touches.
     onIconColorChanged: canvas.requestPaint()
     onDaynessChanged: canvas.requestPaint()
     onFillLevelChanged: canvas.requestPaint()

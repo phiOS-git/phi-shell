@@ -1,15 +1,12 @@
 .pragma library
 
-// phiOS — Settings/options.js (Out-of-plan: settings-overhaul, batch A).
-//
 // The searchable catalogue of every settings OPTION, one level below
-// Settings/sections.json (which lists the nine SECTIONS). The user's
-// directive for this round: the search must not filter options out, it
-// must HIGHLIGHT matches; Enter selects the top-ranked result; a result
-// can be a whole section or one specific option; and picking an option
-// must select its section, scroll the panel to that option, and pulse it.
-// System overlays reach the same path — `qs ipc call settings reveal
-// <id>` — to jump straight to a control.
+// Settings/sections.json (which lists the SECTIONS). Search HIGHLIGHTS
+// matches rather than filtering options out; Enter selects the
+// top-ranked result; a result can be a whole section or one specific
+// option; picking an option selects its section, scrolls the panel to
+// that option, and pulses it. System overlays reach the same path — `qs
+// ipc call settings reveal <id>` — to jump straight to a control.
 //
 // ID scheme: "<sectionType>.<rest>", dotted. The part before the first "."
 // is always a Settings/sections.json `type`, so the reveal path derives

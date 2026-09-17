@@ -2,22 +2,16 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/TrueToneIcon. User bug report, 2026-09-16 (rework.md's
-// status overlay: "list of toggable icons: ... true tone (with disabled
-// state if not available)"; rework-issues.md item 4b: "the sensor [rows]
-// were never meant as text+switch but as icons"). An earlier pass rendered
-// this entry as the text abbreviation "TT" rather than invent a font glyph
-// — Bar/modules/Microphone.qml's own retired header already recorded two
-// past wrong-PUA-codepoint mistakes — but the user asked again for a real
-// icon, so this follows the same hand-drawn-Canvas convention every other
-// icon without reliable font coverage already uses in this directory
-// (SunMoonIcon, VolumeIcon, WifiIcon, BrightnessIcon, BatteryIcon, GpuIcon)
-// instead of a font glyph.
+// Hand-drawn Canvas rather than a font glyph — a wrong PUA codepoint is a
+// silent, hard-to-spot failure mode font glyphs carry in this directory
+// (see e.g. Bar/modules/Microphone.qml's own history with it), so any icon
+// without reliable font coverage (SunMoonIcon, VolumeIcon, WifiIcon,
+// BrightnessIcon, BatteryIcon, GpuIcon, this one) is drawn instead.
 //
 // A simple aperture/eye motif: an outer ring (the display) and an inner
 // disc (the adaptive colour itself) — hollow when off, filled solid when
-// on. Two states only (rework.md names no third), colour supplied by the
-// caller like every sibling icon here.
+// on. Two states only, colour supplied by the caller like every sibling
+// icon here.
 
 Item {
     id: root

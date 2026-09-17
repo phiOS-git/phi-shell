@@ -4,15 +4,14 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Settings/sections/Connectivity (S-40; Out-of-plan: settings-
-// overhaul batch F). Bluetooth, Wi-Fi (with the flow-style speed graph),
-// WireGuard VPN and Tailscale, each a SettingsGroup so a search or a bar
+// Bluetooth, Wi-Fi (with a live speed graph), WireGuard VPN, Tailscale
+// and the inbound firewall, each a SettingsGroup so a search or a bar
 // overlay's "Show in settings" button lands on the right one.
 //
 // Every reader already exists as a Services/ bridge — this section is a
-// second consumer, never a new probe. ADR 067 is enforced structurally
-// upstream: neither Services.Tailscale nor Services.Vpn exposes an IP, so
-// nothing here can show one.
+// second consumer, never a new probe. The no-address-leak contract is
+// enforced structurally upstream: neither Services.Tailscale nor
+// Services.Vpn exposes an IP, so nothing here can show one.
 
 Column {
     id: root
@@ -102,14 +101,11 @@ Column {
                 text: Services.WifiBridge.connected ? Services.WifiBridge.ssid : "not connected"
             }
         }
-        // docs/TODO.md: "clicking on the wifi icon should show the list
-        // of available wifi to connect. Same in the settings." — the same
-        // Widgets/WifiNetworkList.qml Panels/BarPopout.qml's wifi card
-        // uses. `active: true` is correct here without wiring it to
-        // anything: this whole section only exists while it's the loaded
-        // Settings section (Settings/Settings.qml's Loader destroys/
-        // recreates sections on navigation), so a scan fires exactly once
-        // per visit — see that widget's own header comment.
+        // The same Widgets/WifiNetworkList.qml the bar popout's wifi card
+        // uses. `active: true` is correct without wiring it to anything:
+        // this whole section only exists while it's the loaded Settings
+        // section (Settings.qml's Loader destroys/recreates sections on
+        // navigation), so a scan fires exactly once per visit.
         SettingsRow {
             wide: true
             title: "Available networks"
@@ -159,10 +155,10 @@ Column {
         readonly property bool hasTunnels: Services.Vpn.tunnels.length > 0
         caption: "up/down go through `sudo -n wg-quick` — never an endpoint or address is shown (ADR 067). Needs the sudoers drop-in profiles/desktop/system/etc/sudoers.d/49-phi-vpn installed (see profiles/desktop/manual.txt)."
 
-        // The controls stay VISIBLE and DISABLED when there is nothing yet,
-        // rather than the section collapsing to a single line of prose
-        // (user directive). A tunnel appears here once its .conf is in
-        // ~/.config/phi/wireguard OR /etc/wireguard, OR it is simply up.
+        // The controls stay VISIBLE and DISABLED when there is nothing
+        // yet, rather than the section collapsing to a single line of
+        // prose. A tunnel appears here once its .conf is in
+        // ~/.config/phi/wireguard OR /etc/wireguard, OR it's simply up.
         Widgets.Reveal {
             shown: !vpnGroup.hasTunnels
             SettingsRow {
@@ -199,11 +195,6 @@ Column {
                         visible: modelData.managed
                         label: "Forget"
                         enabled: !Services.Vpn.busy && !modelData.up
-                        // docs/TODO.md: "sensible settings (eg. deleting the
-                        // VPN config) should ask confirmation with a
-                        // blocking alert (same fullscreen blocking alert/
-                        // warning used by other systems)" — the TODO's own
-                        // named example.
                         onClicked: Services.ConfirmDialog.open({
                             title: "Forget " + modelData.name,
                             message: "Deletes the imported config from ~/.config/phi/wireguard. This cannot be undone.",

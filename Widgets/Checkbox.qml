@@ -2,19 +2,16 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/Checkbox (docs/TODO.md, design system: "checkbox (square
-// border with inner x)"). Same controlled-component contract as
-// Widgets/Toggle: `checked`/`toggled(bool)`, not self-mutating — every
-// caller binds `checked` to an external source of truth and flips it from
-// `onToggled`. Same seven-state resolution (WidgetStates.resolve) as every
-// other control in this directory, so hover/focus/disabled/invalid read
-// exactly like a Toggle or a StyledButton sitting next to it in the same
-// settings row.
+// Same controlled-component contract as Widgets/Toggle: `checked`/
+// `toggled(bool)`, not self-mutating — every caller binds `checked` to an
+// external source of truth and flips it from `onToggled`. Same
+// seven-state resolution as every other control in this directory, so
+// hover/focus/disabled/invalid read exactly like a Toggle or a
+// StyledButton sitting next to it in the same settings row.
 //
-// Deliberately NOT Toggle's "inversione piena" grammar: only `.border`
-// from surfaceColors() is used here, never `.bg`/`.fg` — the box stays an
-// outline at every state, per the TODO's own literal wording ("square
-// BORDER with inner x"). The checked state is the inner mark appearing,
+// Deliberately NOT Toggle's full-inversion grammar: only `.border` from
+// surfaceColors() is used here, never `.bg`/`.fg` — the box stays an
+// outline at every state. The checked state is the inner mark appearing,
 // not the box inverting.
 //
 // The mark itself is two rotated Rectangles, not a Canvas stroke: unlike
@@ -23,9 +20,7 @@ import "WidgetStates.js" as WidgetStates
 // does natively — no Canvas repaint bookkeeping, and its colour stays
 // trivially live if a caller ever changes it (Config.ThemeOverrides can
 // change the accent colour without a shell restart; a Canvas would need
-// its own explicit changed-handler/requestPaint wiring to follow that,
-// the same gap Widgets/SunMoonIcon's header documents for its own
-// Canvas — simplest is also correct here).
+// its own explicit changed-handler/requestPaint wiring to follow that).
 
 Item {
     id: root
@@ -49,7 +44,7 @@ Item {
     readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState)
 
     // design/tokens.common.sh stores space-N in `ch`, not px — see
-    // Widgets/Panel.qml's identical comment.
+    // WidgetStates.js's chToPixels() comment.
     TextMetrics {
         id: chMetrics
         font.family: Config.Appearance.fontMono
@@ -124,9 +119,7 @@ Item {
         onTapped: root.toggled(!root.checked)
     }
 
-    // Style pass 2026-09-14: see Widgets/StyledButton.qml's identical
-    // comment — a systemic keyboard-activation gap, fixed the same way
-    // here.
+    // Same keyboard-activation fix as Widgets/StyledButton.qml.
     Keys.onReturnPressed: if (root.enabled && !root.loading) root.toggled(!root.checked)
     Keys.onSpacePressed: if (root.enabled && !root.loading) root.toggled(!root.checked)
 }

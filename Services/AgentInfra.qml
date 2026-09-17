@@ -4,27 +4,22 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// phiOS — Services/AgentInfra (out-of-plan, 2026-09-09). Read-only host
-// facts about the AI agent subsystem for Settings/sections/AiAgent.qml:
-// the state of the phi-agent systemd user units, and the values in the
-// broker / engine config files that a user would want to check without
-// opening a terminal.
+// Read-only host facts about the AI agent subsystem for Settings/sections/
+// AiAgent.qml: the state of the phi-agent systemd user units, and the
+// values in the broker/engine config files a user would want to check
+// without opening a terminal.
 //
-// Kept OUT of Services/Agent.qml on purpose. That file is the one client
-// point for the running A1 opencode service (ADR 098) and is mid-
-// verification for M7 — nothing here is a call to opencode, it is
-// `systemctl` and plain file reads, so it lives on its own.
+// Kept out of Services/Agent.qml on purpose — that file is the one client
+// point for the running A1 opencode service; nothing here is a call to
+// opencode, it's `systemctl` and plain file reads.
 //
-// §9.12 perimeter ("solo stato realmente runtime; il resto resta in
-// configurazione versionata"): the unit state and the broker meter are
-// genuinely runtime. broker.json / opencode.json / the whitelist are
-// versioned config — surfaced here READ-ONLY, as a readout with the file
-// path, never an edit control. Editing them from a panel would fight
-// `git pull`, the exact problem S-71 round 1 hit with opencode.json.
+// The unit state and the broker meter are genuinely runtime. broker.json /
+// opencode.json / the whitelist are versioned config, surfaced here
+// READ-ONLY as a readout with the file path, never an edit control —
+// editing them from a panel would fight `git pull`.
 //
 // Same shape as Services/SystemInfo.qml: one `sh -c` script emitting
-// tagged lines, parsed once. Every source is a local file read or a
-// `systemctl --user` query — nothing new to install, no network.
+// tagged lines, parsed once.
 
 Singleton {
     id: root
@@ -54,10 +49,9 @@ Singleton {
     readonly property string configRoot: Quickshell.env("HOME") + "/.config/phi-agent"
     readonly property string stateRoot: Quickshell.env("HOME") + "/.local/state/phi-agent"
 
-    // The A2 / folder-of-interest blocklist (phios-agente-delta.md §3.4).
-    // Unlike broker.json / opencode.json this IS runtime user config (a real
-    // file, not a repo symlink — same as the theme overrides in OOP-08), so
-    // it is editable here.
+    // The A2 / folder-of-interest blocklist. Unlike broker.json /
+    // opencode.json this IS runtime user config (a real file, not a repo
+    // symlink), so it's editable here.
     property string codeBlocklistText: ""
     FileView {
         id: blocklistFile
@@ -72,10 +66,9 @@ Singleton {
 
     function refresh() { if (!probe.running) probe.running = true }
 
-    // Out-of-plan: bulk-start whichever units a caller names (CodingSessions'
-    // inline preflight banner, Settings' "Start A2 services" button) — same
-    // systemctl --user shape as Services/Agent.qml's setActivated, just N
-    // units in one call instead of always exactly phi-agent-a1.service.
+    // Bulk-start whichever units a caller names (CodingSessions' preflight
+    // banner, Settings' "Start A2 services" button) — same systemctl
+    // --user shape as Services/Agent.qml's setActivated, N units at once.
     property bool starting: false
     Process {
         id: startProc
@@ -88,16 +81,11 @@ Singleton {
         startProc.running = true
     }
 
-    // Style pass 2026-09-14 (docs/TODO.md: "AI agents settings shows many
-    // informations but misses the most important and obvious settings").
-    // `startUnits` above is a no-op against an already-active unit
-    // (`systemctl start` on a running service does nothing) — after
-    // editing broker.json/opencode.json (see the new "Edit configuration"
-    // buttons in Settings/sections/AiAgent.qml) the unit needs an actual
-    // RESTART to pick the change up, which this project had no button for
-    // at all before this. Same shape as startUnits, reusing the same
-    // `starting` flag (both are exclusive user-triggered actions on this
-    // panel; a caller never fires both at once).
+    // `startUnits` above is a no-op against an already-active unit — after
+    // editing broker.json/opencode.json (the "Edit configuration" buttons
+    // in Settings/sections/AiAgent.qml) the unit needs an actual restart
+    // to pick the change up. Same shape as startUnits, reusing `starting`
+    // since the two are exclusive user-triggered actions on this panel.
     function restartUnits(names) {
         if (startProc.running || !names || names.length === 0) return
         root.starting = true

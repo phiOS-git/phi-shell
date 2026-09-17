@@ -2,11 +2,10 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/BezierEditor (Out-of-plan: settings-overhaul batch E).
-// A visual cubic-bezier editor with a live preview, inspired by
-// cubic-bezier.com: a unit square with the curve drawn on it, two draggable
-// control-point handles, and a marker that loops across on the current
-// curve so the feel is visible while editing.
+// A visual cubic-bezier editor with a live preview: a unit square with the
+// curve drawn on it, two draggable control-point handles, and a marker
+// that loops across on the current curve so the feel is visible while
+// editing.
 //
 // Pure QtQuick — the curve is a Canvas path, the preview a plain
 // NumberAnimation with easing.type Easing.Bezier (core Qt Quick, stable).
@@ -52,11 +51,10 @@ Item {
     function _clamp01(v) { return Math.max(0, Math.min(1, v)) }
     function curveArray() { return [root.x1, root.y1, root.x2, root.y2, 1, 1] }
 
-    // Style pass 2026-09-15: this was drag-only, same gap Widgets/Meter.qml
-    // had (fixed earlier this pass) — a fraction of the unit square per
-    // arrow press. Each press is one atomic commit (no "drag" concept
-    // applies to a single key press), so it fires `changed` then
-    // `committed` immediately, same shape Meter's own fix uses.
+    // A fraction of the unit square per arrow press. Each press is one
+    // atomic commit (no "drag" concept applies to a single key press), so
+    // it fires `changed` then `committed` immediately, same shape
+    // Widgets/Meter.qml's own keyboard nudge uses.
     property real keyStep: 0.02
     function _nudgeP1(dx, dy) {
         root.x1 = root._clamp01(root.x1 + dx)
@@ -132,11 +130,10 @@ Item {
                 onXChanged: if (drag1.drag.active) root._readP1()
                 onYChanged: if (drag1.drag.active) root._readP1()
 
-                // Style pass 2026-09-15: see root.keyStep's own comment —
-                // this handle was drag-only. Arrow keys nudge it directly;
-                // note the y-axis flip matches the canvas's own (screen y
-                // grows downward, curve y grows upward, same as
-                // `_readP1`/`onPaint` above already account for).
+                // Arrow keys nudge it directly; note the y-axis flip
+                // matches the canvas's own (screen y grows downward, curve
+                // y grows upward, same as `_readP1`/`onPaint` above already
+                // account for).
                 activeFocusOnTab: true
                 Keys.onLeftPressed: root._nudgeP1(-root.keyStep, 0)
                 Keys.onRightPressed: root._nudgeP1(root.keyStep, 0)

@@ -1,49 +1,32 @@
 .pragma library
 
-// phiOS — shared state-resolution logic for Widgets/ (S-21, master plan
-// §8.6: "stati trasversali obbligatori per ogni componente: default hover
-// active/pressed focus disabled loading invalid"). Every widget in this
+// Shared state-resolution logic for Widgets/. Every widget in this
 // directory resolves its own hover/press/focus/active/loading/invalid flags
-// through resolve() so all ten agree on the same precedence, and reads its
+// through resolve() so they all agree on the same precedence, and reads its
 // visual recipe from surfaceColors()/opacityFor()/contentColor() so the
-// affordance rules (§8.6) are applied identically everywhere instead of
-// once per widget — the "zero duplication inside surface class 1" goal
-// §8.2 sets for this directory.
+// affordance rules are applied identically everywhere instead of once per
+// widget.
 //
 // A plain `.pragma library` file, not a `pragma Singleton` QML type: the
-// real Quickshell `Singleton` class (`git.outfoxxed.me/quickshell/quickshell`,
-// src/core/singleton.hpp) derives from `ReloadPropagator` with no default
-// property, so it cannot host a nested QML child at all — confirmed by
-// reading the class declaration rather than assumed, precisely because
-// S-20 hit two real, unrelated Quickshell directory-scanner surprises in a
-// row. A `.js` file carries no such restriction, and directory-implicit
-// QML modules only ever register `*.qml` files as importable types (the
-// mechanism S-20's `Tokens.example.qml` collision actually hit was a
-// dotted `.qml` filename being swept in and misread as a type name — a
-// different mechanism that cannot apply to a `.js` file, which never
-// becomes a type at all). Every widget that calls into this file imports
-// it explicitly (`import "WidgetStates.js" as WidgetStates`): unlike a
-// sibling `pragma Singleton`, a `.js` library is not resolved bare.
+// real Quickshell `Singleton` class derives from `ReloadPropagator` with no
+// default property, so it cannot host a nested QML child at all. A `.js`
+// file carries no such restriction, and directory-implicit QML modules
+// only ever register `*.qml` files as importable types — a `.js` file
+// never becomes a type at all, so it cannot collide with one the way a
+// dotted `.qml` filename can be swept in and misread as a type name. Every
+// widget that calls into this file imports it explicitly
+// (`import "WidgetStates.js" as WidgetStates`): unlike a sibling
+// `pragma Singleton`, a `.js` library is not resolved bare.
 
-// No design token covers opacity (design/tokens has no opacity tier); this
-// is the one place that ratio lives, for the "interattivo inattivo ->
-// stesso peso, opacità ridotta" affordance rule (§8.6). Not a colour, size
-// or duration, so DONE WHEN's literal ban does not reach it — but it is
+// No design token covers opacity: a disabled control keeps its exact
+// colours and only fades, so this is the one place that ratio lives —
 // still one number, kept in one place rather than repeated per widget.
 var INACTIVE_OPACITY = 0.45
 
-// Style pass 2026-09-14 (docs/TODO.md: "trigger buttons don't show
-// loading states or result feedback"). Before this, `loading` and
-// `disabled` shared the exact same INACTIVE_OPACITY — a button doing
-// something and a button that will never do anything were visually
-// IDENTICAL, which is its own version of "no loading state" even on the
-// many buttons this pass has since wired a real `loading:` binding onto
-// (Chat's Send, the Wi-Fi/AI-Agent/Timer refresh-and-start actions, …). A
-// distinct, LESS dim ratio — still reads as "not fully interactive right
-// now", but visibly different from "disabled" — needs no new animation
-// mechanism and composes for free with the `Behavior on opacity` every
-// widget already has, so the transition in and out of it already
-// animates smoothly with zero further changes.
+// A distinct, LESS dim ratio than INACTIVE_OPACITY — a button doing
+// something and a button that will never do anything should not be
+// visually identical. Needs no new animation mechanism and composes for
+// free with the `Behavior on opacity` every widget already has.
 var LOADING_OPACITY = 0.7
 
 // Resolves the seven transverse states to exactly one, in a fixed
@@ -61,35 +44,30 @@ function resolve(flags) {
     return "default"
 }
 
-// §8.6: "interattivo attivo/selezionato -> inversione piena". The one
-// recipe every interactive control (StyledButton, Pill, Segment, ListRow)
-// reads, rather than four separate colour tables that could drift apart.
-// "focus" here is the generic keyboard-focus ring these controls use;
-// ListRow renders the ">" glyph instead for its own focus state, per the
-// affordance rule reserving that glyph for the active input point only —
-// it still calls this function for its background/border colour, the
-// glyph is an addition on top, not a replacement.
+// The one recipe every interactive control (StyledButton, Toggle, Segment,
+// ListRow) reads for its active/selected look, rather than four separate
+// colour tables that could drift apart. "focus" here is the generic
+// keyboard-focus ring these controls use; ListRow renders the ">" glyph
+// instead for its own focus state, reserving that glyph for the active
+// input point only — it still calls this function for its
+// background/border colour, the glyph is an addition on top, not a
+// replacement.
 //
-// OOP-02 (shell restyle): the "active" case no longer fills with accent —
-// accent retreated to fine detail only (titles, focus ring, the Φ agent
-// processing state). "inversione piena" now means a full inversion between
-// the two structural colours.
+// The "active" case fills with the two structural colours in full
+// inversion, not accent — accent is fine detail only (titles, focus ring,
+// the Φ agent processing state).
 //
 // `ambient` selects the surface family:
 //   "panel" (default) — main background, opposite border/text; the
 //     selected state inverts to an opposite block with main text.
-//   "isle" (the status bar) — features-change (item 3): a bar button now
-//     has a resting surface of its own, a translucent main-coloured fill
-//     (barButtonBackground) and a hairline (barButtonBorder), so each
-//     control reads as a discrete button on the wallpaper. This reverses
-//     OOP-21's bare-glyph rest state on the user's directive; the selected
-//     state is unchanged — the same opposite-bg / main-text inversion a
-//     panel uses.
+//   "isle" (the status bar) — a bar button has a resting surface of its
+//     own, a translucent main-coloured fill (barButtonBackground) and a
+//     hairline (barButtonBorder), so each control reads as a discrete
+//     button on the wallpaper. The selected state is the same
+//     opposite-bg / main-text inversion a panel uses.
 function surfaceColors(appearance, resolvedState, ambient) {
-    // ambient: "toggle" — Widgets/Toggle's own on/off switch. docs/TODO.md:
-    // "switch ui element is not readable... needs to have an understandable
-    // state" (explicitly not fixable by widening the track). The generic
-    // B&W "inversione piena" every other selectable/active control here
+    // ambient: "toggle" — Widgets/Toggle's own on/off switch. The generic
+    // B&W full-inversion look every other selectable/active control here
     // shares (a StyledButton's `active`, a Segment's `active`, a settings
     // tab) means "this is the current selection" — a different semantic
     // than a binary preference switch's own "on", and sharing one look for
@@ -98,35 +76,28 @@ function surfaceColors(appearance, resolvedState, ambient) {
     // same border colour. On now fills solid with `accent` — this shell's
     // one Tier-2 colour, otherwise reserved for a real semantic threshold,
     // same reasoning `ambient: "isle"`'s own `active` case below already
-    // gives for reaching for accent over B&W inversion "to show the
-    // selected state" — with the knob in `accentText` (the token already
+    // gives for reaching for accent over B&W inversion to show the
+    // selected state — with the knob in `accentText` (the token already
     // built to read against accent, ThemeOverrides-aware).
     //
-    // Two real bugs found on real hardware in this first version, both
-    // fixed here:
-    //   - `hover` used `appearance.colorMain` for fg/border. `colorMain`
-    //     is NOT an ink colour — Config/Appearance.qml defines it as
-    //     `root.background` itself (confirmed by reading that file, not
-    //     assumed; `panelBackground` is literally `root.colorMain`). Every
-    //     OTHER ambient's own hover case reaches for `colorOpposite` (the
-    //     real ink token) for exactly this "full contrast on hover"
-    //     purpose — this one alone had the wrong one, making a hovered
-    //     switch's knob and border exactly match its own panel's
-    //     background: invisible.
-    //   - off's track was fully `"transparent"`, which — on a dark theme,
-    //     where the panel behind it is itself near-black — reads as a
-    //     solid black track, visually indistinguishable from the ON
-    //     state's own near-black `accentText` knob dominating the right
-    //     side of the (small, 2:1) track. Net effect, reported directly:
-    //     "the right part of the switch is always black" regardless of
-    //     state. `offWash` (`appearance.panelHover`, the same solid
-    //     background-mixed-toward-ink tint every hover wash elsewhere in
-    //     this shell already uses — not a new one-off colour, and a
-    //     genuine solid colour rather than an alpha blend, so it can never
-    //     visually depend on whatever happens to sit behind the switch)
-    //     is a permanent, low-emphasis fill — never literally transparent,
-    //     and (unlike the hover bug above) never `colorMain` itself, so it
-    //     can never blend into the very panel it sits on.
+    // Two real gotchas to keep in mind if this ever changes:
+    //   - `hover` reads `appearance.colorOpposite` for fg/border, not
+    //     `colorMain` — `colorMain` is NOT an ink colour, it's
+    //     `root.background` itself (`panelBackground` is literally
+    //     `root.colorMain`). Every other ambient's own hover case reaches
+    //     for `colorOpposite` (the real ink token) for exactly this
+    //     "full contrast on hover" purpose.
+    //   - off's track is never literally `"transparent"`: on a dark theme,
+    //     where the panel behind it is itself near-black, a transparent
+    //     track reads as solid black, visually indistinguishable from the
+    //     ON state's own near-black `accentText` knob dominating the right
+    //     side of the (small, 2:1) track. `offWash` (`appearance.panelHover`,
+    //     the same solid background-mixed-toward-ink tint every hover wash
+    //     elsewhere in this shell uses — a genuine solid colour rather than
+    //     an alpha blend, so it never visually depends on whatever sits
+    //     behind the switch) is a permanent, low-emphasis fill instead, and
+    //     never `colorMain` itself, so it can never blend into the very
+    //     panel it sits on.
     if (ambient === "toggle") {
         var offWash = appearance.panelHover
         switch (resolvedState) {
@@ -137,44 +108,33 @@ function surfaceColors(appearance, resolvedState, ambient) {
         case "focus":
             return { bg: offWash, fg: appearance.colorOpposite, border: appearance.focusRing }
         case "hover":
-            // Interface rework Phase 1 (rework.md s5): border alone moves
-            // to the dedicated hairline token — `fg` (the knob) keeps the
-            // full-contrast `colorOpposite` the original bugfix above
-            // needed for real visibility, so this does not undo that; the
-            // track OUTLINE just no longer has to be full B&W contrast too
-            // for the switch to read clearly on hover.
+            // Border alone reads the dedicated hairline token — `fg` (the
+            // knob) keeps the full-contrast `colorOpposite` needed for
+            // real visibility; the track OUTLINE doesn't need full B&W
+            // contrast too for the switch to read clearly on hover.
             return { bg: offWash, fg: appearance.colorOpposite, border: appearance.borderStrong }
         default:
-            // Same rework.md s5 note as "hover" above: the resting track
-            // outline reads off the actual border-role token instead of
-            // reusing the muted-TEXT token for a non-text stroke.
+            // The resting track outline reads off the actual border-role
+            // token, not the muted-TEXT token, since it's a non-text
+            // stroke.
             return { bg: offWash, fg: appearance.textMuted, border: appearance.borderStrong }
         }
     }
 
-    // `ambient: "shaded"` — Out-of-plan: interface rework Phase 1
-    // (rework.md s3: "the theme should make more use of shades ... have
-    // shades of that colo[u]r used for most of the UI ... text uses white
-    // on black and vice versa. The accent color is used for details.").
-    // Config/Appearance.qml has carried `surface1/2/3` (bg-1/2/3) and
-    // `border`/`borderStrong` since OOP-02 for exactly this, but nothing in
-    // this file ever read them — every "panel"-shaped control instead fell
-    // through to the generic block below, which is a full `colorMain`/
-    // `colorOpposite` B&W inversion. This is a NEW branch, not an edit to
-    // that block: Widgets/Checkbox, Widgets/Radio and Widgets/ListRow (all
-    // untouched this phase — out of scope, later phases' widgets) keep
-    // calling surfaceColors() with no ambient at all and still get the
-    // unchanged block below. Only Widgets/Panel, Widgets/SmallButton,
-    // Widgets/StyledButton and Widgets/Segment's own default (was the bare
-    // "panel" string, now "shaded") opt in.
+    // `ambient: "shaded"` — makes real use of `surface1/2/3` (bg-1/2/3) and
+    // `border`/`borderStrong` instead of falling through to the generic
+    // block below, which is a full `colorMain`/`colorOpposite` B&W
+    // inversion. A separate branch, not an edit to that block: Widgets/
+    // Checkbox, Widgets/Radio and Widgets/ListRow call surfaceColors() with
+    // no ambient at all and get the unchanged generic block; only
+    // Widgets/Panel, Widgets/SmallButton, Widgets/StyledButton and
+    // Widgets/Segment's own default opt in to "shaded".
     //
-    // `active` (selected) no longer swaps the whole surface to the
-    // opposite ink colour — it rises one more shade (surface3, the most
-    // elevated step) and gets an accent-coloured edge, so accent stays
-    // "fine detail only" (the edge, not a fill) even for the one state
-    // that most wants to stand out. `focus` keeps the pre-existing accent
-    // ring convention unchanged (already the one state s3 always allowed
-    // accent on).
+    // `active` (selected) does not swap the whole surface to the opposite
+    // ink colour — it rises one more shade (surface3, the most elevated
+    // step) and gets an accent-coloured edge, so accent stays fine detail
+    // only (the edge, not a fill) even for the one state that most wants
+    // to stand out. `focus` keeps the pre-existing accent ring convention.
     if (ambient === "shaded") {
         switch (resolvedState) {
         case "active":
@@ -193,23 +153,16 @@ function surfaceColors(appearance, resolvedState, ambient) {
     if (ambient === "isle") {
         switch (resolvedState) {
         case "active":
-            // Follow-up (user, 2026-09-12): the previous pass (hover and
-            // active sharing one inverted colorOpposite/colorMain sweep,
-            // to fix a flicker on hover-then-click) made the two states
-            // visually IDENTICAL — the user then reported that as broken
-            // in its own right: unhovering an active button looked like
-            // "the highlight wrongly staying applied", because hover and
-            // active could no longer be told apart, plus other artifacts.
-            // Reworked instead of patched: hover and active are now
-            // fully separate mechanisms with no shared state, so they
-            // cannot race or get confused for one another again. Active
-            // no longer draws any bg/border fill at all — "use the accent
-            // colour for the text and icon to show the selected state" —
-            // just the resolved fg. `bg`/`border` transparent, same bare-
-            // icon-on-the-isle look the resting state already has, distinct
-            // from PhiAgent's own `accentWhenActive` full accent FILL
-            // (Segment.qml's `stateColors` short-circuits to that before
-            // ever calling this function — untouched, still its own thing).
+            // Hover and active are fully separate mechanisms with no
+            // shared state — sharing one inverted colorOpposite/colorMain
+            // sweep between them makes unhovering an active button read as
+            // the highlight wrongly staying applied, since the two states
+            // become indistinguishable. Active draws no bg/border fill at
+            // all, just the resolved fg in accent — `bg`/`border`
+            // transparent, the same bare-icon-on-the-isle look the resting
+            // state has, distinct from PhiAgent's own `accentWhenActive`
+            // full accent FILL (Segment.qml's `stateColors` short-circuits
+            // to that before ever calling this function).
             return { bg: "transparent", fg: appearance.accent,
                      border: "transparent" }
         case "invalid":
@@ -219,50 +172,38 @@ function surfaceColors(appearance, resolvedState, ambient) {
             return { bg: appearance.barButtonBackground, fg: appearance.colorOpposite,
                      border: appearance.focusRing }
         case "hover":
-            // Follow-up (user, 2026-09-11): "change the hover effect,
-            // instead of changing the button borders and background,
-            // 'highlight' the text... and change the text color as well.
-            // Do that with a transition (quick)." bg/border go transparent
-            // — Widgets/Segment.qml's own sweep Rectangle carries the
-            // visual highlight (direction: top-to-bottom, per a later
-            // follow-up) instead of this fading in as a flat fill. `fg`
-            // becomes colorMain — the full B&W inversion pair, "black on
-            // light, white on dark" — kept exclusive to hover now that
-            // active uses `accent` instead of this same pair (the two no
-            // longer share a colour scheme, by the user's own follow-up
-            // direction).
+            // bg/border stay transparent — Widgets/Segment.qml's own sweep
+            // Rectangle carries the visual highlight instead of this
+            // fading in as a flat fill. `fg` becomes colorMain — the full
+            // B&W inversion pair — kept exclusive to hover now that active
+            // uses `accent` instead of this same pair, so the two states
+            // no longer share a colour scheme.
             return { bg: "transparent", fg: appearance.colorMain,
                      border: "transparent" }
         default:
-            // docs/TODO.md (status-bar rework): "they should not have a
-            // box button but be just icons, with hover and active
-            // states." Resting state is now a bare glyph on the isle's
-            // own background (Widgets/BarIsle.qml), no box, no border —
-            // hover/active/focus/invalid above are unchanged and still
-            // show real feedback; only the DEFAULT case loses its
-            // (formerly always-on) translucent box.
+            // A bare glyph on the isle's own background (Widgets/BarIsle.qml),
+            // no box, no border — hover/active/focus/invalid above are
+            // unchanged and still show real feedback; only the DEFAULT
+            // case has no translucent box.
             return { bg: "transparent", fg: appearance.colorOpposite,
                      border: "transparent" }
         }
     }
 
-    // `ambient: "workspace"` — Out-of-plan: interface rework Phase 2
-    // (rework.md: "workspace list: a list of clickable squares, with hover
-    // and active states. They show the number of the workspace and a thin
-    // border, no background. The selected workspace ... uses inverted
-    // colors."). A workspace-square-specific variant of "isle" above — same
-    // bar-button grammar in every other respect (Segment's own `_bar` flag
-    // keeps the mono font / tight isle padding / hover-sweep it shares with
-    // "isle") — that differs in exactly the two things the spec calls out
-    // and "isle" above deliberately does NOT have any more: a real resting
-    // BORDER (every other isle button dropped its resting border/background
-    // entirely, OOP-21) and a real INVERTED FILL on active (every other
-    // isle button's own active state is bare accent text with no fill,
-    // OOP-02 / the 2026-09-12 follow-up — Segment.qml's own `contentColor`
-    // carves this ambient out of that override so `stateColors.fg` below is
-    // actually used). The width increase itself is Bar/modules/
-    // Workspaces.qml's own job (`Segment.widthBoost`) — this file only
-    // supplies colour.
+    // `ambient: "workspace"` — a workspace-square-specific variant of
+    // "isle" above: a list of clickable squares showing the workspace
+    // number with a thin border, no background, and inverted colours when
+    // selected. Same bar-button grammar in every other respect (Segment's
+    // own `_bar` flag keeps the mono font / tight isle padding / hover-sweep
+    // it shares with "isle") — that differs in exactly the two things
+    // "isle" above deliberately does NOT have: a real resting BORDER
+    // (every other isle button drops its resting border/background
+    // entirely) and a real INVERTED FILL on active (every other isle
+    // button's own active state is bare accent text with no fill —
+    // Segment.qml's own `contentColor` carves this ambient out of that
+    // override so `stateColors.fg` below is actually used). The width
+    // increase itself is Bar/modules/Workspaces.qml's own job
+    // (`Segment.widthBoost`) — this file only supplies colour.
     if (ambient === "workspace") {
         switch (resolvedState) {
         case "active":
@@ -300,26 +241,23 @@ function surfaceColors(appearance, resolvedState, ambient) {
         }
     }
 
-    // `ambient: "powerPill"` — Dialogs/PowerActionsRow's own pill row
-    // (2026-09-15, references/lock-options-reference.webp, user-provided):
-    // a horizontal row of icon+label actions floating directly on the
+    // `ambient: "powerPill"` — Dialogs/PowerActionsRow's own pill row: a
+    // horizontal row of icon+label actions floating directly on the
     // wallpaper/scrim, one of them marked with a solid accent fill. The
     // accent FILL on `active` is a deliberate exception to this shell's
-    // usual "accent is fine detail only" rule (OOP-10) — the same
-    // exception this file's own `ambient: "toggle"` active case already
-    // carries, for the same reason: one real state that has to read at a
-    // glance, not a structural "this is a heading" role. Every other state
-    // stays bare (no resting box at all, unlike `toggle`'s own default,
-    // which keeps a permanent `offWash` fill) — the reference's un-marked
-    // pills are plain icon+text on the wallpaper, nothing boxed.
+    // usual "accent is fine detail only" rule — the same exception this
+    // file's own `ambient: "toggle"` active case carries, for the same
+    // reason: one real state that has to read at a glance, not a
+    // structural "this is a heading" role. Every other state stays bare
+    // (no resting box at all, unlike `toggle`'s own default, which keeps a
+    // permanent `offWash` fill) — plain icon+text on the wallpaper,
+    // nothing boxed.
     //
-    // Take 2 (reported directly: "the selected state is just a border...
-    // it should be the accent colour background"): the caller
-    // (PowerActionsRow.qml) now passes its own real keyboard-focus flag
-    // in as `active`, not `keyboardFocus` — so `resolvedState` here is
+    // The caller (PowerActionsRow.qml) passes its own real keyboard-focus
+    // flag in as `active`, not `keyboardFocus` — so `resolvedState` here is
     // never actually "focus" for this ambient, only "active"/"hover"/
-    // "invalid"/default. No `case "focus"` left in this block on purpose:
-    // it would be genuinely unreachable dead code, not a harmless spare.
+    // "invalid"/default. No `case "focus"` in this block on purpose: it
+    // would be genuinely unreachable dead code, not a harmless spare.
     if (ambient === "powerPill") {
         switch (resolvedState) {
         case "active":
@@ -333,26 +271,18 @@ function surfaceColors(appearance, resolvedState, ambient) {
         }
     }
 
-    // `ambient: "list"` — rework-issues.md "New requests" item 14: "in all
-    // status bar overlays, replace list of option with thinner style.
-    // Instead of bulky buttons it should be a list of texts, with the
-    // 'highlight' hover and selection (same effect used in the runner
-    // bar)." Widgets/ListRow.qml called this function with no ambient at
-    // all, which fell through to the generic block below — that recipe's
-    // own `default` case fills a full-contrast `panelBackground` block
-    // behind EVERY row at rest, not just a selected one, which is exactly
-    // the "bulky bordered entries" reported live against the network/
-    // bluetooth/sound device lists (all three already use ListRow — the
-    // bug was in this shared recipe, not any one caller). No resting or
-    // hover fill at all now — a plain text row — and `active`/`focus` use
-    // `selectionBackground`/`selectionText`, the same pair Launcher.qml's
-    // own result-row highlight already reads, so a selected ListRow entry
-    // matches "the runner bar's own effect" by construction, not by a
-    // separately chosen colour that could drift from it. The opacity half
-    // of "hover effect (opacity)" is deliberately NOT here — ListRow.qml
-    // itself resolves that (its own row-level dimming), since it is a
-    // presentation choice about THIS widget specifically, not a colour
-    // recipe shared across ambients the way bg/fg/border are.
+    // `ambient: "list"` — a thinner style for a status-bar-overlay device
+    // list: a list of texts with the "highlight" hover and selection, the
+    // same effect the runner bar uses. No resting or hover fill at all — a
+    // plain text row — and `active`/`focus` use `selectionBackground`/
+    // `selectionText`, the same pair Launcher.qml's own result-row
+    // highlight reads, so a selected ListRow entry matches the runner
+    // bar's own effect by construction, not by a separately chosen colour
+    // that could drift from it. The opacity half of the hover effect is
+    // deliberately NOT here — ListRow.qml itself resolves that (its own
+    // row-level dimming), since it is a presentation choice about THIS
+    // widget specifically, not a colour recipe shared across ambients the
+    // way bg/fg/border are.
     if (ambient === "list") {
         switch (resolvedState) {
         case "active":
@@ -391,23 +321,21 @@ function surfaceColors(appearance, resolvedState, ambient) {
     }
 }
 
-// §8.6: "interattivo inattivo -> stesso peso del label, opacità ridotta".
 // disabled and loading both keep every colour surfaceColors() above
-// returns and only fade — they never change hue or weight — but no longer
-// fade to the SAME degree (see LOADING_OPACITY's own comment above).
+// returns and only fade — they never change hue or weight — but not to the
+// SAME degree (see LOADING_OPACITY's own comment above).
 function opacityFor(resolvedState) {
     if (resolvedState === "loading") return LOADING_OPACITY
     if (resolvedState === "disabled") return INACTIVE_OPACITY
     return 1.0
 }
 
-// §8.6: "label di sistema -> basso contrasto, sempre monocromo" /
-// "valore/dato -> colore Tier 2 solo su soglia". Shared by StyledText and
-// StyledIcon so a system label and a themed value are never picked two
-// different ways. `tone` is opt-in and empty by default: the affordance
-// rule is that Tier 2 is never the default, only ever something the caller
-// reaches for once a real threshold is crossed — this function does not
-// decide thresholds, it only renders the choice the caller already made.
+// Shared by StyledText and StyledIcon so a system label and a themed value
+// are never picked two different ways. `tone` is opt-in and empty by
+// default: a semantic colour is never the default, only ever something the
+// caller reaches for once a real threshold is crossed — this function does
+// not decide thresholds, it only renders the choice the caller already
+// made.
 function contentColor(appearance, kind, tone, invalid) {
     if (invalid)
         return appearance.error
@@ -417,13 +345,12 @@ function contentColor(appearance, kind, tone, invalid) {
     case "success": return appearance.success
     case "info": return appearance.info
     }
-    // OOP-10: "title" no longer carries accent. The user's R2 directive is
-    // that accent is fine detail only — the keyboard focus ring, the Φ
-    // agent processing state, a Tier-2 semantic `tone` — never a
-    // structural "this is a heading" role. A title is now full-contrast
-    // ink like a value, set apart by weight and size instead (StyledText /
-    // StyledIcon apply a heavier font.weight for kind:"title"). "label"
-    // stays low-contrast monochrome.
+    // "title" does not carry accent — accent is fine detail only (the
+    // keyboard focus ring, the Φ agent processing state, a semantic
+    // `tone`), never a structural "this is a heading" role. A title is
+    // full-contrast ink like a value, set apart by weight and size instead
+    // (StyledText / StyledIcon apply a heavier font.weight for
+    // kind:"title"). "label" stays low-contrast monochrome.
     return kind === "label" ? appearance.textMuted : appearance.textPrimary
 }
 
@@ -446,10 +373,10 @@ function fontPixelSize(appearance, sizeStep) {
 //
 // Floors the box at fontSize1, not fontSize3: Widgets/Segment.qml floors
 // every isle button's content height against a TextMetrics measurement of
-// the mono "0" glyph AT fontSize1 (chMetrics, OOP-11 — "makes every
-// Segment in an isle the same height regardless of what it holds"), and
-// that measurement is not readable from here (a JS file, no TextMetrics of
-// its own). fontSize1 itself is provably <= that measured height for any
+// the mono "0" glyph AT fontSize1 (chMetrics — makes every Segment in an
+// isle the same height regardless of what it holds), and that measurement
+// is not readable from here (a JS file, no TextMetrics of its own).
+// fontSize1 itself is provably <= that measured height for any
 // real font — a font's line height is never shorter than its own pixel
 // size — so flooring here at fontSize1 keeps every icon-bearing Segment
 // exactly as tall as every label-only one, with no font-metrics assumption
@@ -462,23 +389,23 @@ function drawnIconBoxSize(appearance, sizeStep) {
     return Math.max(fontPixelSize(appearance, sizeStep), appearance.fontSize1)
 }
 
-// design/tokens.common.sh stores space-N in `ch` of font-mono, not px,
-// precisely so the rhythm survives Q-N01's still-open mono-family choice —
-// Appearance.qml's own comment says a caller that needs px "measures the
-// font itself and multiplies". This is that arithmetic; the measurement
-// itself (a `TextMetrics` on the "0" glyph, the same definition CSS's `ch`
-// unit uses) lives in each widget that needs it, since neither this file
-// nor a QML Singleton can host a QML object to do the measuring.
+// design/tokens.common.sh stores space-N in `ch` of font-mono, not px, so
+// the rhythm survives whichever mono family a theme ends up picking — a
+// caller that needs px measures the font itself and multiplies. This is
+// that arithmetic; the measurement itself (a `TextMetrics` on the "0"
+// glyph, the same definition CSS's `ch` unit uses) lives in each widget
+// that needs it, since neither this file nor a QML Singleton can host a
+// QML object to do the measuring.
 function chToPixels(chCount, chWidth) {
     return chCount * chWidth
 }
 
-// features-change: the shared height of a single-line field or button on a
-// settings row — StyledButton, SmallButton, TextField (and through them
-// NumberField and ColorField) all floor their implicitHeight at this, so a
-// text field and a button sitting in the same Row line up instead of the
-// button towering over the field. One formula (body font size + one rhythm
-// unit), not a design token — the same latitude INACTIVE_OPACITY takes.
+// The shared height of a single-line field or button on a settings row —
+// StyledButton, SmallButton, TextField (and through them NumberField and
+// ColorField) all floor their implicitHeight at this, so a text field and
+// a button sitting in the same Row line up instead of the button towering
+// over the field. One formula (body font size + one rhythm unit), not a
+// design token.
 function controlHeight(appearance, chWidth) {
     return Math.round(appearance.fontSize2 + chToPixels(appearance.space2, chWidth))
 }

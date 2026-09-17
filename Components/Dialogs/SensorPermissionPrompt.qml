@@ -5,12 +5,10 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Dialogs/SensorPermissionPrompt. docs/TODO.md's app-permission
-// system: "generally restrictive, always asking permission the first time
-// an app requires it (granted once, always, or never)." Same layer-shell
-// / scrim / centered-panel / LayerFocus shape as Dialogs/ConfirmDialog.qml
-// — a third real choice ("Once") instead of that file's confirm/cancel
-// pair, since a permission decision genuinely has three outcomes, not two.
+// Same layer-shell/scrim/centered-panel/LayerFocus shape as Components/
+// Dialogs/ConfirmDialog.qml — a third real choice ("Once") instead of
+// that file's confirm/cancel pair, since a permission decision genuinely
+// has three outcomes.
 //
 // UI-and-interactions only — see Services/SensorPermissions.qml's own
 // header for the full scope note: nothing in this codebase calls

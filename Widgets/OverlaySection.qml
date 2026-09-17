@@ -1,24 +1,20 @@
 import QtQuick
 import qs.Config as Config
 
-// phiOS — Widgets/OverlaySection. rework-status-bar.md Style item 1: a
-// status-bar overlay's own shell now matches the bar's background
-// (Widgets/Panel.qml's `bgColorOverride`, set on every overlay's outer
-// Panel) — this is the card that gives each of its logically distinct
-// inner groups (the network overlay's "Ethernet"/"Tailscale"/"VPN"
-// blocks, the stats overlay's "Network"/"Disk"/"Usage"/"CPU" blocks, …)
-// a background of its own again, so the shell doesn't read as one flat,
-// undifferentiated surface once its own bg stops being a card colour.
+// A status-bar overlay's own shell matches the bar's background
+// (Widgets/Panel.qml's `bgColorOverride`); this is the card that gives
+// each of its logically distinct inner groups (the network overlay's
+// "Ethernet"/"Tailscale"/"VPN" blocks, the stats overlay's "Network"/
+// "Disk"/"Usage"/"CPU" blocks, …) a background of its own again, so the
+// shell doesn't read as one flat, undifferentiated surface.
 //
 // A thin, static grouping container, not a general widget: no hover/
 // active states, no border — just the same `surface1` fill Widgets/Panel
-// already resolves to at rest, reused directly rather than through Panel
-// itself (Panel's own header is explicit that it does not guess a
-// content-based implicit size; every call site here wants exactly that,
-// so this wraps the same token in the same Item+inset-Column shape
-// Settings/sections/SettingsGroup.qml already established for the
-// identical "recessed group on top of a shaded parent" problem one level
-// up — surface2-on-surface1 there, surface1-on-colorMain here).
+// resolves to at rest, reused directly rather than through Panel itself
+// since every call site here wants a content-based implicit size, which
+// Panel deliberately does not guess. Same Item+inset-Column shape
+// Settings/sections/SettingsGroup.qml uses for the identical "recessed
+// group on top of a shaded parent" problem one level up.
 
 Item {
     id: root

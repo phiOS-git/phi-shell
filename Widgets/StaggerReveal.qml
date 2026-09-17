@@ -1,30 +1,15 @@
 import QtQuick
 import qs.Config as Config
 
-// phiOS — Widgets/StaggerReveal. Out-of-plan: interface rework Phase 1
-// (rework.md s4: "all elements should have similar transition (fade and
-// minimal slide) for appearing and disappearing. Elements that are nested
-// (eg. status bar overlays) should have compound transitions where they
-// fade in and the inner elements fade in in order (with minimal delay,
-// just a subtle effect that don't slow down the usage).").
-//
-// Widgets/Reveal is the existing piece for a single block whose visibility
-// a binding drives (height 0 <-> content height, one fade). This is the
-// different, NESTED case s4 describes: a container that is already
-// revealing itself (a Panel/Popover fading in, already using its own
-// `Behavior on opacity`, "minimal slide" being whatever that OUTER wrapper
-// already does) whose CHILDREN should not all snap in at once the instant
-// the container finishes — each direct child fades in a few milliseconds
-// after the previous one, in declaration order. s4's own wording for this
-// nested case names only the fade ("fade in and the inner elements fade in
-// in order"), not a second slide layered on every row — deliberately
-// opacity-only here, see `_animate()`'s own comment for the mechanical
-// reason a per-child position slide is not safe to add.
-//
-// Not wired into any real overlay yet — rework.md's calendar/status/
-// notifications/etc. overlays are later phases' work (they don't exist as
-// real components yet). This file only has to exist and work correctly so
-// those phases can drop it in without re-deriving the animation.
+// Widgets/Reveal is the piece for a single block whose visibility a
+// binding drives (height 0 <-> content height, one fade). This is the
+// NESTED case: a container that is already revealing itself (a Panel/
+// Popover fading in via its own `Behavior on opacity`) whose CHILDREN
+// should not all snap in at once the instant the container finishes —
+// each direct child fades in a few milliseconds after the previous one,
+// in declaration order. Deliberately opacity-only, no slide — see
+// `_animate()`'s own comment for the mechanical reason a per-child
+// position slide is not safe to add.
 //
 // Usage — a settings-style column of rows inside an already-fading-in
 // Panel (direct children, same convention Widgets/Reveal itself already
@@ -49,18 +34,14 @@ import qs.Config as Config
 // duration/curve every widget in this shell already uses for its own
 // opacity Behavior (Config.Appearance.motionBDuration/motionBCurve) —
 // `staggerStep` is the only new number, and it is a per-child DELAY on top
-// of that shared animation, not a second timing system: not a design token
-// (no colour/font/size/duration literal is hardcoded here), the same
-// one-ratio latitude WidgetStates.js's own INACTIVE_OPACITY already takes.
+// of that shared animation, not a second timing system.
 
 Column {
     id: root
 
     property bool shown: false
-    // rework.md s4's own words: "just a subtle effect that don't slow down
-    // the usage" — small enough that a five-row overlay finishes its whole
-    // cascade well inside a normal glance, not a perceptible sequential
-    // reveal.
+    // Small enough that a five-row overlay finishes its whole cascade well
+    // inside a normal glance, not a perceptible sequential reveal.
     property int staggerStep: 24
 
     width: parent ? parent.width : 0
@@ -69,9 +50,9 @@ Column {
     // exactly where `root.children` below expects them with no extra
     // indirection.
 
-    // Re-tags and re-plays on every shown toggle, not just the first —
-    // an overlay that closes and reopens gets the same cascade again,
-    // matching s4's "for appearing and disappearing".
+    // Re-tags and re-plays on every shown toggle, not just the first — an
+    // overlay that closes and reopens gets the same cascade again, on both
+    // appearing and disappearing.
     onShownChanged: root._reveal()
     Component.onCompleted: root._reveal()
 
@@ -80,20 +61,15 @@ Column {
             root._animate(root.children[i], i)
     }
 
-    // rework-issues.md (real-hardware bug pass): every reveal logged
-    // "Cannot assign to non-existent property '_staggerAnim'" — a plain
-    // QML/QtQuick Item is not dynamically extensible the way a bare JS
-    // object is; assigning an undeclared property name onto a QObject-
-    // derived instance is a hard error, not a silent add, so the original
-    // `child._staggerAnim = ...` approach below could never have worked.
-    // Fixed by keeping the per-child animation objects in THIS widget's
-    // own `property var _anims` (a plain JS array, which — unlike an
-    // Item's fixed meta-object properties — really can grow arbitrary
-    // indices) instead of trying to attach anything to the child at all;
-    // `Qt.createQmlObject`'s second argument (the object's new parent, for
-    // ownership/context only) is `root` now, not `child`, since nothing
-    // about owning the animation actually requires the child to be its
-    // QML parent.
+    // A plain QML/QtQuick Item is not dynamically extensible the way a
+    // bare JS object is — assigning an undeclared property name onto a
+    // QObject-derived instance is a hard error, not a silent add, so the
+    // per-child animation objects live in THIS widget's own `_anims` (a
+    // plain JS array, which really can grow arbitrary indices) rather than
+    // attached to the child itself. `Qt.createQmlObject`'s second argument
+    // (the object's new parent, for ownership/context only) is `root`,
+    // not `child` — nothing about owning the animation requires the child
+    // to be its QML parent.
     property var _anims: []
 
     // Lazily creates one persistent SequentialAnimation per child index
@@ -117,20 +93,14 @@ Column {
     function _animate(child, index) {
         if (root._anims[index] === undefined) {
             try {
-                // rework-issues.md (real-hardware bug pass): a second real
-                // bug found alongside the `_staggerAnim` one this file's
-                // header already explains — plain `NumberAnimation`/
-                // `PropertyAnimation` has no `delay` property in QtQuick at
-                // all (confirmed live: "Cannot assign to non-existent
-                // property 'delay'" the instant this ran on real hardware,
-                // the second thing wrong here, not a guess this time). A
-                // `PauseAnimation` ahead of the real `NumberAnimation`
-                // inside a `SequentialAnimation` is QtQuick's own actual
-                // mechanism for "wait, then animate" — `animations` is
-                // `SequentialAnimation`'s real default list property
-                // (confirmed against Qt's own docs), so the two children
-                // are reachable by index with no need for `id`s inside the
-                // dynamically-created string.
+                // Plain `NumberAnimation`/`PropertyAnimation` has no
+                // `delay` property in QtQuick. A `PauseAnimation` ahead of
+                // the real `NumberAnimation` inside a `SequentialAnimation`
+                // is QtQuick's actual mechanism for "wait, then animate" —
+                // `animations` is `SequentialAnimation`'s default list
+                // property, so the two children are reachable by index
+                // with no need for `id`s inside the dynamically-created
+                // string.
                 var seq = Qt.createQmlObject(
                     'import QtQuick; SequentialAnimation { PauseAnimation {}; NumberAnimation { property: "opacity" } }',
                     root, "StaggerReveal")

@@ -3,25 +3,14 @@ import QtQml
 import Quickshell
 import Quickshell.Io
 
-// phiOS — Config/LockPrefs (OOP-35). The lock screen's ambient-effect
-// choice, and room for any later lock-only preference. Same mechanism and
-// reasoning as Config/ThemeOverrides: a single flat JSON object at
-// Paths.lockPrefsFile ($XDG_STATE_HOME/phi/lock.json), read once on load,
-// rewritten whole on change — deliberately NOT `phi state` (S-13 built
-// that for a closed scalar-key set, phi/internal/state/state.go, and this
-// needs no `phi` rebuild) and NOT the repository (runtime UI state, not
-// configuration).
+// The lock screen's ambient-effect choice and its settings. One flat JSON
+// object at Paths.lockPrefsFile, read once on load, rewritten whole on
+// change — not `phi state` (closed scalar-key set) and not the repository
+// (runtime UI state, not configuration).
 //
 // `effect` is one of: "none" | "lava" | "matrix" | "starfield" | "plasma"
-// | "life" | "boids". The default is "lava" — the lava lamp is what the
-// user asked for; the rest (including plain "none") are opt-in from the
-// settings Theme section. "plasma" and "life" (Lock/Plasma.qml,
-// Lock/Life.qml) added for docs/TODO.md: "add more [ambient effect]
-// types ... taking inspirations by cool terminal effects or
-// screensavers"; "boids" (Lock/Boids.qml) added the same way, on the
-// user's own request for more variety (ideas cross-checked against
-// github.com/phlx0/drift's scene list, a terminal screensaver with a
-// similar "ambient background art" brief).
+// | "life" | "boids". Default is "lava"; the rest are opt-in from the
+// settings Theme section.
 
 Singleton {
     id: root
@@ -45,17 +34,7 @@ Singleton {
         prefsFile.setText(JSON.stringify(root.prefs, null, 2))
     }
 
-    // docs/TODO.md: "ambient effects look great, they should have many
-    // settings: some shared (eg. speed) some specific for the selected
-    // one." Every Lock/*.qml effect already exposed its own `intensity`
-    // property (peak opacity/brightness — a real, working knob, just never
-    // surfaced in Settings) with its own per-effect default; this is the
-    // "specific" half, kept per-effect rather than one shared value, since
-    // the existing defaults already differ enormously by design (0.18 for
-    // MatrixRain's deliberately-faint glyphs vs. 0.9 for Starfield) — one
-    // shared number would either wash out the faint ones or blow out the
-    // bright ones. `speed` is new: a shared multiplier every effect scales
-    // its own per-tick motion by, the literal "some shared" half.
+    // Shared multiplier every effect scales its own per-tick motion by.
     readonly property real speed: {
         var v = root.prefs ? root.prefs.speed : undefined
         return (typeof v === "number" && v > 0) ? v : 1.0
@@ -69,12 +48,12 @@ Singleton {
         prefsFile.setText(JSON.stringify(root.prefs, null, 2))
     }
 
-    // Each effect's own hardcoded default (Lock/LavaLamp.qml: 0.28,
-    // Lock/MatrixRain.qml: 0.18, Lock/Starfield.qml: 0.9,
-    // Lock/Plasma.qml: 0.85, Lock/Life.qml: 0.85, Lock/Boids.qml: 0.85) —
-    // read back here so a key the user has never touched falls back to
-    // exactly what shipped before this setting existed, not a generic
-    // guessed number.
+    // Peak opacity/brightness, kept per-effect rather than one shared
+    // value — the existing per-effect defaults already differ enormously
+    // by design (0.18 for MatrixRain's deliberately-faint glyphs vs. 0.9
+    // for Starfield), so one shared number would wash out the faint ones
+    // or blow out the bright ones. Mirrors each effect's own pre-existing
+    // hardcoded default, so an untouched key changes nothing.
     readonly property var _intensityDefaults: ({
         lava: 0.28, matrix: 0.18, starfield: 0.9, plasma: 0.85, life: 0.85, boids: 0.85
     })
@@ -97,15 +76,10 @@ Singleton {
         prefsFile.setText(JSON.stringify(root.prefs, null, 2))
     }
 
-    // docs/TODO.md follow-up (user, 2026-09-15): "way more customisability"
-    // — a generic, per-effect namespace for the many effect-SPECIFIC knobs
-    // added alongside this (LavaLamp's blob count/wobble, MatrixRain's
-    // density, Starfield's star count, Plasma's grid resolution, Life's
-    // seed density). Additive to intensity/speed above, not a replacement:
-    // those two already have their own tested storage shape and every
-    // existing call site; a generic `value` (not `real`) so a future
-    // non-numeric param (a palette choice, say) fits the same mechanism
-    // without a parallel string-typed variant.
+    // Generic per-effect namespace for knobs that don't fit intensity/speed
+    // (LavaLamp's blob count/wobble, MatrixRain's density, Starfield's star
+    // count, ...). `value`, not `real`, so a future non-numeric param (a
+    // palette choice) fits without a parallel variant.
     function paramFor(key, name, defaultValue) {
         var group = root.prefs && root.prefs.params ? root.prefs.params[key] : undefined
         var v = group ? group[name] : undefined

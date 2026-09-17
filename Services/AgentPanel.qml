@@ -3,41 +3,28 @@ import QtQml
 import Quickshell
 import qs.Services as Services
 
-// phiOS — Services/AgentPanel (out-of-plan, 2026-09-09). Owns the shown
-// state of the phi agent panel (Panels/AgentPanel.qml) so every entry
-// point drives one value, not three: the bar Φ segment
-// (Bar/modules/PhiAgent.qml), the Super+P bind via the "agent" IpcHandler,
-// and the "Open agent panel" button in Settings/sections/AiAgent.qml.
+// Owns the shown state of the AI agent panel so every entry point drives
+// one value, not three: the bar's Φ segment (Bar/modules/PhiAgent.qml),
+// the Super+P bind via the "agent" IpcHandler, and the "Open agent panel"
+// button in Settings/sections/AiAgent.qml. Same one-owner shape as
+// Services/Spotlight.qml — a bar or settings toggle that wrote its own
+// separate copy of the surface's state would never actually reach it.
 //
-// Same one-owner shape as Services/Spotlight.qml. shell.qml's own S-43
-// note records why: a bar or settings toggle that writes its own separate
-// copy of a surface's state never actually reaches the surface — the
-// PanelWindow is declared in shell.qml and a bar module has no path to it,
-// so the shared value has to live in a singleton both sides read.
-//
-// phios-agente.md §10.1 / phios-agente-delta.md D-06: the agent panel is
-// summoned by a global shortcut and is a resident surface on a persistent
-// event connection. This file is the toggle plumbing for that; the panel's
-// content is the three-section surface (Panels/AgentPanel.qml + Panels/
-// tabs/agent/*): Chat (a persistent sidebar plus the active conversation,
-// ChatShell.qml), Coding sessions, Memory proposals.
+// The agent panel is summoned by a global shortcut and is a resident
+// surface on a persistent event connection. This file is the toggle
+// plumbing for that; the panel's own content (not currently mounted in
+// this tree) is a three-section surface: Chat, Coding sessions, Memory
+// proposals.
 
 Singleton {
     id: root
 
     property bool shown: false
 
-    // docs/TODO.md: "opening the notification panel, the agent panel, the
-    // settings panel or a bar popout ... doesn't close whichever of the
-    // others is already open" — see Services/NotificationPanel.qml's own
-    // comment on this same handler for the full rationale.
     onShownChanged: if (root.shown) {
         Services.NotificationPanel.hide()
         Services.SettingsPanel.hide()
         Services.BarPopout.hide()
-        // docs/TODO.md: "opening a panel on a special workspace (11, 12) ...
-        // highest possible up to 10" — see Services/HyprlandBridge.qml's
-        // own comment on this function for the full rationale.
         Services.HyprlandBridge.leaveReservedWorkspace()
     }
 

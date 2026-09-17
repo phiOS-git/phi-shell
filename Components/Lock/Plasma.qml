@@ -1,36 +1,28 @@
 import QtQuick
 import qs.Config as Config
 
-// phiOS — Lock/Plasma. docs/TODO.md: "add more [ambient effect] types to
-// pick, taking inspirations by cool terminal effects or screensavers" —
-// the classic demoscene/XScreenSaver "plasma" effect: a smoothly shifting
-// colour field from three overlaid sine waves, no image data, no shader
-// (same from-scratch-in-a-Canvas approach Lock/Starfield.qml's own header
-// commits to, I-01: no package). Coarser grid than Starfield's per-point
-// rects (32x18 filled cells instead of ~140 points) — plasma reads as a
-// field, not discrete points, and a per-pixel canvas would cost far more
-// per frame for no visible gain at lock-screen viewing distance.
+// The classic demoscene/XScreenSaver "plasma" effect: a smoothly shifting
+// colour field from three overlaid sine waves, no image data, no shader.
+// Coarser grid than Starfield's per-point rects (32x18 filled cells
+// instead of ~140 points) — plasma reads as a field, not discrete points,
+// and a per-pixel canvas would cost far more per frame for no visible
+// gain at lock-screen viewing distance.
 //
-// Same contract every existing effect (LavaLamp/MatrixRain/Starfield)
-// already follows: `running`/`intensity` properties, a Timer at
+// Same contract every other effect (LavaLamp/MatrixRain/Starfield)
+// follows: `running`/`intensity` properties, a Timer at
 // `Config.Appearance.motionCTypeStep` driving `requestPaint()`, colour
-// from Config.Appearance tokens only (rule 6) — here `surface1` → `accent`
-// → `info`, the same accent/info pairing Lock/LavaLamp.qml's own header
-// already uses for its blobs, not a new colour choice invented here.
+// from Config.Appearance tokens only — here `surface1` → `accent` →
+// `info`, the same accent/info pairing LavaLamp uses for its blobs.
 
 Item {
     id: root
 
     property bool running: true
     property real intensity: 0.85
-    // docs/TODO.md: "ambient effects... should have many settings: some
-    // shared (eg. speed)" — see Lock/LavaLamp.qml's own identical comment.
     property real speed: 1.0
-    // docs/TODO.md follow-up (user, 2026-09-15): "way more customisability"
-    // — a multiplier on the grid resolution (>1 = finer detail, more
-    // cells, more fill cost per frame; <1 = coarser, cheaper). Settings/
-    // sections/Theme.qml's own "Plasma" accordion exposes this. 1.0 keeps
-    // the original fixed 32×18 grid exactly as it always was.
+    // Multiplier on the grid resolution (>1 = finer detail, more cells,
+    // more fill cost per frame; <1 = coarser, cheaper). 1.0 keeps the
+    // original fixed 32×18 grid.
     property real resolution: 1.0
 
     readonly property int cols: Math.max(4, Math.round(32 * root.resolution))

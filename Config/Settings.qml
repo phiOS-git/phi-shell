@@ -3,17 +3,13 @@ import QtQml
 import Quickshell
 import Quickshell.Io
 
-// phiOS — bridge onto `phi state` (S-13, master plan §5.6, §8.2): every
-// persisted runtime setting and toggle — theme.variant, monitor.config,
-// wallpaper.path, night-mode, dnd, spotlight, chroma — lives in one flat
-// file per key under $XDG_STATE_HOME/phi, and `phi` is the only thing that
-// reads or writes those files directly. This file never touches that
-// directory itself: get()/set()/list() shell out to the binary, so there is
-// exactly one implementation of the key-to-filename mapping and the
-// defined-keys check, not two.
-//
-// No consumer calls this yet — S-20 is the skeleton, the first real caller
-// is the settings panel (S-40) — so nothing here runs until something does.
+// Bridge onto `phi state`: every persisted runtime setting and toggle
+// (theme.variant, monitor.config, wallpaper.path, night-mode, dnd,
+// spotlight, chroma, ...) lives in one flat file per key under
+// $XDG_STATE_HOME/phi, and `phi` is the only thing that reads or writes
+// those files directly. This singleton never touches that directory
+// itself — get()/set()/list() shell out to the binary, so there is exactly
+// one implementation of the key-to-filename mapping.
 
 Singleton {
     id: root
@@ -46,18 +42,11 @@ Singleton {
             stdout: StdioCollector {
                 onStreamFinished: proc.output = this.text
             }
-            // running=false before destroy(), not just destroy() alone:
-            // Process.onFinished() (io/process.cpp) calls
-            // startProcessIfReady() unconditionally as its LAST step,
-            // after this exited handler has already run — destroy() only
-            // schedules deferred deletion, so the still-alive object would
-            // otherwise respawn itself once more before actually being
-            // freed. Found during S-36 while auditing every Process in
-            // this repo for the same class of bug (a one-shot Process left
-            // with running still true after it completes never really
-            // stops), also present, uncorrected, in this exact bridge
-            // since S-13 — every `phi state get/set/list` call in this
-            // shell has gone through this path since then.
+            // running=false before destroy(): Process.onFinished() calls
+            // startProcessIfReady() as its last step, after this exited
+            // handler already ran — destroy() only schedules deferred
+            // deletion, so without this the still-alive process would
+            // respawn once more before actually being freed.
             onExited: {
                 proc.running = false
                 if (proc.callback) {

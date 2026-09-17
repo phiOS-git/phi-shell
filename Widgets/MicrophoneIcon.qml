@@ -2,14 +2,9 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/MicrophoneIcon. User bug report, 2026-09-16 (rework.md's
-// status overlay: "microphone sensor ... enabled, disabled, in use"; rework-
-// issues.md item 4b). Same hand-drawn-Canvas convention as every other icon
-// in this directory without reliable font coverage — see TrueToneIcon.qml's
-// header for the full "why not a font glyph" reasoning (this exact icon is
-// the specific case that comment references — Bar/modules/Microphone.qml's
-// own retired header records two prior wrong-PUA-codepoint attempts at a
-// font mic glyph).
+// Same hand-drawn-Canvas convention as every other icon in this directory
+// without reliable font coverage — see TrueToneIcon.qml for the full "why
+// not a font glyph" reasoning.
 //
 // The classic capsule-on-a-stand mic silhouette, in three states distinct
 // by SHAPE, not colour alone (the caller still tints `iconColor` per its
@@ -17,7 +12,7 @@ import "WidgetStates.js" as WidgetStates
 // "muted" draws a diagonal strike through the capsule (the universal
 // mic-off cue), "idle" is a plain hollow outline, "inUse" fills the capsule
 // solid — reads as "live" at a glance, the same outline-vs-filled language
-// TrueToneIcon's on/off already uses.
+// TrueToneIcon's on/off uses.
 Item {
     id: root
 

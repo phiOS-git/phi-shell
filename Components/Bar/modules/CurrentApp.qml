@@ -4,25 +4,13 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Bar/modules/CurrentApp.qml (interface rework Phase 2, rework.md:
-// "current app name: shows the current app name, uses the accent color.").
-// Bottom-bar left isle.
+// Bottom-bar left isle: the active window's title, shown only when that
+// window is actually on THIS bar's own monitor
+// (Services.HyprlandBridge.activeToplevel), as a plain intrinsic-width
+// label.
 //
-// Reuses Bar/modules/ActiveWindow.qml's exact data source and "local, not
-// global" reasoning (Services.HyprlandBridge.activeToplevel, shown only
-// when that window is actually on THIS bar's own monitor — see that file's
-// own header for why) as a plain intrinsic-width label instead of the
-// elastic, width-constrained, screen-centred title ActiveWindow.qml was
-// built for (that file's own centreIsle Loader contract no longer applies
-// here — this sits in the LEFT isle now, beside the lens icon). Bar/
-// modules/ActiveWindow.qml itself is left untouched and unregistered by
-// either new registry (see this phase's own report on why it was kept
-// rather than deleted — Bar.qml's componentFor() still has a case for it).
-//
-// `_cap` bounds the width so one very long window title cannot blow out
-// the whole left isle — rework.md names no such cap for this element (only
-// the OLD centre-isle title had one, via the isle's own maxContentWidth);
-// this is this file's own judgment call, flagged for the screenshot pass.
+// `_cap` bounds the width so one very long window title can't blow out
+// the whole left isle.
 
 Widgets.StyledText {
     id: root
@@ -46,25 +34,14 @@ Widgets.StyledText {
     mono: true
     sizeStep: 0
     color: Config.Appearance.accent
-    // rework-issues.md item 9 (new requests): "should have some spacing
-    // on the left, exactly the same amount icons have as inner padding."
-    // Widgets/Segment.qml's own `paddingH` is `chWidth * space2` — the
-    // same token, not a new one. `leftPadding` is a real QtQuick Text
-    // property (unlike implicitWidth, it is included automatically in
-    // this Text's own `width` binding below, so the isle's Row does not
-    // need a second spacer element).
+    // Same left inset as an icon's own inner padding — Widgets/Segment.qml's
+    // `paddingH` token, not a new one. `leftPadding` is a real QtQuick
+    // Text property, included automatically in this Text's own `width`
+    // binding below, so the isle's Row needs no second spacer element.
     leftPadding: chMetrics.width * Config.Appearance.space2
     width: Math.min(implicitWidth, _cap)
     elide: Text.ElideRight
-    // "also it's not vertically centred" — same Row-only-manages-x cause
-    // as Bar/modules/Separator.qml's own header describes.
-    //
-    // User bug report, 2026-09-16: a per-module `y` binding here against
-    // `parent.height` was still visibly top-pinned on real hardware —
-    // `parent` is this label's own wrapping Loader, which mirrors ITS OWN
-    // height back at it, a same-object round trip that always resolved
-    // near zero. Fixed generically instead, one level up: Bar/Bar.qml's
-    // own Loader (the actual Row-managed child) now centres itself against
-    // the Row's real height directly — see its own comment for the full
-    // mechanism. Nothing to do here any more.
+    // Vertical centering against the Row's real height lives one level
+    // up, in Bar.qml's own Loader — see Bar/modules/Separator.qml's own
+    // header for why a per-module `y` binding here doesn't work.
 }

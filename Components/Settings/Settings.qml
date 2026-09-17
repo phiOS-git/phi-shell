@@ -8,41 +8,28 @@ import qs.Widgets as Widgets
 import "./sections" as Sections
 import "./sections/options.js" as Options
 
-// phiOS — Settings/Settings (S-40, master plan §8.3 surface 14, §9.12: nine
-// sections, "one canonical place for every runtime option"). Composition is
-// Settings/sections.json, read once at startup — same registry mechanism as
-// Panels/Sidebar.qml's tabs.json (S-31) and Bar/Bar.qml's modules.json
-// (S-22): adding a tenth section is a one-file data change (ADR 078).
+// The settings panel. Section content is data-driven from sections.json —
+// adding a section is a one-file registry change, not a code change (same
+// pattern as Bar.qml's modules.json). Left-hand vertical section list
+// (rather than a horizontal tab strip) since the section count doesn't fit
+// one row at any reasonable width.
 //
-// Left-hand section list instead of Sidebar's horizontal tab strip: nine
-// entries do not fit a single row at any reasonable width, and a settings
-// panel's own convention (System Settings, GNOME Settings) is a vertical
-// list beside the content pane.
+// Every section reads Config.Settings (phi state) or a Services/ bridge —
+// none write into a repository path.
 //
-// RUNTIME STATE ONLY (S-40 AGENT contract). Every section reads
-// Config.Settings (phi state) or a Services/ bridge; none write into a
-// repository path.
+// Search HIGHLIGHTS matches rather than filtering the section list, so
+// nothing already open ever disappears. Enter acts on the top-ranked result
+// from Settings/options.js: a whole section selects it, a specific option
+// reveals it (select the section, scroll to the row, pulse it). The same
+// reveal path is exposed over IPC (`qs ipc call settings reveal <id>`) for
+// a "Show in settings" button elsewhere in the shell.
 //
-// Out-of-plan: settings-overhaul (batch A). The search no longer FILTERS
-// the section list — it HIGHLIGHTS matches (nav entries and, once a section
-// adopts Settings/SettingsRow, individual rows) and leaves everything
-// visible. Enter acts on the top-ranked result from Settings/options.js: a
-// whole section selects it, a specific option reveals it (select the
-// section, scroll the content pane to that row, pulse it). The same reveal
-// path is exposed over IPC (`qs ipc call settings reveal <id>`) so a status-
-// bar overlay's "Show in settings" button lands on the exact control.
-//
-// Bound to Super+S in dotfiles (S-40).
-//
-// features-change round 3 (panel style pass): the top bar is two lines —
-// "Settings" (title, body size, like every other panel heading) with the
-// close control on the first, the `>` search on its own line below — rather
-// than title + prompt + field + close crammed onto one.
+// Bound to Super+S in dotfiles.
 
 PanelWindow {
     id: root
 
-    // OOP-23: shown state lives in Services/SettingsPanel (one owner).
+    // Shown state lives in Services/SettingsPanel (one owner).
     readonly property bool shown: Services.SettingsPanel.shown
     property int activeIndex: 0
     property var registryRows: []
@@ -58,8 +45,8 @@ PanelWindow {
         Qt.callLater(function () { searchField.forceActiveFocus() })
     }
 
-    // OOP-23: a caller can ask for a specific section (bar cards, overlay
-    // "Show in settings" buttons). Matched by sections.json `type` or title.
+    // A caller can ask for a specific section (bar cards, overlay "Show in
+    // settings" buttons). Matched by sections.json `type` or title.
     function _applyPendingSection() {
         var name = Services.SettingsPanel.pendingSection
         if (!name || name.length === 0) return
@@ -73,9 +60,9 @@ PanelWindow {
         Services.SettingsPanel.pendingSection = ""
     }
 
-    // settings-overhaul: scroll the content pane to the SettingsRow that
-    // registered `pendingReveal` and pulse it. If the section is still
-    // loading, the row's own registration (onRowRegistered below) retries.
+    // Scrolls the content pane to the SettingsRow that registered
+    // `pendingReveal` and pulses it. If the section is still loading, the
+    // row's own registration (onRowRegistered below) retries.
     function _applyPendingReveal() {
         var id = Services.SettingsPanel.pendingReveal
         if (!id || id.length === 0) return
@@ -124,8 +111,8 @@ PanelWindow {
         else Services.SettingsPanel.reveal(id)
     }
 
-    // OOP-07: centred, large; full-screen transparent window, scrim dims
-    // the bar too (R3 #1: exclusiveZone -1 + Overlay layer).
+    // Full-screen transparent window so the scrim dims the bar too
+    // (exclusiveZone -1 + Overlay layer).
     anchors { top: true; bottom: true; left: true; right: true }
     exclusiveZone: -1
     color: "transparent"
@@ -142,15 +129,13 @@ PanelWindow {
     }
     readonly property real chWidth: chMetrics.width
 
-    // features-change (item 1): switching section used to keep the previous
-    // section's scroll offset — land on a short section after scrolling a
-    // long one and it opened blank-looking, scrolled past its end.
+    // Reset scroll on section switch — otherwise a short section opened
+    // scrolled past its own end, inheriting the previous section's offset.
     onActiveIndexChanged: contentFlick.contentY = 0
 
-    // features-change (item 1): a thin, non-interactive position hint — the
-    // content pane (Theme especially) scrolls well past a screen with no
-    // indication there was more. Decoration only: it never takes input, and
-    // if the geometry is a pixel off it is still just a faint mark.
+    // Thin, non-interactive scroll-position hint — the content pane (Theme
+    // especially) scrolls well past a screen with no other indication there
+    // was more. Decoration only: never takes input.
     component ScrollHint: Rectangle {
         id: hint
         property var flick: null
@@ -186,11 +171,8 @@ PanelWindow {
         function toggle(): void { Services.SettingsPanel.toggle() }
         function open(): void { Services.SettingsPanel.show() }
         function close(): void { Services.SettingsPanel.hide() }
-        // settings-overhaul: jump straight to one control. `id` is a
-        // Settings/options.js option id, e.g. "connectivity.wifi.speed".
-        // First typed-parameter IpcHandler method in this shell — Quickshell
-        // documents `function f(a: string): void` for `qs ipc call`, but no
-        // prior surface here exercised it; flagged for the screenshot pass.
+        // Jumps straight to one control. `id` is a Settings/options.js
+        // option id, e.g. "connectivity.wifi.speed".
         function reveal(id: string): void { Services.SettingsPanel.reveal(id) }
         function section(name: string): void { Services.SettingsPanel.openSection(name) }
     }
@@ -266,16 +248,10 @@ PanelWindow {
             anchors.fill: parent
 
             // --- top bar: title + close, then the search on its own line -
-            // rework-issues.md item 17a: "make the panel padding the same
-            // on all sides" — this used to reserve an extra
-            // `space2 * 2` of height beyond its own content just for the
-            // top edge, while the left edge (navFlick below) had no extra
-            // margin at all and the right/bottom edges (contentFlick,
-            // navFlick) already used `root.gap`. All four outer edges now
-            // add that same `root.gap` beyond Widgets/Panel.qml's own
-            // uniform `paddingV`/`paddingH` (Config.Appearance.panelPadding,
-            // applied equally on every side already) — see navFlick's new
-            // `anchors.leftMargin` below for the matching left-edge fix.
+            // All four outer edges add the same `root.gap` beyond
+            // Widgets/Panel.qml's own uniform padding, so the panel's
+            // padding reads identically on every side (see navFlick's
+            // matching leftMargin below).
             Item {
                 id: topBar
                 anchors.left: parent.left
@@ -331,14 +307,9 @@ PanelWindow {
                             text: "search settings — Enter cycles the matches"
                             visible: searchField.text.length === 0
                         }
-                        // docs/TODO.md, style pass: references/settings-
-                        // layout-reference.PNG's "advanced options switch to
-                        // simplify navigation" — spirit only (that reference
-                        // is a different shell's own skin, not something to
-                        // copy pixel-for-pixel), same row as the search field
-                        // the way the reference places it. A row opts in with
-                        // SettingsRow's own `advanced: true`; this just
-                        // exposes the switch that gates them.
+                        // A row opts in to advanced-only visibility with
+                        // SettingsRow's own `advanced: true`; this switch
+                        // gates them.
                         Row {
                             id: advancedRow
                             anchors.right: parent.right
@@ -355,8 +326,7 @@ PanelWindow {
                                 onToggled: (v) => Services.SettingsPanel.setShowAdvanced(v)
                             }
                         }
-                        // docs/TODO.md, style pass: "no clear/clean button
-                        // for searchbars" — same grammar as Launcher's own.
+                        // Same clear-button grammar as Launcher's search field.
                         Widgets.StyledIcon {
                             id: searchClearGlyph
                             visible: searchField.text.length > 0
@@ -406,14 +376,11 @@ PanelWindow {
             Flickable {
                 id: navFlick
                 anchors.left: parent.left
-                // rework-issues.md item 17a: matches contentFlick's own
-                // leftMargin/rightMargin — this was the one outer edge
-                // with no extra margin beyond Panel's base paddingH.
+                // Matches contentFlick's own leftMargin/rightMargin.
                 anchors.leftMargin: root.gap
                 anchors.top: topSep.bottom
-                // panels-ux-rework: the nav column and the content pane now
-                // start on the same line below the rule (both root.gap),
-                // rather than the nav riding one rhythm unit higher.
+                // Nav column and content pane start on the same line below
+                // the rule (both root.gap).
                 anchors.topMargin: root.gap
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: root.gap
@@ -457,18 +424,16 @@ PanelWindow {
             Flickable {
                 id: contentFlick
                 anchors.left: navSep.right
-                // OOP-52: symmetric left/right gutters — the pane used to
-                // have a left margin only, which read as "more space on the
-                // left" once the section cards lost their border.
+                // Symmetric left/right gutters, not just a left margin —
+                // otherwise the pane reads as "more space on the left".
                 anchors.leftMargin: root.gap
                 anchors.right: parent.right
                 anchors.rightMargin: root.gap
                 anchors.top: topSep.bottom
                 anchors.topMargin: root.gap
                 anchors.bottom: parent.bottom
-                // panels-ux-rework: a real bottom gutter so the last row of a
-                // section clears the panel edge instead of scrolling flush
-                // against it.
+                // Real bottom gutter so the last row of a section clears the
+                // panel edge instead of scrolling flush against it.
                 anchors.bottomMargin: root.gap
                 contentWidth: width
                 contentHeight: sectionLoader.item ? sectionLoader.item.implicitHeight : 0

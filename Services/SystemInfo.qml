@@ -3,25 +3,19 @@ import QtQml
 import Quickshell
 import Quickshell.Io
 
-// phiOS — Services/SystemInfo (S-40, master plan §9.12 General section:
-// "hostname, modello hardware (CPU/GPU/RAM/storage), versione OS e kernel,
-// uptime, spazio disco"). GPU vendor is deliberately NOT re-probed here —
-// Config.Capabilities.gpuVendor (S-04/S-20) already answers that from
-// bin/phios-capabilities, and this file is not a second capability probe,
-// only the plain machine-identity facts that probe was never asked for.
+// Machine-identity facts (hostname, CPU/RAM/storage, OS and kernel
+// version, uptime) for the settings panel's General section. GPU vendor
+// is deliberately NOT re-probed here — Config.Capabilities.gpuVendor
+// already answers that from bin/phios-capabilities.
 //
-// Same shape as Config/Capabilities.qml's own probe (S-20): one `sh -c`
-// script emitting KEY=VALUE lines, parsed the same way, so a 0.3.x-unrelated
-// shell-out bug has exactly one pattern to review across this repo rather
-// than a second bespoke parser. Every source here is a plain read of a
-// world-readable /proc or /sys file, or a standard coreutils/util-linux
-// command already present on any phiOS host (base profile) — nothing new
-// to install.
+// Same shape as Config/Capabilities.qml's own probe: one `sh -c` script
+// emitting KEY=VALUE lines, parsed the same way. Every source here is a
+// plain read of a world-readable /proc or /sys file, or a standard
+// coreutils/util-linux command already present on any phiOS host —
+// nothing new to install.
 //
 // Storage is `df` on `/` only — the root filesystem's free/total, not a
-// full mount-point breakdown; §9.12's own wording ("spazio disco") is
-// singular and this is the one figure `phi doctor`'s own disk check
-// (S-14) already treats as the meaningful one.
+// full mount-point breakdown.
 
 Singleton {
     id: root
@@ -45,22 +39,17 @@ Singleton {
     Component.onCompleted: refresh()
 
     // A single script, not eight separate Process objects: every source
-    // here is already fast and local (no network, no privileged call), so
-    // there is nothing latency-sensitive about batching them the same way
-    // Capabilities.qml does.
+    // here is already fast and local, so there's nothing latency-sensitive
+    // about batching them.
     //
-    // RAM found broken on real hardware (razer, first General-section run):
-    // the original line wrapped `awk '...\"...\"...'` (a single-quoted awk
-    // script containing escaped double quotes) inside `"$(...)"` (an outer
-    // double-quoted command substitution) — POSIX sh resolves `\"` during
-    // the OUTER double-quote scan, before the nested single quotes get any
-    // say, so the awk script that actually ran was missing its quotes
-    // entirely and failed with a syntax error, silently, into an empty
-    // RAM value. Reproduced and confirmed off-machine with a fake
-    // /proc/meminfo before writing this fix. Rewritten to awk printing the
-    // whole KEY=VALUE line directly — no $(...) wrapper at all — the exact
-    // shape the DISK_FREE/DISK_TOTAL line below already used successfully,
-    // which is why disk space was never affected by this bug.
+    // The RAM line prints the whole KEY=VALUE line directly from awk, with
+    // no `"$(...)"` command-substitution wrapper — wrapping a single-
+    // quoted awk script containing escaped double quotes inside an outer
+    // double-quoted substitution breaks, because POSIX sh resolves the
+    // outer `\"` before the nested single quotes get any say, so the awk
+    // script that actually runs is silently missing its quotes and fails
+    // with a syntax error into an empty value. The DISK_FREE/DISK_TOTAL
+    // line already avoided this by using the same direct-print shape.
     readonly property string _script: [
         "printf 'HOSTNAME=%s\\n' \"$(hostname)\"",
         "printf 'KERNEL=%s\\n' \"$(uname -r)\"",

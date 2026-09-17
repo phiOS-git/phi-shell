@@ -4,38 +4,22 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Bar/modules/Battery.qml (S-23, master plan §8.4: razer's
-// "batteria anomaly-carrier"). Continuous value → text, colour-on-threshold
-// (§8.4's icon-vs-text rule): `tone` is still muted (`""`) in the ordinary
-// case, exactly the disclosure model's "muto per default, cambia stato
-// solo su soglia" (§8.5) — Services/PowerBridge.qml owns the two
-// AGENT-card placeholder thresholds (>15%/h discharge, <20% remaining) as
-// settable properties, so this file only reads the one boolean verdict.
-// `error` for the more urgent, near-empty case and `warn` for the
-// high-discharge-rate one are this step's own judgment call, not named by
-// any planning document — style plan §8.6 defines the four tone values but
-// not which anomaly maps to which; flagged for cheap veto.
+// `tone` stays muted (`""`) in the ordinary case — Services/PowerBridge.qml
+// owns the discharge-rate and low-percent thresholds as settable
+// properties, this file only reads the one boolean verdict. `error` for
+// the near-empty case and `warn` for the high-discharge-rate one.
 //
-// docs/TODO.md (status-bar rework): the glyph is replaced by
-// Widgets/BatteryIcon via `iconDelegate` — a real percentage fill (not a
-// stepped icon swap between 4-5 fixed battery glyphs) and a breathing
-// bolt while charging (motion category A — an ongoing state, not a
-// discrete transition, same reasoning as Wifi's search pulse). Both
-// `iconColor` and `fillColor` below get the SAME `root.contentColor`,
-// which already incorporates `tone` (Widgets/Segment.qml's own
-// computation) — the low/anomaly threshold recolours the whole icon, not
-// just the fill, matching the convention every other icon in this bar
-// follows. BatteryIcon itself keeps the two as separate properties in
-// case a future caller wants the split; this one does not use it.
-//
+// The glyph is Widgets/BatteryIcon via `iconDelegate` — a real percentage
+// fill and a breathing bolt while charging, not a stepped icon swap
+// between fixed battery glyphs. `iconColor` and `fillColor` below both
+// get the SAME `root.contentColor`, which already incorporates `tone` —
+// the low/anomaly threshold recolours the whole icon, not just the fill,
+// matching every other icon in this bar.
 Widgets.Segment {
     id: root
 
     required property ShellScreen screen
 
-    // OOP-03: bar buttons sit on the opposite-coloured islands. Back in
-    // modules.json as of OOP-09 (the user's R2 answer: battery + GPU stay
-    // visible regardless of the right-isle inventory).
     ambient: "isle"
 
     readonly property bool present: Services.PowerBridge.present
@@ -46,20 +30,14 @@ Widgets.Segment {
     readonly property bool saverActive: Services.PowerBridge.batterySaverActive
 
     visible: root.present
-    // Interface rework Phase 2 (rework.md, "Features to be removed": "no
-    // icon has text next to it anymore"): the "80%" text label was gone by
-    // default — BatteryIcon's own `level` fill already carries the value
-    // visually (and the real percentage is still a click away, in the
-    // BarPopout card); the anomaly/saver `tone` colouring below is
-    // unchanged either way. rework-issues.md "New requests" item 1 brings
-    // it back as an opt-in (Settings › Devices › Battery), not a reversal
-    // of the default.
+    // The "80%" text label is off by default — BatteryIcon's own `level`
+    // fill already carries the value visually (and the real percentage is
+    // still a click away, in the bar popout card). Opt-in via Settings ›
+    // Devices › Battery.
     label: Services.PowerBridge.showPercentInBar ? (root.percent + "%") : ""
-    // docs/TODO.md: "have a battery saving mode ... must have visual
-    // feedback on the battery in the status bar." anomaly still wins when
-    // both apply — a critically low or high-discharge-rate battery stays
-    // urgent (error/warn) even while saver is also active, rather than a
-    // calmer "info" tone masking it.
+    // anomaly still wins when both apply — a critically low or high-
+    // discharge-rate battery stays urgent (error/warn) even while saver
+    // is also active, rather than a calmer "info" tone masking it.
     tone: root.anomaly ? (root.lowPercent ? "error" : "warn") : (root.saverActive ? "info" : "")
     active: Services.BarPopout.which === "battery"
 
@@ -71,9 +49,8 @@ Widgets.Segment {
     Behavior on chargingAmount {
         NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
     }
-    // docs/TODO.md: "the battery icon does not have different states for
-    // battery saving mode" — see Widgets/BatteryIcon.qml's own header on
-    // why this is a hatch pattern, not just another tone colour.
+    // See Widgets/BatteryIcon.qml's own header on why this is a hatch
+    // pattern, not just another tone colour.
     property real saverAmount: 0
     Behavior on saverAmount {
         NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
@@ -100,10 +77,8 @@ Widgets.Segment {
     iconDelegate: Component {
         Widgets.BatteryIcon {
             // One colour for both outline and fill: `root.contentColor`
-            // already incorporates `tone` (Widgets/Segment.qml's own
-            // contentColor computation), the same "tone recolours the
-            // whole glyph" convention every other icon in this bar
-            // follows — no separate outline/fill split invented here.
+            // already incorporates `tone`, the same "tone recolours the
+            // whole glyph" convention every other icon in this bar follows.
             iconColor: root.contentColor
             fillColor: root.contentColor
             sizeStep: root.sizeStep

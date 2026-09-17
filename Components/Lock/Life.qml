@@ -1,44 +1,36 @@
 import QtQuick
 import qs.Config as Config
 
-// phiOS — Lock/Life. docs/TODO.md: "add more [ambient effect] types to
-// pick, taking inspirations by cool terminal effects or screensavers" —
-// Conway's Game of Life, a genuinely classic terminal-screensaver effect
-// (cgol, life, and similar tools). Same from-scratch-Canvas approach
-// every existing effect uses (I-01: no package), same `running`/
-// `intensity`/Timer-at-`motionCTypeStep` contract as Lock/Starfield.qml.
+// Conway's Game of Life, a classic terminal-screensaver effect. Same
+// `running`/`intensity`/Timer-at-`motionCTypeStep` contract as
+// Lock/Starfield.qml.
 //
-// The shared `motionCTypeStep` token (24ms, the same tick every other
-// lock effect redraws on) is far too fast for a generation step — Life
-// would look like flicker, not a recognisable pattern. Rather than invent
-// a second ad-hoc duration (rule 6: motion timing comes from the token
-// set, nothing hardcoded outside it), this file keeps the SAME shared
-// tick for its Timer and instead only advances the simulation every
-// `stepEveryTicks` ticks (a frame-skip ratio, not a duration) — the
-// Canvas still redraws every tick so cells can fade smoothly between
-// generations rather than snapping instantly on/off.
+// The shared `motionCTypeStep` tick (the same one every other lock
+// effect redraws on) is far too fast for a generation step — Life would
+// look like flicker, not a recognisable pattern. Rather than invent a
+// second ad-hoc duration, this file keeps the SAME shared tick for its
+// Timer and instead only advances the simulation every `stepEveryTicks`
+// ticks (a frame-skip ratio, not a duration) — the Canvas still redraws
+// every tick so cells can fade smoothly between generations rather than
+// snapping instantly on/off.
 //
 // Toroidal (wraparound) neighbour counting, standard B3/S23 rules. A
 // board that dies out completely (a real, common Life outcome) re-seeds
-// itself rather than leaving a blank lock screen indefinitely — expected
-// behaviour for an ambient screensaver-style effect, not a bug workaround.
+// itself rather than leaving a blank lock screen indefinitely.
 
 Item {
     id: root
 
     property bool running: true
     property real intensity: 0.85
-    // docs/TODO.md: "ambient effects... should have many settings: some
-    // shared (eg. speed)" — see Lock/LavaLamp.qml's own identical comment.
     // Life has no continuous per-tick delta to scale the way every other
     // effect does (its motion is discrete generation steps, not smooth
     // motion) — speed instead scales the frame-skip ratio itself,
     // inversely: doubling speed halves stepEveryTicks, so generations
     // advance twice as often.
     property real speed: 1.0
-    // docs/TODO.md follow-up (user, 2026-09-15): "way more customisability"
-    // — same grid-resolution multiplier shape as Lock/Plasma.qml's own
-    // identical property; 1.0 keeps the original fixed 48×27 grid exactly.
+    // Same grid-resolution multiplier shape as Lock/Plasma.qml's own
+    // identical property; 1.0 keeps the original fixed 48×27 grid.
     property real resolution: 1.0
     // The initial random-alive probability each seed() (and re-seed on a
     // dead board) uses — was a hardcoded 0.28. Higher reads as a denser,

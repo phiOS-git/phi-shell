@@ -2,15 +2,12 @@ pragma Singleton
 import Quickshell
 import Quickshell.Services.Mpris
 
-// phiOS — thin wrapper over Quickshell.Services.Mpris (S-34, master plan
-// §8.3: lock screen media controls). The one file outside Config/
-// sanctioned to touch this service surface (phi-shell/CLAUDE.md).
+// Thin wrapper over Quickshell.Services.Mpris — the one file outside
+// Config/ allowed to touch this service surface.
 //
-// Mpris.players (confirmed against the real header, services/mpris/
-// watcher.hpp: QML_NAMED_ELEMENT(Mpris)) is an ObjectModel<MprisPlayer>;
-// `.values` (core/model.hpp: "QList<QObject*> values") is the real,
-// JS-iterable array form, used here rather than attempting to index the
-// model type directly from JS, which no file in this repo has tried.
+// Mpris.players is an ObjectModel<MprisPlayer>; `.values` is the real,
+// JS-iterable array form, used here rather than indexing the model type
+// directly from JS.
 
 Singleton {
     id: root

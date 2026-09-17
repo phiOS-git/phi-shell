@@ -2,14 +2,12 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/NumberField (Out-of-plan: settings-overhaul batch C). A
-// numeric stepper: −  [value]  + . Used wherever a theme variable needs a
+// A numeric stepper: −  [value]  + . Used wherever a theme variable needs a
 // number — font scale, spacing scale, radii, a motion duration, a wallpaper
-// scale — because the user's directive for this round is "avoid sliders for
-// theme variables": a slider invites idle dragging of a value that should
-// be deliberate, and cannot show an exact figure. A slider stays for the
-// two places a continuous sweep is the point (texture intensity, a bezier
-// handle).
+// scale — rather than a slider: a slider invites idle dragging of a value
+// that should be deliberate, and cannot show an exact figure. A slider
+// stays for the two places a continuous sweep is the point (texture
+// intensity, a bezier handle).
 //
 // Controlled: `value` is the caller's. `committed(value)` fires on a
 // step-button press or when the field is edited and confirmed (Enter /
@@ -37,17 +35,12 @@ Row {
     }
     readonly property real chWidth: chMetrics.width
 
-    // Style pass 2026-09-14 (docs/TODO.md: "history time setting has a
-    // text filed for a number + time measure ... the content does not fit
-    // the space and overflows"). Every suffix in this shell before " days"
-    // (Notifications.qml's retention field) was 1-3 characters ("%", "px",
-    // "K", "×"); this widget's field was a flat space6 (~8ch), just wide
-    // enough for the SHORT ones, so "365 days" (8 characters) ran right up
-    // against — and, with inset padding eating into that same 8ch, past —
-    // the field's own edge. Measures the widest value this field can
-    // actually show (from/to, at the real decimals/suffix) instead of
-    // guessing a fixed width, so a long suffix simply gets more room
-    // rather than overflowing it.
+    // A flat fixed width overflows for a long suffix like " days"
+    // (Notifications.qml's retention field: "365 days" is 8 characters,
+    // with inset padding eating into the same space). Measures the widest
+    // value this field can actually show (from/to, at the real
+    // decimals/suffix) instead of guessing a fixed width, so a long suffix
+    // gets more room rather than overflowing it.
     TextMetrics {
         id: widestMetrics
         font.family: Config.Appearance.fontMono
@@ -67,23 +60,13 @@ Row {
         return root.suffix.length > 0 ? s + root.suffix : s
     }
     function _clamp(v) { return Math.max(root.from, Math.min(root.to, v)) }
-    // Style pass 2026-09-15: was clamping only — `root.value` and the
-    // emitted `committed(c)` both kept whatever precision the caller
-    // passed in (a typed "5.7" into a `decimals: 0` field, or float drift
-    // from repeatedly stepping by a fractional `step`), while `_fmt(c)`
-    // rounded only the DISPLAYED text to `decimals`. The field could show
-    // "6" while `value` was still 5.7 underneath, and `committed` handed
-    // callers that same unrounded 5.7 — several call sites had already
-    // found this the hard way and defensively wrap with their own
-    // `Math.round(v)` (Settings/sections/Devices.qml's Chroma row/col
-    // fields, several in Theme.qml), inconsistently: others (Notifications'
-    // retention days and sound volume, the battery alert thresholds) did
-    // not, and would have silently stored a fractional value in a field
-    // that only ever displays and means a whole number. Rounding here
-    // once, to the field's own `decimals`, fixes it at the source for
-    // every current and future caller — the existing defensive
-    // `Math.round(v)` wrappers become harmless no-ops on an already-
-    // integer value, not double-rounding.
+    // Rounds `value` itself to `decimals`, not just the displayed text —
+    // otherwise a typed "5.7" into a `decimals: 0` field (or float drift
+    // from repeatedly stepping by a fractional `step`) leaves the field
+    // showing "6" while `value`, and the `committed` it emits, are still
+    // 5.7 underneath. A caller wrapping its own `Math.round(v)` around the
+    // committed value stays a harmless no-op once this rounds at the
+    // source.
     function _round(v) {
         var mult = Math.pow(10, root.decimals)
         return Math.round(v * mult) / mult

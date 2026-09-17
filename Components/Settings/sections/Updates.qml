@@ -3,9 +3,7 @@ import Quickshell.Io
 import qs.Config as Config
 import qs.Widgets as Widgets
 
-// phiOS — Settings/sections/Updates (S-45; Out-of-plan: settings-overhaul
-// batch J, master plan §9.12). Split into two groups, per the user's
-// directive:
+// Split into two groups:
 //   - System state: the versions of phi, phios-dotfiles and each installed
 //     phi-* package (`phi pkg state --json`).
 //   - Packages: one collapsible list per manager. phi / pacman / AUR come
@@ -15,8 +13,8 @@ import qs.Widgets as Widgets
 //
 // READ-ONLY. Nothing here runs `phi update` or `pacman` — that verb is
 // real, interactive and privileged, and belongs to a terminal the user
-// runs themselves (S-45's own contract). `phi pkg check` in a terminal is
-// the way to see available updates.
+// runs themselves. `phi pkg check` in a terminal is the way to see
+// available updates.
 
 Column {
     id: root
@@ -120,8 +118,6 @@ Column {
         optionId: "updates.system"
         caption: root.loading ? "Reading versions…" : "phi is baked in at build; phios-dotfiles is `git describe`; the rest is pacman."
 
-        // Style pass 2026-09-14 (docs/TODO.md: "a reusable loading-skeleton
-        // placeholder for async lists ... the updates check").
         Widgets.Skeleton {
             width: parent ? parent.width : 0
             visible: root.loading && root.components.length === 0

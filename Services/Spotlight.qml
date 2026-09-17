@@ -4,11 +4,11 @@ import Quickshell
 import Quickshell.Io
 import qs.Config as Config
 
-// phiOS — Services/Spotlight (S-43; SF-5). Owns the cursor-locator overlay's
-// state: `shown` (hold-to-show, or the settings Toggle's sticky toggle) and
-// the chosen effect + its per-effect options.
+// Owns the cursor-locator overlay's state: `shown` (hold-to-show, or the
+// settings Toggle's sticky toggle) and the chosen effect + its per-effect
+// options.
 //
-// Effects (Spotlight/Spotlight.qml renders one, picked by `effect`):
+// Effects (Tools/Spotlight.qml renders one, picked by `effect`):
 //   dim        — a soft vignette; everything but a circle around the cursor
 //                is dimmed. `size`, `intensity`.
 //   flashlight — a hard-edged clear circle, the rest dimmed harder.
@@ -18,14 +18,13 @@ import qs.Config as Config
 //   ring       — no dim; a stroked circle around the cursor.
 //                `ringRadius`, `ringThickness`.
 //
-// Storage: a nested JSON prefs file (Config.Paths.spotlightPrefsFile), same
-// shape/reasoning as chroma.json / notification-prefs.json — NOT `phi
-// state`'s closed scalar set. The pre-existing `spotlight.size` phi-state
-// key is read once as a seed so an existing choice carries over.
+// Storage: a nested JSON prefs file (Config.Paths.spotlightPrefsFile), not
+// `phi state`'s closed scalar set. The pre-existing `spotlight.size`
+// phi-state key is read once as a seed so an existing choice carries over.
 //
-// Hold-to-show, not a persistent toggle (real-hardware feedback): show() /
-// hide() are hyprland.lua's SUPER+G press / bare-g release binds; toggle()
-// is kept for the settings Toggle.
+// Hold-to-show, not a persistent toggle: show()/hide() are hyprland.lua's
+// SUPER+G press / bare-g release binds; toggle() is kept for the settings
+// Toggle.
 
 Singleton {
     id: root

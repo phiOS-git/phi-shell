@@ -2,10 +2,9 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/StyledButton (S-21). A generic rectangular push button —
-// popover quick actions (§8.5's "2 azioni rapide"), settings actions,
-// anywhere a click needs a labelled target. Widgets/Toggle is the standard
-// two-state switch (§8.6); this is the general-purpose rectangular push
+// A generic rectangular push button — popover quick actions, settings
+// actions, anywhere a click needs a labelled target. Widgets/Toggle is the
+// standard two-state switch; this is the general-purpose rectangular push
 // button. Full seven-state model, self-detected.
 
 Item {
@@ -27,15 +26,14 @@ Item {
         active: root.active, keyboardFocus: root.keyboardFocus,
         loading: root.loading, invalid: root.invalid
     })
-    // Interface rework Phase 1 (rework.md s3) — "shaded", not the generic
-    // B&W default; see WidgetStates.js's own comment on this branch.
+    // "shaded", not the generic B&W default; see WidgetStates.js's own
+    // comment on this branch.
     readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState, "shaded")
 
     // design/tokens.common.sh stores space-N in `ch`, not px — see
-    // Panel.qml's identical comment. Measured locally rather than shared,
-    // since neither WidgetStates.js nor a QML Singleton can host the
-    // TextMetrics object that does the measuring (confirmed against real
-    // Quickshell source, see WidgetStates.js).
+    // WidgetStates.js's chToPixels() comment. Measured locally rather than
+    // shared, since neither WidgetStates.js nor a QML Singleton can host
+    // the TextMetrics object that does the measuring.
     TextMetrics {
         id: chMetrics
         font.family: Config.Appearance.fontMono
@@ -43,8 +41,7 @@ Item {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
-    // features-change: was space4 / space2 — a ~48px slab. Now space3 of
-    // side padding and the shared control height (~30px), so it is a
+    // space3 of side padding plus the shared control height, so this is a
     // compact button that lines up with a TextField beside it.
     readonly property real paddingH: WidgetStates.chToPixels(Config.Appearance.space3, chWidth)
     readonly property real _controlHeight: WidgetStates.controlHeight(Config.Appearance, chWidth)
@@ -56,10 +53,9 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        // Interface rework Phase 1 (rework.md s5, "avoid very curved
-        // material-like elements"): radiusSmall, the same thin/boxy corner
-        // Widgets/Toggle and Widgets/SmallButton already use, instead of
-        // the generic radiusBase — and the hairline border width to match.
+        // radiusSmall, the same thin/boxy corner Widgets/Toggle and
+        // Widgets/SmallButton use, instead of the generic radiusBase — and
+        // the hairline border width to match.
         radius: Config.Appearance.radiusSmall
         color: root.stateColors.bg
         border.width: Config.Appearance.borderWidthStrong
@@ -95,16 +91,12 @@ Item {
         onTapped: root.clicked()
     }
 
-    // Style pass 2026-09-14: `activeFocusOnTab: true` above lets a keyboard
-    // user Tab to this button, but a plain QML Item has no built-in
-    // Enter/Space activation the way a real Button control would — without
-    // this, the ONLY way to actually activate a focused button was a mouse
-    // click, a real systemic keyboard-accessibility gap this widget library
-    // shared across every button/toggle/row/segment type in it (checked:
-    // only two call sites anywhere in this shell had ever patched around it
-    // with their own per-instance override — Dialogs/ConfirmDialog.qml and
-    // Dialogs/BatteryAlert.qml — leaving every other instance dead to the
-    // keyboard). Fixed once here instead of at every call site.
+    // `activeFocusOnTab: true` above lets a keyboard user Tab to this
+    // button, but a plain QML Item has no built-in Enter/Space activation
+    // the way a real Button control would — without this, the ONLY way to
+    // activate a focused button is a mouse click. Fixed once here rather
+    // than per call site, since every button/toggle/row/segment type in
+    // this widget library shares the same gap.
     Keys.onReturnPressed: if (root.enabled && !root.loading) root.clicked()
     Keys.onSpacePressed: if (root.enabled && !root.loading) root.clicked()
 

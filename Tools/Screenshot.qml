@@ -6,29 +6,20 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Screenshot/Screenshot.qml (S-36, master plan §8.3 surface 9,
-// ADR 075). Capture built in-house: this file owns the selection overlay
-// and orchestration, `grim` does the actual pixel capture (already the
-// standard wlroots-ecosystem screenshot backend), `tesseract` and
-// `zbarimg` (already declared, S-15's own base profile) do OCR and QR
-// decoding, `wf-recorder` does video encoding. `slurp`, listed alongside
-// `grim` in master plan §15.3, is deliberately NOT invoked anywhere here:
-// its whole job is the interactive region picker, and "Selection overlay
-// built in QML" (S-36 AGENT) is this file's own replacement for exactly
-// that — still declared in packages.txt for fidelity to the registry (a
-// user's own ad hoc use outside this feature), flagged for cheap veto as
-// an intentional deviation from the literal grim+slurp pairing the
-// registry's own row implies.
+// Capture built in-house: this file owns the selection overlay and
+// orchestration, `grim` does the actual pixel capture (the standard
+// wlroots-ecosystem screenshot backend), `tesseract` and `zbarimg` do OCR
+// and QR decoding, `wf-recorder` does video encoding. `slurp` is
+// deliberately NOT invoked anywhere here: its whole job is the interactive
+// region picker, and the selection overlay built in QML below is this
+// file's own replacement for exactly that.
 //
-// Quickshell.Wayland.ScreencopyView was checked early in this session,
-// before S-30: it renders a live feed into the QML scene, it does not
-// encode a file, so wf-recorder remains genuinely necessary rather than
-// something this step could have replaced — the exact verification S-36's
-// own card asks for, done before committing to grim/wf-recorder rather
-// than after.
+// Quickshell.Wayland.ScreencopyView renders a live feed into the QML
+// scene, it does not encode a file, so wf-recorder remains genuinely
+// necessary rather than something this file could replace.
 //
-// Scrolling capture is EXCLUDED PERMANENTLY (ADR 075) and is not
-// implemented, proposed, or revisited anywhere in this file.
+// Scrolling capture is EXCLUDED PERMANENTLY and is not implemented,
+// proposed, or revisited anywhere in this file.
 //
 // All four modes below (save, OCR, QR, record) route through the SAME
 // drag-select overlay for their region — one selection mechanism, not
@@ -49,20 +40,13 @@ PanelWindow {
     readonly property bool selecting: root.mode.startsWith("select-")
 
     anchors { top: true; bottom: true; left: true; right: true }
-    // docs/TODO.md: "the dim area is trimmed below the status bar." This
-    // surface was never raised off the default Top layer, unlike every
-    // other modal-style overlay in this repo (Settings, Launcher,
-    // Cheatsheet, AltTab, Sidebar, AgentPanel all set WlrLayer.Overlay in
-    // their own Component.onCompleted) — on Top, the bar's own
-    // exclusiveZone (Bar/Bar.qml: `bar.height` while not auto-hidden)
-    // reduces this surface's available region to stop short of the bar
-    // strip, which is exactly what "trimmed" describes: not a z-order
-    // occlusion, the region itself stops there, so neither the Scrim below
-    // nor the selection MouseArea can reach it. `exclusiveZone: -1` paired
-    // with the layer bump is AltTab.qml's own already-hardware-verified
-    // fix for this identical symptom (its header: "raised to
-    // WlrLayer.Overlay + exclusiveZone -1 ... so the dim covers the status
-    // bar too") — same pairing here, not the layer alone.
+    // On the default Top layer, the bar's own exclusiveZone reduces this
+    // surface's available region to stop short of the bar strip — not a
+    // z-order occlusion, the region itself stops there, so neither the
+    // Scrim below nor the selection MouseArea can reach it. Raising to
+    // WlrLayer.Overlay (below) paired with `exclusiveZone: -1` is the same
+    // fix Components/Overview.qml uses for the identical symptom, so the
+    // dim covers the status bar too.
     exclusiveZone: -1
     color: "transparent"
     visible: root.selecting || root.resultText.length > 0
@@ -71,14 +55,10 @@ PanelWindow {
         if (root.WlrLayershell) root.WlrLayershell.layer = WlrLayer.Overlay
     }
 
-    // Style pass 2026-09-14: this surface had no keyboard focus and no
-    // Escape handling at all — every other modal-style overlay in this
-    // shell (Settings, Launcher, Cheatsheet, AltTab, Sidebar, AgentPanel)
-    // wires Escape to cancel/close; this one only ever exited a selection
-    // via a near-empty drag (onReleased's own width/height < 4 check,
-    // still there, unchanged) or by actually completing a capture. Escape
-    // is the conventional, expected way to back out of a modal selection
-    // and this shell's own established convention everywhere else.
+    // Every other modal-style overlay in this shell wires Escape to
+    // cancel/close; without this, the only way to back out of a selection
+    // was a near-empty drag (onReleased's own width/height < 4 check,
+    // still there, unchanged) or actually completing a capture.
     Services.LayerFocus { target: root }
     Item {
         id: keyScope
@@ -103,15 +83,11 @@ PanelWindow {
     }
 
     // Neither grim nor wf-recorder is expected to create a missing parent
-    // directory itself — the same cheap insurance S-30/S-32 already apply
-    // to $XDG_STATE_HOME/phi, run once here for both output directories.
+    // directory itself, so this ensures both output directories exist.
     // running=false in onExited even though nothing ever re-triggers this
     // one: Process.onFinished() calls startProcessIfReady() unconditionally
-    // on exit (io/process.cpp), so ANY Process left with running still
-    // true after it completes respawns itself forever — not only the
-    // re-triggered ones this milestone's commits already flagged. A real,
-    // already-shipped instance of exactly this (S-30's own mkdir Process)
-    // is corrected in the same commit as this file.
+    // on exit, so ANY Process left with running still true after it
+    // completes respawns itself forever.
     Process {
         id: ensureDirsProc
         command: ["sh", "-c", 'mkdir -p "$1" "$2"', "mkdir", root._picturesDir(), root._recordingsDir()]
@@ -126,8 +102,7 @@ PanelWindow {
             + "-" + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds()) + "." + ext
     }
 
-    // --- Triggers (IPC — no keybinding exists yet, S-38's own gap,
-    // already documented the same way by every M3 step before it) --------
+    // --- Triggers (IPC — no keybinding exists yet) --------------------
 
     IpcHandler {
         target: "screenshot"
@@ -178,31 +153,18 @@ PanelWindow {
                 root.mode = "idle"
                 return
             }
-            // CORRECTED on the second real-hardware round: the previous
-            // version of this comment claimed "grim -g wants physical
-            // compositor pixels" and multiplied by root.screen.
-            // devicePixelRatio — confirmed WRONG by reading grim's own
-            // source directly (github.com/emersion/grim, render.c):
-            // `render()` computes `output_x = output->logical_geometry.x
-            // - geometry->x` — the `-g` box is subtracted straight
-            // against each output's LOGICAL geometry, and separately
-            // multiplies `geometry->width`/`height` by `scale` ITSELF to
-            // size the output buffer — meaning grim wants the `-g` box
-            // entirely in LOGICAL coordinates and applies scale on its
-            // own, never something the caller should pre-multiply in.
-            // main.c's own use of `output->logical_geometry` (compared
-            // directly against the user's `-g` value) says the same
-            // thing. This is also why the previous version broke
-            // proportionally to a monitor's own x/y offset in a multi-
-            // monitor layout (real-hardware feedback: "seem to change
-            // offset based on the position of the screen") — scaling
-            // `root.screen.x` (already the correct logical offset) was
-            // never correct on any monitor, single or multi.
+            // grim's `-g` box is entirely in LOGICAL coordinates —
+            // `render()` subtracts it straight against each output's
+            // logical geometry and separately multiplies width/height by
+            // `scale` itself to size the output buffer, so scale is never
+            // something the caller should pre-multiply in. Pre-multiplying
+            // by devicePixelRatio breaks proportionally to a monitor's own
+            // x/y offset in a multi-monitor layout, since the offset is
+            // already logical and correct on its own.
             //
-            // root.screen.x/y/width/height and mouse.x/y are logical
-            // (Qt/QML's own long-established convention, confirmed
-            // against src/core/qmlscreen.hpp in the prior round) — exactly
-            // what grim now gets, unmultiplied.
+            // root.screen.x/y/width/height and mouse.x/y are all logical
+            // (Qt/QML's own convention) — exactly what grim wants,
+            // unmultiplied.
             const geometry = Math.round(root.screen.x + selectionRect.x) + ","
                 + Math.round(root.screen.y + selectionRect.y) + " "
                 + Math.round(selectionRect.width) + "x" + Math.round(selectionRect.height)
@@ -223,15 +185,14 @@ PanelWindow {
 
     Widgets.Scrim {
         anchors.fill: parent
-        // Style pass 2026-09-14: was `shown: root.selecting` only — but
-        // `_prepareCapture` resets `mode` to "idle" (so `selecting` goes
-        // false) BEFORE the async grim/tesseract/zbarimg run even starts,
-        // meaning the OCR/QR result panel below spent its entire visible
-        // lifetime with no scrim behind it at all, unlike every other
-        // modal-style panel in this shell.
+        // Not `shown: root.selecting` alone — `_prepareCapture` resets
+        // `mode` to "idle" (so `selecting` goes false) BEFORE the async
+        // grim/tesseract/zbarimg run even starts, so the OCR/QR result
+        // panel below needs the scrim kept up independently of `selecting`
+        // or it would render with nothing behind it.
         shown: root.selecting || root.resultText.length > 0
-        // docs/TODO.md, style pass: screenshot selection is one of the
-        // "covers the bar" dims — gets the stronger intensity.
+        // Screenshot selection is one of the "covers the bar" dims — gets
+        // the stronger intensity.
         strong: true
     }
 
@@ -259,12 +220,10 @@ PanelWindow {
                 mono: true
                 text: root.resultText
             }
-            // Style pass 2026-09-14: _copyTextToClipboard already runs
-            // silently on every successful OCR/QR read (see _runOcr/_runQr
-            // below) — this panel showed the text but never confirmed the
-            // side effect that actually matters (it's already on the
-            // clipboard, ready to paste), the exact "trigger buttons ...
-            // show ... result feedback" gap docs/TODO.md named generally.
+            // _copyTextToClipboard already runs silently on every
+            // successful OCR/QR read (see _runOcr/_runQr below) — this
+            // confirms the side effect that actually matters: it's already
+            // on the clipboard, ready to paste.
             Widgets.StyledText {
                 width: parent.width
                 kind: "label"; sizeStep: 0
@@ -286,22 +245,17 @@ PanelWindow {
     // whatever the compositor currently has composited, and this surface's
     // OWN UI — the drag-select rectangle, or a leftover OCR/QR result panel
     // from a previous capture the user never dismissed — is part of that
-    // composited output until the layer surface is actually unmapped. This
-    // is exactly the bug this file was shipping: `_captureGeometry` used to
-    // spawn grim BEFORE even writing `root.mode = "idle"`, so the pink
-    // (Config.Appearance.accent) selection rectangle was captured into
-    // every single area screenshot, unconditionally. Setting the
-    // hide-triggering properties is necessary but not sufficient — Qt Quick
-    // still has to render a frame without them and the compositor still has
-    // to composite and present it, neither of which happens synchronously
+    // composited output until the layer surface is actually unmapped.
+    // Spawning grim before hiding this surface would capture the selection
+    // rectangle into every area screenshot. Setting the hide-triggering
+    // properties is necessary but not sufficient — Qt Quick still has to
+    // render a frame without them and the compositor still has to
+    // composite and present it, neither of which happens synchronously
     // with the property write — so `_prepareCapture` also waits one
-    // Category-B state-transition duration (the same token this repo's
-    // panels already use for a hide/show transition, Config/Appearance's
-    // motionBDuration — a real design token, not a bespoke literal, and
-    // §6.5 already spans exactly this class of event) before actually
-    // invoking the capture. That interval is a REASONED DEFAULT, not
-    // hardware-verified: if a capture is still occasionally tinted, this is
-    // the one thing to try raising.
+    // category-B state-transition duration (Config/Appearance's
+    // motionBDuration) before actually invoking the capture. That interval
+    // is a reasoned default, not hardware-verified: if a capture is still
+    // occasionally tinted, this is the one thing to try raising.
     function _prepareCapture(fn) {
         root.mode = "idle"
         // A stale, undismissed OCR/QR result panel is part of this
@@ -357,13 +311,9 @@ PanelWindow {
     // "select-window" resolves the active window's geometry via `hyprctl
     // activewindow -j` before capturing — this is the one place this file
     // reads Hyprland state directly rather than through Services/
-    // HyprlandBridge.qml: HyprlandToplevel (S-22's own wrapper) exposes no
-    // pixel geometry at all (confirmed against the real header at S-33/
-    // S-35's own research — only address/title/workspace/monitor), so
-    // there is nothing there to route through; a raw `hyprctl -j` call,
-    // parsed for exactly the two fields this needs, is the same
-    // one-off-external-read shape other files in this repo already use
-    // for something that isn't a standing service.
+    // HyprlandBridge.qml: HyprlandToplevel exposes no pixel geometry at
+    // all (only address/title/workspace/monitor), so there is nothing
+    // there to route through.
     property Component windowQueryComponent: Component {
         Process {
             id: windowQueryProc
@@ -487,10 +437,7 @@ PanelWindow {
     // Scope: the focused output, full-frame — not an arbitrary region.
     // wf-recorder's own -g flag accepts the same "X,Y WxH" geometry grim
     // and slurp use, so an area-recording mode is a small addition once
-    // real usage asks for one; not built now; this step's own card asks
-    // only for "wf-recorder invoked... for encoding only," not a second
-    // full selection workflow layered on top of the one this file already
-    // has for stills.
+    // real usage asks for one; not built now.
     Process {
         id: recordProc
         command: ["wf-recorder", "-o", root.screen.name, "-f", root._recordingsDir() + "/" + root._timestampName("mp4")]
@@ -507,25 +454,15 @@ PanelWindow {
     }
 
     // wf-recorder finalises its output file correctly only on SIGINT, not
-    // SIGTERM (well-established behaviour for this tool, not re-verified
-    // against its source in this session) — Quickshell's own
-    // Process.running = false sends SIGTERM (confirmed against the real
-    // source, io/process.cpp: setRunning(false) calls
-    // QProcess::terminate(), which is SIGTERM on Unix), so stopping here
-    // sends SIGINT explicitly instead of relying on that.
-    //
-    // Found on real hardware: an earlier version of this function spawned
-    // a separate `kill -INT <pid>` Process using recordProc.processId,
-    // instead of the real, confirmed-real Process.signal(qint32) INVOKABLE
-    // method (io/process.hpp: "Sends a signal to the process if running is
-    // true, otherwise does nothing") — the recorded file could not be
-    // opened afterward ("moov atom not found", the standard symptom of a
-    // video file whose trailer/moov atom was never written because the
-    // encoder did not exit cleanly). Whether that specific indirection was
-    // the cause is not confirmed (a stale processId at the moment the kill
-    // Process spawned is one plausible failure among others), but
-    // Process.signal() removes the indirection and its failure surface
-    // entirely rather than debugging it further off-machine.
+    // SIGTERM — Quickshell's own Process.running = false sends SIGTERM
+    // (setRunning(false) calls QProcess::terminate()), so stopping here
+    // sends SIGINT explicitly via Process.signal() instead of relying on
+    // that. A separate `kill -INT <pid>` Process spawned from
+    // recordProc.processId is the wrong way to do this: a stale processId
+    // at the moment that Process spawns can leave the encoder killed
+    // uncleanly, corrupting the file ("moov atom not found") since its
+    // trailer never gets written. Process.signal() removes that whole
+    // indirection.
     function _stopRecording() {
         if (!root.recording) return
         recordProc.signal(2) // SIGINT

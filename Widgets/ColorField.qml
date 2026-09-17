@@ -2,12 +2,9 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/ColorField (Out-of-plan: settings-overhaul batch A). A
-// colour input row: a swatch, a hex TextField, and a toggle that expands an
-// inline Widgets/ColorPicker below it (inline, not floating — the settings
-// content pane is a clipped Flickable). Replaces the swatch + bare hex
-// TextInput pattern Settings/sections/Theme.qml and Devices.qml each
-// inlined, both noting the library had no colour picker.
+// A colour input row: a swatch, a hex TextField, and a toggle that expands
+// an inline Widgets/ColorPicker below it (inline, not floating — the
+// settings content pane is a clipped Flickable).
 //
 // Controlled: `value` is a "#rrggbb" string the caller owns (seed it, read
 // it back — a reset just reassigns it). `committed(hex)` fires once the
@@ -100,8 +97,8 @@ Column {
         }
     }
 
-    // panels-ux-rework: the inline picker slides open/shut (category B)
-    // instead of the row snapping to its full height.
+    // The inline picker slides open/shut (category B) instead of the row
+    // snapping to its full height.
     Reveal {
         shown: root.expanded
         ColorPicker {

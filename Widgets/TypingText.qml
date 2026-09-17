@@ -1,20 +1,14 @@
 import QtQuick
 import qs.Config as Config
 
-// phiOS — Widgets/TypingText (S-52, master plan §6.5 Category C:
-// "battitura carattere-per-carattere"). The other of exactly two effects
-// Category C admits (see Widgets/ScrambleText.qml's own header for the
-// full rule and why both share motionCTypeStep as their pacing token).
+// A character-by-character typing reveal, motion category C. One of
+// exactly two effects that category admits — see Widgets/ScrambleText.qml
+// for the other and why both share motionCTypeStep as their pacing token.
 //
-// No real consumer yet, deliberately: §6.5's own closed list for Category C
-// is boot (Plymouth's own script language, not QML — S-53), unlock, first
-// run, and "rare confirmation text". Unlock already has ScrambleText wired
-// (Lock/Lock.qml); nothing in this shell today is a genuine "first run" or
-// "rare confirmation text" surface, and inventing one just to give this
-// widget a caller would be scope this step does not ask for. This is the
-// same honest-inert-shape precedent as Bar/modules/PhiAgent.qml's own
-// `processing` property or Services/Chroma.qml's `blink()` — built once,
-// wired by whichever step first has a real reason to.
+// No real consumer yet: it exists so whichever surface first needs a
+// typing reveal (a rare confirmation, a first-run screen) doesn't have to
+// build it from scratch — same precedent as an inert property built ahead
+// of its first caller elsewhere in this shell.
 //
 // Same imperative-text discipline as ScrambleText: `text` is never
 // declared as a binding on the inner StyledText, only ever assigned, so
@@ -26,8 +20,8 @@ import qs.Config as Config
 // see it drift during the reveal. Fine for a left-anchored line; a
 // consumer that needs a stable width should measure `finalText` with its
 // own TextMetrics instead of reading this item's implicitWidth, the same
-// way Bar/modules/*.qml and Lock/Lock.qml already measure a fixed "0"
-// glyph rather than a live label.
+// way Bar/modules/*.qml and Lock/Lock.qml measure a fixed "0" glyph rather
+// than a live label.
 //
 // Unverified: no compositor here to confirm the reveal reads as intended
 // at real frame timing.

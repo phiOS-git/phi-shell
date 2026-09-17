@@ -2,13 +2,12 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/SmallButton (OOP-55). A quiet, compact push button for
-// minor actions — a stepper's − / +, a colour field's "pick", a "reset",
-// the small actions inside a status-bar popout. Distinct on purpose from
-// Widgets/StyledButton (the full-weight labelled action) and from the
-// selectable-option grammar (StyledButton/Segment with `active`): the
-// user's directive was that a minor action and a selectable choice must
-// not read the same.
+// A quiet, compact push button for minor actions — a stepper's − / +, a
+// colour field's "pick", a "reset", the small actions inside a status-bar
+// popout. Distinct on purpose from Widgets/StyledButton (the full-weight
+// labelled action) and from the selectable-option grammar (StyledButton/
+// Segment with `active`): a minor action and a selectable choice must not
+// read the same.
 //
 // At rest it is just a low-contrast label with no fill and no border;
 // hover brings it to full contrast with a faint wash; pressed inverts to a
@@ -35,12 +34,12 @@ Item {
         active: root.active, keyboardFocus: root.keyboardFocus,
         loading: root.loading, invalid: root.invalid
     })
-    // Interface rework Phase 1 (rework.md s3) — "shaded", not the generic
-    // B&W default; see WidgetStates.js's own comment on this branch.
+    // "shaded", not the generic B&W default; see WidgetStates.js's own
+    // comment on this branch.
     readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState, "shaded")
 
     // design/tokens.common.sh stores space-N in `ch`, not px — see
-    // Panel.qml's identical comment.
+    // WidgetStates.js's chToPixels() comment.
     TextMetrics {
         id: chMetrics
         font.family: Config.Appearance.fontMono
@@ -49,10 +48,10 @@ Item {
     }
     readonly property real chWidth: chMetrics.width
     readonly property real paddingH: WidgetStates.chToPixels(Config.Appearance.space2, chWidth)
-    // features-change: floor the height at the shared control height so a
-    // −/+ stepper, a "pick" or a "reset" lines up with the field it sits
-    // next to. Its "small" comes from no resting chrome and a muted label,
-    // not from being shorter than everything else.
+    // Floors the height at the shared control height so a −/+ stepper, a
+    // "pick" or a "reset" lines up with the field it sits next to. Its
+    // "small" comes from no resting chrome and a muted label, not from
+    // being shorter than everything else.
     readonly property real _controlHeight: WidgetStates.controlHeight(Config.Appearance, chWidth)
 
     // No resting chrome; a background/border only once the control is
@@ -70,8 +69,7 @@ Item {
         anchors.fill: parent
         radius: Config.Appearance.radiusSmall
         color: root._chrome ? root.stateColors.bg : "transparent"
-        // Interface rework Phase 1 (rework.md s5): the hairline token, not
-        // the bulkier generic one.
+        // The hairline token, not the bulkier generic one.
         border.width: root._chrome ? Config.Appearance.borderWidthStrong : 0
         border.color: root._chrome ? root.stateColors.border : "transparent"
 
@@ -101,9 +99,7 @@ Item {
         onTapped: root.clicked()
     }
 
-    // Style pass 2026-09-14: see Widgets/StyledButton.qml's identical
-    // comment — a systemic keyboard-activation gap, fixed the same way
-    // here.
+    // Same keyboard-activation fix as Widgets/StyledButton.qml.
     Keys.onReturnPressed: if (root.enabled && !root.loading) root.clicked()
     Keys.onSpacePressed: if (root.enabled && !root.loading) root.clicked()
 

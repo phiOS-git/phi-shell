@@ -4,45 +4,31 @@ import Quickshell
 import Quickshell.Io
 import qs.Services as Services
 
-// phiOS — Services/Idle (S-43, master plan §8.2's own repository tree
-// names this file "Idle" explicitly, and the S-43 AGENT bullet: "native
-// Wayland idle-inhibit type, driven by a rule on window class or process —
-// automatic detection, not a manual toggle, not a timer"). Owns the RULE
-// LOGIC only — matching Services/ToplevelBridge.qml's own `appId`/
-// `fullscreen` (Quickshell.Wayland.Toplevel, confirmed against real source,
-// wayland/toplevel/qml.hpp) against Services/idle-inhibit-rules.json —
-// the actual Wayland idle-inhibit PROTOCOL object lives in Bar/Bar.qml
-// instead (see that file's own note on why), since IdleInhibitor needs a
-// real, already-mapped window/surface to attach to and this Singleton has
-// none of its own.
+// Native Wayland idle-inhibit, driven by a rule on window class/process —
+// automatic detection, not a manual toggle or a timer. Owns the RULE LOGIC
+// only — matching Services/ToplevelBridge.qml's `appId`/`fullscreen`
+// against Services/idle-inhibit-rules.json. The actual Wayland idle-
+// inhibit protocol object lives in Components/Bar/Bar.qml instead, since
+// IdleInhibitor needs a real, already-mapped window/surface to attach to
+// and this Singleton has none of its own.
 //
-// Default rules asked and answered this session (S-43's own card: "define
-// the process list with the user"): Steam games (steam_app_* — one rule
-// covers every game without listing titles), mpv, and librewolf FULLSCREEN
-// ONLY. The librewolf rule is coarse by construction and the user's own
-// answer flagged this: matching plain "librewolf" would inhibit idle for
-// ordinary browsing too, defeating the whole feature, so this rule only
-// fires when a librewolf window is actually fullscreen (a real, if
-// imperfect, proxy for "probably watching something or on a call" — no
-// video-call app was named, so there is nothing more specific to match).
-// Data, not code (ADR 078): editing the registry, not this file, changes
-// the covered set.
+// Default rules: Steam games (steam_app_* — one rule covers every game
+// without listing titles), mpv, and librewolf FULLSCREEN ONLY. The
+// librewolf rule is coarse by construction: matching plain "librewolf"
+// would inhibit idle for ordinary browsing too, defeating the feature, so
+// it only fires when a librewolf window is actually fullscreen (an
+// imperfect proxy for "probably watching something or on a call"). Data,
+// not code: editing the registry, not this file, changes the covered set.
 
 Singleton {
     id: root
 
     property var rules: []
-    // Interface rework Phase 3 (status overlay, rework.md: "stay-awake
-    // (amphetamine icon with 2 states)"). A real, working addition to this
-    // file's own rule-based automatic detection, not a stub: forcing
-    // `active` true regardless of what the rule scan below finds is
-    // exactly what "manually keep the system awake" means, and every
-    // consumer of `active` (the actual idle-inhibit protocol object lives
-    // in Bar/Bar.qml, this file's own header explains why) already reads
-    // this one property, so nothing downstream needs to change to honour
-    // it. Session-local, not persisted — same category as every other
-    // plain manual override in this shell (e.g. Services/Notifications.qml's
-    // own DND toggle), not a `phi state` key.
+    // Forces `active` true regardless of what the rule scan below finds —
+    // "manually keep the system awake". Every consumer of `active` already
+    // reads this one property, so nothing downstream needs to change to
+    // honour it. Session-local, not persisted, like Notifications.qml's
+    // DND toggle.
     property bool manualOverride: false
     function setManualOverride(v) { root.manualOverride = !!v }
 
@@ -62,8 +48,6 @@ Singleton {
     }
 
     function _computeActive() {
-        // .values: the same real, already-proven access pattern
-        // Overview.qml (S-35) uses on this identical property.
         const values = Services.ToplevelBridge.toplevels.values
         if (!values || root.rules.length === 0) return false
         for (let i = 0; i < values.length; i++) {

@@ -4,21 +4,18 @@ import Quickshell
 import Quickshell.Io
 import qs.Config as Config
 
-// phiOS — Services/Background (S-44; Out-of-plan: settings-overhaul batch
-// D). Shared wallpaper state — a per-screen Background/Background.qml
-// surface cannot own its own IPC or state without colliding across
-// instances (same split as Services/Spotlight.qml).
+// Shared wallpaper state — a per-screen Components/Background.qml surface
+// can't own its own IPC or state without colliding across instances (same
+// split as Services/Spotlight.qml).
 //
-// The wallpaper is composited by the background layer from up to three
-// layers: a solid `color`, an optional procedural `texture` overlay
-// (generated once by `phi wallpaper texture` and cached), and an optional
-// `image` with a fit `mode`. Every value is persisted through `phi state`
-// (the keys were added to internal/state in the same batch). `wallpaper.
-// path` is read as the initial `image` for back-compat with S-44.
+// The wallpaper is composited from up to three layers: a solid `color`,
+// an optional procedural `texture` overlay (generated once by `phi
+// wallpaper texture` and cached), and an optional `image` with a fit
+// `mode`. Every value is persisted through `phi state`.
 //
-// setX() updates the reactive property synchronously (the surface repaints
-// at once) and fires the `phi state set` underneath fire-and-forget, purely
-// for persistence — same rationale as the original setPath().
+// setX() updates the reactive property synchronously (the surface
+// repaints at once) and fires `phi state set` underneath fire-and-forget,
+// purely for persistence.
 
 Singleton {
     id: root

@@ -6,24 +6,14 @@ import Quickshell.Services.UPower
 import qs.Config as Config
 import qs.Services as Services
 
-// phiOS — thin wrapper over Quickshell.Services.UPower (S-23, master plan
-// §8.1/§8.4: razer's battery anomaly-carrier module). The one file outside
-// Config/ sanctioned to touch this service surface (phi-shell/CLAUDE.md).
+// Thin wrapper over Quickshell.Services.UPower — the one file outside
+// Config/ allowed to touch this service surface. UPower.displayDevice is
+// an aggregate device, not a physical one; `percentage` is a 0..1 fraction
+// (energy / energyCapacity), not 0..100.
 //
-// UPower.displayDevice ("an aggregate device and not a physical one",
-// core.hpp's own doc comment) is real Quickshell source, not assumed —
-// checked at git.outfoxxed.me/quickshell/quickshell, same practice as
-// HyprlandBridge/AudioBridge. `percentage` is documented there as
-// "equivalent to energy / energyCapacity" — a 0..1 fraction, not 0..100.
-//
-// UPower exposes no ready-made "%/hour" figure: `changeRate` is in watts
-// (device.hpp gives it no unit doc, but UPower's own convention is power,
-// not a percentage rate), the wrong unit for the razer threshold master
-// plan §8.4 actually states ("scarica oltre 15%/ora"). Rather than guess a
-// watts-to-percent conversion this file has no energyCapacity-independent
-// way to verify, the rate is derived here from percentage itself, sampled
-// on a plain timer — an approximation, but one built from the exact
-// quantity the threshold is phrased in.
+// UPower exposes no ready-made "%/hour" figure — `changeRate` is in watts,
+// not a percentage rate. Rather than guess a watts-to-percent conversion,
+// the rate below is derived from percentage itself, sampled on a timer.
 
 Singleton {
     id: root
@@ -35,24 +25,15 @@ Singleton {
     readonly property real timeToEmpty: root.present ? root.device.timeToEmpty : 0
     readonly property real timeToFull: root.present ? root.device.timeToFull : 0
 
-    // Added at S-40 for the settings panel's General section (§9.12: "su
-    // razer: statistiche batteria — autonomia, cicli, salute"). healthPercentage/
-    // healthSupported are real UPowerDevice properties (confirmed against
-    // real Quickshell source, services/upower/device.hpp, the same practice
-    // every Services/ file in this repo follows) — healthSupported is false
-    // on hardware/firmware that never reports a capacity baseline, in which
-    // case the settings panel shows "not reported", never a fabricated number.
+    // healthSupported is false on hardware/firmware that never reports a
+    // capacity baseline — the settings panel then shows "not reported",
+    // never a fabricated number.
     readonly property real healthPercentage: root.present ? root.device.healthPercentage : 0
     readonly property bool healthSupported: root.present && root.device.healthSupported
 
-    // Cycle count has no UPowerDevice property at all (device.hpp has none
-    // — confirmed the same way, not guessed): upstream UPower's own D-Bus
-    // ChargeCycles is exposed on some hardware/drivers and not others, and
-    // Quickshell does not wrap it. Read directly via `upower -i`, the same
-    // Quickshell.Io.Process pattern every CLI-probe Service in this repo
-    // already uses (Tailscale, Config/Settings) — best-effort, "unknown"
-    // when the line is absent (most laptops) rather than assuming -1 means
-    // one specific thing.
+    // No UPowerDevice property covers cycle count, so it's read directly
+    // via `upower -i` — "unknown" when the line is absent (most laptops)
+    // rather than assuming a sentinel value means something specific.
     property string chargeCycles: "unknown"
 
     function refreshCycles() { cyclesProbe.running = true }
@@ -77,16 +58,11 @@ Singleton {
     }
 
     // %/hour, from the last ~10 minutes of samples while discharging.
-    // Configurable, per the AGENT card's own instruction that these
-    // placeholder thresholds must not be buried literals: a future
-    // settings surface (not built here) has something real to bind to.
     property real dischargeRateThreshold: 15
     property real lowPercentThreshold: 0.20
 
-    // rework-issues.md "New requests" item 1: opt-in "80%" text label next
-    // to the bar icon (Bar/modules/Battery.qml reads this) — interface
-    // rework Phase 2 removed that label outright, this settings toggle
-    // brings it back as a choice rather than reverting the decision.
+    // Opt-in "80%" text label next to the bar icon (Bar/modules/Battery.qml
+    // reads this).
     property bool showPercentInBar: false
     function setShowPercentInBar(v) {
         root.showPercentInBar = !!v
@@ -110,45 +86,31 @@ Singleton {
     }
 
     Timer {
-        // A functional constant (how often to resample for the rate
-        // estimate), not a design-system value — same category Clock.qml's
-        // own 1000ms tick already flagged.
+        // How often to resample for the rate estimate — a functional
+        // constant, not a design-token value.
         interval: 60000
         running: root.present
         repeat: true
         triggeredOnStart: true
         onTriggered: {
             const next = root.samples.concat([{ t: Date.now(), pct: root.percentage }])
-            // Keep ~10 minutes of history — enough for a stable per-hour
-            // estimate without growing unbounded.
+            // Keep ~10 minutes of history — enough for a stable estimate
+            // without growing unbounded.
             root.samples = next.slice(Math.max(0, next.length - 10))
         }
     }
 
-    // --- charging sound (docs/TODO.md: "add a sound on charging plugged
-    // in", extended by "add customisation for sounds (battery sound)")
-    // --------------------------------------------------------------------
-    // On by default (unlike Services/Notifications.qml's own notification
-    // sound, which defaults off) — this fires once per plug-in event, not
-    // per-notification-burst, and the user asked for it directly rather
-    // than this being a background feature someone would need to opt
-    // into. "power-plug" is a real file in this project's own
-    // sound-theme-freedesktop package — checked against the actual Arch
-    // `extra` package file listing (archlinux.org/packages/extra/any/
-    // sound-theme-freedesktop/files/), not recalled — and that package is
-    // in profiles/desktop/packages.txt, so it is present wherever this
-    // code runs (mini is headless, no phi-shell). Same theme/path,
-    // `_soundPath()`/`playSound()` convention Services/Notifications.qml
-    // already uses for its own sound (`name`/`volume`, not just on/off).
+    // --- charging sound --------------------------------------------------
+    // On by default, unlike Services/Notifications.qml's own sound (off by
+    // default) — this fires once per plug-in event, and the user asked for
+    // it directly. "power-plug" is a real freedesktop sound-theme name.
+    // Same name/volume convention as Services/Notifications.qml's sound.
     //
-    // Persistence: a JSON file (Config.Paths.powerSoundPrefsFile), not
-    // `phi state` — see that path's own comment for why a value this
-    // shape doesn't fit `phi state`'s closed scalar-key set. Was a single
-    // `phi state` key (`power.chargingSound`) before `name`/`volume`
-    // needed adding; `_migrateFromPhiState()` below reads that old key
-    // exactly once, only when the new JSON file has never been written at
-    // all, so a real "false" a user already set on a machine survives the
-    // switch instead of silently reverting to the default "true".
+    // Persisted as JSON (Config.Paths.powerSoundPrefsFile), not `phi
+    // state` — this was a single `phi state` key before name/volume were
+    // added. _migrateFromPhiState() reads that old key exactly once, only
+    // when this JSON file has never been written, so an already-set
+    // "false" survives the switch instead of reverting to "true".
     property bool chargingSoundEnabled: true
     property string chargingSoundName: "power-plug"   // freedesktop theme name, or an absolute path
     property int chargingSoundVolume: 100               // 0-100
@@ -170,13 +132,11 @@ Singleton {
         }, null, 2))
     }
 
-    // Only reached from soundPrefsFile.onLoadFailed (FileNotFound — the
-    // JSON file has never been written), so this never overwrites a real
-    // preference the new file already holds. `Config.Settings.get` shells
-    // out (tens of ms at least), so it's possible for the user to open
-    // Settings and flip the toggle themselves before this callback lands —
-    // the `_soundPrefsWritten` check means that real, fresh write always
-    // wins instead of being silently reverted by a migration that started
+    // Only reached from soundPrefsFile.onLoadFailed (the JSON file has
+    // never been written), so this never overwrites a real preference.
+    // Config.Settings.get shells out, so the user could open Settings and
+    // flip the toggle before this callback lands — _soundPrefsWritten
+    // means that fresh write always wins over a migration that started
     // first but finished second.
     function _migrateFromPhiState() {
         Config.Settings.get("power.chargingSound", (v, code) => {
@@ -214,22 +174,13 @@ Singleton {
     }
 
     // Plugged-in is detected as a discharging→not-discharging transition,
-    // not a raw device.state read: `discharging` is already the vetted
-    // derived property above (root.present && state === Discharging), so
-    // this reuses it rather than re-deriving a second notion of "on AC"
-    // from device.state directly. `_chargeSoundInit` exists so the FIRST
-    // onDischargingChanged — which fires once UPower's displayDevice
-    // becomes ready/present, regardless of which state it reports — never
-    // itself counts as a transition and fires a spurious sound at shell
-    // startup; it only starts comparing from the second change onward.
-    // The `root.present` check on the trigger matters on real hardware:
-    // `discharging` includes `root.present` in its own definition, so the
-    // device disappearing entirely (a re-enumeration around suspend/
-    // resume — this project has two open, unexplained hibernation bugs on
-    // razer, the exact machine this targets) also reads as a
-    // discharging→false transition. Without this check that would play
-    // the "plugged in" sound on a suspend/resume cycle with no charger
-    // event involved at all.
+    // not a raw device.state read. _chargeSoundInit skips the first
+    // change (fired once UPower's device becomes ready, not a real
+    // transition) so it never fires a spurious sound at startup. The
+    // root.present check matters because `discharging` already includes
+    // it — a device re-enumerating around suspend/resume also looks like
+    // a discharging→false transition, and without this check that would
+    // play the sound on resume with no charger involved.
     onDischargingChanged: {
         if (!root._chargeSoundInit) {
             root._chargeSoundInit = true
@@ -252,9 +203,8 @@ Singleton {
         return "/usr/share/sounds/freedesktop/stereo/" + n + ".oga"
     }
 
-    // `force` is set by the settings "Test sound" button so it plays even
-    // while chargingSoundEnabled is false — same shape as
-    // Services/Notifications.qml's own playSound(force).
+    // `force` lets the settings "Test sound" button play it even while
+    // chargingSoundEnabled is false.
     function playChargingSound(force) {
         if (!force && !root.chargingSoundEnabled) return
         if (chargeSoundProc.running) return
@@ -274,14 +224,10 @@ Singleton {
         }
     }
 
-    // --- low-battery full-screen alert (docs/TODO.md: "full screen alert
-    // should appear when battery level is low (2 thresholds warn and
-    // danger, configurable)") --------------------------------------------
-    // Deliberately separate from `lowPercentThreshold`/`anomaly` above:
-    // those already drive Bar/modules/Battery.qml's icon colour (a
-    // different, already-shipped surface with its own 0.20 default) — the
-    // two thresholds here are net-new, own their own file, and changing
-    // one must never silently move the other's meaning.
+    // --- low-battery full-screen alert ------------------------------------
+    // Deliberately separate from lowPercentThreshold/anomaly above — those
+    // already drive Bar/modules/Battery.qml's icon colour, a different,
+    // already-shipped surface with its own default.
     property real alertWarnThreshold: 0.15
     property real alertDangerThreshold: 0.05
 
@@ -312,26 +258,20 @@ Singleton {
                 console.warn("phi-shell: battery-alert.json failed to parse, ignoring: " + e)
             }
         }
-        // No migration needed here (unlike soundPrefsFile above) — this is
-        // a net-new preference, never a `phi state` scalar key. Absence
-        // just means the defaults above stand.
+        // No migration needed — this is a net-new preference, never a
+        // `phi state` scalar key. Absence just means the defaults stand.
     }
 
-    // `testOverrideLevel` mirrors playChargingSound(force)'s testing
-    // shape: Settings gets a "Test" action for each severity so the alert
-    // can be exercised without actually draining a battery to 5% —
-    // cleared the same moment the alert is dismissed, so a test never
-    // outlives its own dialog.
+    // Lets Settings exercise the alert without draining the battery;
+    // cleared the moment the alert is dismissed.
     property string testOverrideLevel: "none" // "none" | "warn" | "danger"
     function testAlert(level) { root.dismissedLevel = "none"; root.testOverrideLevel = level }
 
     function _rank(level) { return level === "danger" ? 2 : (level === "warn" ? 1 : 0) }
 
-    // Inlined rather than a called helper function, and explicitly gated
-    // on Config.Capabilities.battery (mini has none) — the same capability
-    // Devices.qml:274 and Bar/modules.json's battery row already gate on,
-    // so this dialog can never fire on a machine with no battery even
-    // though it's instantiated unconditionally in shell.qml.
+    // Explicitly gated on Config.Capabilities.battery (mini has none) so
+    // this dialog can never fire on a battery-less machine even though
+    // it's instantiated unconditionally in shell.qml.
     readonly property string alertLevel: {
         if (root.testOverrideLevel !== "none") return root.testOverrideLevel
         if (!Config.Capabilities.battery || !root.present || !root.discharging) return "none"
@@ -340,14 +280,11 @@ Singleton {
         return "none"
     }
 
-    // The highest severity the user has already dismissed for the CURRENT
-    // low-battery episode. `alertShown` compares by rank, not equality, so
-    // an escalation (warn → danger) re-opens the alert even if warn was
-    // already dismissed, but recovering (danger → warn) after a danger
-    // dismissal stays quiet. Resets to "none" the moment the real level
-    // returns to "none" (charged back up, or plugged in), so the NEXT
-    // low-battery episode starts fresh rather than staying permanently
-    // suppressed from one old dismissal.
+    // Highest severity already dismissed for the current low-battery
+    // episode. Compared by rank, not equality, so an escalation (warn →
+    // danger) re-opens the alert even if warn was already dismissed, but
+    // recovering (danger → warn) stays quiet. Resets to "none" once the
+    // real level does, so the next episode starts fresh.
     property string dismissedLevel: "none"
     readonly property bool alertShown: root._rank(root.alertLevel) > root._rank(root.dismissedLevel)
 
@@ -360,58 +297,34 @@ Singleton {
         if (root.alertLevel === "none") root.dismissedLevel = "none"
     }
 
-    // --- battery saving mode (docs/TODO.md: "have a battery saving mode,
-    // it automatically kicks in when not in charge and lower then 20%
-    // battery ... automatically disabled when plugged in and over the
-    // threshold (if the user activates while it's charging, it should not
-    // disable automatically, this flag is cleared once the charge is
-    // plugged off again)") -------------------------------------------
+    // --- battery saving mode ----------------------------------------------
+    // Reuses lowPercentThreshold as the auto-enable threshold rather than a
+    // second field — only the automation on/off switch (batterySaverAuto)
+    // is meant to be user-configurable here.
     //
-    // Reuses lowPercentThreshold (0.20 default, already this file's own
-    // "<20% remaining" anomaly threshold above) rather than a second,
-    // separate percentage field — the entry states this feature's own
-    // threshold as a literal "20%" with no mention of it being settable,
-    // unlike alertWarnThreshold/alertDangerThreshold above, which the
-    // OTHER entry explicitly asked to be configurable; "configurable in
-    // the settings panel" in THIS entry's own text reads as the
-    // automation on/off switch below, not a second threshold field.
+    // Only batterySaverAuto is persisted. batterySaverActive and the
+    // charging-override flag are session-local, recomputed by
+    // _evaluateBatterySaver() on startup — a saved "was active" surviving
+    // a restart would fabricate a reason it was on, when the real battery
+    // state at startup already answers that correctly.
     //
-    // Only batterySaverAuto (the automation switch) is persisted.
-    // batterySaverActive and the charging-override flag are deliberately
-    // session-local, recomputed fresh by _evaluateBatterySaver() every
-    // time this singleton starts (called once the prefs file below
-    // resolves) — a saved "was active" surviving a shell restart would
-    // need to fabricate a reason it was on, when the real battery state at
-    // the new startup already answers that question correctly on its own.
-    //
-    // The real saving actions: brightness is capped at 40%
-    // (Services/Brightness.qml), restored to whatever it was the instant
-    // saver turns off — never persisted anywhere, brightness is expected-
-    // to-move hardware state, not a saved preference, so there is nothing
-    // to lose across a restart. The lock screen's ambient effect is
-    // suppressed as a READ-SIDE override: Lock/Lock.qml's effectLoader
-    // gates on Services.PowerBridge.batterySaverActive directly, rather
-    // than this file calling Config.LockPrefs.setEffect("none") — writing
-    // through LockPrefs would permanently overwrite the user's actual
-    // chosen effect in lock.json the moment a shell restart happened to
-    // land while saver was active, with no reliable record left to
-    // restore it from. Reading leaves the user's real choice untouched.
+    // Brightness is capped at 40% (Services/Brightness.qml) and restored
+    // when saver turns off — never persisted, since brightness is
+    // expected-to-move hardware state. The lock screen's ambient effect is
+    // suppressed as a read-side override (Lock/Lock.qml gates on
+    // batterySaverActive directly) rather than writing through
+    // Config.LockPrefs — writing would permanently overwrite the user's
+    // actual chosen effect if a restart landed while saver was active.
     property bool batterySaverAuto: true
     property bool batterySaverActive: false
     property bool _saverOverrideWhileCharging: false
-    // docs/TODO.md: "battery saving gets automatically toggled on every
-    // time the battery updates and is below 20%. However this should not
-    // happen if i manually turned it off, at least until it hits another
-    // threshold." Without this, turning it off manually while still
-    // discharging and at/under lowPercentThreshold did nothing to the
-    // conditions _evaluateBatterySaver() checks — the very next battery
-    // update (any percentage tick or poll) would find batterySaverActive
-    // false, discharging true, percentage still <= threshold, and
-    // immediately flip it back on, making the manual switch a no-op in
-    // practice. Session-local like _saverOverrideWhileCharging, not
-    // persisted: same reasoning, a fresh startup should re-decide from the
-    // real battery state, not a stale "user silenced this" flag from a
-    // previous session.
+    // Without this, turning saver off manually while still discharging
+    // and at/under lowPercentThreshold would be undone by the very next
+    // battery update, which finds the same conditions true and flips it
+    // back on. Holds until either a fresh charge cycle ends this discharge
+    // session, or the battery drops far enough to cross the warn
+    // threshold. Session-local, not persisted — a fresh startup re-decides
+    // from the real battery state.
     property bool _saverSuppressedByUser: false
     property int _brightnessBeforeSaver: -1
     property int _brightnessCapSetTo: -1
@@ -422,21 +335,17 @@ Singleton {
         root._evaluateBatterySaver()
     }
 
-    // The manual switch — Panels/BarPopout.qml's battery card and the
-    // settings panel both call this; nothing assigns batterySaverActive
-    // directly, the same controlled-component shape every toggle in this
-    // repo already follows.
+    // The manual switch — for a future battery-saver toggle UI; nothing
+    // calls this yet. Nothing assigns batterySaverActive directly.
     function setBatterySaverActive(b) {
         b = !!b
         if (b && !root.discharging) root._saverOverrideWhileCharging = true
         if (!b) root._saverOverrideWhileCharging = false
-        // Reuses alertWarnThreshold (this file's own next threshold down,
-        // already user-configurable) as "another threshold": if the user
+        // Reuses alertWarnThreshold as "another threshold": if the user
         // turns saver off while still at/under lowPercentThreshold, the
         // suppression holds until either a fresh charge cycle ends this
-        // discharge session, or the battery drops far enough to cross the
-        // more urgent warn threshold — at which point the situation has
-        // changed since the user dismissed it, and automation resumes.
+        // discharge session, or the battery crosses the more urgent warn
+        // threshold.
         if (!b && root.discharging && root.percentage <= root.lowPercentThreshold)
             root._saverSuppressedByUser = true
         if (b) root._saverSuppressedByUser = false
@@ -454,12 +363,8 @@ Singleton {
             }
         } else {
             // Restore only if nothing has touched brightness since saver
-            // capped it (brightness keys, the OSD and settings all go
-            // through Services.Brightness.set(), the same setter this file
-            // itself calls, so `percent` reflects any of them) — the user
-            // may have deliberately raised or lowered it while saver was
-            // active, and that choice must win, not be silently
-            // overwritten back to whatever it was before saver started.
+            // capped it — the user may have deliberately changed it while
+            // saver was active, and that choice must win.
             if (root._brightnessBeforeSaver >= 0 && Services.Brightness.present
                     && Services.Brightness.percent === root._brightnessCapSetTo)
                 Services.Brightness.set(root._brightnessBeforeSaver)
@@ -468,22 +373,19 @@ Singleton {
         }
     }
 
-    // Matches the entry's own state machine: auto-ON only while
-    // discharging and at/under the threshold; auto-OFF only once plugged
-    // in and over the threshold, UNLESS this activation was itself a
-    // manual override made while charging — cleared the moment a real
-    // discharge cycle starts (the entry's own "this flag is cleared once
-    // the charge is plugged off again"), so the exemption only ever
-    // protects the specific charging session it was set during.
+    // Auto-ON only while discharging and at/under the threshold; auto-OFF
+    // only once plugged in and over the threshold, unless this activation
+    // was itself a manual override made while charging — cleared the
+    // moment a real discharge cycle starts, so the exemption only ever
+    // protects the charging session it was set during.
     function _evaluateBatterySaver() {
         if (!root.present) return
         if (!root.discharging) {
             if (root.batterySaverActive && root.percentage > root.lowPercentThreshold && !root._saverOverrideWhileCharging)
                 root._applyBatterySaver(false)
             // A fresh charge ends the discharge session the suppression
-            // was scoped to — "until it hits another threshold", not
-            // forever; next time it drops under lowPercentThreshold this
-            // counts as a new occurrence.
+            // was scoped to — next time it drops under lowPercentThreshold
+            // counts as a new episode.
             root._saverSuppressedByUser = false
             return
         }
@@ -495,11 +397,8 @@ Singleton {
             root._applyBatterySaver(true)
     }
 
-    // No _written guard like soundPrefsFile's own above: that one exists
-    // because a phi-state migration can race a fresh write to the same
-    // file. This file has no migration path (a net-new preference, same
-    // as batteryAlertPrefsFile just above), so there is nothing for a
-    // guard to arbitrate.
+    // No _written guard like soundPrefsFile — no migration path exists for
+    // this preference, so there's nothing for a guard to arbitrate.
     function _persistBatterySaverPrefs() {
         batterySaverPrefsFile.setText(JSON.stringify({ auto: root.batterySaverAuto }, null, 2))
     }

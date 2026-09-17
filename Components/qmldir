@@ -1,4 +1,6 @@
-# ~/.config/quickshell/Components/qmldir
+# Maps each surface shell.qml composes to its file, so they're reachable as
+# Components.Bar, Components.Lock, ... regardless of whether the .qml sits
+# directly here or one level down in its own folder.
 
 Bar 1.0 Bar/Bar.qml
 Launcher 1.0 Launcher/Launcher.qml
@@ -7,7 +9,6 @@ Settings 1.0 Settings/Settings.qml
 Cheatsheet 1.0 Cheatsheet.qml
 Toast 1.0 Toast.qml
 Osd 1.0 Osd.qml
-ImageViewer 1.0 ImageViewer.qml
 Background 1.0 Background.qml
 Overview 1.0 Overview.qml
 ImageWindow 1.0 ImageWindow.qml

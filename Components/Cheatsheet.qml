@@ -6,27 +6,18 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Cheatsheet/Cheatsheet.qml (S-37, master plan §8.3 surface 13,
-// shell doc §14). READ-ONLY, sourced from `hyprctl binds -j` at the
-// moment of display (via Services/Keybinds.qml) — never a saved copy, and
-// there is deliberately no editing UI: a binding changed in hyprland.lua
-// and reloaded shows up here on the very next open because there is no
-// second place holding it.
+// READ-ONLY, sourced from `hyprctl binds -j` at the moment of display (via
+// Services/Keybinds.qml) — never a saved copy, and there is deliberately
+// no editing UI: a binding changed in hyprland.lua and reloaded shows up
+// here on the very next open because there's no second place holding it.
 //
-// OOP-04 (shell restyle): a search field, auto-focused on open; Esc or a
-// click outside the panel closes it; three columns per row, aligned across
-// rows and packed to the left — the key combination in the mono font,
-// wrapped in square brackets with every character spaced out, then an
-// arrow, then the description. The key column width is the longest visible
-// key string times one chWidth (mono font → one glyph is one cell, so the
+// A search field, auto-focused on open; Esc or a click outside the panel
+// closes it. Rows are grouped by context (Services.Keybinds.groups — the
+// same derivation the settings panel's Keybindings section renders), each
+// group under a small caps header and a hairline, laid out in two
+// side-by-side columns. The key column width is the longest visible key
+// string times one chWidth (mono font → one glyph is one cell, so the
 // columns line up exactly with no per-row measurement).
-//
-// Out-of-plan: settings-overhaul batch H: rows are grouped by context
-// (Services.Keybinds.groups — the same derivation the settings panel's
-// Keybindings section renders), each group under a small caps header and a
-// hairline. Inner padding bumped to the runner's value
-// (Config.Appearance.space3 · chWidth), per the user's directive that the
-// cheatsheet should breathe like the runner does.
 
 PanelWindow {
     id: root
@@ -35,8 +26,8 @@ PanelWindow {
     readonly property var binds: Services.Keybinds.binds
     property string query: ""
 
-    // R3 #1: span the bar's reserved strip and sit above the bar so the
-    // scrim dims it too (same as Settings / Sidebar / AgentPanel).
+    // Spans the whole screen and sits above the bar so the scrim dims it
+    // too, like every other full-screen overlay in this shell.
     anchors { top: true; bottom: true; left: true; right: true }
     exclusiveZone: -1
     color: "transparent"
@@ -78,23 +69,18 @@ PanelWindow {
     }
     readonly property var grouped: Services.Keybinds.groups(root.filtered)
 
-    // docs/TODO.md: "the cheathsheet shell should have 2 columns." Groups
-    // alternate between the two (even index left, odd right) rather than a
-    // straight first-half/second-half split: `Services.Keybinds.groups`
-    // gives no guarantee its groups are ordered by size, so a straight
-    // split risks one column ending up visibly taller than the other if
-    // larger groups happen to cluster together in that ordering —
-    // alternating spreads that risk evenly across both columns instead.
-    // Not a true height-balanced (masonry) layout — that needs live
-    // per-group height measurement this file has no established pattern
-    // for — but a reasonable, simple approximation for a read-only sheet.
+    // Groups alternate between the two columns (even index left, odd
+    // right) rather than a straight first-half/second-half split:
+    // `Services.Keybinds.groups` gives no guarantee its groups are
+    // ordered by size, so a straight split risks one column ending up
+    // visibly taller if larger groups cluster together. Not a true
+    // height-balanced (masonry) layout, but a reasonable approximation.
     readonly property var groupedLeft: root.grouped.filter((g, i) => i % 2 === 0)
     readonly property var groupedRight: root.grouped.filter((g, i) => i % 2 === 1)
 
-    // OOP-09: spacing goes around the whole combination and its "+"
-    // separators, NOT between every character — the per-letter split made
-    // long combinations overflow the key column. keyLabel() already joins
-    // the parts with " + ".
+    // Spacing goes around the whole combination and its "+" separators,
+    // not between every character. keyLabel() already joins the parts
+    // with " + ".
     function keyChips(bind) {
         return "[ " + Services.Keybinds.keyLabel(bind) + " ]"
     }
@@ -121,11 +107,10 @@ PanelWindow {
         }
         readonly property real chWidth: chMetrics.width
         readonly property real gap: fadeRoot.chWidth * Config.Appearance.space2
-        // OOP-13: width of the key column — the longest visible key
-        // string (one mono glyph == one cell, so no per-row measuring),
-        // plus a cell of breathing room, capped so a single very long
-        // binding cannot push the whole description column off to the
-        // right.
+        // Width of the key column — the longest visible key string (one
+        // mono glyph == one cell), plus a cell of breathing room, capped
+        // so a single very long binding can't push the description
+        // column off to the right.
         readonly property real keyColW: {
             let m = 0
             const rows = root.filtered
@@ -155,8 +140,7 @@ PanelWindow {
 
             Widgets.Panel {
             anchors.fill: parent
-            // batch H: the runner's inner padding, not a plain panel's —
-            // matches Launcher/Launcher.qml:402.
+            // The runner's inner padding, not a plain panel's.
             padding: fadeRoot.chWidth * Config.Appearance.space3
 
             Column {
@@ -185,8 +169,6 @@ PanelWindow {
                         text: "filter shortcuts…"
                         visible: searchField.text.length === 0
                     }
-                    // docs/TODO.md, style pass: "no clear/clean button for
-                    // searchbars."
                     Widgets.StyledIcon {
                         id: cheatClearGlyph
                         visible: searchField.text.length > 0
@@ -232,14 +214,11 @@ PanelWindow {
                 }
             }
 
-            // docs/TODO.md: "the cheathsheet shell should have 2 columns."
             // One group's worth of rendering (context header + hairline +
             // its own Repeater of bind rows), shared by both side-by-side
             // Repeaters below via root.groupedLeft/groupedRight — `width:
-            // parent.width` (not a specific named Column, unlike this
-            // delegate's own PRE-two-column shape) so the same Component
-            // works correctly regardless of which of the two Columns
-            // instantiates it.
+            // parent.width` so the same Component works regardless of
+            // which of the two Columns instantiates it.
             Component {
                 id: groupBlock
 
@@ -249,8 +228,8 @@ PanelWindow {
                     width: parent.width
                     spacing: fadeRoot.chWidth * Config.Appearance.space2
 
-                    // batch H: the context header + a hairline, in
-                    // the same grammar the settings panel uses.
+                    // The context header + a hairline, same grammar the
+                    // settings panel uses.
                     Widgets.StyledText {
                         topPadding: fadeRoot.chWidth * Config.Appearance.space1
                         kind: "label"
@@ -310,17 +289,14 @@ PanelWindow {
                 Row {
                     id: columnsRow
                     width: parent.width
-                    // Wider than the OOP-13 inter-row spacing (reused
-                    // below, inside each column) — a visibly distinct
-                    // gutter between the two columns themselves, not just
-                    // another row gap.
+                    // Wider than the inter-row spacing reused below inside
+                    // each column — a visibly distinct gutter between the
+                    // two columns themselves, not just another row gap.
                     spacing: fadeRoot.chWidth * Config.Appearance.space3
 
                     Column {
                         id: leftColumn
                         width: (columnsRow.width - columnsRow.spacing) / 2
-                        // OOP-13: more air between rows (user: "spacing should
-                        // be better").
                         spacing: fadeRoot.chWidth * Config.Appearance.space2
 
                         Repeater { model: root.groupedLeft; delegate: groupBlock }

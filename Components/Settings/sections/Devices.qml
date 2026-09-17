@@ -4,34 +4,25 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Settings/sections/Devices (S-40; S-46; Out-of-plan: settings-
-// overhaul batch G). Rebuilt onto SettingsGroup / SettingsRow like every
-// other section this round. Groups: Audio output, Audio input, Monitors,
-// Pointer, Battery, Chroma.
+// Groups: Audio output, Audio input, Monitors, Pointer, Battery, Chroma.
+// The bar popout is the one place lock/suspend/hibernate/logout/reboot/
+// shutdown live — no duplicate "Power" group here.
 //
-// docs/TODO.md follow-up (2026-09-14): a "Power" group duplicating
-// Panels/BarPopout.qml's own six lock/suspend/hibernate/logout/reboot/
-// shutdown actions used to live here ("add suspension/hibernation
-// settings in the settings panel") — removed as the actual "quick
-// actions" section the user meant when asking for that duplicate gone;
-// the bar's popout is the one place those six actions live now.
-//
-// Audio device SELECTION is now real (batch G): Services/AudioBridge.qml
-// exposes the sink/source node lists and writes Pipewire's
+// Audio device SELECTION is real: Services/AudioBridge.qml exposes the
+// sink/source node lists and writes Pipewire's
 // preferredDefaultAudioSink/Source. Monitors and Pointer stay read-only —
-// ADR 077 calls monitor config "runtime state", not "editable from here",
-// and pointer sensitivity lives in hyprland.lua, not runtime state.
+// monitor config is runtime state, not editable from here, and pointer
+// sensitivity lives in hyprland.lua.
 //
 // Chroma (razer only, Config.Capabilities.chroma):
-//   - Lighting on/off + static colour (unchanged behaviour, ColorField now).
+//   - Lighting on/off + static colour.
 //   - Per-key colours: a Widgets/KeyboardMap grid sized from the device's
 //     own matrix; click a cell, pick a colour, solid only — no animation.
 //   - Integrations: battery (power-key colour from the charge level),
 //     notifications (function-row blink on arrival, not in DND), neovim
 //     (mode tint via an nvim autocmd → `qs ipc call chroma nvimMode`).
 //     Each has an accordion of its own settings. See Services/Chroma.qml
-//     for the single-compositor architecture and the DBus names to confirm
-//     on hardware.
+//     for the single-compositor architecture and the DBus names.
 
 Column {
     id: root
@@ -133,8 +124,8 @@ Column {
                 Widgets.StyledText {
                     anchors.verticalCenter: parent.verticalCenter
                     mono: true
-                    // features-change (item 1): fixed width so the button
-                    // cluster does not shuffle as the reading changes width.
+                    // Fixed width so the button cluster doesn't shuffle
+                    // as the reading changes width.
                     horizontalAlignment: Text.AlignHCenter
                     width: 5 * root.chWidth
                     text: Services.AudioBridge.ready ? root._pct(Services.AudioBridge.volume) : "—"
@@ -144,8 +135,8 @@ Column {
                     onClicked: Services.AudioBridge.setVolume(Services.AudioBridge.volume + 0.1)
                 }
                 Widgets.StyledButton {
-                    // Constant label + `active` (like the per-app rules) so
-                    // the width never changes on toggle.
+                    // Constant label + `active` so the width never
+                    // changes on toggle.
                     label: "Mute"
                     active: Services.AudioBridge.muted
                     onClicked: Services.AudioBridge.toggleMute()
@@ -238,14 +229,9 @@ Column {
     }
 
     // ================================================================
-    // Battery (laptop only) — docs/TODO.md: "add a sound on charging
-    // plugged in", extended by "add customisation for sounds (battery
-    // sound)" to the name/volume/test row shape Notifications' own
-    // "Sound & testing" group already established. Not in
-    // Settings/sections/General.qml, which owns the read-only battery
-    // STATS group and explicitly documents itself as configuring nothing
-    // (§9.12 perimeter) — this is the one setting for that event, so it
-    // lives with Devices' other editable device-sound behaviour instead.
+    // Battery (laptop only) — not in Settings/sections/General.qml, which
+    // owns the read-only battery STATS group and configures nothing; this
+    // is editable device-sound/alert behaviour, so it lives here instead.
     // ================================================================
     SettingsGroup {
         title: "Battery"
@@ -256,11 +242,6 @@ Column {
             ? ("Last sound error: " + Services.PowerBridge.chargingSoundError)
             : "Plays through pw-play (pipewire). The name resolves to /usr/share/sounds/freedesktop/stereo/<name>.oga, or give an absolute path. The freedesktop set needs sound-theme-freedesktop installed."
 
-        // rework-issues.md "New requests" item 1: "add a setting ... to
-        // toggle the battery charge amount in the status bar" —
-        // interface rework Phase 2 removed the "80%" text label
-        // (rework.md: "no icon has text next to it anymore") from
-        // Bar/modules/Battery.qml; this brings it back as an opt-in.
         SettingsRow {
             title: "Show the charge percentage in the status bar"
             description: "The battery icon otherwise carries the value only as a fill, with the number a click away in its own overlay."
@@ -317,15 +298,10 @@ Column {
             }
         }
 
-        // docs/TODO.md: "full screen alert should appear when battery
-        // level is low (2 thresholds warn and danger, configurable)" —
-        // Dialogs/BatteryAlert.qml is the presentation, Services/
-        // PowerBridge.qml owns the two thresholds (0..1 fractions
-        // internally, shown here as whole percent to match every other
-        // percent the user sees — the bar label, the settings battery
-        // stats). Kept in this same group rather than a new one: it's
-        // still "editable battery behaviour", the group's own stated
-        // scope above.
+        // Components/Dialogs/BatteryAlert.qml is the presentation,
+        // Services/PowerBridge.qml owns the two thresholds (0..1
+        // fractions internally, shown here as whole percent to match
+        // every other percent the user sees).
         SettingsRow {
             title: "Warn threshold"
             description: "A full-screen alert appears when the battery drops below this level while unplugged."
@@ -360,17 +336,10 @@ Column {
             }
         }
 
-        // docs/TODO.md: "have a battery saving mode, it automatically
-        // kicks in when not in charge and lower then 20% battery
-        // (automation can be toggled in the settings ...), configurable
-        // in the settings panel." Reuses the same "Warn threshold"'s
-        // sibling lowPercentThreshold (this group's own bar-anomaly 20%
-        // default above it) rather than a second, separate percentage —
-        // this entry's own wording never asks for its own settable
-        // number, only for the automation switch itself. The manual
-        // on/off switch lives on the battery bar overlay instead (the
-        // entry's own explicit "the battery overlay ... must have the
-        // switch"), not duplicated here.
+        // Reuses lowPercentThreshold (the bar-anomaly 20% default)
+        // rather than a second, separate percentage — only the
+        // automation switch is settable here. The manual on/off switch
+        // lives on the battery bar overlay instead, not duplicated here.
         SettingsRow {
             title: "Battery saver"
             description: "Automatically turns on below " + Math.round(Services.PowerBridge.lowPercentThreshold * 100)
@@ -474,10 +443,6 @@ Column {
                     }
                     Widgets.StyledButton {
                         label: "Clear all keys"
-                        // docs/TODO.md: "sensible settings ... should ask
-                        // confirmation with a blocking alert" — a bulk
-                        // clear of every per-key override, unlike the
-                        // single-key button beside it.
                         onClicked: Services.ConfirmDialog.open({
                             title: "Clear all keys",
                             message: "Removes every per-key colour override. This cannot be undone.",

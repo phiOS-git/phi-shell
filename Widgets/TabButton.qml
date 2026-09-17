@@ -2,32 +2,20 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/TabButton (style pass, 2026-09-14). The shared
-// section-switcher grammar, for wherever the user picks which section of a
-// panel is currently showing: Panels/Sidebar's Notifications/Clipboard
-// strip, Panels/AgentPanel's Chat/Coding/Memory rail. Deliberately
-// NOT Widgets/Segment: a tab is a navigation state, not a momentary action,
-// so selecting one must never read as "a button just got pressed" the way
-// Segment's/StyledButton's full inversion does.
-//
-// This is the fix for docs/TODO.md's "tabs are indistinguishable from
-// buttons": Panels/Sidebar's tab strip used to be built from Segment with
-// `active` bound to the current tab — that IS the exact same full-inversion
-// "pressed" look a settings action or a bar button uses, so a tab and a
-// button read identically. Panels/AgentPanel's rail independently grew its
-// own bespoke hover-wash + hairline marker to work around the same gap —
-// two different ad-hoc tab looks in one shell. This widget replaces both
-// with one shared grammar: no resting box, a flat hover wash (the same
-// recipe Widgets/Accordion's header already uses), and the current tab
-// marked by accent-coloured content plus a thin accent bar on the edge
-// facing what it controls — so which section is active reads at a glance,
-// without needing to compare against a neighbour.
+// The shared section-switcher grammar, for wherever the user picks which
+// section of a panel is currently showing. Deliberately NOT Widgets/Segment:
+// a tab is a navigation state, not a momentary action, so selecting one
+// must never read as "a button just got pressed" the way Segment's/
+// StyledButton's full inversion does. No resting box, a flat hover wash,
+// and the current tab marked by accent-coloured content plus a thin accent
+// bar on the edge facing what it controls — so which section is active
+// reads at a glance, without needing to compare against a neighbour.
 //
 // `indicatorEdge` picks that edge: "bottom" for a horizontal strip (the
-// ordinary tab convention — Sidebar), "right"/"left" for a vertical icon
-// rail on the panel's left/right edge (AgentPanel, whose dock sits at the
-// screen's left edge, so its rail's "inner" edge — facing the section body
-// — is its own right edge).
+// ordinary tab convention), "right"/"left" for a vertical icon rail on the
+// panel's left/right edge.
+//
+// No caller has been migrated to it yet.
 
 Item {
     id: root
@@ -38,11 +26,11 @@ Item {
     property bool loading: false
     property bool invalid: false
     property string indicatorEdge: "bottom" // "bottom" | "left" | "right"
-    // A small numeric badge (e.g. AgentPanel's pending-proposals count on
-    // the Memory rail item). 0 or less hides it.
+    // A small numeric badge (e.g. a pending-count on a rail item). 0 or
+    // less hides it.
     property int badge: 0
-    // A vertical icon rail (AgentPanel) shows the glyph only, sized to fill
-    // a square tile; a horizontal strip (Sidebar) shows glyph + label.
+    // A vertical icon rail shows the glyph only, sized to fill a square
+    // tile; a horizontal strip shows glyph + label.
     property bool iconOnly: false
 
     readonly property bool hovered: hoverHandler.hovered
@@ -59,7 +47,7 @@ Item {
     readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState, "tab")
 
     // design/tokens.common.sh stores space-N in `ch`, not px — see
-    // Widgets/Panel.qml's identical comment.
+    // WidgetStates.js's chToPixels() comment.
     TextMetrics {
         id: chMetrics
         font.family: Config.Appearance.fontMono
@@ -163,9 +151,7 @@ Item {
         onTapped: root.activated()
     }
 
-    // Style pass 2026-09-14: see Widgets/StyledButton.qml's identical
-    // comment — a systemic keyboard-activation gap, fixed the same way
-    // here.
+    // Same keyboard-activation fix as Widgets/StyledButton.qml.
     Keys.onReturnPressed: if (root.enabled && !root.loading) root.activated()
     Keys.onSpacePressed: if (root.enabled && !root.loading) root.activated()
 

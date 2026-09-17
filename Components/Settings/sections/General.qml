@@ -3,19 +3,14 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Settings/sections/General (S-40, master plan §9.12): "hostname,
-// modello hardware, versione OS e kernel, uptime, spazio disco. Su razer:
-// statistiche batteria e profilo di risparmio energetico." Every value is
-// read-only — this section reports the machine's shape, it does not
-// configure anything (§9.12 perimeter: runtime state only).
+// Hostname, hardware model, OS/kernel version, uptime, disk space, and
+// (where present) battery stats. Every value is read-only — this section
+// reports the machine's shape, it doesn't configure anything.
 //
-// Out-of-plan: settings-overhaul batch B. The old flat Column of full-width
-// ListRows was mostly whitespace — a hostname or a kernel string never
-// fills the pane. Now a responsive 2-column grid of compact key/value tiles
-// inside SettingsGroup cards, one card per catalogue option (general.machine
-// / general.system / general.battery) so a search or a reveal lands on the
-// right group. Same Services.SystemInfo / Services.PowerBridge reads as
-// before — no new probes.
+// A responsive 2-column grid of compact key/value tiles inside
+// SettingsGroup cards, one card per catalogue option (general.machine /
+// general.system / general.battery) so a search or a reveal lands on the
+// right group.
 
 Column {
     id: root
@@ -125,22 +120,15 @@ Column {
                         : "not reported by this hardware"
                 }
                 StatTile { label: "Charge cycles"; value: "" + Services.PowerBridge.chargeCycles }
-                // Style pass 2026-09-15: this section's whole purpose is
-                // read-only reporting of the machine's current state —
-                // battery-saver had no presence here at all despite being
-                // exactly that kind of state, and this round already made
-                // its status visible elsewhere (the bar icon's own hatch
-                // pattern, docs/VERIFICATION.md).
                 StatTile { label: "Battery saver"; value: Services.PowerBridge.batterySaverActive ? "on" : "off" }
             }
 
             StatTile {
                 span: true
                 label: "Power profile"
-                // TLP (profiles/laptop) manages this by policy, not a toggle
-                // the shell owns. Reading it needs tlp-stat, which this step
-                // has no evidence is safe to spawn on every panel open —
-                // left explicit rather than guessed. AWAITING BACKEND.
+                // TLP (profiles/laptop) manages this by policy, not a
+                // toggle the shell owns. Reading it needs tlp-stat, which
+                // isn't confirmed safe to spawn on every panel open.
                 value: "managed by TLP — see tlp-stat on the machine"
             }
         }

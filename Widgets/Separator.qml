@@ -2,20 +2,15 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/Separator (S-21). A hairline divider, coloured from
-// design tokens and sized from the new border-width token (see this
-// repository's Appearance.qml and phios-dotfiles/design/tokens.common.sh —
-// no §6.3 token covered stroke width before this step, a real gap this
-// widget surfaced rather than a deferred decision).
+// A hairline divider, coloured and sized from design tokens.
 //
-// The seven transverse states (§8.6) are present here for interface
-// uniformity with every other widget in this directory, but only three
-// have a defined look for a plain divider: default, disabled and loading
-// fade together via the shared opacity precedence, and invalid tints the
-// line to the error colour. hover/pressed/active/keyboardFocus have no
-// meaning for a line nothing can click or focus, and are not wired to any
-// visual effect — a genuinely honest "not applicable", not a silently
-// faked one.
+// The seven transverse states are present here for interface uniformity
+// with every other widget in this directory, but only three have a
+// defined look for a plain divider: default, disabled and loading fade
+// together via the shared opacity precedence, and invalid tints the line
+// to the error colour. hover/pressed/active/keyboardFocus have no meaning
+// for a line nothing can click or focus, and are not wired to any visual
+// effect — a genuinely honest "not applicable", not a silently faked one.
 
 Item {
     id: root

@@ -1,13 +1,11 @@
 import QtQuick
 import qs.Config as Config
 
-// phiOS — Widgets/Meter (R3 #2/#9). A horizontal value bar: a pill track
-// with a fill. Read-only by default (the OSD, a battery gauge); set
-// `interactive: true` and it emits `moved(real)` continuously during a
-// drag and `released(real)` once at the end, so the volume and brightness
-// bar popouts drive the same primitive the OSD shows. One meter, any
-// caller — the shape the OSD's own header said it would extract "once a
-// second caller exists".
+// A horizontal value bar: a pill track with a fill. Read-only by default
+// (the OSD, a battery gauge); set `interactive: true` and it emits
+// `moved(real)` continuously during a drag and `released(real)` once at
+// the end, so the volume and brightness bar popouts drive the same
+// primitive the OSD shows.
 //
 // While the pointer is down the fill follows the pointer directly, so a
 // consumer that only commits on `released` (brightness → brightnessctl)
@@ -18,17 +16,13 @@ Item {
 
     property real value: 0            // 0..1, clamped on read
     property bool interactive: false
-    // Style pass 2026-09-15: this is the volume/brightness bar popouts'
-    // real slider, and had no keyboard path at all — drag-only, unlike
-    // every discrete control in this shell (StyledButton, Toggle, …),
-    // which all got a systemic Enter/Space fix earlier this pass. Arrow
-    // keys nudge by this fraction; each press is one atomic commit (no
-    // "drag" concept applies to a single key press), so it fires `moved`
-    // then `released` immediately rather than tracking `_dragging`.
+    // Arrow keys nudge by this fraction; each press is one atomic commit
+    // (no "drag" concept applies to a single key press), so it fires
+    // `moved` then `released` immediately rather than tracking `_dragging`.
     property real keyStep: 0.05
-    // features-change (item 4): the fill is the ink colour, never accent
-    // (overlay-reference.png); the track is a faint wash of the same ink so
-    // it reads on any surface the meter sits on. Both still overridable.
+    // The fill is the ink colour, never accent; the track is a faint wash
+    // of the same ink so it reads on any surface the meter sits on. Both
+    // still overridable.
     property color fillColor: Config.Appearance.textPrimary
     property color trackColor: Qt.rgba(Config.Appearance.textPrimary.r,
         Config.Appearance.textPrimary.g, Config.Appearance.textPrimary.b, 0.15)
@@ -106,8 +100,6 @@ Item {
         anchors.fill: parent
         enabled: root.interactive
         preventStealing: true
-        // Style pass 2026-09-14: a draggable control deserves the same
-        // cursor affordance a clickable one gets — this had none at all.
         cursorShape: root.interactive ? Qt.SizeHorCursor : Qt.ArrowCursor
         function frac(x) { return Math.max(0, Math.min(1, x / root.width)) }
         onPressed: (m) => { root.forceActiveFocus(); root._dragFrac = frac(m.x); root._dragging = true; root.moved(root._dragFrac) }

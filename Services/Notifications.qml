@@ -6,44 +6,32 @@ import Quickshell.Services.Notifications
 import qs.Config as Config
 import qs.Services as Services
 
-// phiOS — Services/Notifications (S-30, ADR 073: the shell IS the
-// notification daemon; master plan §8.3 surface 3). NotificationServer
-// (Quickshell.Services.Notifications, verified against the real Quickshell
-// source — services/notifications/qml.hpp and notification.hpp — rather
-// than assumed) claims org.freedesktop.Notifications and is the one thing
-// here that touches the service surface; everything else (Notifications/Toast,
-// S-31's sidebar tab) reads this file, never the server directly
-// (phi-shell/CLAUDE.md).
+// The shell IS the notification daemon. NotificationServer (below) claims
+// org.freedesktop.Notifications and is the one thing here that touches the
+// service surface; everything else (the bar's Toast, the sidebar) reads
+// this file, never the server directly.
 //
-// Two collections this file owns, per master plan §5.6's "storico
-// notifiche: scritto da: shell" row — S-13 explicitly deferred their
-// storage shape to whichever step defines one, since they are collections,
-// not `phi state`'s flat scalar keys:
-//   - `active`: server.trackedNotifications itself, re-exported as-is. Live
-//     Notification objects with working action buttons — for as long as the
-//     server keeps them tracked, which this file bounds itself: every
-//     notification gets an expireTimerComponent-driven lifetime (below) and
-//     is explicitly untracked (`tracked = false`) once its `closed` signal
+// Two collections this file owns:
+//   - `active`: server.trackedNotifications, re-exported as-is. Live
+//     Notification objects with working action buttons, bounded by
+//     expireTimerComponent (below) and explicitly untracked once `closed`
 //     fires, so this collection never accumulates closed notifications
-//     forever the way an earlier draft of this file did.
-//   - `history`: a flat JSON array persisted at Config.Paths.notificationsFile
-//     (id, appName, summary, body, urgency, image, timestamp, closeReason),
-//     capped at historyLimit, newest first. This is what survives a shell
-//     restart — the live Notification objects do not — and it is what S-31's
-//     sidebar tab reads for anything already closed.
+//     forever.
+//   - `history`: a flat JSON array persisted at
+//     Config.Paths.notificationsFile (id, appName, summary, body, urgency,
+//     image, timestamp, closeReason), capped at historyLimit, newest
+//     first. This is what survives a shell restart — the live Notification
+//     objects do not.
 //
-// DND reuses phi state's existing `toggle.dnd` key (Config.Settings, S-13) rather
-// than inventing a second flag: S-40's settings panel and this toast queue
-// both toggle the same value, master plan §5.6's own row for it ("scritto
-// da: pannello impostazioni e barra").
+// DND reuses phi state's existing `toggle.dnd` key rather than inventing a
+// second flag — the settings panel and this toast queue both toggle the
+// same value.
 //
 // Signal handlers below use an explicit arrow-function parameter
-// (`onNotification: (notification) => {...}`) rather than relying on Qt's
-// implicit same-named-parameter injection into a bare `onX: {}` block: this
-// is a modern Qt6 QML idiom no other file in this repo has needed yet, used
-// here specifically because it binds positionally and does not depend on
-// NotificationServer's own C++ parameter name matching what this file
-// expects.
+// (`onNotification: (notification) => {...}`) rather than Qt's implicit
+// same-named-parameter injection into a bare `onX: {}` block: it binds
+// positionally and doesn't depend on NotificationServer's own C++
+// parameter name matching what this file expects.
 
 Singleton {
     id: root
@@ -51,21 +39,11 @@ Singleton {
     readonly property int historyLimit: 200
     readonly property var active: server.trackedNotifications
 
-    // docs/TODO.md: "the notification icon keeps the same state with the
-    // red dot even when i clear all notifications." Bar/modules/
-    // Notifications.qml's badge used to read `active.values.length`
-    // directly in its own binding — technically reactive (UntypedObjectModel's
-    // `values` does carry a `valuesChanged` NOTIFY, confirmed against the
-    // installed Quickshell's own qmltypes), but that makes the badge's
-    // correctness depend on a distant consumer's binding re-evaluating off
-    // a property-change signal on an object it never directly interacts
-    // with otherwise — exactly the kind of indirection this project has
-    // repeatedly found does not behave as documented on this Quickshell/
-    // Hyprland stack. `activeCount` instead recomputes itself directly off
-    // the model's own insert/remove signals (below), and `clearAll()`
-    // additionally zeroes it immediately rather than waiting on either
-    // mechanism — the literal fix for "even when I clear all notifications"
-    // regardless of which layer the original staleness came from.
+    // activeCount recomputes off the model's own insert/remove signals
+    // rather than a binding on `active.values.length` read from a distant
+    // consumer (e.g. the bar badge) — that indirection has been unreliable
+    // on this Quickshell/Hyprland stack. clearAll() additionally zeroes it
+    // immediately rather than waiting on either mechanism.
     property int activeCount: root.active ? root.active.values.length : 0
     Connections {
         target: root.active
@@ -78,16 +56,16 @@ Singleton {
     property var toastQueue: []    // pending Notification objects awaiting a toast
     property var activeToast: null // the one currently shown, or null
 
-    // shell-features: fired once per recorded, non-muted notification (DND
-    // or not) so Bar/modules/Notifications.qml can blink its bell. `entry`
-    // is the same object just pushed to `history`.
+    // Fired once per recorded, non-muted notification (DND or not) so
+    // Bar/modules/Notifications.qml can blink its bell. `entry` is the
+    // same object just pushed to `history`.
     signal arrived(var entry)
 
-    // shell-features: preferences (notification-prefs.json). Sound is OFF by
-    // default — the default `soundName` resolves to a freedesktop sound
-    // theme file that is only present if sound-theme-freedesktop is
-    // installed; `soundName` may also be an absolute path. `retentionDays`
-    // prunes history older than that on load and hourly.
+    // Preferences (notification-prefs.json). Sound is OFF by default — the
+    // default `soundName` resolves to a freedesktop sound theme file only
+    // present if sound-theme-freedesktop is installed; `soundName` may
+    // also be an absolute path. `retentionDays` prunes history older than
+    // that on load and hourly.
     property int retentionDays: 7
     property bool soundEnabled: false
     property string soundName: "message"   // freedesktop theme name, or an absolute path
@@ -112,10 +90,10 @@ Singleton {
         return "/usr/share/sounds/freedesktop/stereo/" + n + ".oga"
     }
 
-    // Play the notification sound via pw-play (pipewire — always present).
-    // Overlapping calls are dropped rather than queued; a burst of
-    // notifications should not stack beeps. `force` is set by the settings
-    // "Test sound" button so it plays even while soundEnabled is false.
+    // Play the notification sound via pw-play. Overlapping calls are
+    // dropped rather than queued — a burst of notifications should not
+    // stack beeps. `force` lets the settings "Test sound" button play it
+    // even while soundEnabled is false.
     function playSound(force) {
         if (!force && !root.soundEnabled) return
         if (soundProc.running) return
@@ -148,7 +126,7 @@ Singleton {
         }
     }
 
-    // --- clean-up (user directive: clear all / one / a group) ------------
+    // --- clean-up: clear all / one / a group ------------------------------
     function clearAll() {
         root.history = []
         root._persist()
@@ -158,10 +136,9 @@ Singleton {
             try { live[i].dismiss() } catch (e) { live[i].tracked = false }
         }
         // The user just explicitly cleared everything — the badge goes
-        // dark now, not whenever (or if) the server's own async close
-        // round-trip gets back to updating the model. Harmless even if
-        // dismiss() above turns out to leave something tracked for a
-        // moment: the Connections above will just set it right back.
+        // dark now, not whenever the server's own async close round-trip
+        // updates the model. Harmless if dismiss() above leaves something
+        // tracked for a moment: the Connections above sets it right back.
         root.activeCount = 0
     }
     function clearApp(appName) {
@@ -177,16 +154,12 @@ Singleton {
         })
         root._persist()
     }
-    // Interface rework Phase 3 (rework.md notifications overlay: "grouped
-    // by source in the same date ... clear buttons on each single
-    // notification, on each group (source or day)"). Once history is
-    // grouped by DATE first, an app sub-group and a whole date group are
-    // both a specific SUBSET of history, not "everything from this app"
-    // (clearApp's own scope) — clearApp would wrongly wipe that app's
-    // entries in every OTHER date bucket too. Deletes exactly the entries
-    // passed, matched the same way clearEntry matches one (timestamp +
-    // summary + appName has no id field to key on more directly, same as
-    // that function's own reasoning).
+    // For a group within the date-grouped overlay: an app sub-group or a
+    // whole date group is a SUBSET of history, not "everything from this
+    // app" (clearApp's scope) — clearApp would wrongly wipe that app's
+    // entries in every other date bucket too. Deletes exactly the entries
+    // passed, matched the same composite key as clearEntry (there is no id
+    // field to key on more directly).
     function clearEntries(entries) {
         if (!entries || entries.length === 0) return
         const keySet = entries.map((e) => e.timestamp + "|" + e.summary + "|" + e.appName)
@@ -215,14 +188,12 @@ Singleton {
         onTriggered: root._pruneOld()
     }
 
-    // settings-overhaul batch I — per-app rules (master plan §9.12: "regole
-    // per applicazione"). { "<appName>": { mute, hide, priority } }:
+    // Per-app rules: { "<appName>": { mute, hide, priority } }.
     //   mute     — recorded in history, no toast (and no Chroma blink)
     //   hide     — fully suppressed: not tracked, not recorded, not shown
     //   priority — still toasts even while DND is on
-    // Stored as one JSON object at Config.Paths.notificationRulesFile —
-    // a collection, not a `phi state` scalar (S-13), same shape as
-    // Config/ThemeOverrides.qml.
+    // Stored as one JSON object at Config.Paths.notificationRulesFile — a
+    // collection, not a `phi state` scalar.
     property var rules: ({})
 
     // The apps the picker offers: every app seen in history plus every app
@@ -258,20 +229,18 @@ Singleton {
     }
 
     function toggleDnd() {
-        // Style pass 2026-09-14: any manual flip — on or off — cancels a
-        // pending timed session, so a stale durationTimer from an earlier
-        // "30 min" click can't silently re-disable DND out from under a
-        // session the user just started fresh (see durationTimer.onTriggered's
-        // comment for the other half of this bug).
+        // Any manual flip — on or off — cancels a pending timed session,
+        // so a stale durationTimer from an earlier "30 min" click can't
+        // silently re-disable DND out from under a session just started
+        // fresh (see durationTimer.onTriggered for the other half).
         durationTimer.stop()
         root.dnd = !root.dnd
         root.dndEndsAt = 0
         Config.Settings.set("toggle.dnd", root.dnd ? "true" : "false")
     }
 
-    // "silenzia i popup per una durata o a richiesta" (master plan §9.12):
-    // the duration form. Not persisted across a restart — only the plain
-    // on/off toggle is a defined phi state key (§5.6), and a countdown that
+    // The duration form of DND. Not persisted across a restart — only the
+    // plain on/off toggle is a defined phi-state key, and a countdown that
     // silently resumed after a crash would be a worse surprise than losing
     // it on restart.
     function dndFor(minutes) {
@@ -282,13 +251,9 @@ Singleton {
         }
     }
 
-    // Style pass 2026-09-14 (docs/TODO.md's reference shape: state with no
-    // feedback about itself): the on/off toggle read identically whether it
-    // was set indefinitely from the switch or for "1 h" from a duration
-    // button, with nothing anywhere telling the user which — or how much of
-    // a timed session was left. `dndEndsAt` (0 = off, or on indefinitely)
-    // plus `dndRemainingLabel` give both settings and the panel toggle a
-    // live "left" readout for the timed case, for free.
+    // `dndEndsAt` (0 = off, or on indefinitely) plus `dndRemainingLabel`
+    // give both Settings and the panel toggle a live "time left" readout
+    // for a timed DND session.
     property real dndEndsAt: 0
     property real _dndNow: Date.now()
     Timer {
@@ -320,11 +285,10 @@ Singleton {
     }
 
     function _pushHistory(entry) {
-        // No manual `root.historyChanged()` call: QML already auto-generates
-        // a historyChanged signal for `property var history` above, fired
-        // by this assignment — an earlier draft also declared that signal
-        // explicitly, which QML rejects outright ("invalid override of
-        // property change signal") since the two would collide.
+        // No manual `root.historyChanged()` call: QML already auto-
+        // generates one for `property var history` above, fired by this
+        // assignment (declaring it explicitly is rejected as an invalid
+        // override of the property-change signal).
         root.history = [entry].concat(root.history).slice(0, root.historyLimit)
         _persist()
     }
@@ -343,31 +307,24 @@ Singleton {
     Timer {
         id: durationTimer
         // Named restartFor, not restart: Timer already has a built-in
-        // restart() invokable that restarts using the current interval —
-        // a same-named function here would shadow it and recurse into
-        // itself instead of calling the real one.
+        // restart() invokable using the current interval — a same-named
+        // function here would shadow it and recurse into itself.
         function restartFor(minutes) {
             this.interval = minutes * 60 * 1000
             this.restart()
         }
-        // Style pass 2026-09-14: was `root.dnd = false` directly, which
-        // flips the live flag but never calls Config.Settings.set — so the
-        // persisted "toggle.dnd" key stayed "true" forever after every
-        // ordinary timed-DND expiry. Component.onCompleted below reads
-        // that same key on the next shell start (or Quickshell restart)
-        // and would resume DND as on, with no timer running and nothing
-        // in the UI to explain why notifications were being silenced.
-        // Routing through toggleDnd() keeps the flag and the persisted
-        // key from ever disagreeing.
+        // Routes through toggleDnd() (not `root.dnd = false` directly) so
+        // the persisted `toggle.dnd` key never disagrees with the live
+        // flag — a direct assignment here left the key "true" forever
+        // after a timed-DND expiry, and a later shell start would read it
+        // back and resume DND as on with no timer running.
         onTriggered: if (root.dnd) root.toggleDnd()
     }
 
     Component.onCompleted: {
-        // Config.Settings.get shells out to `phi state` (S-13) and returns
-        // asynchronously; dnd stays false until it resolves. An unwanted
-        // toast in that window (at most a few hundred ms after the shell
-        // starts) is a cosmetic gap, not a correctness one — history and
-        // actions are unaffected either way.
+        // Config.Settings.get shells out and returns asynchronously; dnd
+        // stays false until it resolves. An unwanted toast in that window
+        // is a cosmetic gap, not a correctness one.
         Config.Settings.get("toggle.dnd", (value, exitCode) => {
             if (value === "true") root.dnd = true
         })
@@ -388,9 +345,9 @@ Singleton {
         persistenceSupported: false
 
         onNotification: (notification) => {
-            // settings-overhaul batch I — per-app rules. `hide` suppresses
-            // completely: never tracked, so it also never enters history
-            // and the server drops it on its own timeout.
+            // `hide` suppresses completely: never tracked, so it also
+            // never enters history, and the server drops it on its own
+            // timeout.
             const rule = root.ruleFor(notification.appName)
             if (rule.hide) return
 
@@ -408,8 +365,8 @@ Singleton {
             }
             root._pushHistory(entry)
 
-            // shell-features: the bar bell blinks for every recorded,
-            // non-muted notification — DND or not (a muted app is silent
+            // The bar bell blinks for every recorded, non-muted
+            // notification — DND or not (a muted app is silent
             // everywhere; DND still lets the quiet cue through).
             if (!rule.mute) root.arrived(entry)
 
@@ -420,27 +377,18 @@ Singleton {
             if (allowToast) {
                 root.toastQueue = root.toastQueue.concat([notification])
                 root._advanceQueue()
-
-                // settings-overhaul batch G: the Chroma "notifications"
-                // integration — a function-row blink on arrival.
-                // Chroma.notifyBlink() is itself a no-op unless the
-                // integration is enabled and the keyboard is on.
+                // No-op unless the Chroma "notifications" integration is
+                // enabled and the keyboard is on.
                 Services.Chroma.notifyBlink()
-
-                // shell-features: notification sound. A no-op unless
-                // soundEnabled; overlapping calls are dropped.
                 root.playSound(false)
             }
 
             // Every tracked notification gets a bounded lifetime, DND or
             // not — a DND-silenced notification never becomes a toast, so
-            // nothing else would ever call expire() on it, and it would
-            // stay tracked (duplicated forever in the sidebar's "Active"
-            // section, alongside its own already-recorded "History" row)
-            // for the rest of the session. This is the fix for a real bug
-            // caught in review before this row's own step was ever marked
-            // verified: notification.tracked was set true on arrival and
-            // never set back, so trackedNotifications only ever grew.
+            // nothing else would call expire() on it, and it would stay
+            // tracked (duplicated in the sidebar's "Active" section
+            // alongside its own already-recorded "History" row) for the
+            // rest of the session.
             const timeoutMs = notification.expireTimeout > 0 ? notification.expireTimeout : 8000
             expireTimerComponent.createObject(root, { targetNotification: notification, delay: timeoutMs })
 
@@ -455,10 +403,10 @@ Singleton {
                 root.history = next
                 root._persist()
 
-                // The actual fix: release the object back to the server
-                // once its closure is recorded, so trackedNotifications
-                // (re-exported as `active`) only ever holds notifications
-                // that are genuinely still open.
+                // Release the object back to the server once its closure
+                // is recorded, so trackedNotifications (re-exported as
+                // `active`) only ever holds notifications genuinely still
+                // open.
                 notification.tracked = false
 
                 if (root.activeToast === notification) {
@@ -472,15 +420,11 @@ Singleton {
 
     // One-shot: calls expire() once per notification, whether or not it
     // was ever shown as a toast, then destroys itself. expire() (not
-    // dismiss()) matches the Notification API's own distinction — "dismiss
-    // with timeout hint" is exactly what a bounded lifetime is — and
-    // triggers the real `closed` signal above, which is what actually
-    // untracks the notification; nothing here touches root.history or
-    // root.activeToast directly; expire()ing an already-closed notification
-    // (e.g. the sender withdrew it first) is assumed to be a safe no-op,
-    // consistent with how every other close-idempotent D-Bus-style API in
-    // this stack behaves — unverified on real hardware, flagged for cheap
-    // veto if it is not.
+    // dismiss()) matches the Notification API's own "dismiss with timeout
+    // hint" semantics and triggers the real `closed` signal above, which
+    // is what actually untracks the notification. expire() on an
+    // already-closed notification (e.g. the sender withdrew it first) is
+    // assumed to be a safe no-op — unverified on real hardware.
     property Component expireTimerComponent: Component {
         Timer {
             id: expireTimer
@@ -497,17 +441,11 @@ Singleton {
     }
 
     // $XDG_STATE_HOME/phi is normally created by `phi state`'s own first
-    // run (internal/state, S-13), but nothing guarantees that has happened
-    // yet on a machine where the shell starts before `phi` is ever
-    // invoked, and FileView.setText's real header does not document
-    // creating missing parent directories. Cheap insurance, run once.
-    //
-    // running=false in onExited even though nothing ever re-triggers this
-    // one: found during S-36's audit of every Process in this repo —
-    // Process.onFinished() (io/process.cpp) calls startProcessIfReady()
-    // unconditionally on exit, so this mkdir, left with running still
-    // true, was respawning itself forever in a tight loop from the moment
-    // the shell started.
+    // run, but nothing guarantees that has happened yet if the shell
+    // starts before `phi` is ever invoked. Cheap insurance, run once.
+    // running=false in onExited even though nothing re-triggers this one:
+    // Process.onFinished() restarts automatically if `running` is still
+    // true on exit, so without this it would respawn in a tight loop.
     Process {
         id: ensureStateDirProc
         command: ["mkdir", "-p", Config.Paths.stateDir]

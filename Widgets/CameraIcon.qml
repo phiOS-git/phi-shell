@@ -2,11 +2,9 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// phiOS — Widgets/CameraIcon. User bug report, 2026-09-16 (rework.md's
-// status overlay's camera-sensor toggle; rework-issues.md item 4b). Same
-// hand-drawn-Canvas convention and same three-state shape language as
-// MicrophoneIcon.qml's sibling icon — see that file's header and
-// TrueToneIcon.qml's for the full "why not a font glyph" reasoning.
+// Same hand-drawn-Canvas convention and three-state shape language as
+// MicrophoneIcon.qml's sibling icon — see TrueToneIcon.qml for the full
+// "why not a font glyph" reasoning.
 //
 // A simple camera-body-plus-lens silhouette: "disabled" strikes it through,
 // "enabled" is a hollow outline, "inUse" fills the lens solid.

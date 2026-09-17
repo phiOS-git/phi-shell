@@ -5,16 +5,10 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Dialogs/TimerAlert. docs/TODO.md: "add a timer and alarm feature
-// to phi ... They should have a custom overlay that requires to be turned
-// off, on the higher Z index in the system." Services/Timers.qml owns the
-// item list, firing queue and ringtone; this file is presentation only,
-// same split as Dialogs/BatteryAlert.qml, whose layer-shell/scrim/fade
-// plumbing this file copies verbatim (that file's own header explains the
-// reasoning: full-screen, not a call into Services.ConfirmDialog, single
-// instance on screens[0], keyboard focus taken while shown, Dismiss/Enter/
-// Escape all close it — every one of those judgment calls applies here
-// identically, for the same reasons).
+// Services/Timers.qml owns the item list, firing queue and ringtone; this
+// file is presentation only, same split as Components/Dialogs/
+// BatteryAlert.qml, whose layer-shell/scrim/fade plumbing this file
+// copies verbatim.
 //
 // firingIds can hold more than one due item at once (the machine was
 // asleep through several alarm times, or a timer and an alarm land in the
@@ -42,8 +36,8 @@ PanelWindow {
     Widgets.Scrim {
         anchors.fill: parent
         shown: root.shown
-        // docs/TODO.md, style pass: same "warning/alert" bucket as
-        // BatteryAlert — gets the stronger intensity.
+        // Same "warning/alert" bucket as BatteryAlert — gets the stronger
+        // intensity.
         strong: true
     }
 
