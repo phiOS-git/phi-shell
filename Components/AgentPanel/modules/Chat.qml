@@ -2,7 +2,7 @@ import QtQuick
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "../" as Tabs
+import "." as Local
 
 // phiOS — agent Chat (phios-agente-delta.md §3.7 section 2). One conversation.
 // Heading `project > title` (title from opencode's session.title after msg 1,
