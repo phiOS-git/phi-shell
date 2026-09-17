@@ -5,7 +5,7 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 import "../modules" as Modules
-import "./options.js" as Options
+import "../modules/options.js" as Options
 import "../../Lock/Lock.qml" as LockFx
 
 // Every variable that is reasonable to change has an editable control
