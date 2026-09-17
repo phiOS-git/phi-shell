@@ -170,19 +170,22 @@ ShellRoot {
     }
 
     // Dialogs - TODO: have a single overlay, handles multiple calls internally
-    Components.Dialogs.ConfirmDialog {
+    // Components.DialogsOverlay {
+    //     screen: Quickshell.screens[0]
+    // }
+    Components.ConfirmDialog {
         screen: Quickshell.screens[0]
     }
-    Components.Dialogs.SensorPermissionPrompt {
+    Components.SensorPermissionPrompt {
         screen: Quickshell.screens[0]
     }
-    Components.Dialogs.BatteryAlert {
+    Components.BatteryAlert {
         screen: Quickshell.screens[0]
     }
-    Components.Dialogs.PowerMenu {
+    Components.PowerMenu {
         screen: Quickshell.screens[0]
     }
-    Components.Dialogs.TimerAlert {
+    Components.TimerAlert {
         screen: Quickshell.screens[0]
     }
 

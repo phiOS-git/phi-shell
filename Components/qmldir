@@ -16,3 +16,9 @@ Osd 1.0 Osd.qml
 Background 1.0 Background.qml
 Overview 1.0 Overview.qml
 ImageWindow 1.0 ImageWindow.qml
+
+ConfirmDialog 1.0 Dialogs/ConfirmDialog.qml
+SensorPermissionPrompt 1.0 Dialogs/SensorPermissionPrompt.qml
+BatteryAlert 1.0 Dialogs/BatteryAlert.qml
+PowerMenu 1.0 Dialogs/PowerMenu.qml
+TimerAlert 1.0 Dialogs/TimerAlert.qml
