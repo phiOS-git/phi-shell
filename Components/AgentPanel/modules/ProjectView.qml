@@ -2,6 +2,7 @@ import QtQuick
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
+import "." as Local
 
 // phiOS — agent ProjectView (phios-agente-delta.md §3.7 section 1, project
 // detail). Name, description, instruction list, context files (materiali/),
