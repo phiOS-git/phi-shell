@@ -2,7 +2,6 @@ import QtQuick
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "../options.js" as Options
 
 // Hostname, hardware model, OS/kernel version, uptime, disk space, and
 // (where present) battery stats. Every value is read-only — this section
