@@ -54,7 +54,7 @@ Item {
         id: personalityEditor
         anchors.fill: parent
         active: false
-        sourceComponent: PersonalityEditor {
+        sourceComponent: Local.PersonalityEditor {
             preselect: root.meta.default_personality || ""
             onClosed: personalityEditor.active = false
             onBlurred: root.blurred()
