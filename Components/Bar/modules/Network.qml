@@ -5,9 +5,9 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../glyphs.js" as Glyphs
 
-// Bottom-bar right isle: a single consolidated network icon covering
-// wifi, ethernet, VPN and Tailscale, rather than a separate module per
-// connection type.
+// Bottom-bar right isle: a single consolidated network module covering
+// wifi/ethernet as one main glyph plus per-status Tailscale, VPN and
+// firewall badges, rather than a separate module per connection type.
 //
 // Connection-type policy: ethernet wins over Wi-Fi whenever a wired NIC
 // exists at all (present, not necessarily connected) — a desktop with
@@ -39,7 +39,7 @@ Widgets.Segment {
     readonly property bool wifiConnecting: Services.WifiBridge.connecting
     readonly property bool tsUp: Services.Tailscale.connected
     readonly property bool vpnUp: Services.Vpn.anyUp
-    readonly property bool tunnelActive: root.tsUp || root.vpnUp
+    readonly property bool fwUp: Services.Firewall.enabled
 
     // See the file header's own "Connection-type policy" note.
     readonly property bool usingEthernet: root.ethPresent
@@ -52,51 +52,160 @@ Widgets.Segment {
 
     property real connectAmount: 0
     Behavior on connectAmount {
-        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+        NumberAnimation {
+            duration: Config.Appearance.motionBDuration
+            easing.type: Easing.Bezier
+            easing.bezierCurve: Config.Appearance.motionBCurve
+        }
     }
-    property real tunnelAmount: 0
-    Behavior on tunnelAmount {
-        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+    property real tsAmount: 0
+    Behavior on tsAmount {
+        NumberAnimation {
+            duration: Config.Appearance.motionBDuration
+            easing.type: Easing.Bezier
+            easing.bezierCurve: Config.Appearance.motionBCurve
+        }
+    }
+    property real vpnAmount: 0
+    Behavior on vpnAmount {
+        NumberAnimation {
+            duration: Config.Appearance.motionBDuration
+            easing.type: Easing.Bezier
+            easing.bezierCurve: Config.Appearance.motionBCurve
+        }
+    }
+    property real fwAmount: 0
+    Behavior on fwAmount {
+        NumberAnimation {
+            duration: Config.Appearance.motionBDuration
+            easing.type: Easing.Bezier
+            easing.bezierCurve: Config.Appearance.motionBCurve
+        }
     }
 
     function _sync() {
-        root.connectAmount = root.anyConnected ? 1 : 0
-        root.tunnelAmount = root.tunnelActive ? 1 : 0
+        root.connectAmount = root.anyConnected ? 1 : 0;
+        root.tsAmount = root.tsUp ? 1 : 0;
+        root.vpnAmount = root.vpnUp ? 1 : 0;
+        root.fwAmount = root.fwUp ? 1 : 0;
     }
     Connections {
         target: Services.EthernetBridge
-        function onConnectedChanged() { root._sync() }
-        function onPresentChanged() { root._sync() }
+        function onConnectedChanged() {
+            root._sync();
+        }
+        function onPresentChanged() {
+            root._sync();
+        }
     }
     Connections {
         target: Services.WifiBridge
-        function onConnectedChanged() { root._sync() }
+        function onConnectedChanged() {
+            root._sync();
+        }
     }
     Connections {
         target: Services.Tailscale
-        function onConnectedChanged() { root._sync() }
+        function onConnectedChanged() {
+            root._sync();
+        }
     }
     Connections {
         target: Services.Vpn
-        function onAnyUpChanged() { root._sync() }
+        function onAnyUpChanged() {
+            root._sync();
+        }
+    }
+    Connections {
+        target: Services.Firewall
+        function onEnabledChanged() {
+            root._sync();
+        }
     }
     Component.onCompleted: root._sync()
 
     iconDelegate: Component {
-        // `pivot` reserves real, permanent room for the VPN/Tailscale
-        // badge beside the main glyph (always, whether or not a tunnel is
-        // currently up) instead of stacking both into one shared box — a
-        // fixed reservation, not conditional on `tunnelAmount`, so the
-        // main glyph never shifts position as the badge fades in/out.
-        // The badge sits a full `root.gap` from the main glyph — the same
-        // spacing the bar's other items carry between their own innards
-        // (and between isles), so the pair reads as two separate icons,
-        // not one fused glyph.
+        // `pivot` packs the three status badges (Tailscale, VPN, firewall)
+        // to the LEFT of the main glyph. Each badge exists only while its
+        // own option is up — no fixed reservation — so the badge Row
+        // re-flows as states change and `implicitWidth` follows it: the
+        // group grows from the left edge while the main glyph stays pinned
+        // to the right and never shifts. Every gap — badge-to-badge and
+        // badge-to-main — is the same `_badgeGap`, so when several badges
+        // are up the icons read as one evenly-spaced set.
+        //
+        // `width: implicitWidth` is required, not a nicety: Segment loads
+        // this delegate through a plain Loader that only imposes a size on
+        // the loaded item when the Loader itself has an explicit size
+        // (qquickloader.cpp's setInitialState/_q_updateSize, and Segment's
+        // `customIcon` Loader never sets one). An Item's `width` defaults
+        // to 0, which would collapse every `anchors.left/right` inside
+        // this root onto a single point — the jam the old fixed
+        // reservation was masking.
         Item {
             id: pivot
+            width: implicitWidth
             readonly property real _badgeGap: root.gap * 4
-            implicitWidth: ethIcon.implicitWidth + badgeIcon.implicitWidth + pivot._badgeGap
-            implicitHeight: Math.max(ethIcon.implicitHeight, badgeIcon.implicitHeight)
+            implicitWidth: badges.implicitWidth + ethIcon.implicitWidth
+                + (badges.implicitWidth > 0 ? pivot._badgeGap : 0)
+            implicitHeight: Math.max(ethIcon.implicitHeight, badges.implicitHeight)
+
+            // The three status badges, left to right in the order the
+            // Connectivity settings section lists them. Each is `visible`
+            // only while active (so the Row drops it and spacing re-flows)
+            // and fades in through its own amount.
+            Row {
+                id: badges
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: pivot._badgeGap
+
+                Widgets.StyledIcon {
+                    id: tailscaleIcon
+                    glyph: Glyphs.tailscale
+                    sizeStep: Math.max(0, root.sizeStep - 1)
+                    color: root.contentColor
+                    visible: root.tsUp
+                    opacity: root.tsAmount
+                    Behavior on opacity {
+                        NumberAnimation {
+                            duration: Config.Appearance.motionBDuration
+                            easing.type: Easing.Bezier
+                            easing.bezierCurve: Config.Appearance.motionBCurve
+                        }
+                    }
+                }
+                Widgets.StyledIcon {
+                    id: vpnIcon
+                    glyph: Glyphs.vpn
+                    sizeStep: Math.max(0, root.sizeStep - 1)
+                    color: root.contentColor
+                    visible: root.vpnUp
+                    opacity: root.vpnAmount
+                    Behavior on opacity {
+                        NumberAnimation {
+                            duration: Config.Appearance.motionBDuration
+                            easing.type: Easing.Bezier
+                            easing.bezierCurve: Config.Appearance.motionBCurve
+                        }
+                    }
+                }
+                Widgets.StyledIcon {
+                    id: firewallIcon
+                    glyph: Glyphs.firewall
+                    sizeStep: Math.max(0, root.sizeStep - 1)
+                    color: root.contentColor
+                    visible: root.fwUp
+                    opacity: root.fwAmount
+                    Behavior on opacity {
+                        NumberAnimation {
+                            duration: Config.Appearance.motionBDuration
+                            easing.type: Easing.Bezier
+                            easing.bezierCurve: Config.Appearance.motionBCurve
+                        }
+                    }
+                }
+            }
 
             // Primary glyph: the ethernet plug when a wired NIC exists at
             // all; otherwise the Wi-Fi fan (its own connecting-pulse
@@ -121,21 +230,6 @@ Widgets.Segment {
                 sizeStep: root.sizeStep
                 connectAmount: root.connectAmount
                 connecting: root.wifiConnecting
-            }
-
-            // VPN/Tailscale badge — sits in its own reserved slot to the
-            // main glyph's LEFT, faded in only while a tunnel is up. One
-            // shared glyph for both Tailscale and a plain WireGuard
-            // tunnel (Glyphs.vpn), a simplification: separate glyphs for
-            // each would need extra precedence logic for "both up at once".
-            Widgets.StyledIcon {
-                id: badgeIcon
-                glyph: Glyphs.vpn
-                sizeStep: Math.max(0, root.sizeStep - 1)
-                color: root.contentColor
-                opacity: root.tunnelAmount
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
             }
         }
     }
