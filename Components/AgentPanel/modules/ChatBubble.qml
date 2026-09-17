@@ -3,7 +3,7 @@ import Quickshell
 import qs.Config as Config
 import qs.Widgets as Widgets
 import "../../Bar/glyphs.js" as Glyphs
-import "../../Widgets/WidgetStates.js" as WidgetStates
+import "../../../Widgets/WidgetStates.js" as WidgetStates
 
 // phiOS — Panels/tabs/ChatBubble. One message row in the agent Chat view
 // (Panels/tabs/agent/Chat.qml). A standalone file, not a QML inline
