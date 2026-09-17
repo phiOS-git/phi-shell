@@ -53,7 +53,7 @@ ShellRoot {
     // FIXME: `Type Components.Settings unavailable` - `Type Sections.General unavailable`
     // Components.Settingß
 
-    Panels.AgentPanel {
+    Components.AgentPanel {
         screen: Quickshell.screens[0]
     }
 
@@ -98,15 +98,15 @@ ShellRoot {
         screen: Quickshell.screens[0]
     }
 
-    // Panels.NotificationsOverlay {
+    // Components.NotificationsOverlay {
     //     screen: Quickshell.screens[0]
     // }
 
-    // Panels.ClipboardOverlay {
+    // Components.ClipboardOverlay {
     //     screen: Quickshell.screens[0]
     // }
 
-    Panels.QuickNote {
+    Components.QuickNote {
         screen: Quickshell.screens[0]
     }
 
