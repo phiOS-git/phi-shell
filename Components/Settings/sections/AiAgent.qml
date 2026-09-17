@@ -3,7 +3,7 @@ import Quickshell
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "." as Local
+import "../modules" as Modules
 
 // Activation (toggle, connection status, active project, pending memory
 // proposals), plus everything else scoped to genuinely runtime state:
@@ -44,11 +44,11 @@ Column {
     }
 
     // ---- activation / connection -----------------------------------
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "AI Agent"
         caption: "Projects, personalities, conversations, tool approval and the literal memory-proposal diffs live in the agent panel — the Φ bar segment or Super+P. This section keeps only runtime status and the A2 working-directory blocklist."
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Activation"
             description: "phi-agent-a1.service"
             Widgets.Toggle {
@@ -71,7 +71,7 @@ Column {
             label: "Pending memory proposals"
             value: String(root.agent.pendingProposals.length)
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Agent panel"
             Row {
                 spacing: root.gap
@@ -93,12 +93,12 @@ Column {
     }
 
     // ---- A2 working-directory blocklist -----------------------------
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         advanced: true
         title: "Coding-agent blocklist"
         caption: "Directories `phi agent code` and the folder-of-interest picker refuse. One glob per line; '#' comments; '~' expands. A guard-rail on the picker, not the security boundary. Saved to ~/.config/phi-agent/code-blocklist."
 
-        SettingsRow {
+        Modules.SettingsRow {
             wide: true
             title: "Blocked directories"
             Column {
@@ -146,12 +146,12 @@ Column {
     }
 
     // ---- services (runtime status, read-only) -----------------------
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         advanced: true
         title: "Services"
         caption: "All phi-agent units are declared and never auto-enabled (phios-agente.md). Start/stop and enable them with `systemctl --user`. The A2 remote surface is status-only here — starting phi-agent-a2-remote* is how a session is declared remote (§10.3)."
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "A2 support services"
             description: "phi-agent-broker@a2, phi-agent-proxy, phi-agent-net-bridge — required before `phi agent code` / a coding session can reach the network."
             Widgets.StyledButton {
@@ -176,7 +176,7 @@ Column {
     }
 
     // ---- broker & engine configuration (read-only readout) ----------
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         advanced: true
         title: "Broker & engine"
         caption: "The values below are read-only — broker.json / opencode.json / the egress whitelist are versioned config, and editing them from this panel would fight `git pull` (the exact problem a past round hit doing exactly that). The buttons open the real files in a terminal editor instead. The provider key is a separate mode-600 file, never shown here at all. Full specification: phios-agente.md (ADR 084–100)."
@@ -207,7 +207,7 @@ Column {
         // `git pull`. `$EDITOR` with a `nvim` fallback: nvim is what
         // every host here has installed, but a user's own `$EDITOR`
         // still wins when set.
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Edit configuration"
             description: "Opens the real files — model id, provider key, broker settings, the A2 egress whitelist — in a terminal editor. Restart the engine below afterwards for a change to take effect."
             Row {
@@ -226,7 +226,7 @@ Column {
                 }
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Apply a configuration change"
             description: "Restarts phi-agent-a1.service and its credential broker — required after editing the files above, since a running engine does not re-read them on its own."
             Widgets.StyledButton {

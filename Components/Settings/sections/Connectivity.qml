@@ -3,10 +3,10 @@ import Quickshell
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "." as Local
+import "../modules" as Modules
 
 // Bluetooth, Wi-Fi (with a live speed graph), WireGuard VPN, Tailscale
-// and the inbound firewall, each a Local.SettingsGroup so a search or a bar
+// and the inbound firewall, each a Modules.SettingsGroup so a search or a bar
 // overlay's "Show in settings" button lands on the right one.
 //
 // Every reader already exists as a Services/ bridge — this section is a
@@ -44,13 +44,13 @@ Column {
     }
 
     // --- Bluetooth ---------------------------------------------------
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Bluetooth"
         optionId: "connectivity.bluetooth"
         disabled: !Config.Capabilities.bluetooth
         disabledReason: "No Bluetooth adapter was detected on this machine."
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Adapter"
             description: "Turn the radio on or off."
             Widgets.Toggle {
@@ -58,7 +58,7 @@ Column {
                 onToggled: (v) => Services.BluetoothBridge.setEnabled(v)
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             wide: true
             title: "Connected devices"
             Column {
@@ -80,7 +80,7 @@ Column {
                 }
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Pair a new device"
             Widgets.StyledButton {
                 label: "Open bluetuith…"
@@ -90,13 +90,13 @@ Column {
     }
 
     // --- Wi-Fi -----------------------------------------------------
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Wi-Fi"
         optionId: "connectivity.wifi"
         disabled: !Config.Capabilities.wifi
         disabledReason: "No Wi-Fi hardware was detected on this machine."
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Network"
             Widgets.StyledText {
                 text: Services.WifiBridge.connected ? Services.WifiBridge.ssid : "not connected"
@@ -107,7 +107,7 @@ Column {
         // this whole section only exists while it's the loaded Settings
         // section (Settings.qml's Loader destroys/recreates sections on
         // navigation), so a scan fires exactly once per visit.
-        SettingsRow {
+        Modules.SettingsRow {
             wide: true
             title: "Available networks"
             Widgets.WifiNetworkList {
@@ -115,14 +115,14 @@ Column {
                 active: true
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Manage networks"
             Widgets.StyledButton {
                 label: "Open nmtui…"
                 onClicked: Quickshell.execDetached(["kitty", "-e", "nmtui"])
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             optionId: "connectivity.wifi.speed"
             wide: true
             title: "Speed & latency"
@@ -149,7 +149,7 @@ Column {
     }
 
     // --- VPN (WireGuard) ---------------------------------------
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         id: vpnGroup
         title: "VPN — WireGuard"
         optionId: "connectivity.vpn"
@@ -162,7 +162,7 @@ Column {
         // ~/.config/phi/wireguard OR /etc/wireguard, OR it's simply up.
         Widgets.Reveal {
             shown: !vpnGroup.hasTunnels
-            SettingsRow {
+            Modules.SettingsRow {
                 title: "Tunnel"
                 description: "No WireGuard tunnels found. Import a .conf below, or bring one up with wg-quick."
                 Widgets.Toggle { checked: false; enabled: false }
@@ -171,7 +171,7 @@ Column {
 
         Repeater {
             model: Services.Vpn.tunnels
-            SettingsRow {
+            Modules.SettingsRow {
                 required property var modelData
                 title: modelData.name
                 description: {
@@ -213,7 +213,7 @@ Column {
             }
         }
 
-        SettingsRow {
+        Modules.SettingsRow {
             wide: true
             title: "Import a config"
             description: "Copies the .conf into ~/.config/phi/wireguard (0600, outside every repo). The private key stays on this machine."
@@ -247,7 +247,7 @@ Column {
 
         Widgets.Reveal {
             shown: Services.Vpn.lastError.length > 0
-            SettingsRow {
+            Modules.SettingsRow {
                 wide: true
                 title: "Last error"
                 Widgets.StyledText { width: parent.width; wrapMode: Text.WordWrap; tone: "error"; text: Services.Vpn.lastError }
@@ -256,22 +256,22 @@ Column {
     }
 
     // --- Tailscale --------------------------------------------
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Tailscale"
         optionId: "connectivity.tailscale"
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Status"
             Widgets.StyledText {
                 text: Services.Tailscale.connected ? "connected" : Services.Tailscale.state
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             visible: Services.Tailscale.connected
             title: "Overlay name"
             Widgets.StyledText { text: Services.Tailscale.hostName }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Connection"
             Widgets.Toggle {
                 checked: Services.Tailscale.connected
@@ -280,7 +280,7 @@ Column {
         }
         Widgets.Reveal {
             shown: Services.Tailscale.lastError.length > 0
-            SettingsRow {
+            Modules.SettingsRow {
                 wide: true
                 title: "Last error"
                 Widgets.StyledText { width: parent.width; wrapMode: Text.WordWrap; tone: "error"; text: Services.Tailscale.lastError }
@@ -289,14 +289,14 @@ Column {
     }
 
     // --- Firewall (nftables) ----------------------------------
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         id: fwGroup
         title: "Firewall"
         optionId: "connectivity.firewall"
         property string fwProto: "tcp"
         caption: "One nftables table (inet phi), written to /etc/nftables.conf and loaded at boot by nftables.service. Control goes through `sudo -n` and needs profiles/desktop/system/etc/sudoers.d/49-phi-firewall installed."
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Inbound firewall"
             description: Services.Firewall.enabled
                 ? ("Default-deny. " + Services.Firewall.rules.length
@@ -311,7 +311,7 @@ Column {
 
         Widgets.Reveal {
             shown: !Services.Firewall.nftAvailable
-            SettingsRow {
+            Modules.SettingsRow {
                 wide: true
                 title: "nftables missing"
                 Widgets.StyledText {
@@ -323,7 +323,7 @@ Column {
 
         Widgets.Reveal {
             shown: Services.Firewall.drifted
-            SettingsRow {
+            Modules.SettingsRow {
                 wide: true
                 title: Services.Firewall.enabled ? "Not enforced" : "Still loaded"
                 Widgets.StyledText {
@@ -333,7 +333,7 @@ Column {
             }
         }
 
-        SettingsRow {
+        Modules.SettingsRow {
             wide: true
             title: "Preset"
             description: "home — LAN-friendly, answers ping.  public — strict, silent.  paranoid — no ICMP, logs everything."
@@ -353,7 +353,7 @@ Column {
             }
         }
 
-        SettingsRow {
+        Modules.SettingsRow {
             wide: true
             advanced: true
             title: "Open ports"
@@ -419,7 +419,7 @@ Column {
             }
         }
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Log dropped packets"
             description: "Rate-limited kernel-log entries for blocked inbound traffic."
             Widgets.Toggle {
@@ -431,7 +431,7 @@ Column {
 
         Widgets.Reveal {
             shown: Services.Firewall.logging
-            SettingsRow {
+            Modules.SettingsRow {
                 wide: true
                 advanced: true
                 title: "Recently blocked"
@@ -466,7 +466,7 @@ Column {
 
         Widgets.Reveal {
             shown: Services.Firewall.lastError.length > 0
-            SettingsRow {
+            Modules.SettingsRow {
                 wide: true
                 title: "Last error"
                 Widgets.StyledText { width: parent.width; wrapMode: Text.WordWrap; tone: "error"; text: Services.Firewall.lastError }

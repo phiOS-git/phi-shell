@@ -13,10 +13,10 @@
 // the section from the id with no extra lookup (Services/SettingsPanel.qml
 // reveal()). A bare section type ("theme") is a section-level entry.
 //
-// Keeping this list in sync with the SettingsRow `optionId`s each section
+// Keeping this list in sync with the Modules.SettingsRow `optionId`s each section
 // declares is a discipline, the same one Settings/sections.json already
-// asks for: a SettingsRow whose id is absent here logs a warning at
-// registration (Settings/SettingsRow.qml), so a drift shows up in the
+// asks for: a Modules.SettingsRow whose id is absent here logs a warning at
+// registration (Settings/Modules.SettingsRow.qml), so a drift shows up in the
 // screenshot pass rather than silently.
 
 // section: true  → a whole section, ranked alongside options so Enter can

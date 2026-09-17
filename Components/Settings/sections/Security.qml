@@ -2,7 +2,7 @@ import QtQuick
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "." as Local
+import "../modules" as Modules
 
 // Every row in the ClamAV/Face-unlock/Secrets groups is a placeholder by
 // design, not by omission: ClamAV isn't built yet, face unlock is
@@ -24,7 +24,7 @@ Column {
     readonly property real chWidth: chMetricsLocal.width
     readonly property real gap: chWidth * Config.Appearance.space2
 
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "ClamAV"
         caption: "Antivirus — not built yet (M6, S-65)."
         Widgets.ListRow { width: parent.width; label: "Service status"; value: "not built yet (M6, S-65)" }
@@ -33,7 +33,7 @@ Column {
         Widgets.ListRow { width: parent.width; label: "Quarantine"; value: "not built yet (M6, S-65)" }
     }
 
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Face unlock"
         caption: "Howdy is AUR/T4 only — excluded while Q-01 is deferred (master plan §3.3). A closed decision, not a gap."
         Widgets.ListRow {
@@ -43,7 +43,7 @@ Column {
         }
     }
 
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Secrets"
         caption: "Password manager not chosen yet — Q-F02 [HOLD] (§9.13)."
         Widgets.ListRow {
@@ -59,12 +59,12 @@ Column {
     // already excludes one thing before it ever touches disk (KeePassXC's
     // MIME hint); these are the user-added rules layered on top of it,
     // checked in QML the instant an entry is first observed as new.
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Clipboard history rules"
         optionId: "security.clipboard"
         caption: "Checked only against NEW clipboard entries — never retroactive to what was already saved before a rule existed."
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Don't save images"
             Widgets.Toggle {
                 checked: Services.Clipboard.excludeImages
@@ -72,7 +72,7 @@ Column {
             }
         }
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Don't save text containing…"
             description: "Case-insensitive substring match against the saved text."
             wide: true
@@ -136,7 +136,7 @@ Column {
             }
         }
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Clear clipboard history"
             description: "Deletes every clipboard entry except pinned ones. This cannot be undone."
             Widgets.StyledButton {
@@ -159,19 +159,19 @@ Column {
     // automatically yet, and "Send a test prompt" exercises the real
     // Components/Dialogs/SensorPermissionPrompt.qml end to end without
     // pretending an app actually asked.
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Sensor permissions"
         optionId: "security.sensors"
         caption: "Microphone and camera access — the detection that would populate \"apps using the sensor\" automatically is designed but not built yet (see docs/VERIFICATION.md). Killswitches and stored rules below are real."
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Microphone"
             Widgets.Toggle {
                 checked: Services.SensorPermissions.micEnabled
                 onToggled: (v) => Services.SensorPermissions.setMicEnabled(v)
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Camera"
             description: "No camera device backend exists yet — this toggle records the choice, it does not gate hardware access yet."
             Widgets.Toggle {
@@ -180,7 +180,7 @@ Column {
             }
         }
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Permission rules"
             description: "Apps you've granted \"Always\" or \"Never\" to. Ask-every-time apps have no rule and aren't listed."
             wide: true
@@ -214,7 +214,7 @@ Column {
             }
         }
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Preview the permission prompt"
             description: "Sends a one-off test request — not a real app, just exercises the dialog end to end."
             Row {

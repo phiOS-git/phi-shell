@@ -2,7 +2,7 @@ import QtQuick
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "." as Local
+import "../modules" as Modules
 
 // Do-not-disturb (duration or on-demand), per-app rules, Chroma blink on
 // arrival. Everything reads Services/Notifications directly — DND reuses
@@ -24,11 +24,11 @@ Column {
     readonly property real gap: chWidth * Config.Appearance.space2
 
     // --- Do not disturb ----------------------------------------------
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Do not disturb"
         optionId: "notifications.dnd"
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Do not disturb"
             description: Services.Notifications.dndRemainingLabel.length > 0
                 ? "Silences toasts. Notifications are still recorded in history. Timed session: " + Services.Notifications.dndRemainingLabel + "."
@@ -38,7 +38,7 @@ Column {
                 onToggled: Services.Notifications.toggleDnd()
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Silence for a while"
             Row {
                 spacing: root.gap
@@ -50,14 +50,14 @@ Column {
     }
 
     // --- Sound & testing -----------------------------------------
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Sound & testing"
         optionId: "notifications.sound"
         caption: Services.Notifications.soundError.length > 0
             ? ("Last sound error: " + Services.Notifications.soundError)
             : "Plays through pw-play (pipewire). The name resolves to /usr/share/sounds/freedesktop/stereo/<name>.oga, or give an absolute path. The freedesktop set needs sound-theme-freedesktop installed."
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Play a sound on arrival"
             description: "Silent during Do Not Disturb and for muted apps, like the toast."
             Widgets.Toggle {
@@ -65,7 +65,7 @@ Column {
                 onToggled: (v) => Services.Notifications.setSoundEnabled(v)
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Sound"
             description: "Pick an installed sound — tapping one previews it. Or give an absolute path to a custom audio file below."
             wide: true
@@ -89,7 +89,7 @@ Column {
                 }
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Volume"
             Widgets.NumberField {
                 value: Services.Notifications.soundVolume
@@ -97,7 +97,7 @@ Column {
                 onCommitted: (v) => Services.Notifications.setSoundVolume(v)
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Test"
             Row {
                 spacing: root.gap
@@ -114,11 +114,11 @@ Column {
     }
 
     // --- History -----------------------------------------------
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "History"
         optionId: "notifications.retention"
 
-        SettingsRow {
+        Modules.SettingsRow {
             wide: true
             title: "Keep history for"
             description: "Notifications older than this are cleared automatically, on start and hourly. Forever keeps everything."
@@ -155,7 +155,7 @@ Column {
                 }
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Clear now"
             Widgets.StyledButton {
                 label: "Clear all notifications"
@@ -170,7 +170,7 @@ Column {
     }
 
     // --- Per-app rules ---------------------------------------------
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Per-app rules"
         optionId: "notifications.rules"
         caption: Services.Notifications.knownApps.length === 0
@@ -179,7 +179,7 @@ Column {
 
         Repeater {
             model: Services.Notifications.knownApps
-            SettingsRow {
+            Modules.SettingsRow {
                 required property var modelData
                 wide: true
                 title: modelData
@@ -209,13 +209,13 @@ Column {
     }
 
     // --- Chroma ---------------------------------------------------
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Chroma"
         disabled: !Config.Capabilities.chroma
         disabledReason: "No Razer Chroma keyboard was detected on this machine."
         caption: "Function-row flash on arrival — silent while Do Not Disturb is on. The row is configured in Devices → Chroma."
 
-        SettingsRow {
+        Modules.SettingsRow {
             optionId: "notifications.chroma"
             title: "Keyboard blink on notification"
             description: "Mirrors the Chroma integration toggle in the Devices section — one value."
@@ -233,20 +233,20 @@ Column {
     // where a new one is created. The stopwatch (Services/Stopwatch.qml)
     // has no customisable state of its own, so it gets no dedicated row,
     // only a mention in this group's own caption.
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Timers, alarms & stopwatch"
         optionId: "notifications.timers"
         // Empty state folded into the caption, not a separate invisible-
-        // when-non-empty SettingsRow: a hidden-but-still-child-0 row
+        // when-non-empty Modules.SettingsRow: a hidden-but-still-child-0 row
         // would draw the first real row's separator against nothing
-        // above it (SettingsRow's own `_first` check reads position in
+        // above it (Modules.SettingsRow's own `_first` check reads position in
         // `children`, not visibility).
         caption: Services.Timers.soundError.length > 0
             ? ("Last sound error: " + Services.Timers.soundError)
             : (Services.Timers.items.length === 0 ? "No timers or alarms running. " : "") +
               "Set one from the runner bar: \"timer 5m\", \"timer 25m tea\", \"alarm 7:30\", \"alarm 19:45 wake up\", \"stopwatch\", \"stopwatch lap\"."
 
-        SettingsRow {
+        Modules.SettingsRow {
             advanced: true
             title: "Ringtone"
             description: "Pick an installed sound — tapping one previews it. Loops until dismissed. Or give an absolute path below."
@@ -271,7 +271,7 @@ Column {
                 }
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             advanced: true
             title: "Volume"
             Widgets.NumberField {
@@ -280,7 +280,7 @@ Column {
                 onCommitted: (v) => Services.Timers.setSoundVolume(v)
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             advanced: true
             title: "Test"
             Widgets.StyledButton {
@@ -290,7 +290,7 @@ Column {
         }
         Repeater {
             model: Services.Timers.items
-            SettingsRow {
+            Modules.SettingsRow {
                 required property var modelData
                 wide: true
                 title: (modelData.kind === "alarm" ? "Alarm — " : "Timer — ") + modelData.label

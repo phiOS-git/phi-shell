@@ -2,14 +2,14 @@ import QtQuick
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "." as Localß
+import "../modules" as Modulesß
 
 // A read-only reference view from `hyprctl binds -j`, via
 // Services/Keybinds.qml — no second place holding this data, and no
 // editing from this UI.
 //
 // Bindings are grouped by context (Services.Keybinds.groups), one
-// Local.SettingsGroup card per context, in the same order Cheatsheet uses — the
+// Modules.SettingsGroup card per context, in the same order Cheatsheet uses — the
 // two surfaces render the same derivation. Search filters here rather
 // than highlighting: a reference list with 40+ rows is the one place in
 // the panel where filtering earns its keep, unlike the option rows,
@@ -41,14 +41,14 @@ Column {
 
     Component.onCompleted: Services.Keybinds.refresh()
 
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         optionId: "keybindings.reference"
         title: "Keybindings"
         caption: root.query.trim().length > 0
             ? (root.filtered.length + " of " + Services.Keybinds.binds.length + " bindings match")
             : (Services.Keybinds.binds.length + " bindings, read-only — edit them in hyprland.lua")
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Search"
             wide: true
             Widgets.TextField {
@@ -61,7 +61,7 @@ Column {
 
     Repeater {
         model: root.grouped
-        Local.SettingsGroup {
+        Modules.SettingsGroup {
             required property var modelData
             title: modelData.context
 

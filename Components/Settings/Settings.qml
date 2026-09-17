@@ -60,7 +60,7 @@ PanelWindow {
         Services.SettingsPanel.pendingSection = ""
     }
 
-    // Scrolls the content pane to the SettingsRow that registered
+    // Scrolls the content pane to the Modules.SettingsRow that registered
     // `pendingReveal` and pulses it. If the section is still loading, the
     // row's own registration (onRowRegistered below) retries.
     function _applyPendingReveal() {
@@ -308,7 +308,7 @@ PanelWindow {
                             visible: searchField.text.length === 0
                         }
                         // A row opts in to advanced-only visibility with
-                        // SettingsRow's own `advanced: true`; this switch
+                        // Modules.SettingsRow's own `advanced: true`; this switch
                         // gates them.
                         Row {
                             id: advancedRow

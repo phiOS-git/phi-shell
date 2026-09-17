@@ -2,7 +2,7 @@ import QtQuick
 import Quickshell.Io
 import qs.Config as Config
 import qs.Widgets as Widgets
-import "." as Local
+import "../modules" as Modules
 
 // Split into two groups:
 //   - System state: the versions of phi, phios-dotfiles and each installed
@@ -114,7 +114,7 @@ Column {
     // ================================================================
     // System state
     // ================================================================
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "System state"
         optionId: "updates.system"
         caption: root.loading ? "Reading versions…" : "phi is baked in at build; phios-dotfiles is `git describe`; the rest is pacman."
@@ -144,7 +144,7 @@ Column {
     // ================================================================
     // Packages
     // ================================================================
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         advanced: true
         title: "Packages"
         optionId: "updates.packages"

@@ -4,9 +4,9 @@ import Quickshell.Io
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "../../Lock/Lock.qml" as LockFx
+import "../modules" as Modules
 import "./options.js" as Options
-import "." as Local
+import "../../Lock/Lock.qml" as LockFx
 
 // Every variable that is reasonable to change has an editable control
 // here, grouped by context: Appearance, Colours, Typography, Shape &
@@ -85,7 +85,7 @@ Column {
     // `swatches` is a list of { key, label, contrast }: `key` a design
     // token name, `contrast` opting the editor into the live `phi theme
     // contrast` badge.
-    component ColorGroup: Local.SettingsGroup {
+    component ColorGroup: Modules.SettingsGroup {
         id: cg
         property var swatches: []
 
@@ -318,7 +318,7 @@ Column {
     }
 
     // one motion-duration override row (category period / step / duration)
-    component MotionRow: SettingsRow {
+    component MotionRow: Modules.SettingsRow {
         id: mr
         property string mkey: ""
         property int seedMs: 0
@@ -333,7 +333,7 @@ Column {
         }
     }
 
-    component TokenNumberRow: SettingsRow {
+    component TokenNumberRow: Modules.SettingsRow {
         id: nr
         property string tokenKey: ""
         property real step: 1
@@ -368,7 +368,7 @@ Column {
         }
     }
 
-    component TokenFontRow: SettingsRow {
+    component TokenFontRow: Modules.SettingsRow {
         id: fr
         property string tokenKey: ""
         property string previewFamily: ""
@@ -518,9 +518,9 @@ Column {
     }
 
     // --- Appearance ----------------------------------------------------
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Appearance"
-        SettingsRow {
+        Modules.SettingsRow {
             optionId: "theme.variant"
             title: "Variant"
             description: Services.ThemeSchedule.scheduleMode === "off"
@@ -542,7 +542,7 @@ Column {
                 }
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             optionId: "theme.schedule"
             title: "Schedule"
             description: "Switch dark and light automatically instead of by hand."
@@ -566,7 +566,7 @@ Column {
         }
         Widgets.Reveal {
             shown: Services.ThemeSchedule.scheduleMode === "auto"
-            SettingsRow {
+            Modules.SettingsRow {
                 title: "Automatic window"
                 description: "Fixed default — dark from " + Services.ThemeSchedule.autoStartHour + ":00 to "
                     + Services.ThemeSchedule.autoEndHour + ":00, light the rest of the day. Not location-based: this shell has no source for a real sunset/sunrise time, so it's a sensible fixed evening-to-morning window rather than one computed per day. Use Custom hours to pick your own."
@@ -575,7 +575,7 @@ Column {
         }
         Widgets.Reveal {
             shown: Services.ThemeSchedule.scheduleMode === "custom"
-            SettingsRow {
+            Modules.SettingsRow {
                 title: "Dark starts at"
                 Widgets.NumberField {
                     value: Services.ThemeSchedule.scheduleStartHour
@@ -583,7 +583,7 @@ Column {
                     onCommitted: (v) => Services.ThemeSchedule.setScheduleStartHour(Math.round(v))
                 }
             }
-            SettingsRow {
+            Modules.SettingsRow {
                 title: "Light starts at"
                 Widgets.NumberField {
                     value: Services.ThemeSchedule.scheduleEndHour
@@ -638,11 +638,11 @@ Column {
         ]
     }
 
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Colour preview"
         preview: true
 
-        SettingsRow {
+        Modules.SettingsRow {
             wide: true
             title: "Live preview"
             description: "Rendered from the current overrides — not editable here."
@@ -670,7 +670,7 @@ Column {
     }
 
     // --- Typography --------------------------------------------------
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Typography"
         TokenFontRow { tokenKey: "font-mono"; title: "Mono font"; previewFamily: Config.Appearance.fontMono
             description: "Terminal, code, and the whole UI's spacing rhythm (1ch)." }
@@ -681,7 +681,7 @@ Column {
     }
 
     // --- Shape & spacing -----------------------------------------
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Shape & spacing"
         caption: "Scales multiply the whole generated set. Sliders are deliberately not used here — a theme value should be set, not swept."
         TokenNumberRow { tokenKey: "font-scale"; title: "Font scale"; step: 0.05; decimals: 2; from: 0.5; to: 2.0 }
@@ -704,7 +704,7 @@ Column {
         // and a real `phi theme set` re-render instead, reusing this
         // section's own `setVariant` plumbing to apply immediately rather
         // than only on the next manual theme switch.
-        SettingsRow {
+        Modules.SettingsRow {
             optionId: "theme.shape.terminal-padding"
             title: "Terminal window padding"
             description: "kitty's own window_padding_width. Applies to new windows; already-open ones pick it up on their next theme re-render."
@@ -720,14 +720,14 @@ Column {
     }
 
     // --- Animations --------------------------------------------
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Animations"
         optionId: "theme.animations"
         caption: "The four style-plan motion categories. Category B is every state transition — panels, drawers, workspaces, notifications — so its duration and curve reach the whole shell. A is the agent's tracking indicator, C the rare boot/unlock effects, D ambient (off by default)."
 
         MotionRow { mkey: "motion-b-duration"; title: "B — transition duration"; seedMs: Config.Appearance.motionBDuration }
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "B — transition curve"
             description: "Drag the handles; the marker loops on the edited curve."
             wide: true
@@ -758,9 +758,9 @@ Column {
     }
 
     // --- Night shift ---------------------------------------------
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Night shift"
-        SettingsRow {
+        Modules.SettingsRow {
             optionId: "theme.nightshift"
             title: "Night shift"
             description: Services.NightShift.scheduleMode === "off"
@@ -772,7 +772,7 @@ Column {
                 onToggled: (v) => Services.NightShift.setEnabled(v)
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Schedule"
             description: "Turn night shift on and off automatically instead of by hand."
             wide: true
@@ -795,7 +795,7 @@ Column {
         }
         Widgets.Reveal {
             shown: Services.NightShift.scheduleMode === "auto"
-            SettingsRow {
+            Modules.SettingsRow {
                 title: "Automatic window"
                 description: "Fixed default — " + Services.NightShift.autoStartHour + ":00 to "
                     + Services.NightShift.autoEndHour + ":00. Not location-based: this shell has no source for a real sunset/sunrise time, so it's a sensible fixed evening-to-morning window rather than one computed per day. Use Custom hours to pick your own."
@@ -804,7 +804,7 @@ Column {
         }
         Widgets.Reveal {
             shown: Services.NightShift.scheduleMode === "custom"
-            SettingsRow {
+            Modules.SettingsRow {
                 title: "Starts at"
                 Widgets.NumberField {
                     value: Services.NightShift.scheduleStartHour
@@ -812,7 +812,7 @@ Column {
                     onCommitted: (v) => Services.NightShift.setScheduleStartHour(Math.round(v))
                 }
             }
-            SettingsRow {
+            Modules.SettingsRow {
                 title: "Ends at"
                 Widgets.NumberField {
                     value: Services.NightShift.scheduleEndHour
@@ -821,7 +821,7 @@ Column {
                 }
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "True Tone"
             description: Config.Capabilities.ambientLight
                 ? "Drive colour temperature from ambient light instead of a fixed value."
@@ -832,7 +832,7 @@ Column {
                 onToggled: (v) => Services.NightShift.setTrueTone(v)
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Target temperature"
             description: "Used when True Tone is off."
             Widgets.NumberField {
@@ -844,11 +844,11 @@ Column {
     }
 
     // --- Cursor spotlight --------------------------------------
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Cursor spotlight"
         caption: "Hold Super+G to show it; the toggle here is sticky. Dim and flashlight dim the screen around a clear circle; crosshair and ring just mark the pointer and never dim."
 
-        SettingsRow {
+        Modules.SettingsRow {
             optionId: "theme.spotlight"
             title: "Cursor spotlight"
             description: "Locate the pointer on a large or busy screen."
@@ -857,7 +857,7 @@ Column {
                 onToggled: (v) => (v ? Services.Spotlight.show() : Services.Spotlight.hide())
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Effect"
             wide: true
             Flow {
@@ -879,7 +879,7 @@ Column {
         // rather than the sub-rows popping.
         Widgets.Reveal {
             shown: Services.Spotlight.effect === "dim" || Services.Spotlight.effect === "flashlight"
-            SettingsRow {
+            Modules.SettingsRow {
                 title: "Circle size"
                 Row {
                     spacing: root.gap
@@ -894,7 +894,7 @@ Column {
                     }
                 }
             }
-            SettingsRow {
+            Modules.SettingsRow {
                 title: "Dim strength"
                 Widgets.NumberField {
                     value: Services.Spotlight.intensity
@@ -907,7 +907,7 @@ Column {
         // crosshair options
         Widgets.Reveal {
             shown: Services.Spotlight.effect === "crosshair"
-            SettingsRow {
+            Modules.SettingsRow {
                 title: "Line thickness"
                 Widgets.NumberField {
                     value: Services.Spotlight.crosshairThickness
@@ -915,7 +915,7 @@ Column {
                     onCommitted: (v) => Services.Spotlight.setCrosshairThickness(v)
                 }
             }
-            SettingsRow {
+            Modules.SettingsRow {
                 title: "Line opacity"
                 Widgets.NumberField {
                     value: Services.Spotlight.crosshairOpacity
@@ -928,7 +928,7 @@ Column {
         // ring options
         Widgets.Reveal {
             shown: Services.Spotlight.effect === "ring"
-            SettingsRow {
+            Modules.SettingsRow {
                 title: "Ring radius"
                 Widgets.NumberField {
                     value: Services.Spotlight.ringRadius
@@ -936,7 +936,7 @@ Column {
                     onCommitted: (v) => Services.Spotlight.setRingRadius(v)
                 }
             }
-            SettingsRow {
+            Modules.SettingsRow {
                 title: "Ring thickness"
                 Widgets.NumberField {
                     value: Services.Spotlight.ringThickness
@@ -951,9 +951,9 @@ Column {
     // The loupe (Magnifier/Magnifier.qml). Runtime UI state stored through
     // `phi state` by Services/Magnifier, same category as the spotlight
     // size above — not a design token.
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Screen magnifier"
-        SettingsRow {
+        Modules.SettingsRow {
             optionId: "theme.magnifier"
             title: "Magnifier loupe"
             description: "A circular lens on the pointer. Super+Z toggles it; Super + = / Super + - change zoom, Super+Shift + those the lens size (Super+scroll too, where supported)."
@@ -962,7 +962,7 @@ Column {
                 onToggled: (v) => (v ? Services.Magnifier.show() : Services.Magnifier.hide())
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Zoom"
             Widgets.NumberField {
                 value: Services.Magnifier.zoom
@@ -970,7 +970,7 @@ Column {
                 onCommitted: (v) => Services.Magnifier.setZoom(v)
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Lens size"
             Widgets.NumberField {
                 value: Services.Magnifier.size
@@ -984,11 +984,11 @@ Column {
     // Stored in Config/ClockPrefs.qml ($XDG_STATE_HOME/phi/clock.json),
     // read by Bar/modules/Clock.qml. Same shape and reasoning as the Lock
     // screen group just below.
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Clock"
         optionId: "theme.clock"
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "12-hour clock"
             description: "Show the bar clock as 1-12 with AM/PM instead of 0-23."
             Widgets.Toggle {
@@ -996,14 +996,14 @@ Column {
                 onToggled: (v) => Config.ClockPrefs.setHour12(v)
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Show seconds"
             Widgets.Toggle {
                 checked: Config.ClockPrefs.showSeconds
                 onToggled: (v) => Config.ClockPrefs.setShowSeconds(v)
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Date"
             description: "Adds the date before the time in the bar. Short is day/month (13/09); long adds the weekday name and year (Sat 13 Sep 2026)."
             Row {
@@ -1030,10 +1030,10 @@ Column {
     // Config/LockPrefs.qml ($XDG_STATE_HOME/phi/lock.json), read by
     // Lock/Lock.qml. Runtime UI state, not a design token — same category
     // as the spotlight size above.
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Lock screen"
         optionId: "theme.lockscreen"
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Ambient effect"
             description: "The backdrop behind the lock screen."
             wide: true
@@ -1065,7 +1065,7 @@ Column {
         // Config/LockPrefs.qml's own header); Intensity is scoped to the
         // CURRENTLY selected effect specifically, each with its own stored
         // value and its own default.
-        SettingsRow {
+        Modules.SettingsRow {
             visible: Config.LockPrefs.effect !== "none"
             title: "Speed"
             description: "Applies to whichever ambient effect is selected above."
@@ -1076,7 +1076,7 @@ Column {
                 onCommitted: (v) => Config.LockPrefs.setSpeed(v)
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             visible: Config.LockPrefs.effect !== "none"
             title: "Intensity"
             description: "Specific to the currently-selected effect — Matrix and Lava lamp are deliberately faint by default, Starfield and Plasma are not."
@@ -1102,7 +1102,7 @@ Column {
         // already use) — showing all six effects' own extra knobs at once
         // would just be clutter, when only one of them can ever be active
         // at a time anyway.
-        SettingsRow {
+        Modules.SettingsRow {
             visible: Config.LockPrefs.effect === "lava"
             title: "Lava lamp"
             description: "More blobs read as a denser, busier field. Wobble scales how much each blob squashes/stretches and drifts sideways as it rises."
@@ -1111,7 +1111,7 @@ Column {
             // NumberField, same as Matrix/Starfield/Plasma/Boids below).
             // This row's slot instead holds a whole Column of label+field
             // pairs (Blob count, Wobble), which needs the full-width `wide`
-            // layout (SettingsRow.qml's own documented use for a control
+            // layout (Modules.SettingsRow.qml's own documented use for a control
             // too wide for the compact slot) or it overflows past the
             // dialog's own right edge.
             wide: true
@@ -1138,7 +1138,7 @@ Column {
                 }
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             visible: Config.LockPrefs.effect === "matrix"
             title: "Matrix"
             description: "Column density — higher packs the columns closer together."
@@ -1148,7 +1148,7 @@ Column {
                 onCommitted: (v) => Config.LockPrefs.setParam("matrix", "density", v)
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             visible: Config.LockPrefs.effect === "starfield"
             title: "Starfield"
             description: "How many points drift across the field at once."
@@ -1158,7 +1158,7 @@ Column {
                 onCommitted: (v) => Config.LockPrefs.setParam("starfield", "starCount", Math.round(v))
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             visible: Config.LockPrefs.effect === "plasma"
             title: "Plasma"
             description: "Grid resolution — higher is finer detail at a higher redraw cost."
@@ -1168,7 +1168,7 @@ Column {
                 onCommitted: (v) => Config.LockPrefs.setParam("plasma", "resolution", v)
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             visible: Config.LockPrefs.effect === "life"
             title: "Life"
             description: "Grid resolution changes the cell size; seed density is how much of the board starts alive when a generation is (re)seeded."
@@ -1197,7 +1197,7 @@ Column {
                 }
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             visible: Config.LockPrefs.effect === "boids"
             title: "Boids"
             description: "How many boids flock together."
@@ -1223,7 +1223,7 @@ Column {
     // above turns it back on — a changed selection is exactly the moment a
     // live look is wanted — and a small toggle lets the user flip it either
     // way.
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         id: ambientPreviewGroup
         title: "Ambient effect preview"
         preview: true
@@ -1233,7 +1233,7 @@ Column {
         // Auto-shows the preview the moment the selection actually
         // changes. Explicit id reference, not a bare `parent` — Connections
         // is a plain QtObject, not an Item, so its own `parent` is not
-        // reliably the enclosing Local.SettingsGroup the way an Item's would be
+        // reliably the enclosing Modules.SettingsGroup the way an Item's would be
         // (the same class of gotcha Widgets/Panel.qml's own header already
         // flags for a *different* parent-vs-contentItem indirection).
         Connections {
@@ -1241,10 +1241,10 @@ Column {
             function onEffectChanged() { ambientPreviewGroup.previewLive = true }
         }
 
-        SettingsRow {
+        Modules.SettingsRow {
             wide: true
             title: "Live preview"
-            // Empty while live (SettingsRow's own description Text is
+            // Empty while live (Modules.SettingsRow's own description Text is
             // `visible: description.length > 0`, so this removes the line
             // entirely) — otherwise it stays stacked above the canvas
             // alongside the group's own title/caption and the Show/Hide
@@ -1328,11 +1328,11 @@ Column {
     }
 
     // --- Wallpaper ------------------------------------------------
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Wallpaper"
         Component.onCompleted: Services.Background.refreshAvailable()
 
-        SettingsRow {
+        Modules.SettingsRow {
             optionId: "theme.wallpaper.color"
             title: "Solid colour"
             description: "The base layer — always visible where an image does not cover the screen."
@@ -1343,7 +1343,7 @@ Column {
             }
         }
 
-        SettingsRow {
+        Modules.SettingsRow {
             optionId: "theme.wallpaper.image"
             title: "Image"
             description: "Pick from the wallpaper folder, or add one from a path (it is copied into the folder and selected). Any image is allowed."
@@ -1437,7 +1437,7 @@ Column {
             }
         }
 
-        SettingsRow {
+        Modules.SettingsRow {
             optionId: "theme.wallpaper.mode"
             title: "Fit mode"
             enabled: Services.Background.image.length > 0
@@ -1455,7 +1455,7 @@ Column {
             }
         }
 
-        SettingsRow {
+        Modules.SettingsRow {
             optionId: "theme.wallpaper.scale"
             title: "Scale"
             description: "Zoom for contain and repeat; ignored for cover and stretch."
@@ -1468,7 +1468,7 @@ Column {
             }
         }
 
-        SettingsRow {
+        Modules.SettingsRow {
             optionId: "theme.wallpaper.texture"
             title: "Texture"
             description: Services.Background.textureApplies

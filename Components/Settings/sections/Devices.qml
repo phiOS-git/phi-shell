@@ -3,7 +3,7 @@ import Quickshell
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "." as Local
+import "../modules" as Modules
 
 // Groups: Audio output, Audio input, Monitors, Pointer, Battery, Chroma.
 // The bar popout is the one place lock/suspend/hibernate/logout/reboot/
@@ -99,11 +99,11 @@ Column {
     // ================================================================
     // Audio output
     // ================================================================
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Audio output"
         optionId: "devices.audio.output"
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Output device"
             description: "The system default sink. Switching takes effect immediately."
             wide: true
@@ -114,7 +114,7 @@ Column {
             }
         }
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Volume"
             Row {
                 spacing: root.gap
@@ -149,11 +149,11 @@ Column {
     // ================================================================
     // Audio input
     // ================================================================
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Audio input"
         optionId: "devices.audio.input"
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Input device"
             description: "The system default source. Monitor loopbacks are hidden."
             wide: true
@@ -164,7 +164,7 @@ Column {
             }
         }
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Input level"
             Row {
                 spacing: root.gap
@@ -195,14 +195,14 @@ Column {
     // ================================================================
     // Monitors (read-only)
     // ================================================================
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Monitors"
         optionId: "devices.monitors"
         caption: "Read-only — changing monitor layout or scale from here is not built yet (ADR 077 treats it as runtime state, not a panel-editable value)."
 
         Repeater {
             model: Quickshell.screens
-            SettingsRow {
+            Modules.SettingsRow {
                 required property var modelData
                 title: modelData.name
                 Widgets.StyledText {
@@ -218,12 +218,12 @@ Column {
     // ================================================================
     // Pointer (read-only)
     // ================================================================
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Pointer"
         optionId: "devices.pointer"
         caption: "Mouse and trackpad sensitivity are set in hyprland.lua, not runtime state (§9.12 perimeter)."
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Mouse / trackpad sensitivity"
             Widgets.StyledText { kind: "label"; text: "configured in hyprland.lua" }
         }
@@ -234,7 +234,7 @@ Column {
     // owns the read-only battery STATS group and configures nothing; this
     // is editable device-sound/alert behaviour, so it lives here instead.
     // ================================================================
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Battery"
         optionId: "devices.battery"
         disabled: !Config.Capabilities.battery
@@ -243,7 +243,7 @@ Column {
             ? ("Last sound error: " + Services.PowerBridge.chargingSoundError)
             : "Plays through pw-play (pipewire). The name resolves to /usr/share/sounds/freedesktop/stereo/<name>.oga, or give an absolute path. The freedesktop set needs sound-theme-freedesktop installed."
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Show the charge percentage in the status bar"
             description: "The battery icon otherwise carries the value only as a fill, with the number a click away in its own overlay."
             Widgets.Toggle {
@@ -251,7 +251,7 @@ Column {
                 onToggled: (v) => Services.PowerBridge.setShowPercentInBar(v)
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Play a sound when the charger is plugged in"
             description: "Fires once per plug-in event."
             Widgets.Toggle {
@@ -259,7 +259,7 @@ Column {
                 onToggled: (v) => Services.PowerBridge.setChargingSoundEnabled(v)
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Sound"
             description: "Pick an installed sound — tapping one previews it. Or give an absolute path below."
             wide: true
@@ -283,7 +283,7 @@ Column {
                 }
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Volume"
             Widgets.NumberField {
                 value: Services.PowerBridge.chargingSoundVolume
@@ -291,7 +291,7 @@ Column {
                 onCommitted: (v) => Services.PowerBridge.setChargingSoundVolume(v)
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Test"
             Widgets.StyledButton {
                 label: "Test sound"
@@ -303,7 +303,7 @@ Column {
         // Services/PowerBridge.qml owns the two thresholds (0..1
         // fractions internally, shown here as whole percent to match
         // every other percent the user sees).
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Warn threshold"
             description: "A full-screen alert appears when the battery drops below this level while unplugged."
             Widgets.NumberField {
@@ -312,7 +312,7 @@ Column {
                 onCommitted: (v) => Services.PowerBridge.setAlertWarnThreshold(v / 100)
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Danger threshold"
             description: "A more urgent version of the same alert appears at this even lower level."
             Widgets.NumberField {
@@ -321,7 +321,7 @@ Column {
                 onCommitted: (v) => Services.PowerBridge.setAlertDangerThreshold(v / 100)
             }
         }
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Test alert"
             description: "Shows the full-screen alert without waiting for the battery to actually drop."
             Row {
@@ -341,7 +341,7 @@ Column {
         // rather than a second, separate percentage — only the
         // automation switch is settable here. The manual on/off switch
         // lives on the battery bar overlay instead, not duplicated here.
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Battery saver"
             description: "Automatically turns on below " + Math.round(Services.PowerBridge.lowPercentThreshold * 100)
                 + "% while unplugged (dims the screen, turns off the lock screen's ambient effect), and off again once charged past that or plugged in — unless you turned it on by hand while charging."
@@ -355,14 +355,14 @@ Column {
     // ================================================================
     // Chroma  (razer)
     // ================================================================
-    Local.SettingsGroup {
+    Modules.SettingsGroup {
         title: "Chroma keyboard"
         optionId: "devices.chroma"
         disabled: !Config.Capabilities.chroma
         disabledReason: "No Razer Chroma keyboard was detected on this machine."
         caption: "The keyboard is driven by one composed frame — the static colour, the per-key overrides and any active integration are layered together, never fighting each other."
 
-        SettingsRow {
+        Modules.SettingsRow {
             title: "Lighting"
             description: "Master on/off for the keyboard backlight."
             Widgets.Toggle {
@@ -371,7 +371,7 @@ Column {
             }
         }
 
-        SettingsRow {
+        Modules.SettingsRow {
             optionId: "devices.chroma.color"
             title: "Static colour"
             description: "The base fill. Every key is this colour unless an override or an integration paints over it."
@@ -382,7 +382,7 @@ Column {
             }
         }
 
-        SettingsRow {
+        Modules.SettingsRow {
             optionId: "devices.chroma.advanced"
             title: "Per-key colours"
             description: "Give individual keys their own fixed colour. Solid colour only — no lighting animation."
@@ -394,7 +394,7 @@ Column {
 
         Widgets.Reveal {
             shown: Services.Chroma.advanced
-            SettingsRow {
+            Modules.SettingsRow {
             wide: true
             advanced: true
             title: "Key map"
@@ -456,7 +456,7 @@ Column {
             }
         }
 
-        SettingsRow {
+        Modules.SettingsRow {
             optionId: "devices.chroma.integrations"
             wide: true
             title: "Integrations"

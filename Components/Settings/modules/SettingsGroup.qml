@@ -7,14 +7,14 @@ import "./options.js" as Options
 // A titled group of related controls: a small-caps label, the group's
 // descriptive caption directly under it (context before the controls it
 // describes), a full-width hairline, then the rows stacked flush with no
-// gap (each SettingsRow draws its own top hairline after the first). A
+// gap (each Modules.SettingsRow draws its own top hairline after the first). A
 // flat shade fill (no border) separates one group from the next.
 //
 // Settings-panel structure, not a general widget, so it lives here with
-// SettingsRow and assumes its children stack with no gap.
+// Modules.SettingsRow and assumes its children stack with no gap.
 //
 // A group may carry its own `optionId` (a Settings/options.js catalogue
-// entry): it then registers with Services/SettingsPanel like a SettingsRow,
+// entry): it then registers with Services/SettingsPanel like a Modules.SettingsRow,
 // so `reveal("connectivity.bluetooth")` or a search selection scrolls the
 // content pane to the whole group and pulses it — for a section (General,
 // the package lists) whose "options" are groups, not individual rows.
@@ -42,7 +42,7 @@ Item {
     // rather than being torn down and losing scroll/search position.
     property bool disabled: false
     property string disabledReason: ""
-    // Same "advanced" gate SettingsRow.qml carries, at whole-group
+    // Same "advanced" gate Modules.SettingsRow.qml carries, at whole-group
     // granularity — for a group that is entirely power-user detail,
     // rather than one row inside an otherwise-ordinary group. Hidden
     // unless Services.SettingsPanel.showAdvanced, unless a live search
@@ -70,7 +70,7 @@ Item {
 
     Component.onCompleted: if (optionId.length > 0) {
         if (!Options.known(optionId))
-            console.warn("phi-shell: Local.SettingsGroup optionId not in options.js catalogue: " + optionId)
+            console.warn("phi-shell: Modules.SettingsGroup optionId not in options.js catalogue: " + optionId)
         Services.SettingsPanel.registerRow(optionId, root)
     }
     Component.onDestruction: if (optionId.length > 0) Services.SettingsPanel.unregisterRow(optionId)
