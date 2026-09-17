@@ -98,8 +98,33 @@ Widgets.Segment {
             implicitWidth: ethIcon.implicitWidth + badgeIcon.implicitWidth + pivot._badgeGap
             implicitHeight: Math.max(ethIcon.implicitHeight, badgeIcon.implicitHeight)
 
+            // Primary glyph: the ethernet plug when a wired NIC exists at
+            // all; otherwise the Wi-Fi fan (its own connecting-pulse
+            // included) — off and no-radio both read through that same
+            // fan at low resting opacity, see the file header's "NOT
+            // built" note on why there's no separate disabled-vs-off glyph.
+            Widgets.EthernetIcon {
+                id: ethIcon
+                visible: root.usingEthernet
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                iconColor: root.contentColor
+                sizeStep: root.sizeStep
+                connectAmount: root.connectAmount
+            }
+            Widgets.WifiIcon {
+                id: wifiIcon
+                visible: !root.usingEthernet
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                iconColor: root.contentColor
+                sizeStep: root.sizeStep
+                connectAmount: root.connectAmount
+                connecting: root.wifiConnecting
+            }
+
             // VPN/Tailscale badge — sits in its own reserved slot to the
-            // main glyph's right, faded in only while a tunnel is up. One
+            // main glyph's LEFT, faded in only while a tunnel is up. One
             // shared glyph for both Tailscale and a plain WireGuard
             // tunnel (Glyphs.vpn), a simplification: separate glyphs for
             // each would need extra precedence logic for "both up at once".
@@ -109,35 +134,9 @@ Widgets.Segment {
                 sizeStep: Math.max(0, root.sizeStep - 1)
                 color: root.contentColor
                 opacity: root.tunnelAmount
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-            }
-            
-            // Primary glyph: the ethernet plug when a wired NIC exists at
-            // all; otherwise the Wi-Fi fan (its own connecting-pulse
-            // included) — off and no-radio both read through that same
-            // fan at low resting opacity, see the file header's "NOT
-            // built" note on why there's no separate disabled-vs-off glyph.
-            Widgets.EthernetIcon {
-                id: ethIcon
-                visible: root.usingEthernet
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
-                iconColor: root.contentColor
-                sizeStep: root.sizeStep
-                connectAmount: root.connectAmount
             }
-            Widgets.WifiIcon {
-                id: wifiIcon
-                visible: !root.usingEthernet
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-                iconColor: root.contentColor
-                sizeStep: root.sizeStep
-                connectAmount: root.connectAmount
-                connecting: root.wifiConnecting
-            }
-
         }
     }
 }
