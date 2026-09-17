@@ -4,6 +4,7 @@ import Quickshell.Wayland
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
+import "." as Local
 
 // Services/PowerMenu.qml owns the shown/double-tap state — this file is
 // presentation only. Layer-shell/scrim/fade plumbing copied verbatim from
@@ -100,7 +101,7 @@ PanelWindow {
             focus: root.shown
             Keys.onEscapePressed: Services.PowerMenu.hide()
 
-            PowerActionsRow {
+            Local.PowerActionsRow {
                 id: pills
                 actions: ["lock", "logout", "suspend", "hibernate", "reboot", "shutdown"]
                 onChosen: (action) => root._choose(action)

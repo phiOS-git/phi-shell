@@ -21,4 +21,5 @@ ConfirmDialog 1.0 Dialogs/ConfirmDialog.qml
 SensorPermissionPrompt 1.0 Dialogs/SensorPermissionPrompt.qml
 BatteryAlert 1.0 Dialogs/BatteryAlert.qml
 PowerMenu 1.0 Dialogs/PowerMenu.qml
+PowerActionsRow 1.0 Dialogs/PowerActionsRow.qml
 TimerAlert 1.0 Dialogs/TimerAlert.qml
