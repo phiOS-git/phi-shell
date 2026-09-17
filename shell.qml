@@ -93,19 +93,21 @@ ShellRoot {
         }
     }
 
-    // Overlays with no mounted UI surface yet — backends already live in
-    // Services/, uncomment once each surface exists under Components/.
     Components.BarPopout {
         screen: Quickshell.screens[0]
     }
 
-    // Components.NotificationsOverlay {
-    //     screen: Quickshell.screens[0]
-    // }
+    Components.Calendar {
+        screen: Quickshell.screens[0]
+    }
 
-    // Components.ClipboardOverlay {
-    //     screen: Quickshell.screens[0]
-    // }
+    Components.NotificationsOverlay {
+        screen: Quickshell.screens[0]
+    }
+
+    Components.ClipboardOverlay {
+        screen: Quickshell.screens[0]
+    }
 
     Components.QuickNote {
         screen: Quickshell.screens[0]
