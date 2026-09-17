@@ -7,3 +7,6 @@
 # a variant switch no longer rewrites a singleton's own QML source (see
 # Config/Colors.qml's header). Same generated/gitignored treatment.
 /Config/Colors.json
+
+# Opencode
+.omo

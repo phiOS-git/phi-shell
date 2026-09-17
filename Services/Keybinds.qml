@@ -60,6 +60,7 @@ Singleton {
         if (modmask & 8) names.push("Alt")
         if (modmask & 4) names.push("Ctrl")
         if (modmask & 1) names.push("Shift")
+        if (modmask & 2) names.push("Fn")   
         return names.join(" + ")
     }
 
