@@ -6,7 +6,7 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 import "./sections" as Sections
-import "./sections/options.js" as Options
+import "./modules/options.js" as Options
 
 // The settings panel. Section content is data-driven from sections.json —
 // adding a section is a one-file registry change, not a code change (same
