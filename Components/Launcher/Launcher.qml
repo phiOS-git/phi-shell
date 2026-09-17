@@ -6,7 +6,7 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 import "prefixes.js" as Prefixes
-import "modules" as Modules
+import "." as Local
 
 // Ranking and providers live in `phi query` (internal/query) — this file
 // only renders what that process prints and performs whatever Action the
@@ -932,7 +932,7 @@ PanelWindow {
 
         MouseArea { anchors.fill: parent }
 
-        RichResult {
+        Local.RichResult {
             id: richCard
             width: parent.width
             rich: root.highlightedRich

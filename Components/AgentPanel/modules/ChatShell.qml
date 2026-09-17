@@ -2,6 +2,7 @@ import QtQuick
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
+import "." as Local
 
 // phiOS — agent ChatShell (2026-09-15, direct instruction: "a full rework
 // of the chat panel with UX at its core... do not stop until it's
@@ -288,7 +289,7 @@ Item {
                 anchors.fill: parent
                 anchors.leftMargin: root.gap
                 active: root.selectedProject.length > 0
-                sourceComponent: ProjectView {
+                sourceComponent: Local.ProjectView {
                     projectName: root.selectedProject
                     onBack: root.selectedProject = ""
                     onStartChat: { root.agent.useProject(root.selectedProject) }
