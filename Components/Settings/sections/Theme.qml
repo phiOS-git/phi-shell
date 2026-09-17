@@ -6,7 +6,7 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../modules" as Modules
 import "../modules/options.js" as Options
-import "../../Lock/Lock.qml" as LockFx
+import "../../Lock/" as LockFx
 
 // Every variable that is reasonable to change has an editable control
 // here, grouped by context: Appearance, Colours, Typography, Shape &

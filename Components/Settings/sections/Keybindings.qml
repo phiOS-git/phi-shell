@@ -2,7 +2,7 @@ import QtQuick
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "../modules" as Modulesß
+import "../modules" as Modules
 
 // A read-only reference view from `hyprctl binds -j`, via
 // Services/Keybinds.qml — no second place holding this data, and no
