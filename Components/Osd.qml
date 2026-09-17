@@ -39,8 +39,7 @@ PanelWindow {
     }
     readonly property real chWidth: chMetrics.width
     readonly property real osdWidth: chWidth * 26
-    // features-change (item 4): thin top/bottom inset, wider left/right one
-    // — the overlay-reference pill proportions.
+    // Thin top/bottom inset, wider left/right one — the pill's proportions.
     readonly property real osdPadV: chWidth * Config.Appearance.space1
     readonly property real osdPadH: chWidth * Config.Appearance.space3
 
@@ -108,7 +107,6 @@ PanelWindow {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     mono: true
-                    // features-change (item 4): a bolder readout.
                     kind: "title"
                     sizeStep: 1
                     horizontalAlignment: Text.AlignRight

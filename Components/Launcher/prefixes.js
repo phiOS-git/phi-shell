@@ -1,26 +1,24 @@
 .pragma library
 
-// phiOS — Launcher/prefixes.js. The runner-bar prefix feature's shell-side
-// table (docs/TODO.md: "Add prefix feature to the runner bar... each
-// should be configured with a color code"). This file only decides what a
-// locked prefix LOOKS like (its chip label and highlight colour) — what a
-// keyword actually DOES is phi's own decision, internal/query/query.go's
-// prefixProviders map. The two lists must stay in sync BY HAND: a keyword
-// added to one belongs in the other too. There is no shared source between
-// the Go binary and this QML process to generate either from.
+// The runner-bar prefix feature's shell-side table. This file only decides
+// what a locked prefix LOOKS like (its chip label and highlight colour) —
+// what a keyword actually DOES is phi's own decision,
+// internal/query/query.go's prefixProviders map. The two lists must stay
+// in sync BY HAND: a keyword added to one belongs in the other too. There
+// is no shared source between the Go binary and this QML process to
+// generate either from.
 //
-// tone is one of Config.Appearance's five semantic colour tokens (rule 6:
-// design tokens are the only source of colour — this file never invents a
-// hex value). Grouped by what kind of action the keyword performs, not one
-// distinct hue per keyword: there are only five semantic tones and, per
-// the entry's own "more prefixes will be added with time," eventually more
+// tone is one of Config.Appearance's five semantic colour tokens — design
+// tokens are the only source of colour, this file never invents a hex
+// value. Grouped by what kind of action the keyword performs, not one
+// distinct hue per keyword: there are only five semantic tones and more
 // keywords than that. "accent" is included even though Widgets/
 // WidgetStates.js's own contentColor() deliberately does NOT treat accent
-// as a valid StyledText/StyledIcon tone (OOP-10: accent retreated to "fine
-// detail only") — this file's color()/textColor() below read
-// Config.Appearance.accent directly instead of going through that
-// resolver, which is a separate, narrower rule about what StyledText's own
-// `tone` property accepts, not a ban on using the accent token elsewhere.
+// as a valid StyledText/StyledIcon tone (accent is fine detail only) —
+// this file's color()/textColor() below read Config.Appearance.accent
+// directly instead of going through that resolver, which is a separate,
+// narrower rule about what StyledText's own `tone` property accepts, not
+// a ban on using the accent token elsewhere.
 var PREFIXES = [
     { key: "web",     label: "Web",       tone: "info" },
     { key: "wiki",    label: "Wikipedia", tone: "info" },
