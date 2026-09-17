@@ -5,7 +5,8 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 import "../../Lock/Lock.qml" as LockFx
-import "../options.js" as Options
+import "./options.js" as Options
+import "." as Local
 
 // Every variable that is reasonable to change has an editable control
 // here, grouped by context: Appearance, Colours, Typography, Shape &
@@ -84,7 +85,7 @@ Column {
     // `swatches` is a list of { key, label, contrast }: `key` a design
     // token name, `contrast` opting the editor into the live `phi theme
     // contrast` badge.
-    component ColorGroup: SettingsGroup {
+    component ColorGroup: Local.SettingsGroup {
         id: cg
         property var swatches: []
 
@@ -517,7 +518,7 @@ Column {
     }
 
     // --- Appearance ----------------------------------------------------
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Appearance"
         SettingsRow {
             optionId: "theme.variant"
@@ -637,7 +638,7 @@ Column {
         ]
     }
 
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Colour preview"
         preview: true
 
@@ -669,7 +670,7 @@ Column {
     }
 
     // --- Typography --------------------------------------------------
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Typography"
         TokenFontRow { tokenKey: "font-mono"; title: "Mono font"; previewFamily: Config.Appearance.fontMono
             description: "Terminal, code, and the whole UI's spacing rhythm (1ch)." }
@@ -680,7 +681,7 @@ Column {
     }
 
     // --- Shape & spacing -----------------------------------------
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Shape & spacing"
         caption: "Scales multiply the whole generated set. Sliders are deliberately not used here — a theme value should be set, not swept."
         TokenNumberRow { tokenKey: "font-scale"; title: "Font scale"; step: 0.05; decimals: 2; from: 0.5; to: 2.0 }
@@ -719,7 +720,7 @@ Column {
     }
 
     // --- Animations --------------------------------------------
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Animations"
         optionId: "theme.animations"
         caption: "The four style-plan motion categories. Category B is every state transition — panels, drawers, workspaces, notifications — so its duration and curve reach the whole shell. A is the agent's tracking indicator, C the rare boot/unlock effects, D ambient (off by default)."
@@ -757,7 +758,7 @@ Column {
     }
 
     // --- Night shift ---------------------------------------------
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Night shift"
         SettingsRow {
             optionId: "theme.nightshift"
@@ -843,7 +844,7 @@ Column {
     }
 
     // --- Cursor spotlight --------------------------------------
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Cursor spotlight"
         caption: "Hold Super+G to show it; the toggle here is sticky. Dim and flashlight dim the screen around a clear circle; crosshair and ring just mark the pointer and never dim."
 
@@ -950,7 +951,7 @@ Column {
     // The loupe (Magnifier/Magnifier.qml). Runtime UI state stored through
     // `phi state` by Services/Magnifier, same category as the spotlight
     // size above — not a design token.
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Screen magnifier"
         SettingsRow {
             optionId: "theme.magnifier"
@@ -983,7 +984,7 @@ Column {
     // Stored in Config/ClockPrefs.qml ($XDG_STATE_HOME/phi/clock.json),
     // read by Bar/modules/Clock.qml. Same shape and reasoning as the Lock
     // screen group just below.
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Clock"
         optionId: "theme.clock"
 
@@ -1029,7 +1030,7 @@ Column {
     // Config/LockPrefs.qml ($XDG_STATE_HOME/phi/lock.json), read by
     // Lock/Lock.qml. Runtime UI state, not a design token — same category
     // as the spotlight size above.
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Lock screen"
         optionId: "theme.lockscreen"
         SettingsRow {
@@ -1222,7 +1223,7 @@ Column {
     // above turns it back on — a changed selection is exactly the moment a
     // live look is wanted — and a small toggle lets the user flip it either
     // way.
-    SettingsGroup {
+    Local.SettingsGroup {
         id: ambientPreviewGroup
         title: "Ambient effect preview"
         preview: true
@@ -1232,7 +1233,7 @@ Column {
         // Auto-shows the preview the moment the selection actually
         // changes. Explicit id reference, not a bare `parent` — Connections
         // is a plain QtObject, not an Item, so its own `parent` is not
-        // reliably the enclosing SettingsGroup the way an Item's would be
+        // reliably the enclosing Local.SettingsGroup the way an Item's would be
         // (the same class of gotcha Widgets/Panel.qml's own header already
         // flags for a *different* parent-vs-contentItem indirection).
         Connections {
@@ -1327,7 +1328,7 @@ Column {
     }
 
     // --- Wallpaper ------------------------------------------------
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Wallpaper"
         Component.onCompleted: Services.Background.refreshAvailable()
 

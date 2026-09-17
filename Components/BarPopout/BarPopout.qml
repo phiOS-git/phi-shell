@@ -1765,7 +1765,7 @@ PanelWindow {
                             enabled: Config.Capabilities.ambientLight
                             // 0.45 mirrors Widgets/WidgetStates.js's own
                             // INACTIVE_OPACITY (Settings/sections/
-                            // SettingsGroup.qml's identical comment on
+                            // Local.SettingsGroup.qml's identical comment on
                             // this same number explains why it is
                             // duplicated here rather than imported).
                             opacity: enabled ? 1 : 0.45

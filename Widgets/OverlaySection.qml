@@ -13,7 +13,7 @@ import qs.Config as Config
 // resolves to at rest, reused directly rather than through Panel itself
 // since every call site here wants a content-based implicit size, which
 // Panel deliberately does not guess. Same Item+inset-Column shape
-// Settings/sections/SettingsGroup.qml uses for the identical "recessed
+// Settings/sections/Local.SettingsGroup.qml uses for the identical "recessed
 // group on top of a shaded parent" problem one level up.
 
 Item {

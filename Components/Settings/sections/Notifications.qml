@@ -2,6 +2,7 @@ import QtQuick
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
+import "." as Local
 
 // Do-not-disturb (duration or on-demand), per-app rules, Chroma blink on
 // arrival. Everything reads Services/Notifications directly — DND reuses
@@ -23,7 +24,7 @@ Column {
     readonly property real gap: chWidth * Config.Appearance.space2
 
     // --- Do not disturb ----------------------------------------------
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Do not disturb"
         optionId: "notifications.dnd"
 
@@ -49,7 +50,7 @@ Column {
     }
 
     // --- Sound & testing -----------------------------------------
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Sound & testing"
         optionId: "notifications.sound"
         caption: Services.Notifications.soundError.length > 0
@@ -113,7 +114,7 @@ Column {
     }
 
     // --- History -----------------------------------------------
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "History"
         optionId: "notifications.retention"
 
@@ -169,7 +170,7 @@ Column {
     }
 
     // --- Per-app rules ---------------------------------------------
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Per-app rules"
         optionId: "notifications.rules"
         caption: Services.Notifications.knownApps.length === 0
@@ -208,7 +209,7 @@ Column {
     }
 
     // --- Chroma ---------------------------------------------------
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Chroma"
         disabled: !Config.Capabilities.chroma
         disabledReason: "No Razer Chroma keyboard was detected on this machine."
@@ -232,7 +233,7 @@ Column {
     // where a new one is created. The stopwatch (Services/Stopwatch.qml)
     // has no customisable state of its own, so it gets no dedicated row,
     // only a mention in this group's own caption.
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Timers, alarms & stopwatch"
         optionId: "notifications.timers"
         // Empty state folded into the caption, not a separate invisible-

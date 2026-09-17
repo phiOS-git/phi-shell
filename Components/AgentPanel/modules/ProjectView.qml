@@ -41,7 +41,7 @@ Item {
     readonly property real chWidth: ch.width
     readonly property real gap: chWidth * Config.Appearance.space2
     // A half rhythm unit, for a label directly above its field — the derived
-    // micro-gap SettingsGroup uses, never a literal.
+    // micro-gap Local.SettingsGroup uses, never a literal.
     readonly property real tightGap: Math.round(chWidth * Config.Appearance.space1 * 0.5)
 
     property var meta: ({})

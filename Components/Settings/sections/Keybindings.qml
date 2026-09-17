@@ -2,13 +2,14 @@ import QtQuick
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
+import "." as Localß
 
 // A read-only reference view from `hyprctl binds -j`, via
 // Services/Keybinds.qml — no second place holding this data, and no
 // editing from this UI.
 //
 // Bindings are grouped by context (Services.Keybinds.groups), one
-// SettingsGroup card per context, in the same order Cheatsheet uses — the
+// Local.SettingsGroup card per context, in the same order Cheatsheet uses — the
 // two surfaces render the same derivation. Search filters here rather
 // than highlighting: a reference list with 40+ rows is the one place in
 // the panel where filtering earns its keep, unlike the option rows,
@@ -40,7 +41,7 @@ Column {
 
     Component.onCompleted: Services.Keybinds.refresh()
 
-    SettingsGroup {
+    Local.SettingsGroup {
         optionId: "keybindings.reference"
         title: "Keybindings"
         caption: root.query.trim().length > 0
@@ -60,7 +61,7 @@ Column {
 
     Repeater {
         model: root.grouped
-        SettingsGroup {
+        Local.SettingsGroup {
             required property var modelData
             title: modelData.context
 

@@ -2,13 +2,14 @@ import QtQuick
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
+import "." as Local
 
 // Hostname, hardware model, OS/kernel version, uptime, disk space, and
 // (where present) battery stats. Every value is read-only — this section
 // reports the machine's shape, it doesn't configure anything.
 //
 // A responsive 2-column grid of compact key/value tiles inside
-// SettingsGroup cards, one card per catalogue option (general.machine /
+// Local.SettingsGroup cards, one card per catalogue option (general.machine /
 // general.system / general.battery) so a search or a reveal lands on the
 // right group.
 
@@ -48,7 +49,7 @@ Column {
         }
     }
 
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Machine"
         optionId: "general.machine"
 
@@ -64,7 +65,7 @@ Column {
         }
     }
 
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "System"
         optionId: "general.system"
 
@@ -85,7 +86,7 @@ Column {
         }
     }
 
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Battery"
         optionId: "general.battery"
         disabled: !Config.Capabilities.battery

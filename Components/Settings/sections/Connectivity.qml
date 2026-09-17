@@ -3,9 +3,10 @@ import Quickshell
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
+import "." as Local
 
 // Bluetooth, Wi-Fi (with a live speed graph), WireGuard VPN, Tailscale
-// and the inbound firewall, each a SettingsGroup so a search or a bar
+// and the inbound firewall, each a Local.SettingsGroup so a search or a bar
 // overlay's "Show in settings" button lands on the right one.
 //
 // Every reader already exists as a Services/ bridge — this section is a
@@ -43,7 +44,7 @@ Column {
     }
 
     // --- Bluetooth ---------------------------------------------------
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Bluetooth"
         optionId: "connectivity.bluetooth"
         disabled: !Config.Capabilities.bluetooth
@@ -89,7 +90,7 @@ Column {
     }
 
     // --- Wi-Fi -----------------------------------------------------
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Wi-Fi"
         optionId: "connectivity.wifi"
         disabled: !Config.Capabilities.wifi
@@ -148,7 +149,7 @@ Column {
     }
 
     // --- VPN (WireGuard) ---------------------------------------
-    SettingsGroup {
+    Local.SettingsGroup {
         id: vpnGroup
         title: "VPN — WireGuard"
         optionId: "connectivity.vpn"
@@ -255,7 +256,7 @@ Column {
     }
 
     // --- Tailscale --------------------------------------------
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Tailscale"
         optionId: "connectivity.tailscale"
 
@@ -288,7 +289,7 @@ Column {
     }
 
     // --- Firewall (nftables) ----------------------------------
-    SettingsGroup {
+    Local.SettingsGroup {
         id: fwGroup
         title: "Firewall"
         optionId: "connectivity.firewall"

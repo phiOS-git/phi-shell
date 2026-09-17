@@ -2,7 +2,7 @@ import QtQuick
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "../options.js" as Options
+import "./options.js" as Options
 
 // The one way a settings control exists: a titled row with an optional
 // description, a control slot, an optional per-row reset, and — the
@@ -62,7 +62,7 @@ Item {
     readonly property real _ch: chMetrics.width
     readonly property real _pad: Config.Appearance.space2 * _ch
     // A label sits directly above its description / reset — a half rhythm
-    // unit, the same derived micro-gap SettingsGroup's title block uses.
+    // unit, the same derived micro-gap Local.SettingsGroup's title block uses.
     readonly property real _labelGap: Math.round(_ch * Config.Appearance.space1 * 0.5)
 
     readonly property bool highlighted: Services.SettingsPanel.shown

@@ -3,6 +3,7 @@ import Quickshell
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
+import "." as Local
 
 // Activation (toggle, connection status, active project, pending memory
 // proposals), plus everything else scoped to genuinely runtime state:
@@ -43,7 +44,7 @@ Column {
     }
 
     // ---- activation / connection -----------------------------------
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "AI Agent"
         caption: "Projects, personalities, conversations, tool approval and the literal memory-proposal diffs live in the agent panel — the Φ bar segment or Super+P. This section keeps only runtime status and the A2 working-directory blocklist."
 
@@ -92,7 +93,7 @@ Column {
     }
 
     // ---- A2 working-directory blocklist -----------------------------
-    SettingsGroup {
+    Local.SettingsGroup {
         advanced: true
         title: "Coding-agent blocklist"
         caption: "Directories `phi agent code` and the folder-of-interest picker refuse. One glob per line; '#' comments; '~' expands. A guard-rail on the picker, not the security boundary. Saved to ~/.config/phi-agent/code-blocklist."
@@ -145,7 +146,7 @@ Column {
     }
 
     // ---- services (runtime status, read-only) -----------------------
-    SettingsGroup {
+    Local.SettingsGroup {
         advanced: true
         title: "Services"
         caption: "All phi-agent units are declared and never auto-enabled (phios-agente.md). Start/stop and enable them with `systemctl --user`. The A2 remote surface is status-only here — starting phi-agent-a2-remote* is how a session is declared remote (§10.3)."
@@ -175,7 +176,7 @@ Column {
     }
 
     // ---- broker & engine configuration (read-only readout) ----------
-    SettingsGroup {
+    Local.SettingsGroup {
         advanced: true
         title: "Broker & engine"
         caption: "The values below are read-only — broker.json / opencode.json / the egress whitelist are versioned config, and editing them from this panel would fight `git pull` (the exact problem a past round hit doing exactly that). The buttons open the real files in a terminal editor instead. The provider key is a separate mode-600 file, never shown here at all. Full specification: phios-agente.md (ADR 084–100)."

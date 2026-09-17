@@ -3,6 +3,7 @@ import Quickshell
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
+import "." as Local
 
 // Groups: Audio output, Audio input, Monitors, Pointer, Battery, Chroma.
 // The bar popout is the one place lock/suspend/hibernate/logout/reboot/
@@ -98,7 +99,7 @@ Column {
     // ================================================================
     // Audio output
     // ================================================================
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Audio output"
         optionId: "devices.audio.output"
 
@@ -148,7 +149,7 @@ Column {
     // ================================================================
     // Audio input
     // ================================================================
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Audio input"
         optionId: "devices.audio.input"
 
@@ -194,7 +195,7 @@ Column {
     // ================================================================
     // Monitors (read-only)
     // ================================================================
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Monitors"
         optionId: "devices.monitors"
         caption: "Read-only — changing monitor layout or scale from here is not built yet (ADR 077 treats it as runtime state, not a panel-editable value)."
@@ -217,7 +218,7 @@ Column {
     // ================================================================
     // Pointer (read-only)
     // ================================================================
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Pointer"
         optionId: "devices.pointer"
         caption: "Mouse and trackpad sensitivity are set in hyprland.lua, not runtime state (§9.12 perimeter)."
@@ -233,7 +234,7 @@ Column {
     // owns the read-only battery STATS group and configures nothing; this
     // is editable device-sound/alert behaviour, so it lives here instead.
     // ================================================================
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Battery"
         optionId: "devices.battery"
         disabled: !Config.Capabilities.battery
@@ -354,7 +355,7 @@ Column {
     // ================================================================
     // Chroma  (razer)
     // ================================================================
-    SettingsGroup {
+    Local.SettingsGroup {
         title: "Chroma keyboard"
         optionId: "devices.chroma"
         disabled: !Config.Capabilities.chroma

@@ -2,7 +2,7 @@ import QtQuick
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "../options.js" as Options
+import "./options.js" as Options
 
 // A titled group of related controls: a small-caps label, the group's
 // descriptive caption directly under it (context before the controls it
@@ -70,7 +70,7 @@ Item {
 
     Component.onCompleted: if (optionId.length > 0) {
         if (!Options.known(optionId))
-            console.warn("phi-shell: SettingsGroup optionId not in options.js catalogue: " + optionId)
+            console.warn("phi-shell: Local.SettingsGroup optionId not in options.js catalogue: " + optionId)
         Services.SettingsPanel.registerRow(optionId, root)
     }
     Component.onDestruction: if (optionId.length > 0) Services.SettingsPanel.unregisterRow(optionId)

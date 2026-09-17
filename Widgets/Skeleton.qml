@@ -58,7 +58,7 @@ Item {
                 // Updates — lives inside one of this shell's own cards),
                 // which defeats the point of a placeholder row. `surface2`
                 // is the same clearly-visible recessed-but-present shade
-                // Settings/sections/SettingsGroup.qml uses for the
+                // Settings/sections/Local.SettingsGroup.qml uses for the
                 // identical "must stand out from its own card" need.
                 color: Config.Appearance.surface2
 
