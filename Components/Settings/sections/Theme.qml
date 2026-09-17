@@ -4,8 +4,8 @@ import Quickshell.Io
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import qs.Lock as LockFx
-import "options.js" as Options
+import "../../Lock/Lock.qml" as LockFx
+import "../options.js" as Options
 
 // Every variable that is reasonable to change has an editable control
 // here, grouped by context: Appearance, Colours, Typography, Shape &

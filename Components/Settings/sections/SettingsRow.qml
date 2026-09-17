@@ -2,7 +2,7 @@ import QtQuick
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "options.js" as Options
+import "../options.js" as Options
 
 // The one way a settings control exists: a titled row with an optional
 // description, a control slot, an optional per-row reset, and — the
