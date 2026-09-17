@@ -5,37 +5,30 @@ import Quickshell.Wayland
 import qs.Config as Config
 import qs.Services as Services
 
-// phiOS — Spotlight/Spotlight.qml (S-43; SF-5 rewrite). A cursor-locator
-// overlay. `shown` is driven by Services/Spotlight (SUPER+G hold, or the
-// settings Pill); the effect and its options are also on that singleton.
+// A cursor-locator overlay. `shown` is driven by Services/Spotlight
+// (Super+G hold, or the settings toggle); the effect and its options are
+// also on that singleton.
 //
-// SF-5 changes:
+// The dim/flashlight vignette is a SMALL Canvas "sprite" (a radial
+// gradient, transparent centre → solid scrim rim) painted ONCE and only
+// re-painted when a size/intensity option changes, never on cursor
+// movement — a full-screen Canvas repainted on every cursor poll is
+// genuinely heavy on a HiDPI screen. The rest of the screen is four plain
+// scrim Rectangles that resize to tile around the sprite square, so
+// moving the cursor only updates x/y/width/height bindings on GPU-
+// composited items, no CPU repaint at all. Crosshair / ring effects are
+// 1-2 Rectangles and never dim.
 //
-//   1. OPTIMISATION. The old version repainted a full-screen QtQuick Canvas
-//      (createRadialGradient over the whole output) on every 60 ms cursor
-//      poll — genuinely heavy on a HiDPI screen. Now:
-//        - the dim/flashlight vignette is a SMALL Canvas "sprite" (a radial
-//          gradient, transparent centre → solid scrim rim) painted ONCE and
-//          only re-painted when a size/intensity option changes, never on
-//          cursor movement;
-//        - the rest of the screen is four plain scrim Rectangles that
-//          resize to tile around the sprite square.
-//      Moving the cursor now only updates x/y/width/height bindings on five
-//      GPU-composited items — no CPU repaint at all.
-//        - crosshair / ring effects are 1-2 Rectangles and never dim.
+// WlrLayer.Overlay, mapped only while shown, so it comes up ABOVE an
+// already-open settings/notification/chat panel (all also Overlay). The
+// lock screen (WlSessionLock, a different protocol) still wins.
 //
-//   2. Z-INDEX. WlrLayer.Overlay + it maps only while shown (visible gates
-//      on the fade), so it comes up ABOVE an already-open settings /
-//      notification / chat panel (all also Overlay). The lock screen
-//      (WlSessionLock, a different protocol) still wins.
+// `mask: Region {}` is fully click-through, so the overlay never eats a
+// click while it is up.
 //
-//   3. mask: Region {} — fully click-through, so the overlay never eats a
-//      click while it is up.
-//
-// Cursor position is still `hyprctl cursorpos` polled while shown (there is
-// no cursor-move event on Hyprland's socket; this path was verified centred
-// on real hardware at S-43 round 5 and is unchanged). exclusionMode.Ignore
-// keeps local (0,0) at the true screen origin (S-43 round 4's fix).
+// Cursor position is `hyprctl cursorpos` polled while shown — there is no
+// cursor-move event on Hyprland's socket. `exclusionMode.Ignore` keeps
+// local (0,0) at the true screen origin.
 
 PanelWindow {
     id: root
@@ -98,9 +91,9 @@ PanelWindow {
     Item {
         id: fadeRoot
         anchors.fill: parent
-        // Nothing fades in until the first real cursor sample has arrived
-        // (S-43 round 2's fix — a default position can paint visibly wrong
-        // for the fade's duration otherwise).
+        // Nothing fades in until the first real cursor sample has
+        // arrived — a default position can paint visibly wrong for the
+        // fade's duration otherwise.
         opacity: (root.shown && root.hasPosition) ? 1 : 0
 
         Behavior on opacity {
