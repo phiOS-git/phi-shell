@@ -88,9 +88,13 @@ Widgets.Segment {
         // currently up) instead of stacking both into one shared box — a
         // fixed reservation, not conditional on `tunnelAmount`, so the
         // main glyph never shifts position as the badge fades in/out.
+        // The badge sits a full `root.gap` from the main glyph — the same
+        // spacing the bar's other items carry between their own innards
+        // (and between isles), so the pair reads as two separate icons,
+        // not one fused glyph.
         Item {
             id: pivot
-            readonly property real _badgeGap: root.gap / 2
+            readonly property real _badgeGap: root.gap
             implicitWidth: ethIcon.implicitWidth + badgeIcon.implicitWidth + pivot._badgeGap
             implicitHeight: Math.max(ethIcon.implicitHeight, badgeIcon.implicitHeight)
 
