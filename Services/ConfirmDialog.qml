@@ -25,7 +25,6 @@ Singleton {
     // defaults Enter to a destructive confirm. So opening this closes
     // every other panel rather than coexisting with them.
     onShownChanged: if (root.shown) {
-        Services.NotificationPanel.hide()
         Services.AgentPanel.hide()
         Services.SettingsPanel.hide()
         Services.BarPopout.hide()

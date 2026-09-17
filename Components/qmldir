@@ -9,8 +9,6 @@ Settings 1.0 Settings/Settings.qml
 AgentPanel 1.0 AgentPanel/AgentPanel.qml
 BarPopout 1.0 BarPopout/BarPopout.qml
 Calendar 1.0 Calendar/Calendar.qml
-ClipboardOverlay 1.0 ClipboardOverlay/ClipboardOverlay.qml
-NotificationsOverlay 1.0 NotificationsOverlay/NotificationsOverlay.qml
 QuickNote 1.0 QuickNote.qml
 Cheatsheet 1.0 Cheatsheet.qml
 Toast 1.0 Toast.qml

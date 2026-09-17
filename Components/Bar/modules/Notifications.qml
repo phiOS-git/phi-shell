@@ -23,7 +23,7 @@ Widgets.Segment {
     required property ShellScreen screen
 
     ambient: "isle"
-    active: Services.NotificationPanel.notificationsShown
+    active: Services.BarPopout.which === "notifications"
 
     readonly property bool dnd: Services.Notifications.dnd
     // Reads Services.Notifications.activeCount (see that file's own
@@ -31,7 +31,7 @@ Widgets.Segment {
     readonly property bool hasPending: !root.dnd && Services.Notifications.activeCount > 0
     tone: root.hasPending ? "info" : ""
 
-    onActivated: Services.NotificationPanel.toggleNotifications()
+    onActivated: Services.BarPopout.toggleNotifications()
 
     property real dndAmount: 0
     Behavior on dndAmount {
@@ -49,14 +49,14 @@ Widgets.Segment {
     onDndChanged: root._sync()
     onHasPendingChanged: root._sync()
     // Also registers this icon's own live position getter, so
-    // Services/NotificationPanel.qml's open()/toggle() — called
-    // identically by a click and by the Super+N keybind — always aligns
-    // the overlay to this icon's real current position. Merged into this
-    // one Component.onCompleted, not a second one — QML doesn't support
+    // Services/BarPopout.qml's open()/toggle() — called identically by a
+    // click and by the Super+N keybind — always aligns the popout to this
+    // icon's real current position. Merged into this one
+    // Component.onCompleted, not a second one — QML doesn't support
     // declaring the same signal handler twice on one object.
     Component.onCompleted: {
         root._sync()
-        Services.NotificationPanel.notificationsIconRightX = root.rightX
+        Services.BarPopout.notificationsIconRightX = root.rightX
     }
 
     iconDelegate: Component {

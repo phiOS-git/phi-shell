@@ -4,62 +4,35 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../../Bar/glyphs.js" as Glyphs
 
-// phiOS — Panels/tabs/Notifications.qml (S-31; OOP-06 restyle; SF-4; BF-2;
-// interface rework Phase 3). Embedded directly as Panels/
-// NotificationsOverlay.qml's body content now (that file's own header) —
-// no longer a Panels/Sidebar.qml tab loaded through componentFor()/
-// tabs.json, which are both retired.
+// Migrated from the old standalone NotificationsOverlay window (retired —
+// see docs/VERIFICATION.md) into a plain BarPopout "which" card, same
+// shape as every other module here. A DND switch (with 30m/1h/4h quick-
+// triggers), then the notification list grouped by date, then by source
+// within each date — both tiers collapsible (dates default expanded,
+// sources default collapsed).
 //
-// rework.md's notifications-overlay rework: "Below the list of
-// notifications are divided by date (today, yesterday, this week, older),
-// then grouped by source in the same date. Both date and source groups can
-// be collapsed and expanded (date groups are expanded by default, source
-// groups are collapsed by default)." `dateGroups` below adds that date
-// tier ABOVE the existing per-app grouping; `collapsedDates` (default
-// expanded — a date key present in the map IS collapsed) and
-// `expandedApps` (default collapsed — an app key present IS expanded) are
-// two independent maps so the two tiers' defaults can differ, matching the
-// spec exactly rather than sharing one flag with one shared default.
-//
-// "clear buttons on each single notification, on each group (source or
-// day) and a clear all button" — the per-entry (clearEntry) and clear-all
-// (clearAll) buttons already existed; a whole date group or an app
-// sub-group is now a SUBSET of history scoped by date, so both group-level
-// clear buttons call Services.Notifications.clearEntries(items) (new —
-// see that file's own header for why the old clearApp(appName) is wrong
-// once the same app can appear in more than one date bucket) rather than
-// clearApp.
-//
-// "has a switch to DND, as well as triggers for DND 30mins, 1h, 4h (with
-// visible end time when enabled with timer)" — the plain toggle and the
-// dndRemainingLabel readout already existed; Settings/sections/
-// Notifications.qml already has the exact three-button "Silence for a
-// while" row calling Services.Notifications.dndFor(minutes) — reused
-// verbatim here, not a second timed-DND mechanism.
-//
-// "Active" is a Repeater straight on Services.Notifications.active (the live
-// ObjectModel<Notification>); history is the plain persisted JS array,
-// grouped here.
-//
-// BF-2: this tab's root used to BE the Flickable — a Loader-instantiated
-// Flickable root does not deliver pointer events to its content. Stays an
-// Item wrapping the Flickable, unchanged by this phase.
+// This card keeps its own inline title row rather than the shared
+// Modules/Header.qml (Services/BarPopout.qml's title("notifications")
+// returns "" for exactly this reason) since it predates that shared
+// component and already carries its own settings deep-link.
 
 Item {
     id: root
 
-    // Interface rework Phase 3 (rework.md s4): drives the inner content's
-    // StaggerReveal cascade — bound to the OVERLAY window's own `shown`
-    // (Panels/NotificationsOverlay.qml), so the cascade replays every time
-    // the overlay opens, not just once at shell startup (this Item is never
-    // destroyed/recreated any more — it's a direct child, not behind a
-    // Loader/componentFor() the way the retired Sidebar tab was).
-    property bool revealShown: true
+    property bool active: false
+    // The real screen height, handed down by Components/BarPopout/
+    // BarPopout.qml — this card's own height is capped against it rather
+    // than growing to fit however much history exists.
+    required property real screenHeight
+    // The pre-computed, padding-already-subtracted height budget this
+    // card may grow into (BarPopout.qml's own `_wideCardAvailableHeight`).
+    property real availableHeight: 0
 
-    // rework-issues.md item 3: the overlay window (Panels/
-    // NotificationsOverlay.qml) reads this to size itself to content
-    // instead of always stretching to the bottom of the screen.
     readonly property real naturalContentHeight: flick.contentHeight
+
+    width: parent ? parent.width : 0
+    height: Math.min(root.naturalContentHeight, root.availableHeight)
+    visible: root.active
 
     TextMetrics {
         id: chMetrics
@@ -69,13 +42,12 @@ Item {
     }
     readonly property real chWidth: chMetrics.width
     // gap  — tight, inside a card / between a label and its control.
-    // blockGap — the rhythm between the tab's top-level blocks, matching
-    // the Sidebar container it sits in.
+    // blockGap — the rhythm between this card's top-level blocks.
     readonly property real gap: chWidth * Config.Appearance.space1
     readonly property real blockGap: chWidth * Config.Appearance.space2
 
     // { "<dateKey>": true } — a date key present here IS collapsed.
-    // Default: every date group starts expanded (rework.md).
+    // Default: every date group starts expanded.
     property var collapsedDates: ({})
     function toggleDateGroup(key) {
         var m = Object.assign({}, root.collapsedDates)
@@ -85,10 +57,10 @@ Item {
     function isDateCollapsed(key) { return root.collapsedDates[key] === true }
 
     // { "<dateKey>/<app>": true } — an app key present here IS expanded.
-    // Default: every source (app) sub-group starts collapsed (rework.md) —
-    // the inverse default from collapsedDates above, deliberately two
-    // separate maps rather than one shared flag so the two tiers can
-    // disagree about their own default state.
+    // Default: every source (app) sub-group starts collapsed — the
+    // inverse default from collapsedDates above, deliberately two
+    // separate maps so the two tiers can disagree about their own
+    // default state.
     property var expandedApps: ({})
     function toggleAppGroup(dateKey, app) {
         var k = dateKey + "/" + app
@@ -112,12 +84,11 @@ Item {
         return out
     }
 
-    // rework.md: "today, yesterday, this week, older". "This week" is read
-    // as a rolling 2-6-days-ago window (today/yesterday already cover the
+    // "Today, yesterday, this week, older". "This week" is read as a
+    // rolling 2-6-days-ago window (today/yesterday already cover the
     // first two, "older" starts at 7 days) rather than a calendar week —
-    // no document states which, and a rolling window needs no
-    // start-of-week convention (Monday vs. Sunday) this project has never
-    // picked anywhere else. Flagged as a judgment call, cheap to change.
+    // no start-of-week convention (Monday vs. Sunday) is picked anywhere
+    // else in this shell.
     readonly property var dateGroups: {
         const hist = Services.Notifications.history || []
         const now = new Date()
@@ -160,28 +131,16 @@ Item {
         contentHeight: column.implicitHeight
         clip: true
 
-        // Interface rework Phase 3 (rework.md s4): the tab's own top-level
-        // blocks (DND row, Active header/list, each date group) cascade in
-        // after the overlay card itself is visible — the card's own fade
-        // is Panels/NotificationsOverlay.qml's `fadeRoot`, unchanged here.
+        // This card's own top-level blocks (DND row, Active header/list,
+        // each date group) cascade in after the popout card itself is
+        // visible — the card's own fade is Widgets/PopoutSurface's own
+        // fadeRoot, unchanged here.
         Widgets.StaggerReveal {
             id: column
-            shown: root.revealShown
+            shown: root.active
             width: flick.width
             spacing: root.blockGap
 
-            // User bug report, 2026-09-16: "add title 'Notifications' to
-            // the notifications overlay (with the settings button)" — this
-            // overlay never had its own header row at all (it used to be
-            // a Panels/Sidebar.qml TAB, whose own dock chrome supplied the
-            // "Notifications" label; Interface rework Phase 3 promoted it
-            // to an independent overlay with no replacement header). Same
-            // header shape every other overlay's shared card title uses
-            // (Panels/BarPopout.qml's own cardBody: a `kind: "title"` label
-            // left, an icon-button settings deep-link right, space-
-            // between) — `Services.SettingsPanel.reveal("notifications")`
-            // is the real section id (Settings/sections.json), not a
-            // guessed string.
             Item {
                 width: parent.width
                 implicitHeight: Math.max(notifTitle.implicitHeight, notifSettingsBtn.implicitHeight)
@@ -204,7 +163,6 @@ Item {
             }
             Widgets.Separator { width: parent.width; strong: true }
 
-            // rework-status-bar.md Style item 1: its own inner-section card.
             Widgets.OverlaySection {
                 width: parent.width
                 Widgets.ToggleRow {
@@ -214,11 +172,9 @@ Item {
                     onToggled: (v) => { if (v !== Services.Notifications.dnd) Services.Notifications.toggleDnd() }
                 }
 
-                // rework.md: "as well as triggers for DND 30mins, 1h, 4h (with
-                // visible end time when enabled with timer)" —
                 // Services.Notifications.dndFor(minutes) already exists
-                // (Settings/sections/Notifications.qml's own identical row);
-                // reused verbatim, not a second timed-DND mechanism.
+                // (Settings/sections/Notifications.qml's own identical
+                // row); reused verbatim, not a second timed-DND mechanism.
                 Row {
                     spacing: root.chWidth * Config.Appearance.space2
                     Widgets.SmallButton { label: "30 min"; onClicked: Services.Notifications.dndFor(30) }

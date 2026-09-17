@@ -4,8 +4,20 @@ import qs.Services as Services
 
 // Owns the shown state, identity (`which`) and on-screen x of the small
 // panel that drops below a bar button when clicked (volume, brightness,
-// network, wifi, bluetooth, battery, gpu). One shared panel keyed by
-// `which`, same one-owner shape as Services/Calendar.qml.
+// network, wifi, bluetooth, battery, notifications, clipboard, ...). One
+// shared panel keyed by `which`, same one-owner shape as
+// Services/Calendar.qml.
+//
+// "notifications"/"clipboard" keep their historical getter-registration
+// shape (`*IconRightX`, `open*()`/`toggle*()`) rather than the plain
+// `toggle(key, x, edge)` every other key's bar icon calls directly: a
+// click and the Super+N / Super+Shift+V keybinds (Services/BarPopout's
+// own IpcHandlers, in Components/BarPopout/BarPopout.qml) and
+// Components/Toast.qml's click-to-open must all resolve to the SAME
+// bell/clipboard icon position, and only the icon itself can compute
+// that. Each bar icon registers its own `rightX()` once, at
+// Component.onCompleted; every entry point calls whichever is registered,
+// fresh, regardless of what triggered it.
 Singleton {
     id: root
 
@@ -22,7 +34,6 @@ Singleton {
 
     // Opening a popout closes every other panel.
     onWhichChanged: if (root.which.length > 0) {
-        Services.NotificationPanel.hide()
         Services.AgentPanel.hide()
         Services.SettingsPanel.hide()
         Services.HyprlandBridge.leaveReservedWorkspace()
@@ -50,6 +61,28 @@ Singleton {
     function open(key, x, edge) { root.which = key; root._setAnchor(x, edge) }
     function hide() { root.which = "" }
 
+    // notifications/clipboard's own registered icon-position getters —
+    // see this file's own header for why these two keys alone need one.
+    property var notificationsIconRightX: null
+    property var clipboardIconRightX: null
+
+    function openNotifications() {
+        var x = (typeof root.notificationsIconRightX === "function") ? root.notificationsIconRightX() : 0
+        root.open("notifications", x)
+    }
+    function toggleNotifications() {
+        if (root.which === "notifications") root.hide()
+        else root.openNotifications()
+    }
+    function openClipboard() {
+        var x = (typeof root.clipboardIconRightX === "function") ? root.clipboardIconRightX() : 0
+        root.open("clipboard", x)
+    }
+    function toggleClipboard() {
+        if (root.which === "clipboard") root.hide()
+        else root.openClipboard()
+    }
+
     function _setAnchor(x, edge) {
         root.anchorEdge = edge === "left" ? "left" : "right"
         if (root.anchorEdge === "left") { root.anchorLeftX = x || 0; root.anchorRightX = 0 }
@@ -75,6 +108,9 @@ Singleton {
         case "stats": return "Stats"
         case "microphone": return "Microphone"
         case "camera": return "Camera"
+        // Both manage their own header content (a DND row, a search bar).
+        case "notifications": return ""
+        case "clipboard": return ""
         }
         return key
     }

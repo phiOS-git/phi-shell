@@ -22,9 +22,11 @@ import qs.Services as Services
 // service singleton to watch, and Spotlight is meant to layer over an
 // open panel, not close it.
 //
-// The four Connections below close the calendar when a peer opens;
-// `onShownChanged` closes those same four peers when the calendar opens —
-// so the relationship reads the same both ways instead of only one.
+// The three Connections below close the calendar when a peer opens;
+// `onShownChanged` closes those same three peers when the calendar opens
+// — so the relationship reads the same both ways instead of only one.
+// Notifications/clipboard are not a fourth peer here: both are BarPopout
+// "which" keys now, already covered by the BarPopout Connections below.
 Singleton {
     id: root
 
@@ -37,19 +39,17 @@ Singleton {
     function _closeIfOpen() { if (root.shown) root.hide() }
 
     onShownChanged: if (root.shown) {
-        Services.NotificationPanel.hide()
         Services.AgentPanel.hide()
         Services.SettingsPanel.hide()
         Services.BarPopout.hide()
     }
 
-    Connections { target: Services.NotificationPanel; function onShownChanged() { if (Services.NotificationPanel.shown) root._closeIfOpen() } }
     Connections { target: Services.AgentPanel; function onShownChanged() { if (Services.AgentPanel.shown) root._closeIfOpen() } }
     Connections { target: Services.SettingsPanel; function onShownChanged() { if (Services.SettingsPanel.shown) root._closeIfOpen() } }
     // BarPopout.shown is a derived readonly property (`which.length > 0`),
-    // not a plain settable bool like the three above — every other
-    // consumer in this repo binds to it or reads `which` directly, none
-    // attach a Connections handler to its notify signal. Watching the
-    // underlying `which` instead matches that existing usage exactly.
+    // not a plain settable bool like the two above — every other consumer
+    // in this repo binds to it or reads `which` directly, none attach a
+    // Connections handler to its notify signal. Watching the underlying
+    // `which` instead matches that existing usage exactly.
     Connections { target: Services.BarPopout; function onWhichChanged() { if (Services.BarPopout.which.length > 0) root._closeIfOpen() } }
 }
