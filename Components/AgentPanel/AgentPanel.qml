@@ -5,7 +5,7 @@ import Quickshell.Wayland
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "tabs/agent" as Agent
+import "modules" as Modules
 import "../Bar/glyphs.js" as Glyphs
 
 // phiOS — Panels/AgentPanel (OOP-27, phios-agente-delta.md D-06). The
@@ -26,18 +26,18 @@ import "../Bar/glyphs.js" as Glyphs
 // Full chat-panel rework 2026-09-15 (direct instruction: "a full rework
 // of the chat panel with UX at its core"): "Chat" used to be two separate
 // destinations, Dashboard (search/projects/chat list) and Chat (the
-// active conversation) — Agent.ChatShell folds both into one persistent
+// active conversation) — Modules.ChatShell folds both into one persistent
 // sidebar-plus-conversation layout, the shape every mainstream chat app
 // already uses, so "Dashboard" no longer exists as its own rail icon.
 //
-// Every call goes through Services/Agent.qml, the one client point (ADR 098).
+// Every call goes through Services/Modules.qml, the one client point (ADR 098).
 //
 // features-change round 3 (panel style pass): the nav rail gained a hover
 // wash and a hairline "you are here" marker on its inner edge — it had no
 // clickable affordance at all before, only a weight change on the glyph.
 //
 // Entry points, all through Services/AgentPanel.qml:
-//   - the bar Φ segment  (Bar/modules/PhiAgent.qml)
+//   - the bar Φ segment  (Bar/modules/PhiModules.qml)
 //   - Super+P            (hyprland.lua.tmpl → `ipc call agent toggle`)
 //   - Settings › AI Agent "Open agent panel"
 //
@@ -94,7 +94,7 @@ PanelWindow {
     Services.LayerFocus { target: root }
 
     // Style pass 2026-09-15 — see `section`'s own comment above. `chats`
-    // loads asynchronously (Services/Agent.qml's refreshChats() spawns a
+    // loads asynchronously (Services/Modules.qml's refreshChats() spawns a
     // process and fills the array once it exits), so this cannot just read
     // `agent.chats` synchronously inside onShownChanged below; it arms
     // here and resolves once in the onChatsChanged handler further down,
@@ -127,7 +127,7 @@ PanelWindow {
     // Resolves `_autoOpenArmed` above once real chat data actually exists.
     // Picks the most recently updated chat rather than trusting the list's
     // own order — `updated` is the one field every entry is guaranteed to
-    // carry (Services/Agent.qml: "[{id,title,project,pinned,updated}]"),
+    // carry (Services/Modules.qml: "[{id,title,project,pinned,updated}]"),
     // sorting defensively instead of assuming `phi agent chat list` already
     // returns recency order. An empty list (genuinely no history yet) just
     // disarms — the Chat section's own "new chat" empty state is correct
@@ -427,13 +427,13 @@ PanelWindow {
                                 }
                             }
                         }
-                        Component { id: chatComp;   Agent.ChatShell { onRequestSection: (s) => root.section = s; onBlurred: keyScope.forceActiveFocus() } }
-                        Component { id: codeComp;   Agent.CodingSessions {} }
+                        Component { id: chatComp;   Modules.ChatShell { onRequestSection: (s) => root.section = s; onBlurred: keyScope.forceActiveFocus() } }
+                        Component { id: codeComp;   Modules.CodingSessions {} }
                         // File kept as MemoryProposals.qml (its own header
                         // comment explains the additive status-overview
                         // section) — only the rail key/section string and
                         // this Component's id changed to "status".
-                        Component { id: statusComp; Agent.MemoryProposals {} }
+                        Component { id: statusComp; Modules.MemoryProposals {} }
                     }
                 }
             }

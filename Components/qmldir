@@ -6,6 +6,9 @@ Bar 1.0 Bar/Bar.qml
 Launcher 1.0 Launcher/Launcher.qml
 Lock 1.0 Lock/Lock.qml
 Settings 1.0 Settings/Settings.qml
+AgentPanel 1.0 AgentPanel/AgentPanel.qml
+BarPopout 1.0 BarPopout/BarPopout.qml
+QuickNote 1.0 QuickNote.qml
 Cheatsheet 1.0 Cheatsheet.qml
 Toast 1.0 Toast.qml
 Osd 1.0 Osd.qml

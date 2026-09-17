@@ -45,10 +45,17 @@ ShellRoot {
 
     Components.Lock {}
 
+
+    Components.Launcher {
+        screen: Quickshell.screens[0]
+    }
+
     // FIXME: `Type Components.Settings unavailable` - `Type Sections.General unavailable`
-    // Components.Settings {
-    //     screen: Quickshell.screens[0]
-    // }
+    // Components.Settingß
+
+    Panels.AgentPanel {
+        screen: Quickshell.screens[0]
+    }
 
     Components.Cheatsheet {
         screen: Quickshell.screens[0]
@@ -80,30 +87,28 @@ ShellRoot {
     IpcHandler {
         target: "image"
         // qs -p ~/.config/quickshell/phi ipc call image open /path/to/file.png
-        function open(path: string): void { Services.ImageWindows.open(path) }
+        function open(path: string): void {
+            Services.ImageWindows.open(path);
+        }
     }
 
     // Overlays with no mounted UI surface yet — backends already live in
     // Services/, uncomment once each surface exists under Components/.
-    
     Components.BarPopout {
         screen: Quickshell.screens[0]
     }
+
     // Panels.NotificationsOverlay {
     //     screen: Quickshell.screens[0]
     // }
+
     // Panels.ClipboardOverlay {
     //     screen: Quickshell.screens[0]
     // }
-    // Panels.AgentPanel {
-    //     screen: Quickshell.screens[0]
-    // }
-    // Components.Launcher {
-    //     screen: Quickshell.screens[0]
-    // }
-    // Panels.QuickNote {
-    //     screen: Quickshell.screens[0]
-    // }
+
+    Panels.QuickNote {
+        screen: Quickshell.screens[0]
+    }
 
     // Magnifier
     Variants {
@@ -117,13 +122,27 @@ ShellRoot {
 
     IpcHandler {
         target: "magnifier"
-        function toggle(): void { Services.Magnifier.toggle() }
-        function show(): void { Services.Magnifier.show() }
-        function hide(): void { Services.Magnifier.hide() }
-        function zoomIn(): void { Services.Magnifier.zoomIn() }
-        function zoomOut(): void { Services.Magnifier.zoomOut() }
-        function grow(): void { Services.Magnifier.grow() }
-        function shrink(): void { Services.Magnifier.shrink() }
+        function toggle(): void {
+            Services.Magnifier.toggle();
+        }
+        function show(): void {
+            Services.Magnifier.show();
+        }
+        function hide(): void {
+            Services.Magnifier.hide();
+        }
+        function zoomIn(): void {
+            Services.Magnifier.zoomIn();
+        }
+        function zoomOut(): void {
+            Services.Magnifier.zoomOut();
+        }
+        function grow(): void {
+            Services.Magnifier.grow();
+        }
+        function shrink(): void {
+            Services.Magnifier.shrink();
+        }
     }
 
     // Cursor spotlight
@@ -137,9 +156,15 @@ ShellRoot {
 
     IpcHandler {
         target: "spotlight"
-        function press(): void { Services.Spotlight.show() }
-        function release(): void { Services.Spotlight.hide() }
-        function toggle(): void { Services.Spotlight.toggle() }
+        function press(): void {
+            Services.Spotlight.show();
+        }
+        function release(): void {
+            Services.Spotlight.hide();
+        }
+        function toggle(): void {
+            Services.Spotlight.toggle();
+        }
     }
 
     Tools.Screenshot {
@@ -165,15 +190,13 @@ ShellRoot {
     // }
 
     Component.onCompleted: {
-        console.log("phi-shell: " + Quickshell.screens.length
-        + " screen(s), variant=" + Config.Appearance.variant
-        + ", gpu=" + Config.Capabilities.gpuVendor)
+        console.log("phi-shell: " + Quickshell.screens.length + " screen(s), variant=" + Config.Appearance.variant + ", gpu=" + Config.Capabilities.gpuVendor);
 
         // QML singletons are lazy on first use — these three reads force
         // Clipboard/NightShift/Chroma to start at session start instead of
         // whenever their settings section is opened for the first time.
-        Services.Clipboard.entries
-        Services.NightShift.enabled
-        Services.Chroma.enabled
+        Services.Clipboard.entries;
+        Services.NightShift.enabled;
+        Services.Chroma.enabled;
     }
 }

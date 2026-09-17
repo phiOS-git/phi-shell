@@ -5,6 +5,7 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 import "../Bar/glyphs.js" as Glyphs
+import "modules" as Popouts
 
 // phiOS — Panels/BarPopout.qml (OOP-11; R3 #2/#9; OOP-22; OOP-23). The
 // small card that drops below the button that opened it — its right edge
