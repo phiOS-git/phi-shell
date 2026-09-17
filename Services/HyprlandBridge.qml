@@ -69,9 +69,8 @@ Singleton {
     readonly property var reservedWorkspaceIds: [11, 12]
 
     // UI policy, not a Hyprland IPC primitive, but shared because every
-    // caller (Services/NotificationPanel.qml, Services/AgentPanel.qml,
-    // Services/SettingsPanel.qml, Services/BarPopout.qml) needs the
-    // identical scan.
+    // caller (Services/AgentPanel.qml, Services/SettingsPanel.qml,
+    // Services/BarPopout.qml) needs the identical scan.
     //
     // If screens[0] (every caller above is single-instance, pinned to
     // screens[0]) is currently on a reserved workspace, switches to the

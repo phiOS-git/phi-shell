@@ -37,8 +37,25 @@ Widgets.PopoutSurface {
     fromBottom: Services.BarPopout.opensFromBottom(root.which)
     anchorEdge: Services.BarPopout.anchorEdge
     cardX: root.anchorEdge === "left" ? Services.BarPopout.anchorLeftX : Services.BarPopout.anchorRightX
-    cardWidth: root.chWidth * (["status", "stats", "network"].indexOf(root.which) !== -1 ? 44 : 36)
+
+    // notifications/clipboard are the two wide, tall exceptions to the
+    // standard chWidth-based card: notifications' history can run long,
+    // clipboard's search results always want a real scrollable area, so
+    // both size off the screen instead of a fixed character count.
+    readonly property bool _wideCard: root.which === "notifications" || root.which === "clipboard"
+    cardWidth: root._wideCard
+        ? Math.min(root.width * 0.32, root.chWidth * 46)
+        : root.chWidth * (["status", "stats", "network"].indexOf(root.which) !== -1 ? 44 : 36)
     cardHeight: bodyCol.implicitHeight + root.padding * 2
+
+    // The height budget notifications/clipboard's own module content can
+    // grow into, INNER content only (this card's shared `padding` is
+    // added back exactly once, by `cardHeight` above) — capped at 3/4 the
+    // screen height and at whatever room is actually left below the bar.
+    readonly property real _wideCardAvailableHeight: Math.min(
+        root.height * 0.75,
+        root.height - (Services.BarMetrics.height + Config.Appearance.panelGap) - Config.Appearance.panelGap
+    ) - root.padding * 2
 
     // The one corner nearest the triggering bar icon is radiusSmall, the
     // other three radiusLarge. "power" is the one left-isle key (top-left
@@ -79,6 +96,26 @@ Widgets.PopoutSurface {
     IpcHandler {
         target: "power"
         function confirmLogout(): void { powerActions.confirmAndPerform("logout") }
+    }
+
+    // Super+N / Super+Shift+V — same IPC targets/verbs
+    // Services/NotificationPanel.qml used to expose, now backed by
+    // Services.BarPopout's own "notifications"/"clipboard" keys.
+    IpcHandler {
+        target: "notifications"
+        function toggle(): void { Services.BarPopout.toggleNotifications() }
+        function open(): void { Services.BarPopout.openNotifications() }
+        function close(): void { Services.BarPopout.hide() }
+        function clipboard(): void { Services.BarPopout.toggleClipboard() }
+        function notifications(): void { Services.BarPopout.toggleNotifications() }
+    }
+    // Kept for back-compatibility with anything still calling the old
+    // "sidebar" target (a stale `qs ipc call sidebar` habit).
+    IpcHandler {
+        target: "sidebar"
+        function toggle(): void { Services.BarPopout.toggleNotifications() }
+        function open(): void { Services.BarPopout.openNotifications() }
+        function close(): void { Services.BarPopout.hide() }
     }
 
     // The shared card header's settings icon: every single-topic card gets
@@ -145,5 +182,22 @@ Widgets.PopoutSurface {
         Modules.Power      { chWidth: root.chWidth; active: root.which === "power" }
         Modules.Status     { chWidth: root.chWidth; active: root.which === "status" }
         Modules.Stats      { chWidth: root.chWidth; active: root.which === "stats" }
+
+        // Migrated from the old standalone NotificationsOverlay/
+        // ClipboardOverlay windows — both wide cards, sized via
+        // `_wideCardAvailableHeight`/`_wideCard` above instead of the
+        // standard chWidth formula.
+        Modules.Notifications {
+            active: root.which === "notifications"
+            screenHeight: root.height
+            availableHeight: root._wideCardAvailableHeight
+        }
+        Modules.Clipboard {
+            active: root.which === "clipboard"
+            screenWidth: root.width
+            screenHeight: root.height
+            availableHeight: root._wideCardAvailableHeight
+            dockItem: root.cardItem
+        }
     }
 }

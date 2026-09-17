@@ -4,13 +4,14 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Panels/tabs/Clipboard.qml (S-32; OOP-06 restyle). The clipboard
-// tab, to the user's directive:
-//   - a search bar, auto-focused when this tab opens (Super+Shift+V opens
-//     the panel straight here); typing filters the entries
+// Migrated from the old standalone ClipboardOverlay window (retired — see
+// docs/VERIFICATION.md) into a plain BarPopout "which" card, same shape
+// as every other module here:
+//   - a search bar, auto-focused when this card opens (Super+Shift+V
+//     opens the popout straight here); typing filters the entries
 //   - pinned entries, then the rest
 //   - arrows / Tab move the selection; Enter (or a click) copies the
-//     selected entry back onto the clipboard and closes the panel
+//     selected entry back onto the clipboard and closes the popout
 //   - Ctrl+P while an entry is selected toggles its pin; there is also a
 //     pin control in each card's corner
 //   - each card shows the text and, bottom-right in a lighter style, its
@@ -18,8 +19,7 @@ import qs.Widgets as Widgets
 //
 // Keyboard model is Launcher.qml's: the search TextInput always holds
 // focus, the list is never focused, and selection is a plain
-// `highlightedIndex` int over the flat visible list (pinned then rest) —
-// this is the shape that survived S-33/S-35's focus-routing bugs.
+// `highlightedIndex` int over the flat visible list (pinned then rest).
 //
 // Filtering is on `entry.preview` (the first line, extracted by
 // Services/Clipboard.qml's list pass) so it is synchronous and needs no
@@ -28,50 +28,52 @@ import qs.Widgets as Widgets
 Item {
     id: root
 
-    // The real screen size, handed down by Sidebar.qml — this item's own
-    // width/height is just the dock's right-hand strip, not the screen,
-    // and the preview overlay below needs the real thing to clamp against.
+    property bool active: false
+
+    // The real screen size, handed down by Components/BarPopout/
+    // BarPopout.qml — this item's own width/height is just the card, not
+    // the screen, and the preview overlay below needs the real thing to
+    // clamp against.
     required property real screenWidth
     required property real screenHeight
-    // A reference to the overlay's own card Item (Panels/
-    // ClipboardOverlay.qml's `cardWrap`) — this tab's root sits INSET
-    // inside it by Widgets/Panel.qml's own padding, so root's own absolute
-    // position is not the card's visible left edge. See
-    // _updatePreviewPosition below.
+    // A reference to the popout's own card Item (Widgets/PopoutSurface's
+    // `cardItem`) — this card sits INSET inside it by Widgets/Panel.qml's
+    // own padding, so root's own absolute position is not the card's
+    // visible left edge. See _updatePreviewPosition below.
     required property Item dockItem
+    // The pre-computed, padding-already-subtracted height budget this
+    // card may grow into (BarPopout.qml's own `_wideCardAvailableHeight`)
+    // — unlike Modules/Notifications.qml this is not content-capped, it
+    // always fills the budget: a clipboard history always wants a real
+    // scrollable area, not a shrink-to-fit card.
+    property real availableHeight: 0
 
-    // Interface rework Phase 3 (rework.md s4): drives the result list's
-    // StaggerReveal cascade — bound to the overlay window's own `shown`
-    // (Panels/ClipboardOverlay.qml). The search field itself is NOT part
-    // of the cascade (it grabs keyboard focus immediately on open; delaying
-    // its appearance would delay typing too).
-    property bool revealShown: true
+    width: parent ? parent.width : 0
+    height: root.availableHeight
+    visible: root.active
 
     property string query: ""
     property int highlightedIndex: 0
 
-    // --- hold/hover preview (docs/TODO.md: "clipboard should show an
-    // overlay with the complete command and extra informations when the
-    // selection is held for a while (or on mouse hover after some time)")
+    // --- hold/hover preview: an overlay with the complete entry and
+    // extra information when the selection is held for a while (or on
+    // mouse hover after some time).
     //
     // Read as one dwell mechanism with two triggers, not a press-and-hold
-    // gesture: "the selection" is highlightedIndex (this file's own
-    // header — "the search TextInput always holds focus, the list is
-    // never focused" — so there is no separate focus to "hold" on a row),
-    // and a long-press was deliberately not built instead. TapHandler's
-    // own tapped() signal still fires on release even after longPressed()
-    // has already fired for the same press (confirmed against the
-    // handler's documented behaviour, not assumed) — suppressing that
-    // correctly needs an interaction this file cannot verify without
-    // hardware, where the existing tap-to-copy-and-close is exactly the
-    // wrong thing to risk breaking.
+    // gesture: "the selection" is highlightedIndex (the search TextInput
+    // always holds focus, the list is never focused, so there is no
+    // separate focus to "hold" on a row), and a long-press was
+    // deliberately not built instead. TapHandler's own tapped() signal
+    // still fires on release even after longPressed() has already fired
+    // for the same press, so suppressing that correctly needs an
+    // interaction this file cannot verify without hardware, where the
+    // existing tap-to-copy-and-close is exactly the wrong thing to risk
+    // breaking.
     property string hoverTargetId: ""
     property bool previewVisible: false
 
-    // docs/TODO.md: "the clipboard preview should be on the left of the
-    // sidebar, rather than inside... vertically aligned with the relative
-    // entry." Screen-space position, read once (not a continuous binding —
-    // see _updatePreviewPosition below) right before the preview becomes
+    // Screen-space position, read once (not a continuous binding — see
+    // _updatePreviewPosition below) right before the preview becomes
     // visible. The preview overlay stays a plain child of root (no
     // reparenting to the window's own top item), so its own x/y are still
     // interpreted relative to root, not the screen — previewTargetX/
@@ -85,9 +87,7 @@ Item {
     property var _cardItems: ({})
     property real previewTargetX: 0    // root's own absolute X
     property real previewRootY: 0      // root's own absolute Y
-    // rework-status-bar.md Style item 7c: "aligned with the respective
-    // option not on the vertical center but on the top or bottom side" —
-    // needs the card's own top/bottom edges, not just its centre.
+    // Needs the card's own top/bottom edges, not just its centre.
     property real previewTargetTop: 0    // the dwelled card's absolute top Y
     property real previewTargetBottom: 0 // the dwelled card's absolute bottom Y
 
@@ -104,10 +104,7 @@ Item {
         previewDwell.restart()
     }
 
-    // Style plan §6.5's own category B (state transition) covers the
-    // panel's own fade; this dwell length is a placeholder the same way
-    // Tooltip.qml's own `delay: 500` is — no document names a number,
-    // flagged for cheap veto.
+    // No document names an exact dwell length; flagged as cheap to veto.
     property int previewDelay: 700
 
     Timer {
@@ -119,23 +116,19 @@ Item {
         }
     }
 
-    // One-shot read at the moment the preview is about to show — the same
-    // shape Widgets/Segment.qml's rightX() already uses for the bar
-    // popouts (mapToItem called imperatively from a handler, not left
-    // inside a live declarative binding, which this file's own prior
-    // comment on this exact overlay flagged as unverifiable without a
-    // compositor, and which mapToItem's own C++ implementation does not
-    // register as a trackable binding dependency anyway). previewTargetX
-    // reads dockItem's own absolute left edge, NOT root's own — root sits
-    // inset inside the dock by Widgets/Panel.qml's own padding, so
-    // root.mapToItem would have landed the preview overlapping the dock's
-    // left border by about one padding's worth instead of sitting beside
-    // it (caught in review before this landed). previewRootY is still
-    // root's own absolute Y: the preview panel stays root's own child
-    // (see below), so ITS y needs converting relative to root, not dock.
-    // A missing card (dwellTargetId stale, or the Repeater hasn't created
-    // it yet) leaves the previous target in place rather than snapping to
-    // (0,0).
+    // One-shot read at the moment the preview is about to show (mapToItem
+    // called imperatively from a handler, not left inside a live
+    // declarative binding — mapToItem's own implementation does not
+    // register as a trackable binding dependency). previewTargetX reads
+    // dockItem's own absolute left edge, NOT root's own — root sits inset
+    // inside the dock by Widgets/Panel.qml's own padding, so
+    // root.mapToItem would land the preview overlapping the dock's left
+    // border by about one padding's worth instead of sitting beside it.
+    // previewRootY is still root's own absolute Y: the preview panel
+    // stays root's own child (see below), so ITS y needs converting
+    // relative to root, not dock. A missing card (dwellTargetId stale, or
+    // the Repeater hasn't created it yet) leaves the previous target in
+    // place rather than snapping to (0,0).
     function _updatePreviewPosition() {
         root.previewRootY = root.mapToItem(null, 0, 0).y
         root.previewTargetX = root.dockItem.mapToItem(null, 0, 0).x
@@ -157,16 +150,15 @@ Item {
     readonly property bool previewPinned: root.previewEntryData !== null
         && Services.Clipboard.isPinned(root.previewEntryData.id)
 
-    // The full text is on disk, not in Services.Clipboard.entries (this
-    // file's own header: entries carry only `preview`, the first line —
-    // reading the rest is exactly the "per-row FileView" that comment says
-    // filtering does not need; the preview overlay is a different reader,
-    // triggered only once dwelt on). Read imperatively in onLoaded, not a
-    // declarative binding on previewFile.text() — the same shape
-    // pinsFile/registryFile already use elsewhere, since a FileView's
-    // loaded content is not confirmed to be a trackable binding dependency.
-    // Capped: these are raw wl-paste dumps, and an unbounded paste landing
-    // in a Text item is a hang, not a cosmetic overflow.
+    // The full text is on disk, not in Services.Clipboard.entries (entries
+    // carry only `preview`, the first line — reading the rest is exactly
+    // the "per-row FileView" filtering does not need; the preview overlay
+    // is a different reader, triggered only once dwelt on). Read
+    // imperatively in onLoaded, not a declarative binding on
+    // previewFile.text() — a FileView's loaded content is not confirmed
+    // to be a trackable binding dependency. Capped: these are raw
+    // wl-paste dumps, and an unbounded paste landing in a Text item is a
+    // hang, not a cosmetic overflow.
     readonly property int previewMaxChars: 4000
     property string previewFullText: ""
     property bool previewTruncated: false
@@ -195,45 +187,34 @@ Item {
     readonly property real chWidth: chMetrics.width
     readonly property real gap: chWidth * Config.Appearance.space1
 
-    // Panels/Sidebar.qml's Loader keeps this item alive across a plain
-    // show/hide of the panel — only switching away from the Clipboard tab
-    // and back destroys and recreates it (a new sourceComponent). So
-    // Component.onCompleted alone only resets state the first time this
-    // tab is ever opened; every later reopen of the panel while parked on
-    // this tab left the old search text, selection and scroll position in
-    // place. docs/TODO.md: "clipboard should reset the current selection
-    // every time it's opened, starting back from the top." — reset() below
-    // runs on creation AND whenever Services.NotificationPanel.shown
-    // becomes true.
+    // This card is never destroyed/recreated once created (a direct,
+    // always-alive BarPopout module, not behind a Loader). Reset the
+    // current selection every time it's actually opened, starting back
+    // from the top — Component.onCompleted alone would only do this the
+    // first time ever; onActiveChanged below covers every later reopen.
     function reset() {
         Services.Clipboard.refresh()
         root.query = ""
         field.text = ""
         root.highlightedIndex = 0
         list.contentY = 0
-        // The preview has visible state of its own (docs/TODO.md's hold/
-        // hover overlay, below) — the exact bug class the entry above this
-        // function fixed, so it gets the same explicit reset rather than
-        // trusting dwellTargetId to happen to change on its own.
+        // The preview has visible state of its own (the hold/hover
+        // overlay above) — the exact bug class the comment above this
+        // function describes, so it gets the same explicit reset rather
+        // than trusting dwellTargetId to happen to change on its own.
         root.hoverTargetId = ""
         root.previewVisible = false
         previewDwell.stop()
-        // Deferred: the window's Wayland keyboard grab (Services.LayerFocus
-        // on Panels/Sidebar) and this component's creation race when the
-        // panel opens straight onto this tab — callLater runs after both
-        // settle, the same reason Launcher focuses its field from an event
-        // rather than inline.
+        // Deferred: the window's Wayland keyboard grab (Services.
+        // LayerFocus, Widgets/PopoutSurface) and this card becoming
+        // active can race — callLater runs after both settle, the same
+        // reason Launcher focuses its field from an event rather than
+        // inline.
         Qt.callLater(function() { field.forceActiveFocus() })
     }
 
     Component.onCompleted: root.reset()
-
-    Connections {
-        target: Services.NotificationPanel
-        function onClipboardShownChanged() {
-            if (Services.NotificationPanel.clipboardShown) root.reset()
-        }
-    }
+    onActiveChanged: if (root.active) root.reset()
 
     function matches(e) {
         const q = root.query.trim().toLowerCase()
@@ -247,9 +228,8 @@ Item {
         .filter((e) => !Services.Clipboard.isPinned(e.id) && root.matches(e))
     readonly property var navList: root.pinned.concat(root.rest)
 
-    // rework-issues.md "New requests" item 4 removed the card's own time
-    // row entirely (kept only in the hover preview below) — the minute-
-    // resolution fmtTime() that row used to call is gone with it.
+    // The card's own time row was removed entirely (kept only in the
+    // hover preview below).
     function fmtTimeFull(ts) {
         return new Date(ts).toLocaleString(Qt.locale(), "ddd d MMM yyyy  HH:mm:ss")
     }
@@ -266,7 +246,7 @@ Item {
         const e = root.navList[root.highlightedIndex]
         if (!e) return
         Services.Clipboard.restore(e.id, e.mime)
-        Services.NotificationPanel.hide()
+        Services.BarPopout.hide()
     }
 
     function togglePinSelected() {
@@ -276,26 +256,19 @@ Item {
         else Services.Clipboard.pin(e.id)
     }
 
-    // docs/TODO.md: "there is no way to remove elements from the clipboard
-    // history (the context menu might be a good candidate to avoid
-    // crowding the ui)." Delete itself (Services.Clipboard.deleteEntry)
-    // already existed — it was already used internally for the TTL sweep
-    // and was simply never exposed to the UI at all. A single-item delete,
-    // same low-stakes shape "Clear this key" (Settings/sections/
-    // Devices.qml) already established for one small, easily-noticed-if-
-    // wrong item — no confirmation dialog, unlike a bulk "Clear all".
-    //
-    // Wires the existing Widgets/ContextMenu.qml (S-37) — built complete
-    // but deliberately left unwired, by the user's own explicit choice
-    // recorded in that file's own header, until a real usage pattern was
-    // clear. This is that pattern. Item shape is that widget's own real
-    // API ({label, onActivated}), not invented here.
+    // A single-item delete (Services.Clipboard.deleteEntry, already used
+    // internally for the TTL sweep but never exposed to the UI), same
+    // low-stakes shape "Clear this key" (Settings/sections/Devices.qml)
+    // already established for one small, easily-noticed-if-wrong item —
+    // no confirmation dialog, unlike a bulk "Clear all". Wires the
+    // existing Widgets/ContextMenu.qml. Item shape is that widget's own
+    // real API ({label, onActivated}), not invented here.
     function _clipboardMenuItems(entry) {
         const pinned = Services.Clipboard.isPinned(entry.id)
         return [
             { label: "Restore", onActivated: () => {
                 Services.Clipboard.restore(entry.id, entry.mime)
-                Services.NotificationPanel.hide()
+                Services.BarPopout.hide()
             } },
             { label: pinned ? "Unpin" : "Pin", onActivated: () => {
                 pinned ? Services.Clipboard.unpin(entry.id) : Services.Clipboard.pin(entry.id)
@@ -329,7 +302,6 @@ Item {
             text: "filter clipboard…"
             visible: field.text.length === 0
         }
-        // docs/TODO.md, style pass: "no clear/clean button for searchbars."
         Widgets.StyledIcon {
             id: clipClearGlyph
             visible: field.text.length > 0
@@ -366,7 +338,7 @@ Item {
             Keys.onTabPressed: root.move(1)
             Keys.onBacktabPressed: root.move(-1)
             Keys.onReturnPressed: root.activateSelected()
-            Keys.onEscapePressed: Services.NotificationPanel.hide()
+            Keys.onEscapePressed: Services.BarPopout.hide()
             Keys.onPressed: (e) => {
                 if (e.key === Qt.Key_P && (e.modifiers & Qt.ControlModifier)) {
                     root.togglePinSelected()
@@ -396,7 +368,7 @@ Item {
 
         Widgets.StaggerReveal {
             id: listCol
-            shown: root.revealShown
+            shown: root.active
             width: parent.width
             spacing: root.gap
 
@@ -409,10 +381,8 @@ Item {
 
             Repeater { model: root.pinned; delegate: entryCard }
 
-            // rework-issues.md item 8: "there should be more some padding
-            // for each inner section and those should be divided by an
-            // horizontal thin line separator" — Pinned/Recent used to be
-            // told apart by a label and spacing alone.
+            // Pinned/Recent are told apart by a separator + label, not
+            // spacing alone.
             Widgets.Separator {
                 width: parent.width
                 visible: root.pinned.length > 0 && root.rest.length > 0
@@ -438,32 +408,19 @@ Item {
 
     // The hold/hover preview overlay itself — a later sibling of the
     // Flickable above, so it paints on top of (not clipped by) the list.
-    // docs/TODO.md: "should be on the left of the sidebar, rather than
-    // inside. Also it's very low, it should be vertically aligned with the
-    // relative entry (beware of the position in the screen, so that it
-    // does not go out of the screen area)." Previously anchored to root's
-    // own bottom/left/right — a full-width bar docked low inside the
-    // sidebar, not tracking any specific entry, because per-card mapToItem
-    // tracking was flagged as unverifiable without a compositor (see the
-    // comment this replaced). Built properly now, at the user's explicit
-    // request: still a plain child of root (no reparenting to the
-    // window's own top item, which would be the other way to do this), so
-    // its x/y are computed in ABSOLUTE screen terms (clamped to
+    // Still a plain child of root (no reparenting to the window's own top
+    // item), so its x/y are computed in ABSOLUTE screen terms (clamped to
     // root.screenWidth/screenHeight so it can never land off-screen), then
     // converted back to root-relative by subtracting root's own absolute
     // position (previewTargetX/previewRootY) — see _updatePreviewPosition
-    // above. Still untested against a real compositor (phi-shell/
-    // CLAUDE.md), same caveat as everything else in this file.
+    // above.
     Widgets.Panel {
         id: preview
 
-        // rework-status-bar.md Style item 7d: "variable width (from 100px
-        // minimum up to 600px) based on its content" — was a fixed 80% of
-        // the dock's own width regardless of what the entry actually
-        // held. Measured off the same text the content Text below renders
+        // Variable width (100px minimum up to 600px) based on its content
+        // — measured off the same text the content Text below renders
         // (TextMetrics resolves a multi-line string's width as its widest
-        // line, the same measurement Qt's own Text/TextMetrics use to lay
-        // it out — good enough for a size estimate, not pixel-exact).
+        // line, good enough for a size estimate, not pixel-exact).
         TextMetrics {
             id: previewTextMetrics
             font.family: Config.Appearance.fontMono
@@ -472,17 +429,9 @@ Item {
                 : (root.previewFullText.length > 0 ? root.previewFullText : "(empty)")
         }
         width: Math.max(100, Math.min(previewTextMetrics.width + padding * 2, 600))
-        // rework-issues.md "New requests" item 5: "make the hover
-        // overlays larger with a range 100px-300px based on the
-        // content" — was unclamped on the small end (a one-line entry
-        // could shrink the whole card down to almost nothing) and capped
-        // at 50% of screen height on the large end; now a literal
-        // 100-300px range, the content height only ever chosen between
-        // those two bounds. Style item 7e re-confirms this same content-
-        // driven formula (padding is already uniform on all sides via
-        // Panel's own single `padding` value — nothing to change there);
-        // its only real ask, "add spacing between the content and the
-        // details line", is `previewCol`'s own structure below.
+        // Height: a literal 100-300px range, content-driven only between
+        // those two bounds (padding is already uniform on all sides via
+        // Panel's own single `padding` value).
         height: Math.max(100, Math.min(previewCol.implicitHeight + padding * 2, 300))
         radius: Config.Appearance.radiusLarge
         visible: opacity > 0
@@ -491,30 +440,21 @@ Item {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
-        // rework-status-bar.md Style item 7b: "should have some spacing
-        // from the original overlay" — was `Config.Appearance.panelGap`
-        // alone (2px, the flat token every chrome-to-chrome gap in this
-        // shell already uses for a MINIMAL separation, e.g. the bar-to-
-        // overlay gap) between the preview's right edge and the dock's
-        // left edge; too tight to read as real breathing room between two
-        // independent floating surfaces. `panelGap` plus one real spacing
-        // unit (`space1`) keeps the same structural minimum while adding
-        // a visible gap on top of it.
+        // `panelGap` plus one real spacing unit (`space1`) between the
+        // preview's right edge and the dock's left edge — real breathing
+        // room between two independent floating surfaces.
         readonly property real _gapX: Config.Appearance.panelGap + root.chWidth * Config.Appearance.space1
         // Desired position in ABSOLUTE screen coordinates: just to the
-        // left of root's own current left edge (previewTargetX). Style
-        // item 7c: "aligned with the respective option not on the
-        // vertical center but on the top or bottom side (based on the
-        // screen position)" — was vertically centred on the dwelled
-        // card; now flips to whichever edge actually has more screen
-        // room to grow into (top-aligned, growing down, when there's more
-        // space below the card than above it; bottom-aligned, growing up,
-        // otherwise), same "flip to the side that fits" rule a tooltip or
-        // context menu already uses. Both axes independently clamped
-        // inside [panelGap, screen edge - own size - panelGap] so neither
-        // can push the panel off-screen. Converted to root-relative x/y
-        // (what this Item's own x/y actually mean, since it stays root's
-        // child) by subtracting root's own absolute position.
+        // left of root's own current left edge (previewTargetX), aligned
+        // with whichever edge actually has more screen room to grow into
+        // (top-aligned, growing down, when there's more space below the
+        // card than above it; bottom-aligned, growing up, otherwise) —
+        // the same "flip to the side that fits" rule a tooltip or context
+        // menu already uses. Both axes independently clamped inside
+        // [panelGap, screen edge - own size - panelGap] so neither can
+        // push the panel off-screen. Converted to root-relative x/y (what
+        // this Item's own x/y actually mean, since it stays root's child)
+        // by subtracting root's own absolute position.
         readonly property real _spaceAbove: root.previewTargetTop
         readonly property real _spaceBelow: root.screenHeight - root.previewTargetBottom
         readonly property bool _alignBottom: preview._spaceBelow < preview._spaceAbove
@@ -531,25 +471,19 @@ Item {
         x: preview._absX - root.previewTargetX
         y: preview._absY - root.previewRootY
 
-        // No click-swallower here (unlike Launcher.qml's panelWrap or
-        // Sidebar.qml's dock): those sit under a modal surface where
-        // nothing beneath should be interactive at all, but a MouseArea
-        // here would also consume hover, so every card the overlay
-        // covers would stop reporting HoverHandler.hovered the moment it
-        // appears — clearing hoverTargetId, which hides the overlay,
-        // which makes the card hoverable again, which can re-show it: a
-        // flicker loop centred on exactly where the feature is used. A
-        // stray click landing on a covered card instead is the smaller
-        // problem, and this Panel already paints opaquely over it.
+        // No click-swallower here (unlike Launcher.qml's panelWrap): a
+        // MouseArea here would also consume hover, so every card the
+        // overlay covers would stop reporting HoverHandler.hovered the
+        // moment it appears — clearing hoverTargetId, which hides the
+        // overlay, which makes the card hoverable again, which can
+        // re-show it: a flicker loop centred on exactly where the
+        // feature is used. A stray click landing on a covered card
+        // instead is the smaller problem, and this Panel already paints
+        // opaquely over it.
 
-        // rework-status-bar.md Style item 7e: "add spacing between the
-        // content and the details line" — the main content (text/image)
-        // and the trailing time/source row used to share one flat
-        // Column's uniform `spacing`, so the row read as just another
-        // content line rather than a distinct footer. Split into an inner
-        // "content" Column (its own original, tighter spacing) and the
-        // details row as this outer Column's second child, so only the
-        // one gap this item actually asks about grows.
+        // Content (text/image) and the trailing time/source row are two
+        // separate Columns (the inner one keeping its own tighter
+        // spacing) so only the gap between the two grows, not every line.
         Column {
             id: previewCol
             width: parent.width
@@ -586,12 +520,9 @@ Item {
                 }
             }
 
-            // rework-issues.md "New requests" item 5: "make the time
-            // signature and the source spaced between" — was one text
-            // blob joined by " · " separators; now the timestamp sits at
-            // the left edge and the source (mime type + pinned/truncated
-            // flags) at the right, spread across the row instead of
-            // chained together.
+            // The timestamp sits at the left edge and the source (mime
+            // type + pinned/truncated flags) at the right, spread across
+            // the row instead of chained together.
             Item {
                 width: parent.width
                 visible: root.previewEntryData !== null
@@ -622,19 +553,11 @@ Item {
     Component {
         id: entryCard
 
-        // Style pass 2026-09-14 (docs/TODO.md: "the clipboard looks clunky
-        // and awful, it is not minimal, thin and modern as expected"). Was
-        // a Widgets.Panel per entry — a fully bordered, filled card, the
-        // widget this shell otherwise reserves for a standalone framed
-        // surface (a settings preview block, a popout body) — stacked once
-        // per clipboard entry with only a rhythm unit of gap between them,
-        // so the list read as a dense pile of boxes rather than a list.
-        // Now a flat row: no border, no persistent fill, a hover wash and a
-        // full-invert selection — the exact same recipe Widgets/ListRow
-        // already uses everywhere else a list of things lives in this
-        // shell (Settings' bluetooth/wifi/firewall lists, the launcher's
-        // own results). At rest its background matches the dock's own
-        // panelBackground exactly, so it reads as ambient, not as a card.
+        // A flat row: no border, no persistent fill, a hover wash and a
+        // full-invert selection — the same recipe Widgets/ListRow already
+        // uses everywhere else a list of things lives in this shell. At
+        // rest its background matches the dock's own panelBackground
+        // exactly, so it reads as ambient, not as a card.
         Item {
             id: card
             required property var modelData
@@ -698,13 +621,9 @@ Item {
                     width: parent.width
                     spacing: root.gap / 2
 
-                    // rework-issues.md "New requests" item 4: "reduce
-                    // entries to a single line with trimming (ellipsis,
-                    // '...') and remove the time in the list. Leave the
-                    // time information in the hover overlay" — was a
-                    // 2-line wrap plus a second, separate time row; the
-                    // hover overlay below already shows the time
-                    // (fmtTimeFull), so dropping it here loses nothing.
+                    // Reduced to a single line with trimming (ellipsis)
+                    // and no time in the list — the hover overlay above
+                    // already shows the time (fmtTimeFull).
                     Widgets.StyledText {
                         width: parent.width - pinBtn.width - root.chWidth
                         mono: !card.isImage
@@ -743,18 +662,15 @@ Item {
                 onTapped: {
                     root.highlightedIndex = card.flatIndex
                     Services.Clipboard.restore(card.modelData.id, card.modelData.mime)
-                    Services.NotificationPanel.hide()
+                    Services.BarPopout.hide()
                 }
             }
 
-            // docs/TODO.md: "there is no way to remove elements from the
-            // clipboard history (the context menu might be a good
-            // candidate to avoid crowding the ui)." A second, independent
-            // TapHandler rather than branching inside the one above:
-            // PointerHandler's own default acceptedButtons is
-            // Qt.LeftButton, so the existing left-click-to-restore handler
-            // above was never actually reacting to a right-click at all —
-            // this one just adds the button the other never claimed.
+            // A second, independent TapHandler rather than branching
+            // inside the one above: PointerHandler's own default
+            // acceptedButtons is Qt.LeftButton, so the restore handler
+            // above never reacts to a right-click — this one just adds
+            // the button the other never claimed.
             TapHandler {
                 acceptedButtons: Qt.RightButton
                 onTapped: {
@@ -784,10 +700,10 @@ Item {
         }
     }
 
-    // A real Quickshell PopupWindow (Widgets/ContextMenu.qml's own header),
-    // not a plain in-panel Item — its own z-order relative to this tab's
-    // cards is not a concern here, unlike every other floating overlay in
-    // this file (the preview above).
+    // A real Quickshell PopupWindow (Widgets/ContextMenu.qml's own
+    // header), not a plain in-panel Item — its own z-order relative to
+    // this card's own entries is not a concern here, unlike every other
+    // floating overlay in this file (the preview above).
     Widgets.ContextMenu {
         id: clipboardContextMenu
     }

@@ -93,19 +93,14 @@ ShellRoot {
         }
     }
 
+    // Notifications and clipboard are BarPopout "which" cards now
+    // (Components/BarPopout/modules/{Notifications,Clipboard}.qml), not
+    // their own mounted surfaces.
     Components.BarPopout {
         screen: Quickshell.screens[0]
     }
 
     Components.Calendar {
-        screen: Quickshell.screens[0]
-    }
-
-    Components.NotificationsOverlay {
-        screen: Quickshell.screens[0]
-    }
-
-    Components.ClipboardOverlay {
         screen: Quickshell.screens[0]
     }
 

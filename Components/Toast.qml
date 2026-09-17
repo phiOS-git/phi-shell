@@ -92,7 +92,7 @@ PanelWindow {
             // still owns that — opening the panel to look at something is
             // not the same gesture as being done with it.
             HoverHandler { id: toastHover; cursorShape: Qt.PointingHandCursor }
-            TapHandler { onTapped: Services.NotificationPanel.openNotifications() }
+            TapHandler { onTapped: Services.BarPopout.openNotifications() }
 
             Row {
                 id: layout

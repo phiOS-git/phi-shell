@@ -5,9 +5,9 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../glyphs.js" as Glyphs
 
-// A clipboard glyph in the right isle; a click opens the clipboard
-// overlay (Services.NotificationPanel.toggleClipboard()) — same click-to-
-// toggle shape as the notification bell.
+// A clipboard glyph in the right isle; a click opens the clipboard card
+// (Services.BarPopout.toggleClipboard()) — same click-to-toggle shape as
+// the notification bell.
 //
 // The "new entry" animation is a brief `tone` pulse, not an overlay-
 // Rectangle flash: a Rectangle appended as a child paints on top of
@@ -27,18 +27,18 @@ Widgets.Segment {
     required property ShellScreen screen
 
     ambient: "isle"
-    active: Services.NotificationPanel.clipboardShown
+    active: Services.BarPopout.which === "clipboard"
     tone: root._pulse ? "info" : ""
 
     property bool _pulse: false
 
     // Registers this icon's own live position getter, so
-    // Services/NotificationPanel.qml's open()/toggle() — called
-    // identically by a click and by the Super+Shift+V keybind — always
-    // aligns the overlay to this icon's real current position.
-    Component.onCompleted: Services.NotificationPanel.clipboardIconRightX = root.rightX
+    // Services/BarPopout.qml's open()/toggle() — called identically by a
+    // click and by the Super+Shift+V keybind — always aligns the popout
+    // to this icon's real current position.
+    Component.onCompleted: Services.BarPopout.clipboardIconRightX = root.rightX
 
-    onActivated: Services.NotificationPanel.toggleClipboard()
+    onActivated: Services.BarPopout.toggleClipboard()
 
     Timer {
         id: pulseOffTimer

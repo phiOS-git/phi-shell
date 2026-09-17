@@ -22,7 +22,6 @@ Singleton {
     property bool shown: false
 
     onShownChanged: if (root.shown) {
-        Services.NotificationPanel.hide()
         Services.SettingsPanel.hide()
         Services.BarPopout.hide()
         Services.HyprlandBridge.leaveReservedWorkspace()

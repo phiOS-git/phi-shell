@@ -48,7 +48,6 @@ Singleton {
     // so it covers every entry point below (show, openSection, reveal)
     // the same way.
     onShownChanged: if (root.shown) {
-        Services.NotificationPanel.hide()
         Services.AgentPanel.hide()
         Services.BarPopout.hide()
         Services.HyprlandBridge.leaveReservedWorkspace()
