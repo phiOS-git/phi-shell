@@ -366,7 +366,7 @@ Item {
 
                 Repeater {
                     model: root.agent.messages
-                    delegate: Tabs.ChatBubble {
+                    delegate: Local.ChatBubble {
                         required property var modelData
                         from: modelData.role === "user" ? "you" : (modelData.role === "error" ? "error" : "agent")
                         text: modelData.text
