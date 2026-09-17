@@ -45,9 +45,10 @@ ShellRoot {
 
     Components.Lock {}
 
-    Components.Settings {
-        screen: Quickshell.screens[0]
-    }
+    // FIXME: `Type Components.Settings unavailable` - `Type Sections.General unavailable`
+    // Components.Settings {
+    //     screen: Quickshell.screens[0]
+    // }
 
     Components.Cheatsheet {
         screen: Quickshell.screens[0]
@@ -84,9 +85,10 @@ ShellRoot {
 
     // Overlays with no mounted UI surface yet — backends already live in
     // Services/, uncomment once each surface exists under Components/.
-    // Panels.BarPopout {
-    //     screen: Quickshell.screens[0]
-    // }
+    
+    Components.BarPopout {
+        screen: Quickshell.screens[0]
+    }
     // Panels.NotificationsOverlay {
     //     screen: Quickshell.screens[0]
     // }
