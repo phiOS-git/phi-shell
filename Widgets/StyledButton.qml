@@ -31,9 +31,9 @@ Item {
     readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState, "shaded")
 
     // design/tokens.common.sh stores space-N in `ch`, not px — see
-    // Panel.qml's identical comment. Measured locally rather than shared,
-    // since neither WidgetStates.js nor a QML Singleton can host the
-    // TextMetrics object that does the measuring.
+    // WidgetStates.js's chToPixels() comment. Measured locally rather than
+    // shared, since neither WidgetStates.js nor a QML Singleton can host
+    // the TextMetrics object that does the measuring.
     TextMetrics {
         id: chMetrics
         font.family: Config.Appearance.fontMono

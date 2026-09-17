@@ -14,6 +14,8 @@ import "WidgetStates.js" as WidgetStates
 // `indicatorEdge` picks that edge: "bottom" for a horizontal strip (the
 // ordinary tab convention), "right"/"left" for a vertical icon rail on the
 // panel's left/right edge.
+//
+// No caller has been migrated to it yet.
 
 Item {
     id: root
@@ -45,7 +47,7 @@ Item {
     readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState, "tab")
 
     // design/tokens.common.sh stores space-N in `ch`, not px — see
-    // Widgets/Panel.qml's identical comment.
+    // WidgetStates.js's chToPixels() comment.
     TextMetrics {
         id: chMetrics
         font.family: Config.Appearance.fontMono

@@ -39,7 +39,7 @@ Item {
     readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState, "shaded")
 
     // design/tokens.common.sh stores space-N in `ch`, not px — see
-    // Panel.qml's identical comment.
+    // WidgetStates.js's chToPixels() comment.
     TextMetrics {
         id: chMetrics
         font.family: Config.Appearance.fontMono

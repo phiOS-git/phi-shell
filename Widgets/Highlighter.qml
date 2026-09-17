@@ -32,6 +32,8 @@ import "WidgetStates.js" as WidgetStates
 //
 // Motion category B throughout: hover and a one-shot flash are both
 // discrete, triggered state changes.
+//
+// No caller has been migrated to it yet.
 
 Item {
     id: root
