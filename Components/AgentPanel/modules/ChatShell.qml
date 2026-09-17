@@ -297,7 +297,7 @@ Item {
                 }
             }
 
-            Chat {
+            Local.Chat {
                 anchors.fill: parent
                 anchors.leftMargin: root.gap
                 visible: root.selectedProject.length === 0
