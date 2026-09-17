@@ -45,13 +45,14 @@ ShellRoot {
 
     Components.Lock {}
 
-
     Components.Launcher {
         screen: Quickshell.screens[0]
     }
 
     // FIXME: `Type Components.Settings unavailable` - `Type Sections.General unavailable`
-    // Components.Settingß
+    Components.Settings {
+        screen: Quickshell.screens[0]
+    }
 
     Components.AgentPanel {
         screen: Quickshell.screens[0]
