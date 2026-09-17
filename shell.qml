@@ -169,23 +169,22 @@ ShellRoot {
         screen: Quickshell.screens[0]
     }
 
-    // Dialogs not yet mounted — backends exist in Services/{ConfirmDialog,
-    // PowerMenu,SensorPermissions,...}.qml.
-    // Components.Dialogs.ConfirmDialog {
-    //     screen: Quickshell.screens[0]
-    // }
-    // Components.Dialogs.SensorPermissionPrompt {
-    //     screen: Quickshell.screens[0]
-    // }
-    // Components.Dialogs.BatteryAlert {
-    //     screen: Quickshell.screens[0]
-    // }
-    // Components.Dialogs.PowerMenu {
-    //     screen: Quickshell.screens[0]
-    // }
-    // Components.Dialogs.TimerAlert {
-    //     screen: Quickshell.screens[0]
-    // }
+    // Dialogs - TODO: have a single overlay, handles multiple calls internally
+    Components.Dialogs.ConfirmDialog {
+        screen: Quickshell.screens[0]
+    }
+    Components.Dialogs.SensorPermissionPrompt {
+        screen: Quickshell.screens[0]
+    }
+    Components.Dialogs.BatteryAlert {
+        screen: Quickshell.screens[0]
+    }
+    Components.Dialogs.PowerMenu {
+        screen: Quickshell.screens[0]
+    }
+    Components.Dialogs.TimerAlert {
+        screen: Quickshell.screens[0]
+    }
 
     Component.onCompleted: {
         console.log("phi-shell: " + Quickshell.screens.length + " screen(s), variant=" + Config.Appearance.variant + ", gpu=" + Config.Capabilities.gpuVendor);

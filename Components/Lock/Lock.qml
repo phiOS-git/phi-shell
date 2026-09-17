@@ -8,7 +8,7 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 // Same-directory sibling (MatrixRain.qml etc.), reached via a namespaced
 // relative import, not implicit same-dir resolution.
-import "." as Local
+import "screensavers" as Screensavers
 // The pill row shared with Components/Dialogs/PowerMenu.qml, reached the
 // same namespaced-relative way Local above reaches this directory's own
 // siblings.
@@ -367,29 +367,29 @@ WlSessionLock {
         // here matches that effect's own file-level default exactly, so
         // an untouched key renders identically to before these settings
         // existed.
-        Component { id: lavaFx; Local.LavaLamp {
+        Component { id: lavaFx; Screensavers.LavaLamp {
             speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("lava")
             blobCount: Config.LockPrefs.paramFor("lava", "blobCount", 9)
             wobble: Config.LockPrefs.paramFor("lava", "wobble", 1.0)
         } }
-        Component { id: matrixFx; Local.MatrixRain {
+        Component { id: matrixFx; Screensavers.MatrixRain {
             speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("matrix")
             density: Config.LockPrefs.paramFor("matrix", "density", 1.0)
         } }
-        Component { id: starFx; Local.Starfield {
+        Component { id: starFx; Screensavers.Starfield {
             speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("starfield")
             starCount: Config.LockPrefs.paramFor("starfield", "starCount", 140)
         } }
-        Component { id: plasmaFx; Local.Plasma {
+        Component { id: plasmaFx; Screensavers.Plasma {
             speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("plasma")
             resolution: Config.LockPrefs.paramFor("plasma", "resolution", 1.0)
         } }
-        Component { id: lifeFx; Local.Life {
+        Component { id: lifeFx; Screensavers.Life {
             speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("life")
             resolution: Config.LockPrefs.paramFor("life", "resolution", 1.0)
             seedDensity: Config.LockPrefs.paramFor("life", "seedDensity", 0.28)
         } }
-        Component { id: boidsFx; Local.Boids {
+        Component { id: boidsFx; Screensavers.Boids {
             speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("boids")
             boidCount: Config.LockPrefs.paramFor("boids", "boidCount", 40)
         } }
