@@ -94,10 +94,25 @@ Widgets.Segment {
         // not one fused glyph.
         Item {
             id: pivot
-            readonly property real _badgeGap: root.gap
+            readonly property real _badgeGap: root.gap * 4
             implicitWidth: ethIcon.implicitWidth + badgeIcon.implicitWidth + pivot._badgeGap
             implicitHeight: Math.max(ethIcon.implicitHeight, badgeIcon.implicitHeight)
 
+            // VPN/Tailscale badge — sits in its own reserved slot to the
+            // main glyph's right, faded in only while a tunnel is up. One
+            // shared glyph for both Tailscale and a plain WireGuard
+            // tunnel (Glyphs.vpn), a simplification: separate glyphs for
+            // each would need extra precedence logic for "both up at once".
+            Widgets.StyledIcon {
+                id: badgeIcon
+                glyph: Glyphs.vpn
+                sizeStep: Math.max(0, root.sizeStep - 1)
+                color: root.contentColor
+                opacity: root.tunnelAmount
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            
             // Primary glyph: the ethernet plug when a wired NIC exists at
             // all; otherwise the Wi-Fi fan (its own connecting-pulse
             // included) — off and no-radio both read through that same
@@ -123,20 +138,6 @@ Widgets.Segment {
                 connecting: root.wifiConnecting
             }
 
-            // VPN/Tailscale badge — sits in its own reserved slot to the
-            // main glyph's right, faded in only while a tunnel is up. One
-            // shared glyph for both Tailscale and a plain WireGuard
-            // tunnel (Glyphs.vpn), a simplification: separate glyphs for
-            // each would need extra precedence logic for "both up at once".
-            Widgets.StyledIcon {
-                id: badgeIcon
-                glyph: Glyphs.vpn
-                sizeStep: Math.max(0, root.sizeStep - 1)
-                color: root.contentColor
-                opacity: root.tunnelAmount
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-            }
         }
     }
 }
