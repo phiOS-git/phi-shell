@@ -7,7 +7,7 @@ import qs.Config as Config
 //
 // Toroidal wraparound at the edges (same choice Lock/Starfield.qml's own
 // points make) rather than a bounce or an avoid-the-edge steering force
-// — simpler, and an ambient background never needs the flock to visibly
+// — simpler, and a screensaver background never needs the flock to visibly
 // "notice" the screen edge. Neighbour distance is computed toroidally too
 // (the nearest copy across a wrapped edge, not the raw straight-line
 // distance) so the flock reads as one continuous group across the seam.

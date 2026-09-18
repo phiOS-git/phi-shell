@@ -3,7 +3,7 @@ import QtQml
 import Quickshell
 import Quickshell.Io
 
-// The lock screen's ambient-effect choice and its settings. One flat JSON
+// The lock screen's screensaver choice and its settings. One flat JSON
 // object at Paths.lockPrefsFile, read once on load, rewritten whole on
 // change — not `phi state` (closed scalar-key set) and not the repository
 // (runtime UI state, not configuration).

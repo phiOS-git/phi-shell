@@ -13,6 +13,12 @@ import qs.Config as Config
 // `Config.Appearance.motionCTypeStep` driving `requestPaint()`, colour
 // from Config.Appearance tokens only — here `surface1` → `accent` →
 // `info`, the same accent/info pairing LavaLamp uses for its blobs.
+//
+// One OPTIONAL extension: the password-validation pulse. Lock.qml calls
+// `triggerValidation(success)` after every completed password attempt;
+// an effect may react or ignore it entirely — effects that never declare
+// the function are simply never called. This effect answers with a
+// travelling wave in the outcome's colour band (see below).
 
 Item {
     id: root
@@ -25,6 +31,21 @@ Item {
     // original fixed 32×18 grid.
     property real resolution: 1.0
 
+    // --- password-validation pulse (optional) ---------------------------
+    // Lock.qml broadcasts every completed attempt's outcome here:
+    // triggerValidation(true) = correct password, false = any failure.
+    // This effect sweeps one diagonal band of the outcome colour across
+    // the field (success token on a correct password, error token on a
+    // failure), decaying over roughly two seconds as `validationPulse`
+    // shrinks — a reaction, not a persistent tint.
+    property bool validationSuccess: false
+    property real validationPulse: 0
+    function triggerValidation(success) {
+        root.validationSuccess = success
+        root.validationPulse = 1.0
+        canvas.requestPaint()
+    }
+
     readonly property int cols: Math.max(4, Math.round(32 * root.resolution))
     readonly property int rows: Math.max(3, Math.round(18 * root.resolution))
     property real t: 0
@@ -35,6 +56,11 @@ Item {
         repeat: true
         onTriggered: {
             root.t += 0.035 * root.speed
+            // The validation wave fades back out on its own — quick at
+            // first, then slackening; anything left below a hairline is a
+            // rounding smudge, snapped flat so the decay genuinely ends.
+            if (root.validationPulse > 0.004) root.validationPulse *= 0.93
+            else root.validationPulse = 0
             canvas.requestPaint()
         }
     }
@@ -77,6 +103,21 @@ Item {
                     var colour = v < 0.5
                         ? root._mix(low, mid, v * 2)
                         : root._mix(mid, high, (v - 0.5) * 2)
+
+                    // A completed password attempt sweeps one diagonal
+                    // band of the outcome colour (success / error) across
+                    // the field, fading as `validationPulse` decays — the
+                    // band travels because its phase advances with `t`.
+                    // Pure mix-in at the very end, so it never re-enters
+                    // the field's own shaping, just tints it.
+                    if (root.validationPulse > 0.001) {
+                        var wave = Math.sin((xi + yi) * 0.55 - root.t * 2.2)
+                        if (wave > 0) {
+                            colour = root._mix(colour,
+                                root.validationSuccess ? Config.Appearance.success : Config.Appearance.error,
+                                wave * root.validationPulse * 0.5)
+                        }
+                    }
                     ctx.fillStyle = colour
                     // +1px overlap so the grid seams don't show as hairline gaps.
                     ctx.fillRect(xi * cw, yi * ch, cw + 1, ch + 1)

@@ -26,7 +26,7 @@ import qs.Config as Config
 //     properties (`blobCount`, `wobble`), exposed by Settings/sections/
 //     Theme.qml's "Lava lamp" accordion.
 //
-// Ambient animation, an exception confined to the lock surface and
+// Screensaver animation, an exception confined to the lock surface and
 // stopped on conceal (`running`, cleared by Lock.qml).
 //
 // Colour: tokens only. The wax colour eases between `accent` and `info`

@@ -5,7 +5,7 @@ import qs.Config as Config
 // drifting brightness band. Written from scratch in a Canvas — no
 // external tool or package.
 //
-// Ambient animation, an exception confined to the lock screen and
+// Screensaver animation, an exception confined to the lock screen and
 // stopped the moment the surface begins to conceal (`running` is cleared
 // by Lock.qml), so it never animates over a live desktop.
 //

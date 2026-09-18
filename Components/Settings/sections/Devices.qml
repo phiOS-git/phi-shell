@@ -344,7 +344,7 @@ Column {
         Modules.SettingsRow {
             title: "Battery saver"
             description: "Automatically turns on below " + Math.round(Services.PowerBridge.lowPercentThreshold * 100)
-                + "% while unplugged (dims the screen, turns off the lock screen's ambient effect), and off again once charged past that or plugged in — unless you turned it on by hand while charging."
+                + "% while unplugged (dims the screen, turns off the lock screen's screensaver), and off again once charged past that or plugged in — unless you turned it on by hand while charging."
             Widgets.Toggle {
                 checked: Services.PowerBridge.batterySaverAuto
                 onToggled: (v) => Services.PowerBridge.setBatterySaverAuto(v)

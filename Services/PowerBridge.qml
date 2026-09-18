@@ -310,7 +310,7 @@ Singleton {
     //
     // Brightness is capped at 40% (Services/Brightness.qml) and restored
     // when saver turns off — never persisted, since brightness is
-    // expected-to-move hardware state. The lock screen's ambient effect is
+    // expected-to-move hardware state. The lock screen's screensaver is
     // suppressed as a read-side override (Lock/Lock.qml gates on
     // batterySaverActive directly) rather than writing through
     // Config.LockPrefs — writing would permanently overwrite the user's

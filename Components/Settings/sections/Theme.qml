@@ -1026,7 +1026,7 @@ Column {
     }
 
     // --- Lock screen -----------------------------------------
-    // The ambient backdrop behind the lock screen. Stored in
+    // The screensaver backdrop behind the lock screen. Stored in
     // Config/LockPrefs.qml ($XDG_STATE_HOME/phi/lock.json), read by
     // Lock/Lock.qml. Runtime UI state, not a design token — same category
     // as the spotlight size above.
@@ -1034,7 +1034,7 @@ Column {
         title: "Lock screen"
         optionId: "theme.lockscreen"
         Modules.SettingsRow {
-            title: "Ambient effect"
+            title: "Screensaver"
             description: "The backdrop behind the lock screen."
             wide: true
             Flow {
@@ -1068,7 +1068,7 @@ Column {
         Modules.SettingsRow {
             visible: Config.LockPrefs.effect !== "none"
             title: "Speed"
-            description: "Applies to whichever ambient effect is selected above."
+            description: "Applies to whichever screensaver is selected above."
             Widgets.NumberField {
                 value: Config.LockPrefs.speed
                 from: 0.25; to: 3.0; step: 0.25; decimals: 2
@@ -1224,8 +1224,8 @@ Column {
     // live look is wanted — and a small toggle lets the user flip it either
     // way.
     Modules.SettingsGroup {
-        id: ambientPreviewGroup
-        title: "Ambient effect preview"
+        id: screensaverPreviewGroup
+        title: "Screensaver preview"
         preview: true
         visible: Config.LockPrefs.effect !== "none"
 
@@ -1238,7 +1238,7 @@ Column {
         // flags for a *different* parent-vs-contentItem indirection).
         Connections {
             target: Config.LockPrefs
-            function onEffectChanged() { ambientPreviewGroup.previewLive = true }
+            function onEffectChanged() { screensaverPreviewGroup.previewLive = true }
         }
 
         Modules.SettingsRow {
@@ -1251,15 +1251,15 @@ Column {
             // button, crowding a comparatively small preview area. The
             // explanatory sentence only earns its keep while there's
             // nothing else to look at yet.
-            description: ambientPreviewGroup.previewLive
+            description: screensaverPreviewGroup.previewLive
                 ? ""
                 : "Hidden by default — some effects are expensive to render continuously. Pick a different effect above, or show it manually."
             Column {
                 width: parent.width
                 spacing: root.gap
                 Widgets.SmallButton {
-                    label: ambientPreviewGroup.previewLive ? "Hide preview" : "Show preview"
-                    onClicked: ambientPreviewGroup.previewLive = !ambientPreviewGroup.previewLive
+                    label: screensaverPreviewGroup.previewLive ? "Hide preview" : "Show preview"
+                    onClicked: screensaverPreviewGroup.previewLive = !screensaverPreviewGroup.previewLive
                 }
                 Item {
                     width: parent.width
@@ -1268,7 +1268,7 @@ Column {
                     // small box squeezed under the header chrome above it.
                     height: root.chWidth * 34
                     clip: true
-                    visible: ambientPreviewGroup.previewLive
+                    visible: screensaverPreviewGroup.previewLive
 
                     Loader {
                         anchors.fill: parent
@@ -1278,7 +1278,7 @@ Column {
                         // so there is no separate "on this page but
                         // scrolled off" state worth guarding against here
                         // beyond previewLive itself.
-                        active: ambientPreviewGroup.previewLive
+                        active: screensaverPreviewGroup.previewLive
                         sourceComponent: {
                             switch (Config.LockPrefs.effect) {
                             case "lava": return lavaPreview
