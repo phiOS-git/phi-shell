@@ -5,16 +5,16 @@ import qs.Widgets as Widgets
 import "../Bar/glyphs.js" as Glyphs
 import "../../Widgets/WidgetStates.js" as WidgetStates
 
-// A horizontal row of icon+label power-action pills: each pill's GLYPH
-// carries its action's semantic tone (shutdown error, logout/reboot warn,
-// suspend info, lock/hibernate accent) on whatever surface it sits on —
-// the colour identity the status card's compact row used to apply on
-// hover, now steady on each pill instead of appearing only under the
-// cursor. Hover adds only the flat wash behind the pill
-// (WidgetStates.js's own `ambient: "powerPill"` carries the colour
-// recipe); the keyboard-focus pill keeps its full accent fill with
-// accentText glyph so the selection stays readable over the tone. This
-// file is presentation and action-dispatch only.
+// A horizontal row of icon+label power-action pills. Hover fills each
+// pill with its action's own semantic tone — shutdown error-red,
+// logout/reboot warn-amber, suspend info-blue, lock/hibernate accent —
+// and the glyph and label flip to that tone's paired text token
+// (errorText, warnText, …) so they stay readable on the fill. At rest the
+// pill is a bare icon+label in textMuted; the keyboard-focus pill keeps
+// its full accent fill with accentText glyph so the selection stays
+// readable. Hover is therefore a background effect, not a glyph recolor:
+// the colour identity belongs to the pill, not to each icon. This file is
+// presentation and action-dispatch only.
 //
 // Shared by both surfaces that offer power actions, so they can't
 // visually disagree about what one action looks like:
@@ -85,8 +85,10 @@ Row {
 
     // One semantic tone per action, from this shell's existing tone palette
     // (rule 6: design tokens are the only source of colour) — read by each
-    // pill's own `iconColor`, so a shutdown action is always error-coloured
-    // no matter which surface hosts this row (PowerMenu, Lock screen).
+    // pill as its HOVER background, so a shutdown action always hovers
+    // error-red no matter which surface hosts this row (PowerMenu, Lock
+    // screen). `_toneTextFor()` (below) is the paired text token that reads
+    // against that fill.
     function _toneFor(action) {
         switch (action) {
         case "lock": return Config.Appearance.accent
@@ -95,6 +97,22 @@ Row {
         case "logout": return Config.Appearance.warn
         case "reboot": return Config.Appearance.warn
         case "shutdown": return Config.Appearance.error
+        }
+        return Config.Appearance.textMuted
+    }
+
+    // The text token paired with the tone above (the *Text companion of
+    // each semantic colour, ThemeOverrides-aware) — what the glyph and
+    // label flip to while the pill is hovered, so they stay readable on
+    // the tone fill instead of carrying the tone themselves.
+    function _toneTextFor(action) {
+        switch (action) {
+        case "lock": return Config.Appearance.accentText
+        case "suspend": return Config.Appearance.infoText
+        case "hibernate": return Config.Appearance.accentText
+        case "logout": return Config.Appearance.warnText
+        case "reboot": return Config.Appearance.warnText
+        case "shutdown": return Config.Appearance.errorText
         }
         return Config.Appearance.textMuted
     }
@@ -124,18 +142,21 @@ Row {
             })
             readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState, "powerPill")
 
-            // Per-action semantic colour on the GLYPH, steady in every state
-            // (hover only adds the wash behind it): a shutdown pill always
-            // reads error, a logout warn, a suspend info, lock/hibernate
-            // accent — the same per-action colouring the status card's
-            // compact row used to apply on hover, now each action's
-            // identity instead. The two exceptions fall back to
-            // `stateColors.fg`: the keyboard-focus pill fills solid with
-            // accent, so its glyph must be accentText to stay readable on
-            // that fill, and an invalid pill keeps the error state's fg.
-            readonly property color iconColor: (pill.resolvedState === "active" || pill.resolvedState === "invalid")
-                ? pill.stateColors.fg
-                : root._toneFor(pill.modelData)
+            // The action's semantic tone is a HOVER background, not a
+            // resting glyph colour: on hover the whole pill fills with the
+            // tone (shutdown red, logout/reboot amber, suspend blue,
+            // lock/hibernate accent) and the glyph and label flip to that
+            // tone's paired text token, so the identity is carried by the
+            // pill, not by a static icon fill. Rest stays neutral
+            // (`stateColors.fg`: textMuted); the keyboard-focus pill keeps
+            // the accent fill and accentText glyph, and an invalid pill
+            // keeps the error state's fg.
+            readonly property color pillBg: pill.resolvedState === "hover"
+                ? root._toneFor(pill.modelData)
+                : pill.stateColors.bg
+            readonly property color pillFg: pill.resolvedState === "hover"
+                ? root._toneTextFor(pill.modelData)
+                : pill.stateColors.fg
 
             implicitWidth: row.implicitWidth + root._padH * 2
             implicitHeight: row.implicitHeight + root._padV * 2
@@ -144,7 +165,7 @@ Row {
             Rectangle {
                 anchors.fill: parent
                 radius: Config.Appearance.radiusSmall
-                color: pill.stateColors.bg
+                color: pill.pillBg
                 border.width: Config.Appearance.borderWidth
                 border.color: pill.stateColors.border
 
@@ -165,12 +186,12 @@ Row {
                     anchors.verticalCenter: parent.verticalCenter
                     glyph: root._glyphFor(pill.modelData)
                     sizeStep: 1
-                    color: pill.iconColor
+                    color: pill.pillFg
                 }
                 Widgets.StyledText {
                     anchors.verticalCenter: parent.verticalCenter
                     text: Services.PowerActions.title(pill.modelData)
-                    color: pill.stateColors.fg
+                    color: pill.pillFg
                 }
             }
 

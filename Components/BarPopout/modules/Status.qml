@@ -83,47 +83,36 @@ Widgets.StaggerReveal {
         Row {
             id: pwrRow
             width: parent.width
-            readonly property int _count: 6
-            // Half a rhythm unit between the six buttons — each button is
-            // the whole width of its slot below, so the hover wash tiles
-            // the row edge to edge instead of floating a fixed square per
-            // icon with dead gaps around it.
-            readonly property real _gap: root.chWidth * Config.Appearance.space1
-            spacing: pwrRow._gap
+            spacing: root.chWidth * Config.Appearance.space1
             Repeater {
                 model: ["lock", "suspend", "hibernate", "logout", "reboot", "shutdown"]
-                Item {
+
+                // One Widgets.Panel per action — the same tile-and-hover-wash
+                // recipe the tiling grid below uses: the button covers its
+                // whole slot, and hover shades the slot to surface2, so the
+                // wash is unmistakably the button, never a box wrapped
+                // around the glyph. A full-tile hover target is what stops
+                // the wash from flickering when the cursor rides a button
+                // edge. Resting invisible (surface1 on the card's own
+                // surface1), the six read as bare power icons; every action
+                // stays textPrimary, the icons differ by shape
+                // (powerActions.glyph) alone.
+                Widgets.Panel {
                     id: pwrBtn
                     required property string modelData
-                    // The button is the full slot, not a fixed square around
-                    // the glyph: an icon-sized target left the hover wash
-                    // with no padding (it read as a box wrapped around the
-                    // glyph) and let a resting cursor keep crossing the
-                    // button's edges, flickering the wash on and off. Six
-                    // equal slots tile the whole row width, so the hover
-                    // area is unmistakably the button.
-                    width: (pwrRow.width - pwrRow._gap * (pwrRow._count - 1)) / pwrRow._count
+                    width: (pwrRow.width - pwrRow.spacing * 5) / 6
                     height: root.chWidth * 4
+                    radius: Config.Appearance.radiusSmall
+                    hovered: pwrHover.hovered
+                    borderWidthOverride: 0
 
-                    // Hover is a flat background wash only, never a
-                    // per-action recolor of the glyph itself — the same
-                    // treatment Dialogs/PowerActionsRow.qml's own pills
-                    // already use. Every action stays textPrimary, the six
-                    // icons differ by shape (powerActions.glyph) alone.
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: Config.Appearance.radiusSmall
-                        color: pwrHover.hovered ? Config.Appearance.panelHover : "transparent"
-                        Behavior on color {
-                            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
-                        }
-                    }
                     Widgets.StyledIcon {
                         anchors.centerIn: parent
                         glyph: powerActions.glyph(pwrBtn.modelData)
                         sizeStep: 3
                         color: Config.Appearance.textPrimary
                     }
+
                     HoverHandler { id: pwrHover; cursorShape: Qt.PointingHandCursor }
                     TapHandler { onTapped: powerActions.request(pwrBtn.modelData) }
                 }

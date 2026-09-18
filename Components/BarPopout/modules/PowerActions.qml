@@ -30,9 +30,10 @@ QtObject {
     // (lock/suspend/hibernate → accent/info, logout/reboot → warn,
     // shutdown → error). The status card's power row now shows a plain
     // background wash on hover instead (Status.qml), so the only consumer
-    // in this module is gone. The per-action colours themselves live on
-    // now as a steady glyph identity in Dialogs/PowerActionsRow.qml's own
-    // `_toneFor()`, not as a hover effect.
+    // in this module is gone. The per-action colours themselves live on in
+    // Dialogs/PowerActionsRow.qml's own `_toneFor()`/`_toneTextFor()`,
+    // where they paint the HOVER background of each pill (not a static
+    // glyph identity).
 
     function request(action) {
         if (Services.PowerActions.needsConfirm(action)) root.confirmAndPerform(action)

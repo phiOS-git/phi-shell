@@ -258,6 +258,15 @@ function surfaceColors(appearance, resolvedState, ambient) {
     // never actually "focus" for this ambient, only "active"/"hover"/
     // "invalid"/default. No `case "focus"` in this block on purpose: it
     // would be genuinely unreachable dead code, not a harmless spare.
+    //
+    // `hover` stays this generic wash recipe (`panelHover` bg, opposite
+    // fg) as the ambient's own default, but PowerActionsRow does NOT read
+    // it: that caller overrides the hover fill with each action's own
+    // semantic tone (`_toneFor`/`_toneTextFor` in the row's file) so a
+    // shutdown pill hovers red, a logout amber, &c. — an id both this
+    // ambient and the parity with the status row reject (no glyph or pill
+    // carries a per-action colour by default; the row itself opts in
+    // per-action on hover).
     if (ambient === "powerPill") {
         switch (resolvedState) {
         case "active":
