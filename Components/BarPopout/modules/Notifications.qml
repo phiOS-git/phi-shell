@@ -175,19 +175,55 @@ Item {
                 // Services.Notifications.dndFor(minutes) already exists
                 // (Settings/sections/Notifications.qml's own identical
                 // row); reused verbatim, not a second timed-DND mechanism.
+                // StyledButton rather than SmallButton — the same
+                // full-border quick-trigger row the Settings section uses.
                 Row {
+                    id: dndTimingRow
+                    width: parent.width
                     spacing: root.chWidth * Config.Appearance.space2
-                    Widgets.SmallButton { label: "30 min"; onClicked: Services.Notifications.dndFor(30) }
-                    Widgets.SmallButton { label: "1 h"; onClicked: Services.Notifications.dndFor(60) }
-                    Widgets.SmallButton { label: "4 h"; onClicked: Services.Notifications.dndFor(240) }
+                    readonly property real btnWidth: (width - spacing * 2) / 3
+                    Widgets.StyledButton {
+                        width: dndTimingRow.btnWidth
+                        label: "30 min"
+                        onClicked: Services.Notifications.dndFor(30)
+                    }
+                    Widgets.StyledButton {
+                        width: dndTimingRow.btnWidth
+                        label: "1 h"
+                        onClicked: Services.Notifications.dndFor(60)
+                    }
+                    Widgets.StyledButton {
+                        width: dndTimingRow.btnWidth
+                        label: "4 h"
+                        onClicked: Services.Notifications.dndFor(240)
+                    }
                 }
 
-                Widgets.StyledText {
+                // The label flush left, the remaining time flush right —
+                // the same full-width label/value grammar ListRow and the
+                // other modules use — the value bold (kind "title") mono
+                // so the countdown reads at a glance.
+                Item {
                     width: parent.width
                     visible: Services.Notifications.dndRemainingLabel.length > 0
-                    kind: "label"
-                    sizeStep: 0
-                    text: "Timed session: " + Services.Notifications.dndRemainingLabel
+                    implicitHeight: Math.max(timedLabel.implicitHeight, timedValue.implicitHeight)
+                    Widgets.StyledText {
+                        id: timedLabel
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        kind: "label"
+                        sizeStep: 0
+                        text: "Timed session:"
+                    }
+                    Widgets.StyledText {
+                        id: timedValue
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        kind: "title"
+                        sizeStep: 0
+                        mono: true
+                        text: Services.Notifications.dndRemainingLabel
+                    }
                 }
             }
 
