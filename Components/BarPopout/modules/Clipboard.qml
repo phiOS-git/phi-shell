@@ -491,38 +491,64 @@ Item {
         function _relayout() {
             const pad2 = preview.padding * 2
 
-            // Image box: fill the content width (floored at the panel's
-            // own minimum, capped at the panel's maximum), derive the
-            // height from the source's aspect; when that height would
-            // exceed the height budget, clamp the height and shrink the
-            // width by the same ratio instead of letterboxing — the box
-            // always matches the source aspect, so there is never empty
-            // space around the image (PreserveAspectCrop paints it edge
-            // to edge below).
+            // The fixed rows the image cannot claim: the placeholder line,
+            // its own half-gap inside the content column, the doubled
+            // column gap below it, and the details row. Measured at the
+            // same moment the box is computed, so the box and the panel
+            // height can never disagree about what the layout needs.
+            const fixedH = entryText.implicitHeight + root.gap / 2
+                + previewCol.spacing + previewDetailsRow.implicitHeight
+
             const iw = entryPreview.implicitWidth
             const ih = entryPreview.implicitHeight
+            let boxW = 0
+            let boxH = 0
             if (root.previewIsImage && iw > 0 && ih > 0) {
-                const maxH = Math.max(120,
-                    preview._maxHeight - pad2
-                    - entryText.implicitHeight - root.gap / 2
-                    - previewCol.spacing - previewDetailsRow.implicitHeight)
+                // The exact rule: fill the panel's content width (floored
+                // at the panel's own minimum, capped at the panel's
+                // maximum) and derive the height from the source's aspect;
+                const fitH = Math.max(120, preview._maxHeight - pad2 - fixedH)
                 const capW = preview._maxWidth - pad2
                 const floorW = Math.max(360, detailsMetrics.width + pad2) - pad2
-                preview._imageBoxW = Math.min(capW, Math.max(floorW, iw), maxH * iw / ih)
-                preview._imageBoxH = preview._imageBoxW * ih / iw
-            } else {
-                preview._imageBoxW = 0
-                preview._imageBoxH = 0
+                boxW = Math.min(capW, Math.max(floorW, iw))
+                boxH = boxW * ih / iw
+                // ...and when that height would exceed the height budget,
+                // cap the height at the budget and shrink the width by the
+                // same ratio — the box always matches the source aspect,
+                // so there is never empty space around the image
+                // (PreserveAspectCrop below paints it edge to edge), and
+                // never an image taller than the panel can hold.
+                if (boxH > fitH) {
+                    boxH = fitH
+                    boxW = boxH * iw / ih
+                }
             }
+            preview._imageBoxW = boxW
+            preview._imageBoxH = boxH
 
-            const contentW = root.previewIsImage ? preview._imageBoxW : previewTextMetrics.width
+            const contentW = root.previewIsImage ? boxW : previewTextMetrics.width
             const minW = Math.max(360, detailsMetrics.width + pad2)
             preview.width = Math.min(preview._maxWidth, Math.max(minW, contentW + pad2))
-            preview.height = Math.min(previewCol.implicitHeight + pad2, preview._maxHeight)
+
+            // Panel height: for images, the explicit sum of the box and
+            // the fixed rows (boxH ≤ fitH above guarantees the sum stays
+            // inside _maxHeight) — never the positioner's cached
+            // implicitHeight, which can lag the imperative box write by a
+            // layout pass. For text, the column's implicit height as
+            // before, untouched.
+            const contentH = root.previewIsImage
+                ? entryText.implicitHeight + root.gap / 2 + preview._imageBoxH
+                    + previewCol.spacing + previewDetailsRow.implicitHeight
+                : previewCol.implicitHeight
+            preview.height = Math.min(contentH + pad2, preview._maxHeight)
         }
 
         Component.onCompleted: preview._relayout()
         radius: Config.Appearance.radiusLarge
+        // Hard guarantee behind the sizing above: even on a transient
+        // frame during an image load, nothing in this panel can visibly
+        // spill past its own edges.
+        clip: true
         visible: opacity > 0
         opacity: (root.previewVisible && root.previewEntryData !== null) ? 1 : 0
         Behavior on opacity {
