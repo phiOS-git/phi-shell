@@ -417,22 +417,61 @@ Item {
     Widgets.Panel {
         id: preview
 
-        // Variable width (100px minimum up to 600px) based on its content
-        // — measured off the same text the content Text below renders
-        // (TextMetrics resolves a multi-line string's width as its widest
-        // line, good enough for a size estimate, not pixel-exact).
+        // The panel's size caps: both axes hug the content, floored and
+        // capped but never inflated by a minimum-height floor — the same
+        // uniform padding (Panel's single `padding` value) wraps the
+        // content on every side, so the bottom never reads as a larger
+        // padding than the top. The separation between the content and the
+        // details row is previewCol's own doubled spacing below, not a
+        // padding asymmetry.
+        readonly property real _maxWidth: 600
+        readonly property real _maxHeight: 300
+
+        // Text content width estimate — measured off the same text the
+        // content Text below renders (TextMetrics resolves a multi-line
+        // string's width as its widest line, good enough for a size
+        // estimate, not pixel-exact). Image entries measure the decodable
+        // image's natural size instead (see _contentWidth): "[image]" is
+        // short, so measuring it would squeeze the panel to the minimum
+        // width no matter how wide the actual preview is.
         TextMetrics {
             id: previewTextMetrics
             font.family: Config.Appearance.fontMono
             font.pixelSize: Config.Appearance.fontSize2
-            text: root.previewIsImage ? "[image]"
-                : (root.previewFullText.length > 0 ? root.previewFullText : "(empty)")
+            text: root.previewFullText.length > 0 ? root.previewFullText : "(empty)"
         }
-        width: Math.max(100, Math.min(previewTextMetrics.width + padding * 2, 600))
-        // Height: a literal 100-300px range, content-driven only between
-        // those two bounds (padding is already uniform on all sides via
-        // Panel's own single `padding` value).
-        height: Math.max(100, Math.min(previewCol.implicitHeight + padding * 2, 300))
+        readonly property real _contentWidth: root.previewIsImage
+            ? entryPreview.implicitWidth
+            : previewTextMetrics.width
+
+        // The widest single-line row in the panel is the details line
+        // (time left, source right) — measured as one concatenated string
+        // in the same label font the row itself renders, so a short-
+        // content entry still opens a panel wide enough to fit its own
+        // date/source without overflowing. 200px is the absolute floor
+        // (the old 100px was never enough even for the bare time string),
+        // "at least doubled" as asked.
+        TextMetrics {
+            id: detailsMetrics
+            font.family: Config.Appearance.fontUi
+            font.pixelSize: Config.Appearance.fontSize0
+            text: (root.previewEntryData !== null ? root.fmtTimeFull(root.previewEntryData.timestamp) : "")
+                + "  " + root.previewMime
+                + (root.previewPinned ? " · pinned" : "")
+                + (root.previewTruncated ? " · truncated" : "")
+        }
+        readonly property real _minWidth: Math.max(200, preview.detailsMetrics.width + preview.padding * 2)
+        width: Math.min(preview._maxWidth,
+            Math.max(preview._minWidth, preview._contentWidth + preview.padding * 2))
+        // The image preview gets every pixel of the height budget the
+        // fixed rows (placeholder line, its own gap, the details row) do
+        // not need — so a capped image never pushes the details row past
+        // the panel's bottom edge inside the `_maxHeight` cap.
+        readonly property real _imageMaxHeight: Math.max(120,
+            preview._maxHeight - preview.padding * 2
+            - entryText.implicitHeight - root.gap / 2
+            - previewCol.spacing - previewDetailsRow.implicitHeight)
+        height: Math.min(previewCol.implicitHeight + padding * 2, preview._maxHeight)
         radius: Config.Appearance.radiusLarge
         visible: opacity > 0
         opacity: (root.previewVisible && root.previewEntryData !== null) ? 1 : 0
@@ -483,11 +522,13 @@ Item {
 
         // Content (text/image) and the trailing time/source row are two
         // separate Columns (the inner one keeping its own tighter
-        // spacing) so only the gap between the two grows, not every line.
+        // spacing) so only the gap between the two grows, not every line —
+        // doubled here so the separation between the content and the
+        // details row does the visual work padding would otherwise fake.
         Column {
             id: previewCol
             width: parent.width
-            spacing: root.gap
+            spacing: root.gap * 2
 
             Column {
                 id: previewContentCol
@@ -495,6 +536,7 @@ Item {
                 spacing: root.gap / 2
 
                 Widgets.StyledText {
+                    id: entryText
                     width: parent.width
                     mono: !root.previewIsImage
                     wrapMode: Text.Wrap
@@ -506,13 +548,16 @@ Item {
                 }
 
                 Image {
+                    id: entryPreview
                     width: parent.width
-                    // Not Math.min(implicitHeight, ...): implicitHeight is the
-                    // source pixel height, unrelated to the fitted height at
-                    // this width — fixing height outright and letting
-                    // PreserveAspectFit scale into it is what actually caps
-                    // the size.
-                    height: root.height * 0.35
+                    // Fit the content width and derive the height from the
+                    // source's own aspect ratio; capped at
+                    // _imageMaxHeight so a very tall image fits the height
+                    // budget instead of stretching the panel past its cap
+                    // (PreserveAspectFit then letterboxes it horizontally).
+                    height: Math.min(
+                        entryPreview.implicitHeight * entryPreview.width / Math.max(1, entryPreview.implicitWidth),
+                        preview._imageMaxHeight)
                     fillMode: Image.PreserveAspectFit
                     visible: root.previewIsImage && root.previewEntryData !== null
                     source: (root.previewIsImage && root.previewEntryData !== null)
@@ -524,6 +569,7 @@ Item {
             // type + pinned/truncated flags) at the right, spread across
             // the row instead of chained together.
             Item {
+                id: previewDetailsRow
                 width: parent.width
                 visible: root.previewEntryData !== null
                 implicitHeight: Math.max(previewTime.implicitHeight, previewSource.implicitHeight)
