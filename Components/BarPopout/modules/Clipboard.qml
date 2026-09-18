@@ -430,27 +430,26 @@ Item {
         // Text content width estimate — measured off the same text the
         // content Text below renders (TextMetrics resolves a multi-line
         // string's width as its widest line, good enough for a size
-        // estimate, not pixel-exact). Image entries measure the decodable
-        // image's natural size instead (see _contentWidth): "[image]" is
-        // short, so measuring it would squeeze the panel to the minimum
-        // width no matter how wide the actual preview is.
+        // estimate, not pixel-exact). Image entries are sized by
+        // _imageScale instead, never through this text measurement:
+        // "[image]" is short, so measuring it would squeeze the panel to
+        // the minimum width no matter how wide the actual preview is.
         TextMetrics {
             id: previewTextMetrics
             font.family: Config.Appearance.fontMono
             font.pixelSize: Config.Appearance.fontSize2
             text: root.previewFullText.length > 0 ? root.previewFullText : "(empty)"
         }
-        readonly property real _contentWidth: root.previewIsImage
-            ? entryPreview.implicitWidth
-            : previewTextMetrics.width
 
         // The widest single-line row in the panel is the details line
         // (time left, source right) — measured as one concatenated string
         // in the same label font the row itself renders, so a short-
-        // content entry still opens a panel wide enough to fit its own
-        // date/source without overflowing. 200px is the absolute floor
-        // (the old 100px was never enough even for the bare time string),
-        // "at least doubled" as asked.
+        // content entry still opens wide enough to fit its own date/source
+        // without overflowing. A flat 360px floor sits underneath the
+        // measurement (the old 100px, and even 200px, was never enough):
+        // the width must never collapse back to the content width again,
+        // even for the brief moment before the row has been measured —
+        // short pastes open a real panel, not a content-hugging strip.
         TextMetrics {
             id: detailsMetrics
             font.family: Config.Appearance.fontUi
@@ -460,9 +459,9 @@ Item {
                 + (root.previewPinned ? " · pinned" : "")
                 + (root.previewTruncated ? " · truncated" : "")
         }
-        readonly property real _minWidth: Math.max(200, preview.detailsMetrics.width + preview.padding * 2)
-        width: Math.min(preview._maxWidth,
-            Math.max(preview._minWidth, preview._contentWidth + preview.padding * 2))
+        readonly property real _minWidth: Math.max(360, preview.detailsMetrics.width + preview.padding * 2)
+        readonly property real _minContentWidth: preview._minWidth - preview.padding * 2
+
         // The image preview gets every pixel of the height budget the
         // fixed rows (placeholder line, its own gap, the details row) do
         // not need — so a capped image never pushes the details row past
@@ -471,6 +470,24 @@ Item {
             preview._maxHeight - preview.padding * 2
             - entryText.implicitHeight - root.gap / 2
             - previewCol.spacing - previewDetailsRow.implicitHeight)
+
+        // Image layout: fill the content width and derive the height from
+        // the source's own aspect; when that height would exceed the
+        // height budget, clamp the height and shrink the width by the same
+        // ratio instead of letterboxing — the box always matches the
+        // source aspect, so there is never empty space around the preview
+        // (PreserveAspectCrop below then paints it edge to edge).
+        readonly property real _imageScale: {
+            const iw = entryPreview.implicitWidth
+            const ih = entryPreview.implicitHeight
+            if (iw <= 0 || ih <= 0) return 0
+            const capW = preview._maxWidth - preview.padding * 2
+            const wByH = preview._imageMaxHeight * iw / ih
+            return Math.min(capW, Math.max(preview._minContentWidth, iw), wByH)
+        }
+        width: Math.min(preview._maxWidth,
+            Math.max(preview._minWidth,
+                (root.previewIsImage ? preview._imageScale : previewTextMetrics.width) + preview.padding * 2))
         height: Math.min(previewCol.implicitHeight + padding * 2, preview._maxHeight)
         radius: Config.Appearance.radiusLarge
         visible: opacity > 0
@@ -547,21 +564,32 @@ Item {
                         : (root.previewFullText.length > 0 ? root.previewFullText : "(empty)")
                 }
 
-                Image {
-                    id: entryPreview
+                // A transparent wrapper so the image can sit centred in the
+                // content column: its box matches the source aspect by
+                // construction, so when a tall image is height-capped the
+                // box narrows below the column width and the wrapper keeps
+                // it centred rather than pinned to the left edge.
+                Item {
                     width: parent.width
-                    // Fit the content width and derive the height from the
-                    // source's own aspect ratio; capped at
-                    // _imageMaxHeight so a very tall image fits the height
-                    // budget instead of stretching the panel past its cap
-                    // (PreserveAspectFit then letterboxes it horizontally).
-                    height: Math.min(
-                        entryPreview.implicitHeight * entryPreview.width / Math.max(1, entryPreview.implicitWidth),
-                        preview._imageMaxHeight)
-                    fillMode: Image.PreserveAspectFit
-                    visible: root.previewIsImage && root.previewEntryData !== null
-                    source: (root.previewIsImage && root.previewEntryData !== null)
-                        ? "file://" + Services.Clipboard.contentPath(root.previewEntryData.id) : ""
+                    height: entryPreview.height
+                    visible: entryPreview.visible
+
+                    Image {
+                        id: entryPreview
+                        anchors.centerIn: parent
+                        // Box is the aspect-matched size from
+                        // preview._imageScale (fill width, adapt height,
+                        // or shrink width to fit the height budget);
+                        // PreserveAspectCrop paints every pixel of that
+                        // box — with a matching aspect it never actually
+                        // crops, but it leaves no hairline letterbox gap.
+                        width: preview._imageScale
+                        height: entryPreview.width * entryPreview.implicitHeight / Math.max(1, entryPreview.implicitWidth)
+                        fillMode: Image.PreserveAspectCrop
+                        visible: root.previewIsImage && root.previewEntryData !== null
+                        source: (root.previewIsImage && root.previewEntryData !== null)
+                            ? "file://" + Services.Clipboard.contentPath(root.previewEntryData.id) : ""
+                    }
                 }
             }
 
@@ -577,6 +605,11 @@ Item {
                 Widgets.StyledText {
                     id: previewTime
                     anchors.left: parent.left
+                    // Full row width so the date/time can never lap past
+                    // the panel edge; it only ever elides (tail) when the
+                    // row is narrower than the timestamp itself.
+                    width: parent.width
+                    elide: Text.ElideRight
                     kind: "label"
                     sizeStep: 0
                     color: Config.Appearance.textMuted
@@ -585,6 +618,13 @@ Item {
                 Widgets.StyledText {
                     id: previewSource
                     anchors.right: parent.right
+                    // Natural width unless that would collide with the
+                    // time — then it is fenced into the remaining space and
+                    // its tail elides, so the details row can never
+                    // overflow the panel or lap over itself.
+                    width: Math.min(previewSource.implicitWidth,
+                        Math.max(0, parent.width - previewTime.implicitWidth - root.gap))
+                    elide: Text.ElideRight
                     kind: "label"
                     sizeStep: 0
                     color: Config.Appearance.textMuted
