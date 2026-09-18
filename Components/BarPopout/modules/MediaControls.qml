@@ -6,11 +6,21 @@ import "../../Bar/glyphs.js" as Glyphs
 import "../../../Widgets/WidgetStates.js" as WidgetStates
 
 // The media controls body shared by BarPopout/modules/Media.qml (the full
-// popout card) and BarPopout/modules/Status.qml's "Media control" section —
-// the same inner section in both cards so future layout changes happen here
+// popout card) and BarPopout/modules/Status.qml's media section — the
+// same inner section in both cards so future layout changes happen here
 // once. Reads the active MPRIS player from Services.Mpris; `active` is
-// driven by the consuming card so the one-second progress timer only runs
-// while the card is actually on screen.
+// driven by the consuming card so the one-second progress timer and the
+// marquee drift only run while the card is actually on screen.
+//
+// The MPRIS source (identity) line is clickable and focuses the player's
+// own window: it scans Services.HyprlandBridge.toplevels for a window
+// whose app id matches the player's desktopEntry (then identity) and
+// dispatches the proven `hl.dsp.focus({ window = "address:..." })` — the
+// same path Bar/modules/WindowList.qml uses. Players expose no window
+// handle over MPRIS, only a desktop-entry name, so this is best effort: a
+// player whose window class differs from its desktop entry (rare) is
+// simply not found, and the fallback is MPRIS's own raise() when the
+// player implements it.
 
 Column {
     id: root
@@ -32,27 +42,73 @@ Column {
         return p !== null && p[prop]
     }
 
+    // Best-effort focus of the player's window, see the header note.
+    function _focusSource() {
+        const p = Services.Mpris.active
+        if (!p) return
+        const needles = []
+        if (p.desktopEntry && p.desktopEntry.length > 0) needles.push(p.desktopEntry.toLowerCase())
+        if (p.identity && p.identity.length > 0) needles.push(p.identity.toLowerCase())
+        const model = Services.HyprlandBridge.toplevels
+        const values = model ? model.values : null
+        if (values) {
+            for (let i = 0; i < values.length; i++) {
+                const t = values[i]
+                // HyprlandToplevel has no wmClass — the real app id is one
+                // level down, `.wayland.appId` (see WindowList.qml's own
+                // `_wmClass`). Title is the secondary match source.
+                const cls = String((t.wayland && t.wayland.appId) || t.title || "").toLowerCase()
+                if (cls.length === 0) continue
+                for (let j = 0; j < needles.length; j++) {
+                    const needle = needles[j]
+                    if (cls === needle || cls.indexOf(needle) >= 0 || needle.indexOf(cls) >= 0) {
+                        if (t.address && t.address.length > 0) {
+                            Services.HyprlandBridge.dispatch(
+                                'hl.dsp.focus({ window = "address:' + t.address + '" })')
+                            return
+                        }
+                    }
+                }
+            }
+        }
+        // No window matched the identity — the few players that implement
+        // MPRIS's own raise can still come forward.
+        if (p.canRaise) p.raise()
+    }
+
     // --- identity / track info ------------------------------------------
 
-    Widgets.StyledText {
+    // The source is clickable — the click target is the whole label row;
+    // hover brightens the text so the line reads as actionable.
+    Item {
         width: parent.width
-        kind: "label"; sizeStep: 0
-        elide: Text.ElideRight
-        color: Config.Appearance.textMuted
-        text: Services.Mpris.active && Services.Mpris.active.identity.length > 0
-            ? Services.Mpris.active.identity : ""
+        implicitHeight: sourceLine.implicitHeight
+        Widgets.StyledText {
+            id: sourceLine
+            width: parent.width
+            kind: "label"; sizeStep: 0
+            elide: Text.ElideRight
+            color: srcHover.hovered ? Config.Appearance.textPrimary : Config.Appearance.textMuted
+            text: Services.Mpris.active && Services.Mpris.active.identity.length > 0
+                ? Services.Mpris.active.identity : ""
+        }
+        HoverHandler { id: srcHover; cursorShape: Qt.PointingHandCursor }
+        TapHandler { onTapped: root._focusSource() }
     }
-    Widgets.StyledText {
+    // Track title and artist—album lines marquee when they don't fit
+    // (Widgets/MarqueeText.qml); `running` follows the card gate so the
+    // drift never ticks while the card is closed.
+    Widgets.MarqueeText {
         width: parent.width
         kind: "title"; sizeStep: 0
-        elide: Text.ElideRight
+        running: root.active
         text: Services.Mpris.active && Services.Mpris.active.trackTitle.length > 0
             ? Services.Mpris.active.trackTitle : "No media playing."
     }
-    Widgets.StyledText {
+    Widgets.MarqueeText {
         width: parent.width
         kind: "label"; sizeStep: 0
-        elide: Text.ElideRight
+        running: root.active
         text: Services.Mpris.active
             ? (Services.Mpris.active.trackArtist
                 + (Services.Mpris.active.trackAlbum.length > 0
@@ -92,58 +148,124 @@ Column {
         }
     }
 
-    // --- transport: glyph buttons ----------------------------------------
+    // --- transport: shuffle / prev-play-pause-next / repeat -------------
 
-    // Three icon buttons, prev / play-pause / next, centred. Bigger than
-    // a bare glyph (explicit ch-based touch target) with the play/pause
-    // keyed slightly larger. IconButton has no built-in disabled look, so
-    // each fades to the shared inactive ratio and gates the click at the
-    // signal.
+    // One row so every glyph sits on the same centre line, bound with a
+    // wider gap (space3) between the outboard shuffle/repeat and the
+    // transport trio (space2) — the separation that keeps the "what to
+    // play next" controls apart from the queue-state toggles. Every
+    // button is 5 ch tall, the play/pause target, so no neighbour reads
+    // as vertically off-line beside it.
+    //
+    // Shuffle and repeat appear only when the active player supports them
+    // ("if available") and are hidden otherwise; the row then centres what
+    // remains. IconButton has no disabled/active look of its own, so each
+    // button gates the click at the signal, fades to the shared inactive
+    // ratio while disabled, and paints accent while its queue state is on.
     Row {
         anchors.horizontalCenter: parent.horizontalCenter
-        spacing: root.chWidth * Config.Appearance.space2
+        spacing: root.chWidth * Config.Appearance.space3
+
         Widgets.IconButton {
-            id: prevBtn
+            id: shuffleBtn
             width: root.chWidth * 4
-            height: root.chWidth * 4
-            glyph: Glyphs.skipPrev
-            sizeStep: 2
-            enabled: root._can("canGoPrevious")
-            opacity: prevBtn.enabled ? 1 : WidgetStates.INACTIVE_OPACITY
-            Behavior on opacity {
-                NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
-            }
-            onActivated: { if (prevBtn.enabled) Services.Mpris.active.previous() }
-        }
-        Widgets.IconButton {
-            id: playBtn
-            width: root.chWidth * 5
             height: root.chWidth * 5
-            // Action-style, unlike the bar glyph (which shows the current
-            // state): here the icon is "what this press does" — pause
-            // while playing, play while paused.
-            glyph: Services.Mpris.active !== null && Services.Mpris.active.isPlaying
-                ? Glyphs.pause : Glyphs.play
-            sizeStep: 3
-            enabled: root._can("canPlay") || root._can("canPause")
-            opacity: playBtn.enabled ? 1 : WidgetStates.INACTIVE_OPACITY
-            Behavior on opacity {
-                NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
-            }
-            onActivated: { if (playBtn.enabled && Services.Mpris.active !== null) Services.Mpris.active.togglePlaying() }
-        }
-        Widgets.IconButton {
-            id: nextBtn
-            width: root.chWidth * 4
-            height: root.chWidth * 4
-            glyph: Glyphs.skipNext
+            glyph: Glyphs.shuffle
             sizeStep: 2
-            enabled: root._can("canGoNext")
-            opacity: nextBtn.enabled ? 1 : WidgetStates.INACTIVE_OPACITY
+            visible: root._can("shuffleSupported")
+            enabled: root._can("shuffleSupported") && root._can("canControl")
+            color: Services.Mpris.active !== null && Services.Mpris.active.shuffle
+                ? Config.Appearance.accent : Config.Appearance.textMuted
+            hoverColor: Services.Mpris.active !== null && Services.Mpris.active.shuffle
+                ? Config.Appearance.accent : Config.Appearance.textPrimary
+            opacity: shuffleBtn.enabled ? 1 : WidgetStates.INACTIVE_OPACITY
             Behavior on opacity {
                 NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
             }
-            onActivated: { if (nextBtn.enabled) Services.Mpris.active.next() }
+            onActivated: {
+                const p = Services.Mpris.active
+                if (p !== null && shuffleBtn.enabled) p.shuffle = !p.shuffle
+            }
+        }
+
+        // The transport trio, bound tighter than the outboard toggles.
+        Row {
+            spacing: root.chWidth * Config.Appearance.space2
+            Widgets.IconButton {
+                id: prevBtn
+                width: root.chWidth * 4
+                height: root.chWidth * 5
+                glyph: Glyphs.skipPrev
+                sizeStep: 2
+                enabled: root._can("canGoPrevious")
+                opacity: prevBtn.enabled ? 1 : WidgetStates.INACTIVE_OPACITY
+                Behavior on opacity {
+                    NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                }
+                onActivated: { if (prevBtn.enabled) Services.Mpris.active.previous() }
+            }
+            Widgets.IconButton {
+                id: playBtn
+                width: root.chWidth * 5
+                height: root.chWidth * 5
+                // Action-style, unlike the bar glyph (which shows the current
+                // state): here the icon is "what this press does" — pause
+                // while playing, play while paused.
+                glyph: Services.Mpris.active !== null && Services.Mpris.active.isPlaying
+                    ? Glyphs.pause : Glyphs.play
+                sizeStep: 3
+                enabled: root._can("canPlay") || root._can("canPause")
+                opacity: playBtn.enabled ? 1 : WidgetStates.INACTIVE_OPACITY
+                Behavior on opacity {
+                    NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                }
+                onActivated: { if (playBtn.enabled && Services.Mpris.active !== null) Services.Mpris.active.togglePlaying() }
+            }
+            Widgets.IconButton {
+                id: nextBtn
+                width: root.chWidth * 4
+                height: root.chWidth * 5
+                glyph: Glyphs.skipNext
+                sizeStep: 2
+                enabled: root._can("canGoNext")
+                opacity: nextBtn.enabled ? 1 : WidgetStates.INACTIVE_OPACITY
+                Behavior on opacity {
+                    NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                }
+                onActivated: { if (nextBtn.enabled) Services.Mpris.active.next() }
+            }
+        }
+
+        Widgets.IconButton {
+            id: repeatBtn
+            width: root.chWidth * 4
+            height: root.chWidth * 5
+            // repeat-once while looping a single track, plain repeat
+            // otherwise; accent while any loop state is active.
+            glyph: Services.Mpris.active !== null && Services.Mpris.active.loopState === Services.Mpris.loopStateTrack
+                ? Glyphs.repeatOnce : Glyphs.repeat
+            sizeStep: 2
+            visible: root._can("loopSupported")
+            enabled: root._can("loopSupported") && root._can("canControl")
+            color: Services.Mpris.active !== null && Services.Mpris.active.loopState !== Services.Mpris.loopStateNone
+                ? Config.Appearance.accent : Config.Appearance.textMuted
+            hoverColor: Services.Mpris.active !== null && Services.Mpris.active.loopState !== Services.Mpris.loopStateNone
+                ? Config.Appearance.accent : Config.Appearance.textPrimary
+            opacity: repeatBtn.enabled ? 1 : WidgetStates.INACTIVE_OPACITY
+            Behavior on opacity {
+                NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+            }
+            // Off → Playlist ("repeat all") → Track ("repeat one") → Off,
+            // the same cycle reference players use.
+            onActivated: {
+                const p = Services.Mpris.active
+                if (!repeatBtn.enabled || p === null) return
+                p.loopState = p.loopState === Services.Mpris.loopStateNone
+                    ? Services.Mpris.loopStatePlaylist
+                    : p.loopState === Services.Mpris.loopStatePlaylist
+                        ? Services.Mpris.loopStateTrack
+                        : Services.Mpris.loopStateNone
+            }
         }
     }
 

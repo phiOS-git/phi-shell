@@ -110,24 +110,19 @@ Widgets.StaggerReveal {
         }
     }
 
-    // --- media control (only while a source is available) --------------
+    // --- media (only while a source is available) ----------------------
     Widgets.OverlaySection {
         width: parent.width
         visible: Services.Mpris.active !== null
-        Column {
+        // The same controls body as the dedicated Media popout —
+        // Local.MediaControls (this directory's shared section) is the
+        // one place the track info, progress and transport live, so
+        // the two cards can't drift apart. No own title: the section is
+        // self-evident, the same way the Media popout shows none.
+        Local.MediaControls {
             width: parent.width
-            spacing: root.chWidth * Config.Appearance.space1
-
-            Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Media control" }
-            // The same controls body as the dedicated Media popout —
-            // Local.MediaControls (this directory's shared section) is the
-            // one place the track info, progress and transport live, so
-            // the two cards can't drift apart.
-            Local.MediaControls {
-                width: parent.width
-                chWidth: root.chWidth
-                active: root.active
-            }
+            chWidth: root.chWidth
+            active: root.active
         }
     }
 

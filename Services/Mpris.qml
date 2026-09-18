@@ -23,4 +23,13 @@ Singleton {
         }
         return root.playerList.length > 0 ? root.playerList[0] : null
     }
+
+    // The MprisLoopState enum values, re-exported so a consumer (the
+    // shared MediaControls section) can read and write `active.loopState`
+    // without importing Quickshell.Services.Mpris itself — the same thin
+    // re-export rule that keeps every other service surface behind this
+    // Services/ layer.
+    readonly property int loopStateNone: MprisLoopState.None
+    readonly property int loopStatePlaylist: MprisLoopState.Playlist
+    readonly property int loopStateTrack: MprisLoopState.Track
 }
