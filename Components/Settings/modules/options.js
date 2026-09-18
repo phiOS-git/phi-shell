@@ -104,6 +104,7 @@ var OPTIONS = [
     { id: "devices.chroma.color",     title: "Chroma static colour",   keywords: "razer rgb solid" },
     { id: "devices.chroma.advanced",  title: "Chroma per-key colours", keywords: "razer rgb advanced individual keycap override map" },
     { id: "devices.chroma.integrations", title: "Chroma integrations", keywords: "razer battery notifications neovim power key blink mode" },
+    { id: "devices.battery",   title: "Battery",              keywords: "charge percent saver sound alert warn danger threshold plug" },
 
     // --- Keybindings --------------------------------------------
     { id: "keybindings.reference",     title: "Keybinding reference",   keywords: "shortcuts binds hyprctl grouped context" },

@@ -110,9 +110,11 @@ Singleton {
         case "screenshot": return "Screenshot"
         case "microphone": return "Microphone"
         case "camera": return "Camera"
-        // Both manage their own header content (a DND row, a search bar).
+        // Notifications manages its own header content (its DND row and
+        // title line); the clipboard card now uses the shared card header,
+        // whose title ("Clipboard" + settings deep-link) is supplied here.
         case "notifications": return ""
-        case "clipboard": return ""
+        case "clipboard": return "Clipboard"
         }
         return key
     }
