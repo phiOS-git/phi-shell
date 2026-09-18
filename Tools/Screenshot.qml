@@ -215,6 +215,14 @@ PanelWindow {
     Widgets.Panel {
         anchors.centerIn: parent
         width: Math.min(parent.width * 0.8, 60 * chMetrics.width)
+        // Without a driven height the Panel collapses to its 0 implicit
+        // size and only the overflowing inner Column shows — text floating
+        // on the scrim with no card behind it. ConfirmDialog's card uses
+        // exactly this `height: body.implicitHeight + padding * 2`
+        // recipe (plus the same padding), so the surface background and
+        // border always wrap the content.
+        height: body.implicitHeight + padding * 2
+        padding: chMetrics.width * Config.Appearance.space3
         visible: root.resultText.length > 0
 
         TextMetrics {
@@ -225,6 +233,7 @@ PanelWindow {
         }
 
         Column {
+            id: body
             width: parent.width
             spacing: chMetrics.width * Config.Appearance.space2
 

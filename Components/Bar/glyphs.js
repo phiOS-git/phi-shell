@@ -83,6 +83,8 @@ var copy            = _c(0xF018F)   // nf-md-content_copy (chat bubble: copy thi
 var musicNote       = _c(0xF0387)   // nf-md-music_note (no MPRIS player connected)
 var play            = _c(0xF040A)   // nf-md-play (player connected, paused)
 var pause           = _c(0xF03E4)   // nf-md-pause (player connected, playing)
+var skipPrev        = _c(0xF04AE)   // nf-md-skip_previous (media popout: previous track)
+var skipNext        = _c(0xF04AD)   // nf-md-skip_next (media popout: next track)
 
 // Bar/modules/Screenshot.qml + its popout — also glyph-only on the bar, so
 // the same wrong-codepoint risk applies.

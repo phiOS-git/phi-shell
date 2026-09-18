@@ -2,13 +2,17 @@ import QtQuick
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
+import "../../Bar/glyphs.js" as Glyphs
+import "../../../Widgets/WidgetStates.js" as WidgetStates
 
 // The Media popout — the full controls for the active MPRIS player, the
 // same shape Status.qml's own smaller "Media control" section uses, plus
-// a live elapsed/total readout with a read-only progress bar and the
-// connected player's identity. Shows a quiet "No media playing." line
-// while no player is connected, so opening the card (from the note glyph)
-// is still meaningful feedback instead of an empty panel.
+// a live elapsed/total readout with a read-only progress bar, the
+// connected player's identity, and a glyph-icon transport row
+// (skip-previous / play-pause / skip-next) with proper spacing between
+// each block. Shows a quiet "No media playing." line while no player is
+// connected, so opening the card (from the note glyph) is still meaningful
+// feedback instead of an empty panel.
 
 Widgets.StaggerReveal {
     id: root
@@ -28,16 +32,22 @@ Widgets.StaggerReveal {
         return m + ":" + String(s).padStart(2, "0")
     }
 
+    function _can(prop) {
+        const p = Services.Mpris.active
+        return p !== null && p[prop]
+    }
+
     Widgets.OverlaySection {
         width: parent.width
         Column {
             width: parent.width
-            spacing: root.chWidth * Config.Appearance.space1
+            spacing: root.chWidth * Config.Appearance.space2
 
             Widgets.StyledText {
                 width: parent.width
                 kind: "label"; sizeStep: 0
                 elide: Text.ElideRight
+                color: Config.Appearance.textMuted
                 text: Services.Mpris.active && Services.Mpris.active.identity.length > 0
                     ? Services.Mpris.active.identity : ""
             }
@@ -91,23 +101,53 @@ Widgets.StaggerReveal {
                 }
             }
 
+            // Transport: three glyph buttons, prev / play-pause / next,
+            // centered. Bigger than a bare glyph (explicit ch-based touch
+            // target) with the play/pause keyed slightly larger. IconButton
+            // has no built-in disabled look, so each fades to the shared
+            // inactive ratio and gates the click at the signal.
             Row {
+                anchors.horizontalCenter: parent.horizontalCenter
                 spacing: root.chWidth * Config.Appearance.space2
-                Widgets.SmallButton {
-                    label: "Previous"
-                    enabled: Services.Mpris.active !== null && Services.Mpris.active.canGoPrevious
-                    onClicked: Services.Mpris.active.previous()
+                Widgets.IconButton {
+                    id: prevBtn
+                    width: root.chWidth * 4
+                    height: root.chWidth * 4
+                    glyph: Glyphs.skipPrev
+                    sizeStep: 2
+                    enabled: root._can("canGoPrevious")
+                    opacity: prevBtn.enabled ? 1 : WidgetStates.INACTIVE_OPACITY
+                    Behavior on opacity {
+                        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                    }
+                    onActivated: { if (prevBtn.enabled) Services.Mpris.active.previous() }
                 }
-                Widgets.SmallButton {
-                    label: (Services.Mpris.active !== null && Services.Mpris.active.isPlaying) ? "Pause" : "Play"
-                    enabled: Services.Mpris.active !== null
-                        && (Services.Mpris.active.canPlay || Services.Mpris.active.canPause)
-                    onClicked: Services.Mpris.active.togglePlaying()
+                Widgets.IconButton {
+                    id: playBtn
+                    width: root.chWidth * 5
+                    height: root.chWidth * 5
+                    glyph: Services.Mpris.active !== null && Services.Mpris.active.isPlaying
+                        ? Glyphs.pause : Glyphs.play
+                    sizeStep: 3
+                    enabled: root._can("canPlay") || root._can("canPause")
+                    opacity: playBtn.enabled ? 1 : WidgetStates.INACTIVE_OPACITY
+                    Behavior on opacity {
+                        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                    }
+                    onActivated: { if (playBtn.enabled && Services.Mpris.active !== null) Services.Mpris.active.togglePlaying() }
                 }
-                Widgets.SmallButton {
-                    label: "Next"
-                    enabled: Services.Mpris.active !== null && Services.Mpris.active.canGoNext
-                    onClicked: Services.Mpris.active.next()
+                Widgets.IconButton {
+                    id: nextBtn
+                    width: root.chWidth * 4
+                    height: root.chWidth * 4
+                    glyph: Glyphs.skipNext
+                    sizeStep: 2
+                    enabled: root._can("canGoNext")
+                    opacity: nextBtn.enabled ? 1 : WidgetStates.INACTIVE_OPACITY
+                    Behavior on opacity {
+                        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                    }
+                    onActivated: { if (nextBtn.enabled) Services.Mpris.active.next() }
                 }
             }
         }
