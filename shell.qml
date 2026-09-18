@@ -93,6 +93,21 @@ ShellRoot {
         }
     }
 
+    // Bounded, non-wrapping workspace switch (Hyprland's native m+1/m-1
+    // always wraps) — see Services/HyprlandBridge.qml's
+    // focusAdjacentWorkspace(). phios-dotfiles' hyprland.lua.tmpl calls
+    // this instead of its own native relative-focus dispatch.
+    // qs -p ~/.config/quickshell/phi ipc call workspace next|prev
+    IpcHandler {
+        target: "workspace"
+        function next(): void {
+            Services.HyprlandBridge.focusAdjacentWorkspace(1);
+        }
+        function prev(): void {
+            Services.HyprlandBridge.focusAdjacentWorkspace(-1);
+        }
+    }
+
     // Notifications and clipboard are BarPopout "which" cards now
     // (Components/BarPopout/modules/{Notifications,Clipboard}.qml), not
     // their own mounted surfaces.
