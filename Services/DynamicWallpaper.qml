@@ -20,6 +20,11 @@ import qs.Services as Services
 //   wallpapers/dynamic/<name>/dusk-spring-rain.png — daytime + season + weather
 //   wallpapers/dynamic/<name>/day-clear.png      — daytime + weather only
 //
+// An entry is either a directory like these, or — for a solar Apple
+// dynamic-desktop file — the bare .heic/.heif itself sitting directly in
+// wallpapers/dynamic/ (wallpapers/dynamic/sunset.heic): the file needs no
+// folder, it carries its own whole-day schedule.
+//
 // One directory per dynamic wallpaper. Every image file is named
 // `<daytime>[-<optional>...].<ext>` where the FIRST token is the required
 // daytime slot and the following tokens (up to one season and one weather
@@ -111,6 +116,9 @@ Singleton {
     property bool enabled: false
     // Name of the active folder under wallpapers/dynamic/; "" = no folder.
     property string activeName: ""
+    // "folder" | "file" — the entry kind of activeName, resolved from the
+    // entry list (or, before it is loaded, from the name's extension).
+    property string _activeKind: "folder"
     // The two configurable daytime boundaries, whole hours 0-23.
     property int dawnHour: 7
     property int duskHour: 19
@@ -129,9 +137,15 @@ Singleton {
     // composes this with the static image.
     property string currentImage: ""
 
-    // Names of the folders in wallpapers/dynamic/, refreshed on demand
-    // (settings open, after a restart).
+    // Entries under wallpapers/dynamic/, refreshed on demand (settings
+    // open, after a restart): a subfolder of state images (kind "folder",
+    // carrying its raster files' absolute paths for the settings preview)
+    // or a single .heic/.heif file directly in the folder (kind "file" —
+    // no folder needed, it schedules the day itself).
     property var available: []
+    // Converted first-frame JPEG per bare .heic entry, for its settings
+    // preview tile (Qt cannot decode HEIC, so previews point at these).
+    property var previews: ({})
 
     // --- solar HEIF state (see the HEIC section in the header comment) ---
     // While a solar-carrying HEIF drives the folder, these describe what is
@@ -165,6 +179,7 @@ Singleton {
     function setEnabled(v) { root.enabled = !!v; root._commit(); root._evaluate() }
     function setActive(name) {
         root.activeName = String(name || "")
+        root._activeKind = root._resolveActiveKind(root.activeName)
         root._commit()
         root._evaluate()
     }
@@ -222,25 +237,49 @@ Singleton {
         }
     }
 
-    // Re-list the dynamic folders (settings open, new folders dropped in).
-    // Also force a folder re-probe so an image dropped into / replaced in
-    // the active folder shows without waiting for the next boundary — the
-    // dedupe key is cleared so the next _evaluate() re-reads it.
+    // Re-list the dynamic entries (settings open, new folders dropped in).
+    // Also force an entry re-probe so an image dropped into / replaced in
+    // the active entry shows without waiting for the next boundary — the
+    // dedupe key is cleared so the next _evaluate() re-reads it. The probe
+    // after listing lives in listProc's completion so the entry kind is
+    // authoritative first.
     function refresh() {
         root._lastKey = ""
-        dirsProc.running = true
-        if (root.enabled && root.activeName.length > 0) root._probeActiveFolder()
+        listProc.running = true
     }
 
     Process {
-        id: dirsProc
-        onExited: dirsProc.running = false
+        id: listProc
+        onExited: listProc.running = false
         command: ["sh", "-c",
-            'mkdir -p "$1" && ls -1 "$1" 2>/dev/null | while IFS= read -r d; do [ -d "$1/$d" ] && printf "%s\\n" "$d"; done | sort',
-            "dirs", Config.Paths.dynamicWallpaperDir]
+            'mkdir -p "$1" && for e in "$1"/*; do [ -e "$e" ] || continue; b=$(basename -- "$e"); if [ -d "$e" ]; then imgs=""; for im in "$e"/*; do case "$im" in *.png|*.PNG|*.jpg|*.JPG|*.jpeg|*.JPEG|*.webp|*.WEBP|*.bmp|*.BMP|*.gif|*.GIF) imgs="$imgs,$im" ;; esac; done; printf "D\\t%s\\t%s\\n" "$b" "${imgs#,}"; else case "$e" in *.heic|*.HEIC|*.heif|*.HEIF) printf "F\\t%s\\t%s\\n" "$b" "$(stat -c %Y "$e" 2>/dev/null)" ;; esac; fi; done | sort',
+            "list", Config.Paths.dynamicWallpaperDir]
         stdout: StdioCollector {
             onStreamFinished: {
-                root.available = this.text.split("\n").map((s) => s.trim()).filter((s) => s.length > 0)
+                var lines = this.text.split("\n").map((s) => s.trim()).filter((s) => s.length > 0)
+                var entries = []
+                for (var k = 0; k < lines.length; k++) {
+                    var p = lines[k].split("\t")
+                    if (p[0] === "D") {
+                        entries.push({ name: p[1], kind: "folder",
+                            images: (p[2] || "").split(",").filter((s) => s.length > 0) })
+                    } else if (p[0] === "F") {
+                        entries.push({ name: p[1], kind: "file", mtime: p[2] || "0" })
+                    }
+                }
+                root.available = entries
+                // Bare .heic entries get their first frame converted eagerly
+                // so their preview tile always has something to show. Cheap:
+                // the converter skips magick when the cache file exists.
+                for (var f = 0; f < entries.length; f++)
+                    root.ensureFilePreview(entries[f].name)
+                // Re-probe the active entry now that its kind is
+                // authoritative (a probe that ran before the list resolved
+                // may have guessed wrong).
+                if (root.enabled && root.activeName.length > 0) {
+                    root._activeKind = root._resolveActiveKind(root.activeName)
+                    root._probeActiveFolder()
+                }
             }
         }
     }
@@ -254,9 +293,10 @@ Singleton {
     // (they carry an apple_desktop:solar time → frame map and drive the
     // whole day on their own — see the header comment).
     function _probeActiveFolder() {
+        var dir = Config.Paths.dynamicWallpaperDir + "/" + root.activeName
         folderProc.command = ["sh", "-c",
-            'ls -1 "$1" 2>/dev/null | grep -iE "\\.(png|jpe?g|webp|bmp|gif|heic|heif)$" | while IFS= read -r f; do m=$(stat -c %Y "$1/$f" 2>/dev/null); s=0; case "$f" in *.heic|*.HEIC|*.heif|*.HEIF) grep -aq "apple_desktop" "$1/$f" 2>/dev/null && s=1 ;; esac; printf "%s\\t%s\\t%s\\n" "${m:-0}" "$f" "$s"; done',
-            "probe", Config.Paths.dynamicWallpaperDir + "/" + root.activeName]
+            'case "$2" in file) f=$(basename -- "$1"); m=$(stat -c %Y "$1" 2>/dev/null); s=0; grep -aq "apple_desktop" "$1" 2>/dev/null && s=1; printf "%s\\t%s\\t%s\\n" "${m:-0}" "$f" "$s" ;; *) ls -1 "$1" 2>/dev/null | grep -iE "\\.(png|jpe?g|webp|bmp|gif|heic|heif)$" | while IFS= read -r f; do m=$(stat -c %Y "$1/$f" 2>/dev/null); s=0; case "$f" in *.heic|*.HEIC|*.heif|*.HEIF) grep -aq "apple_desktop" "$1/$f" 2>/dev/null && s=1 ;; esac; printf "%s\\t%s\\t%s\\n" "${m:-0}" "$f" "$s"; done ;; esac',
+            "probe", dir, root._activeKind]
         folderProc.running = true
     }
 
@@ -294,7 +334,7 @@ Singleton {
                     root._renderHeic(pick.file, "0", root._mtimeOf(files, pick.file))
                     return
                 }
-                var next = Config.Paths.dynamicWallpaperDir + "/" + root.activeName + "/" + pick.file
+                var next = root._entryPath(pick.file)
                 // Only assign on a real change so the surface's crossfade
                 // fires once per transition, not on every safety tick.
                 if (next !== root.currentImage) root.currentImage = next
@@ -305,6 +345,19 @@ Singleton {
     function _mtimeOf(files, name) {
         for (var k = 0; k < files.length; k++) if (files[k].file === name) return files[k].mtime
         return "0"
+    }
+
+    // Full source path of a file inside the active entry: a folder entry
+    // joins the file under the folder; a bare .heic entry IS the file.
+    function _entryPath(file) {
+        if (root._activeKind === "file") return Config.Paths.dynamicWallpaperDir + "/" + root.activeName
+        return Config.Paths.dynamicWallpaperDir + "/" + root.activeName + "/" + file
+    }
+
+    function _resolveActiveKind(name) {
+        for (var a = 0; a < root.available.length; a++)
+            if (root.available[a].name === name) return root.available[a].kind
+        return /\.(heic|heif)$/i.test(name) ? "file" : "folder"
     }
 
     // --- solar HEIF resolution ------------------------------------------
@@ -326,8 +379,7 @@ Singleton {
 
     function _resolveSolar(file) {
         root._solarTarget = file
-        solarProc.command = ["python3", "-c", root._solarScript,
-            Config.Paths.dynamicWallpaperDir + "/" + root.activeName + "/" + file.file]
+        solarProc.command = ["python3", "-c", root._solarScript, root._entryPath(file.file)]
         solarProc.running = true
     }
 
@@ -458,7 +510,9 @@ Singleton {
     // currentImage — the finish happens before `exited` (Quickshell nulls
     // the process first), which is also why this Process deliberately has
     // no `onExited: running = false`: that would terminate the next
-    // conversion, which is already launched by then.
+    // conversion, which is already launched by then. The same pipeline
+    // also serves previews for bare .heic entries (kind "preview": frame 0
+    // into the cache, surfaced through `previews` instead of currentImage).
     property var _heicWanted: null
     property var _heicCurrent: null
 
@@ -467,8 +521,25 @@ Singleton {
         var cache = Config.Paths.dynamicWallpaperCacheDir + "/" + folder + "/"
             + file + "." + (mtime || "0") + "." + index + ".jpg"
         if (cache === root.currentImage) return
-        root._heicWanted = { folder: folder, file: file, frame: index, cache: cache }
+        root._heicWanted = { kind: "render", folder: folder, file: file, frame: index, cache: cache }
         root._heicStart()
+    }
+
+    // Preview for a bare .heic entry's settings tile: frame 0 converted to
+    // a cached JPEG, exposed via `previews[name]`. No-op once cached.
+    function ensureFilePreview(name) {
+        if (root.previews[name]) return
+        for (var k = 0; k < root.available.length; k++) {
+            var e = root.available[k]
+            if (e.name !== name || e.kind !== "file") continue
+            var cache = Config.Paths.dynamicWallpaperCacheDir + "/" + e.name + "/"
+                + e.name + "." + (e.mtime || "0") + ".0.jpg"
+            if (root._heicWanted !== null && root._heicWanted.kind === "preview"
+                && root._heicWanted.cache === cache) return
+            root._heicWanted = { kind: "preview", file: e.name, frame: "0", cache: cache }
+            root._heicStart()
+            return
+        }
     }
 
     function _heicStart() {
@@ -476,10 +547,14 @@ Singleton {
         var job = root._heicWanted
         root._heicWanted = null
         root._heicCurrent = job
-        var src = Config.Paths.dynamicWallpaperDir + "/" + job.folder + "/" + job.file
+        var src = job.kind === "preview"
+            ? Config.Paths.dynamicWallpaperDir + "/" + job.file
+            : root._entryPath(job.file)
         heicProc.command = ["sh", "-c",
             'f="$3"; n="$4"; mkdir -p "$2" || exit 1; if [ ! -f "$f" ]; then magick "$1[$n]" -strip -quality 92 "$f" || exit 1; fi; if [ -f "$f" ]; then printf "%s" "$f"; fi',
-            "heic", src, Config.Paths.dynamicWallpaperCacheDir + "/" + job.folder, job.cache, job.frame]
+            "heic", src,
+            Config.Paths.dynamicWallpaperCacheDir + "/" + (job.kind === "preview" ? job.file : job.folder),
+            job.cache, job.frame || "0"]
         heicProc.running = true
     }
 
@@ -487,16 +562,21 @@ Singleton {
         id: heicProc
         stdout: StdioCollector {
             onStreamFinished: {
-                // Apply only the conversion that actually finished, and only
-                // if it still belongs to the active folder — a folder
-                // switch away leaves stale completions unapplied.
+                // Apply only the conversion that actually finished: a render
+                // lands on currentImage when it still belongs to the active
+                // entry (a switch away leaves stale completions unapplied);
+                // a preview lands in `previews` for its tile.
                 var cache = this.text.trim()
                 var job = root._heicCurrent
-                if (cache.length > 0 && job !== null
-                    && job.folder === root.activeName
-                    && job.cache === cache
-                    && cache !== root.currentImage) {
-                    root.currentImage = cache
+                if (cache.length > 0 && job !== null) {
+                    if (job.kind === "preview") {
+                        var p = root.previews
+                        p[job.file] = cache
+                        root.previews = p
+                    } else if (job.folder === root.activeName
+                        && job.cache === cache && cache !== root.currentImage) {
+                        root.currentImage = cache
+                    }
                 }
                 root._heicCurrent = null
                 // A newer request may have landed while this one ran.

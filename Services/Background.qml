@@ -33,11 +33,15 @@ Singleton {
     property int textureIntensity: 40
     property string texturePath: ""       // cached PNG, "" until generated
 
-    // Every image in the wallpaper folder, absolute paths — the settings
-    // panel's picker grid. Populated by an `ls` probe (the repo's own
+    // Every image in the wallpaper folder, grouped for the settings picker:
+    // [{ name, images: [absolute paths] }] — one section per subfolder,
+    // loose files under "General". A subfolder is how a set of static
+    // wallpapers is organised; the picker renders the sections as
+    // collapsible accordions so a closed group costs nothing while the
+    // panel is open. Populated by an `ls` probe (the repo's own
     // dir-listing pattern, Services/Agent.qml), refreshed when the panel
     // opens or a new image is added.
-    property var available: []
+    property var groups: []
 
     // The image actually painted on the shell surface: while a dynamic
     // wallpaper is driving the wallpaper (Services/DynamicWallpaper.activeNow)
@@ -119,13 +123,30 @@ Singleton {
     Process {
         id: lsProc
         command: ["sh", "-c",
-            'ls -1 "$1" 2>/dev/null | grep -iE "\\.(png|jpe?g|webp|bmp|gif)$" | while IFS= read -r f; do printf "%s/%s\\n" "$1" "$f"; done',
+            'mkdir -p "$1" && for e in "$1"/*; do [ -e "$e" ] || continue; if [ -d "$e" ]; then g=$(basename -- "$e"); for f in "$e"/*; do case "$f" in *.png|*.PNG|*.jpg|*.JPG|*.jpeg|*.JPEG|*.webp|*.WEBP|*.bmp|*.BMP|*.gif|*.GIF) printf "%s\\t%s\\n" "$g" "$f" ;; esac; done; else case "$e" in *.png|*.PNG|*.jpg|*.JPG|*.jpeg|*.JPEG|*.webp|*.WEBP|*.bmp|*.BMP|*.gif|*.GIF) printf "%s\\t%s\\n" "General" "$e" ;; esac; fi; done | sort',
             "ls", Config.Paths.wallpaperDir]
         onExited: lsProc.running = false
         stdout: StdioCollector {
             onStreamFinished: {
                 var lines = this.text.split("\n").map((s) => s.trim()).filter((s) => s.length > 0)
-                root.available = lines
+                var grouped = {}
+                var order = []
+                for (var k = 0; k < lines.length; k++) {
+                    var p = lines[k].split("\t")
+                    if (p.length < 2 || p[1].length === 0) continue
+                    var g = p[0]
+                    if (!grouped[g]) { grouped[g] = []; order.push(g) }
+                    grouped[g].push(p[1])
+                }
+                // Loose top-level files become "General" and sit first; the
+                // subfolders follow in listing order.
+                var out = []
+                for (var o = 0; o < order.length; o++) {
+                    if (order[o] === "General") continue
+                    out.push({ name: order[o], images: grouped[order[o]] })
+                }
+                if (grouped["General"]) out.unshift({ name: "General", images: grouped["General"] })
+                root.groups = out
             }
         }
     }

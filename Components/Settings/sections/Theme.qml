@@ -1338,7 +1338,7 @@ Column {
         Modules.SettingsRow {
             optionId: "theme.wallpaper.color"
             title: "Solid colour"
-            description: "The base layer — always visible where an image does not cover the screen."
+            description: "The base layer beneath the image."
             wide: true
             Widgets.ColorField {
                 value: Services.Background.color
@@ -1349,12 +1349,13 @@ Column {
         Modules.SettingsRow {
             optionId: "theme.wallpaper.image"
             title: "Image"
-            description: "Pick from the wallpaper folder, or add one from a path (it is copied into the folder and selected). Any image is allowed."
+            description: "An image over the solid colour."
             wide: true
             Column {
                 width: parent.width
                 spacing: root.gap
 
+                // "No image" tile, always available, outside the sections.
                 Flow {
                     width: parent.width
                     spacing: 6
@@ -1384,39 +1385,62 @@ Column {
                         Keys.onReturnPressed: Services.Background.clearImage()
                         Keys.onSpacePressed: Services.Background.clearImage()
                     }
+                }
 
-                    Repeater {
-                        model: Services.Background.available
-                        Rectangle {
-                            id: wpTile
-                            required property string modelData
-                            width: root.chWidth * 12; height: root.chWidth * 8
-                            radius: Config.Appearance.radiusSmall
-                            color: Config.Appearance.surface1
-                            clip: true
-                            border.width: Config.Appearance.borderWidth
-                            border.color: Services.Background.image === modelData
-                                ? Config.Appearance.accent
-                                : ((wpHover.hovered || wpTile.activeFocus) ? Config.Appearance.borderStrong : Config.Appearance.border)
-                            Behavior on border.color {
-                                ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                // One collapsible section per subfolder of the wallpaper
+                // folder ("General" holds the loose top-level files). A
+                // closed section loads nothing: a tile's image only gets a
+                // source once its section is open, which is what stops a
+                // large folder from decoding every thumbnail at once.
+                Repeater {
+                    model: Services.Background.groups
+                    delegate: Widgets.Accordion {
+                        id: section
+                        required property var modelData
+                        title: modelData.name
+                        // The first group (always "General") starts open;
+                        // the rest stay closed until chosen.
+                        expanded: index === 0
+                        content:
+                            Flow {
+                                width: parent.width
+                                spacing: 6
+                                Repeater {
+                                    model: section.modelData.images
+                                    delegate: Rectangle {
+                                        id: wpTile
+                                        required property string modelData
+                                        width: root.chWidth * 12; height: root.chWidth * 8
+                                        radius: Config.Appearance.radiusSmall
+                                        color: Config.Appearance.surface1
+                                        clip: true
+                                        border.width: Config.Appearance.borderWidth
+                                        border.color: Services.Background.image === modelData
+                                            ? Config.Appearance.accent
+                                            : ((wpHover.hovered || wpTile.activeFocus) ? Config.Appearance.borderStrong : Config.Appearance.border)
+                                        Behavior on border.color {
+                                            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                                        }
+                                        Image {
+                                            anchors.fill: parent
+                                            anchors.margins: Config.Appearance.borderWidth
+                                            // Lazy: nothing loads while the
+                                            // section stays collapsed.
+                                            source: section.expanded ? "file://" + modelData : ""
+                                            fillMode: Image.PreserveAspectCrop
+                                            asynchronous: true
+                                            sourceSize.width: 256
+                                        }
+                                        HoverHandler { id: wpHover; cursorShape: Qt.PointingHandCursor }
+                                        TapHandler { onTapped: Services.Background.setImage(modelData) }
+                                        // Same fix as the colour swatches /
+                                        // "none" tile above.
+                                        activeFocusOnTab: true
+                                        Keys.onReturnPressed: Services.Background.setImage(modelData)
+                                        Keys.onSpacePressed: Services.Background.setImage(modelData)
+                                    }
+                                }
                             }
-                            Image {
-                                anchors.fill: parent
-                                anchors.margins: Config.Appearance.borderWidth
-                                source: "file://" + modelData
-                                fillMode: Image.PreserveAspectCrop
-                                asynchronous: true
-                                sourceSize.width: 256
-                            }
-                            HoverHandler { id: wpHover; cursorShape: Qt.PointingHandCursor }
-                            TapHandler { onTapped: Services.Background.setImage(modelData) }
-                            // Same fix as the colour swatches / "none"
-                            // tile above.
-                            activeFocusOnTab: true
-                            Keys.onReturnPressed: Services.Background.setImage(modelData)
-                            Keys.onSpacePressed: Services.Background.setImage(modelData)
-                        }
                     }
                 }
 
@@ -1441,21 +1465,18 @@ Column {
         }
 
         // --- Dynamic wallpaper ----------------------------------------
-        // Folders under wallpapers/dynamic/ that rotate the wallpaper by
-        // daytime, season and (future) weather. All state lives in
+        // Entries under wallpapers/dynamic/ (a folder of state images, or
+        // a bare solar .heic) that rotate the wallpaper by daytime, season
+        // and (future) weather. All state lives in
         // Services/DynamicWallpaper.qml — this group only reads it and
         // calls its setters. While it is on, the image shown becomes the
-        // folder's most specific entry for the current slot; while off, or
+        // entry's most specific image for the current slot; while off, or
         // paused by battery saver, the static pick above (and the mode /
         // scale / texture rows below) apply unchanged.
         Modules.SettingsRow {
             optionId: "theme.wallpaper.dynamic"
             title: "Dynamic wallpaper"
-            description: Services.DynamicWallpaper.enabled
-                ? (Services.DynamicWallpaper.activeNow
-                    ? "Active — the wallpaper is the current entry of the folder picked below, changing by itself at each daytime boundary."
-                    : "Paused by battery saver, so the static image stays until power is back.")
-                : "Off — the wallpaper is the static image above. Turn on to let a dynamic folder rotate it by time of day, season and weather."
+            description: "Rotate the wallpaper by time of day and season."
             Widgets.Toggle {
                 checked: Services.DynamicWallpaper.enabled
                 onToggled: (v) => Services.DynamicWallpaper.setEnabled(v)
@@ -1464,8 +1485,9 @@ Column {
 
         Modules.SettingsRow {
             optionId: "theme.wallpaper.dynamic.folder"
-            title: "Folder"
-            description: "One folder under wallpapers/dynamic/ is one dynamic wallpaper. Images are named <daytime>[-<season>][-<weather>].png: daytime is required (dawn, day, dusk, night); season (spring, summer, autumn, winter) and weather (clear, cloudy, rain, snow, storm, fog) are optional — the most specific matching image wins, and an image that names a season or weather only ever shows during that season/weather. Weather-tagged images are not picked yet: the weather source is a documented placeholder. A single Apple-style dynamic-desktop HEIF (.heic or .heif, carrying its own apple_desktop:solar time → frame schedule) is supported too: such a file in the folder drives the whole day by its own schedule and takes over the folder."
+            title: "Entry"
+            description: "A folder of state images, or a single solar .heic right in wallpapers/dynamic/."
+            enabled: Services.DynamicWallpaper.enabled
             wide: true
             Column {
                 width: parent.width
@@ -1475,17 +1497,127 @@ Column {
                     spacing: 6
                     Repeater {
                         model: Services.DynamicWallpaper.available
-                        Widgets.StyledButton {
-                            required property string modelData
-                            label: modelData
-                            active: Services.DynamicWallpaper.activeName === modelData
-                            onClicked: Services.DynamicWallpaper.setActive(modelData)
+                        delegate: Rectangle {
+                            id: dynTile
+                            required property var modelData
+                            width: root.chWidth * 12; height: root.chWidth * 8
+                            radius: Config.Appearance.radiusSmall
+                            color: Config.Appearance.surface1
+                            clip: true
+                            border.width: Config.Appearance.borderWidth
+                            border.color: Services.DynamicWallpaper.activeName === modelData.name
+                                ? Config.Appearance.accent
+                                : ((dynHover.hovered || dynTile.activeFocus) ? Config.Appearance.borderStrong : Config.Appearance.border)
+                            Behavior on border.color {
+                                ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                            }
+
+                            // What this entry previews: a folder cycles
+                            // through the raster images it holds, one every
+                            // 1.5s while hovered; a bare .heic shows its
+                            // converted first frame (a single frame, so it
+                            // never cycles).
+                            readonly property var frames: modelData.kind === "folder"
+                                ? modelData.images
+                                : (Services.DynamicWallpaper.previews[modelData.name]
+                                    ? [Services.DynamicWallpaper.previews[modelData.name]] : [])
+                            property int cycleIdx: 0
+                            property bool frontIsA: true
+
+                            Component.onCompleted:
+                                if (modelData.kind === "file") Services.DynamicWallpaper.ensureFilePreview(modelData.name)
+
+                            // Two stacked layers; each cycle loads the next
+                            // frame into the hidden one and crossfades, then
+                            // the layers swap roles.
+                            Image {
+                                id: dynA
+                                anchors.fill: parent
+                                anchors.margins: Config.Appearance.borderWidth
+                                source: dynTile.frames.length > 0
+                                    ? "file://" + dynTile.frames[dynTile.cycleIdx % dynTile.frames.length] : ""
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                                sourceSize.width: 256
+                                Behavior on opacity {
+                                    NumberAnimation { duration: Config.Appearance.motionBDuration * 2; easing.type: Easing.InOutQuad }
+                                }
+                            }
+                            Image {
+                                id: dynB
+                                anchors.fill: parent
+                                anchors.margins: Config.Appearance.borderWidth
+                                opacity: 0
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                                sourceSize.width: 256
+                                Behavior on opacity {
+                                    NumberAnimation { duration: Config.Appearance.motionBDuration * 2; easing.type: Easing.InOutQuad }
+                                }
+                            }
+
+                            Timer {
+                                id: cycleTimer
+                                interval: 1500
+                                repeat: true
+                                onTriggered: {
+                                    var n = dynTile.frames.length
+                                    if (n < 2) return
+                                    var next = (dynTile.cycleIdx + 1) % n
+                                    if (dynTile.frontIsA) {
+                                        dynB.source = "file://" + dynTile.frames[next]
+                                        dynA.opacity = 0
+                                        dynB.opacity = 1
+                                    } else {
+                                        dynA.source = "file://" + dynTile.frames[next]
+                                        dynB.opacity = 0
+                                        dynA.opacity = 1
+                                    }
+                                    dynTile.frontIsA = !dynTile.frontIsA
+                                    dynTile.cycleIdx = next
+                                }
+                            }
+
+                            HoverHandler {
+                                id: dynHover
+                                cursorShape: Qt.PointingHandCursor
+                                onHoveredChanged: {
+                                    if (dynHover.hovered) { if (dynTile.frames.length > 1) cycleTimer.start() }
+                                    else cycleTimer.stop()
+                                }
+                            }
+                            TapHandler { onTapped: Services.DynamicWallpaper.setActive(modelData.name) }
+                            activeFocusOnTab: true
+                            Keys.onReturnPressed: Services.DynamicWallpaper.setActive(modelData.name)
+                            Keys.onSpacePressed: Services.DynamicWallpaper.setActive(modelData.name)
+
+                            // Name caption on a bottom band, so an entry
+                            // with no previews (an empty folder) still
+                            // reads as selectable.
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                height: root.chWidth * 2
+                                color: Config.Appearance.surface2
+                                opacity: 0.85
+                                Widgets.StyledText {
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: root.chWidth
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: root.chWidth
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    kind: "label"; sizeStep: 0
+                                    text: modelData.name
+                                    elide: Text.ElideRight
+                                }
+                            }
                         }
                     }
                     Widgets.StyledText {
                         visible: Services.DynamicWallpaper.available.length === 0
                         kind: "label"; sizeStep: 0
-                        text: "No dynamic folders yet — create wallpapers/dynamic/<name>/ and drop images in."
+                        text: "Nothing here yet — add a folder or a .heic under wallpapers/dynamic/."
                     }
                 }
                 Widgets.SmallButton {
@@ -1498,7 +1630,8 @@ Column {
         Modules.SettingsRow {
             optionId: "theme.wallpaper.dynamic.dawn"
             title: "Sunrise starts at"
-            description: "Dawn runs from this hour for one hour; day follows until the sunset hour."
+            description: "Dawn runs one hour from this hour."
+            enabled: Services.DynamicWallpaper.enabled
             Widgets.NumberField {
                 value: Services.DynamicWallpaper.dawnHour
                 step: 1; suffix: ":00"; from: 0; to: 23
@@ -1509,7 +1642,8 @@ Column {
         Modules.SettingsRow {
             optionId: "theme.wallpaper.dynamic.dusk"
             title: "Sunset starts at"
-            description: "Dusk runs from this hour for one hour; night follows until tomorrow's sunrise."
+            description: "Dusk runs one hour from this hour."
+            enabled: Services.DynamicWallpaper.enabled
             Widgets.NumberField {
                 value: Services.DynamicWallpaper.duskHour
                 step: 1; suffix: ":00"; from: 0; to: 23
@@ -1549,7 +1683,7 @@ Column {
         Modules.SettingsRow {
             optionId: "theme.wallpaper.scale"
             title: "Scale"
-            description: "Zoom for contain and repeat; ignored for cover and stretch."
+            description: "Zoom for contain and repeat."
             enabled: Services.Background.image.length > 0
                 && (Services.Background.mode === "contain" || Services.Background.mode === "repeat")
             Widgets.NumberField {
@@ -1563,8 +1697,8 @@ Column {
             optionId: "theme.wallpaper.texture"
             title: "Texture"
             description: Services.Background.textureApplies
-                ? "A generated grain added over the solid colour. Generated once, not at runtime."
-                : "Available only when there is no image, or the image is contain / repeat."
+                ? "A generated grain over the solid colour."
+                : "Only with no image or contain/repeat."
             enabled: Services.Background.textureApplies
             wide: true
             Column {
@@ -1637,24 +1771,17 @@ Column {
 
     function _dynamicStatus() {
         const s = Services.DynamicWallpaper
-        if (s.activeName.length === 0) return "No dynamic folder picked — pick the folder above."
-        if (s.pausedByLowPower) return "Paused by battery saver, showing the static image. Picks up again when power is back."
+        if (s.activeName.length === 0) return "No entry picked."
+        if (s.pausedByLowPower) return "Paused by battery saver — static image showing."
         if (s.solarFile.length > 0) {
             const fr = s.solarFrame < 0 ? "…" : String(s.solarFrame)
-            return "Showing " + s.activeName + " · solar " + s.solarFile + " frame " + fr
-                + " (" + s.solarTimeText + ") — the file's own schedule picked this frame for right now; it is rendered to a cached JPEG because Qt cannot decode HEIC."
+            return "Solar " + s.solarFile + " — frame " + fr + " (" + s.solarTimeText + ")."
         }
-        if (s.currentImage.length === 0) {
-            const none = [s.currentDaytime]
-            if (s.currentSeason.length > 0) none.push(s.currentSeason)
-            if (s.currentWeather.length > 0) none.push(s.currentWeather)
-            return "No image matches " + none.join(" · ") + " in " + s.activeName + " (and none of the following slots) — the static image is showing."
-        }
+        if (s.currentImage.length === 0) return "No image matches " + s.activeName + "."
         const parts = [s.currentDaytime]
         if (s.currentSeason.length > 0) parts.push(s.currentSeason)
         if (s.currentWeather.length > 0) parts.push(s.currentWeather)
-        const file = s.currentImage.split("/").pop()
-        return "Showing " + s.activeName + " · " + parts.join(" · ") + " — " + file + ". This is the most specific image for right now; weather-specific entries wait for the weather source."
+        return s.currentImage.split("/").pop() + " (" + parts.join(" · ") + ")."
     }
 
     function _addWallpaper(srcPath) {
