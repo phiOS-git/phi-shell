@@ -78,6 +78,22 @@ var hibernate       = _c(0xF0717)   // nf-md-snowflake (power menu: Hibernate) �
                                      // menu).
 var copy            = _c(0xF018F)   // nf-md-content_copy (chat bubble: copy this message)
 
+// Bar/modules/Media.qml — the media glyph in the top bar's right isle.
+// No text label next to it, so a wrong codepoint here is a bare box.
+var musicNote       = _c(0xF0387)   // nf-md-music_note (no MPRIS player connected)
+var play            = _c(0xF040A)   // nf-md-play (player connected, paused)
+var pause           = _c(0xF03E4)   // nf-md-pause (player connected, playing)
+
+// Bar/modules/Screenshot.qml + its popout — also glyph-only on the bar, so
+// the same wrong-codepoint risk applies.
+var camera          = _c(0xF0100)   // nf-md-camera (screenshot icon, idle)
+var crop            = _c(0xF019E)   // nf-md-crop (awaiting an area selection; popout "Capture area")
+var recordRec       = _c(0xF044B)   // nf-md-record_rec (screen recording)
+var screenshotFull  = _c(0xF0E51)   // nf-md-monitor_screenshot (popout: fullscreen capture)
+var screenshotWin   = _c(0xF05B2)   // nf-md-window_restore (popout: active-window capture)
+var ocr             = _c(0xF113D)   // nf-md-text_recognition (popout: OCR a region)
+var qr              = _c(0xF0432)   // nf-md-qrcode (popout: scan a QR code)
+
 // Bar/modules/{Lens,StatusMenu,Stats}.qml — none of these three modules
 // render a text label next to the glyph, so a wrong codepoint here is a
 // bare box with no readable fallback next to it.

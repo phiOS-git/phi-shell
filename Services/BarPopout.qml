@@ -106,6 +106,8 @@ Singleton {
         // is this card's own real headline.
         case "status": return ""
         case "stats": return "Stats"
+        case "media": return "Media"
+        case "screenshot": return "Screenshot"
         case "microphone": return "Microphone"
         case "camera": return "Camera"
         // Both manage their own header content (a DND row, a search bar).

@@ -137,6 +137,8 @@ PanelWindow {
             case "clock": return clockComponent
             case "clipboard": return clipboardComponent
             case "notifications": return notificationsComponent
+            case "media": return mediaComponent
+            case "screenshot": return screenshotComponent
             case "phiAgent": return phiAgentComponent
             case "status": return statusMenuComponent
             // variables
@@ -176,6 +178,8 @@ PanelWindow {
     Component { id: clockComponent; Modules.Clock { screen: bar.screen } }
     Component { id: clipboardComponent; Modules.Clipboard { screen: bar.screen } }
     Component { id: notificationsComponent; Modules.Notifications { screen: bar.screen } }
+    Component { id: mediaComponent; Modules.Media { screen: bar.screen } }
+    Component { id: screenshotComponent; Modules.Screenshot { screen: bar.screen } }
     Component { id: phiAgentComponent; Modules.PhiAgent { screen: bar.screen } }
     Component { id: statusMenuComponent; Modules.StatusMenu { screen: bar.screen } }
     Component { id: runnerComponent; Modules.Runner { screen: bar.screen } }

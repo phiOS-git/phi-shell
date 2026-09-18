@@ -169,6 +169,8 @@ Widgets.PopoutSurface {
         // the rest are compact readouts with a deep-link where a mature
         // tool exists.
         Modules.Volume     { chWidth: root.chWidth; active: root.which === "volume" }
+        Modules.Media      { chWidth: root.chWidth; active: root.which === "media" }
+        Modules.Screenshot { chWidth: root.chWidth; active: root.which === "screenshot" }
         Modules.Brightness { chWidth: root.chWidth; active: root.which === "brightness" }
         Modules.Wifi       { chWidth: root.chWidth; active: root.which === "wifi" }
         Modules.Ethernet   { chWidth: root.chWidth; active: root.which === "ethernet" }

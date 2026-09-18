@@ -39,6 +39,16 @@ PanelWindow {
 
     readonly property bool selecting: root.mode.startsWith("select-")
 
+    // Mirrors this surface's two state properties into the
+    // Services/ScreenshotState.qml singleton so surfaces outside this
+    // component tree (the screenshot bar button's icon states, the
+    // screenshot popout's record row) can read them without reaching in
+    // here. `onModeChanged`/`onRecordingChanged` fire for every real
+    // change; the merged Component.onCompleted below pushes the initial
+    // values before any change happens.
+    onModeChanged: Services.ScreenshotState.mode = root.mode
+    onRecordingChanged: Services.ScreenshotState.recording = root.recording
+
     anchors { top: true; bottom: true; left: true; right: true }
     // On the default Top layer, the bar's own exclusiveZone reduces this
     // surface's available region to stop short of the bar strip — not a
@@ -53,6 +63,10 @@ PanelWindow {
 
     Component.onCompleted: {
         if (root.WlrLayershell) root.WlrLayershell.layer = WlrLayer.Overlay
+        // Push the initial state (this mirrors mode/recording on every
+        // real change via the on*Changed handlers above).
+        Services.ScreenshotState.mode = root.mode
+        Services.ScreenshotState.recording = root.recording
     }
 
     // Every other modal-style overlay in this shell wires Escape to
