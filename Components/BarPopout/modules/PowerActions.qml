@@ -2,10 +2,10 @@ import QtQml
 import qs.Services as Services
 import "../../Bar/glyphs.js" as Glyphs
 
-// The power-action glyph/tone/confirm logic shared by the "power" card
-// (six full rows) and the "status" card's own compact power-icon row —
-// each instantiates this once as a plain child, same reusable-non-
-// singleton shape as Services/LayerFocus.qml.
+// The power-action glyph/confirm logic shared by the "power" card (six
+// full rows) and the "status" card's own compact power-icon row — each
+// instantiates this once as a plain child, same reusable-non-singleton
+// shape as Services/LayerFocus.qml.
 //
 // Confirmation: Services/ConfirmDialog.qml's shared centered modal closes
 // every other panel (this popout included) the moment it opens, so
@@ -26,19 +26,11 @@ QtObject {
         return ""
     }
 
-    // One semantic tone per action, from this shell's existing tone
-    // palette (rule 6: design tokens are the only source of colour).
-    function tone(action, Appearance) {
-        switch (action) {
-        case "lock": return Appearance.accent
-        case "suspend": return Appearance.info
-        case "hibernate": return Appearance.accent
-        case "logout": return Appearance.warn
-        case "reboot": return Appearance.warn
-        case "shutdown": return Appearance.error
-        }
-        return Appearance.textPrimary
-    }
+    // Removed: a per-action `tone()` used to recolor each hovered icon
+    // (lock/suspend/hibernate → accent/info, logout/reboot → warn,
+    // shutdown → error). The status card's power row now shows a plain
+    // background wash on hover instead (Status.qml), so the only consumer
+    // is gone — a hover should never recolor the glyph semantically.
 
     function request(action) {
         if (Services.PowerActions.needsConfirm(action)) root.confirmAndPerform(action)

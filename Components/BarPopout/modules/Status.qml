@@ -94,14 +94,24 @@ Widgets.StaggerReveal {
                     width: pwrRow._btnSize
                     height: width
 
+                    // Hover is a flat background wash only, never a
+                    // per-action recolor of the glyph itself — the same
+                    // treatment Dialogs/PowerActionsRow.qml's own pills
+                    // already use. Every action stays textPrimary, the six
+                    // icons differ by shape (powerActions.glyph) alone.
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: Config.Appearance.radiusSmall
+                        color: pwrHover.hovered ? Config.Appearance.panelHover : "transparent"
+                        Behavior on color {
+                            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                        }
+                    }
                     Widgets.StyledIcon {
                         anchors.centerIn: parent
                         glyph: powerActions.glyph(pwrBtn.modelData)
                         sizeStep: 3
-                        color: pwrHover.hovered ? powerActions.tone(pwrBtn.modelData, Config.Appearance) : Config.Appearance.textPrimary
-                        Behavior on color {
-                            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
-                        }
+                        color: Config.Appearance.textPrimary
                     }
                     HoverHandler { id: pwrHover; cursorShape: Qt.PointingHandCursor }
                     TapHandler { onTapped: powerActions.request(pwrBtn.modelData) }
