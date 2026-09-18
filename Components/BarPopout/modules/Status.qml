@@ -77,22 +77,33 @@ Widgets.StaggerReveal {
         }
     }
 
-    // --- power icons row, spaced evenly across the card's full width ---
+    // --- power icons row, tiling the card's full width in six equal slots ---
     Widgets.OverlaySection {
         width: parent.width
         Row {
             id: pwrRow
             width: parent.width
             readonly property int _count: 6
-            readonly property real _btnSize: root.chWidth * 3
-            spacing: _count > 1 ? (width - _count * _btnSize) / (_count - 1) : 0
+            // Half a rhythm unit between the six buttons — each button is
+            // the whole width of its slot below, so the hover wash tiles
+            // the row edge to edge instead of floating a fixed square per
+            // icon with dead gaps around it.
+            readonly property real _gap: root.chWidth * Config.Appearance.space1
+            spacing: pwrRow._gap
             Repeater {
                 model: ["lock", "suspend", "hibernate", "logout", "reboot", "shutdown"]
                 Item {
                     id: pwrBtn
                     required property string modelData
-                    width: pwrRow._btnSize
-                    height: width
+                    // The button is the full slot, not a fixed square around
+                    // the glyph: an icon-sized target left the hover wash
+                    // with no padding (it read as a box wrapped around the
+                    // glyph) and let a resting cursor keep crossing the
+                    // button's edges, flickering the wash on and off. Six
+                    // equal slots tile the whole row width, so the hover
+                    // area is unmistakably the button.
+                    width: (pwrRow.width - pwrRow._gap * (pwrRow._count - 1)) / pwrRow._count
+                    height: root.chWidth * 4
 
                     // Hover is a flat background wash only, never a
                     // per-action recolor of the glyph itself — the same

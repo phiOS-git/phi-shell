@@ -5,11 +5,16 @@ import qs.Widgets as Widgets
 import "../Bar/glyphs.js" as Glyphs
 import "../../Widgets/WidgetStates.js" as WidgetStates
 
-// A horizontal row of icon+label power-action pills: one pill filled
-// solid with accent to mark it, the rest bare icon+text directly on the
-// wallpaper/scrim behind them. WidgetStates.js's own `ambient:
-// "powerPill"` carries the colour recipe; this file is presentation and
-// action-dispatch only.
+// A horizontal row of icon+label power-action pills: each pill's GLYPH
+// carries its action's semantic tone (shutdown error, logout/reboot warn,
+// suspend info, lock/hibernate accent) on whatever surface it sits on —
+// the colour identity the status card's compact row used to apply on
+// hover, now steady on each pill instead of appearing only under the
+// cursor. Hover adds only the flat wash behind the pill
+// (WidgetStates.js's own `ambient: "powerPill"` carries the colour
+// recipe); the keyboard-focus pill keeps its full accent fill with
+// accentText glyph so the selection stays readable over the tone. This
+// file is presentation and action-dispatch only.
 //
 // Shared by both surfaces that offer power actions, so they can't
 // visually disagree about what one action looks like:
@@ -78,6 +83,22 @@ Row {
         return ""
     }
 
+    // One semantic tone per action, from this shell's existing tone palette
+    // (rule 6: design tokens are the only source of colour) — read by each
+    // pill's own `iconColor`, so a shutdown action is always error-coloured
+    // no matter which surface hosts this row (PowerMenu, Lock screen).
+    function _toneFor(action) {
+        switch (action) {
+        case "lock": return Config.Appearance.accent
+        case "suspend": return Config.Appearance.info
+        case "hibernate": return Config.Appearance.accent
+        case "logout": return Config.Appearance.warn
+        case "reboot": return Config.Appearance.warn
+        case "shutdown": return Config.Appearance.error
+        }
+        return Config.Appearance.textMuted
+    }
+
     Repeater {
         id: pillRepeater
         model: root.actions
@@ -102,6 +123,19 @@ Row {
                 loading: false, invalid: false
             })
             readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState, "powerPill")
+
+            // Per-action semantic colour on the GLYPH, steady in every state
+            // (hover only adds the wash behind it): a shutdown pill always
+            // reads error, a logout warn, a suspend info, lock/hibernate
+            // accent — the same per-action colouring the status card's
+            // compact row used to apply on hover, now each action's
+            // identity instead. The two exceptions fall back to
+            // `stateColors.fg`: the keyboard-focus pill fills solid with
+            // accent, so its glyph must be accentText to stay readable on
+            // that fill, and an invalid pill keeps the error state's fg.
+            readonly property color iconColor: (pill.resolvedState === "active" || pill.resolvedState === "invalid")
+                ? pill.stateColors.fg
+                : root._toneFor(pill.modelData)
 
             implicitWidth: row.implicitWidth + root._padH * 2
             implicitHeight: row.implicitHeight + root._padV * 2
@@ -131,7 +165,7 @@ Row {
                     anchors.verticalCenter: parent.verticalCenter
                     glyph: root._glyphFor(pill.modelData)
                     sizeStep: 1
-                    color: pill.stateColors.fg
+                    color: pill.iconColor
                 }
                 Widgets.StyledText {
                     anchors.verticalCenter: parent.verticalCenter
