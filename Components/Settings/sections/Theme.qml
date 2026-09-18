@@ -1466,7 +1466,7 @@ Column {
 
         // --- Dynamic wallpaper ----------------------------------------
         // Entries under wallpapers/dynamic/ (a folder of state images, or
-        // a bare solar .heic) that rotate the wallpaper by daytime, season
+        // a bare dynamic .heic) that rotate the wallpaper by daytime, season
         // and (future) weather. All state lives in
         // Services/DynamicWallpaper.qml — this group only reads it and
         // calls its setters. While it is on, the image shown becomes the
@@ -1486,7 +1486,7 @@ Column {
         Modules.SettingsRow {
             optionId: "theme.wallpaper.dynamic.folder"
             title: "Entry"
-            description: "A folder of state images, or a single solar .heic right in wallpapers/dynamic/."
+            description: "A folder of state images, or a single dynamic .heic (solar or 24-hour timeline) right in wallpapers/dynamic/."
             enabled: Services.DynamicWallpaper.enabled
             wide: true
             Column {
@@ -1775,7 +1775,8 @@ Column {
         if (s.pausedByLowPower) return "Paused by battery saver — static image showing."
         if (s.solarFile.length > 0) {
             const fr = s.solarFrame < 0 ? "…" : String(s.solarFrame)
-            return "Solar " + s.solarFile + " — frame " + fr + " (" + s.solarTimeText + ")."
+            const what = s.solarKind === "h24" ? "Timeline" : "Solar"
+            return what + " " + s.solarFile + " — frame " + fr + " (" + s.solarTimeText + ")."
         }
         if (s.currentImage.length === 0) return "No image matches " + s.activeName + "."
         const parts = [s.currentDaytime]

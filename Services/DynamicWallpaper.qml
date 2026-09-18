@@ -65,19 +65,22 @@ import qs.Services as Services
 // HEIC/HEIF dynamic desktops
 // --------------------------
 // Apple "Dynamic Desktop"-style files — one multi-image HEIF carrying an
-// `apple_desktop:solar` XMP map of {zenith-of-day → frame} — are supported
-// as a whole-day wallpaper: a single .heic that schedules every hour of the
-// day itself. Such a file in the active folder takes over the whole day
-// (conventional named images in the same folder are ignored while it is
-// present). The map's `z` values are day angles, 0..360 == 00:00..24:00;
-// the frame whose z is nearest right now wins, and the boundary timer is
-// armed to each map midpoint so the next frame lands at its exact minute.
-// Season/weather do not apply to a solar file — it is its own schedule.
+// `apple_desktop:solar` (sun-angle → frame) or `apple_desktop:h24`
+// (clock-start → frame) XMP map — are supported as a whole-day wallpaper:
+// a single .heic that schedules every hour of the day itself. Such a file
+// in the active folder takes over the whole day (conventional named images
+// in the same folder are ignored while it is present). The solar map's `z`
+// values are day angles, 0..360 == 00:00..24:00 — the frame whose z is
+// nearest right now wins, and the boundary timer is armed to each map
+// midpoint so the next frame lands at its exact minute. The h24 map's `t`
+// values are frame start times (fraction of a day): the frame whose start
+// has just passed wins and the timer is armed to the next start. Season/
+// weather do not apply to either — the file is its own schedule.
 // Qt cannot decode HEIC at all (no QImageReader plugin), so the chosen
 // frame is converted on demand with ImageMagick (libheif-backed) into a
 // cached JPEG under Config.Paths.dynamicWallpaperCacheDir, keyed on source
-// mtime + frame index so a replaced source re-converts. A non-solar .heic
-// (no such map) is an ordinary named image and shows its first frame when
+// mtime + frame index so a replaced source re-converts. A .heic with
+// neither map is an ordinary named image and shows its first frame when
 // picked like any raster.
 //
 // Season is computed from the current month (meteorological quarters,
@@ -147,13 +150,14 @@ Singleton {
     // preview tile (Qt cannot decode HEIC, so previews point at these).
     property var previews: ({})
 
-    // --- solar HEIF state (see the HEIC section in the header comment) ---
-    // While a solar-carrying HEIF drives the folder, these describe what is
-    // painted; they stay empty/default when the folder uses conventional
+    // --- timeline HEIF state (see the HEIC section in the header comment) ---
+    // While a timeline-carrying HEIF drives the folder, these describe what
+    // is painted; they stay empty/default when the folder uses conventional
     // names. Exposed for the settings "Now showing" status row.
-    property string solarFile: ""        // base name of the solar HEIF
+    property string solarFile: ""        // base name of the driving HEIF
     property int solarFrame: -1          // frame index currently painted
     property string solarTimeText: ""    // its mapped time, "HH:MM"
+    property string solarKind: "solar"   // "solar" (sun-angle) or "h24" (clock)
 
     readonly property bool lowPowerActive: Services.PowerBridge.batterySaverActive
     // Dynamic is actually driving the wallpaper right now: on, a folder is
@@ -290,12 +294,12 @@ Singleton {
     // fresh means edits show up without any file watcher plumbed through.
     // Each output line is "mtime\tname\tsolar": the mtime keys the HEIC
     // render cache, and `solar` flags Apple dynamic-desktop HEIF files
-    // (they carry an apple_desktop:solar time → frame map and drive the
-    // whole day on their own — see the header comment).
+    // (they carry an apple_desktop:solar or apple_desktop:h24 time → frame
+    // map and drive the whole day on their own — see the header comment).
     function _probeActiveFolder() {
         var dir = Config.Paths.dynamicWallpaperDir + "/" + root.activeName
         folderProc.command = ["sh", "-c",
-            'case "$2" in file) f=$(basename -- "$1"); m=$(stat -c %Y "$1" 2>/dev/null); s=0; grep -aq "apple_desktop" "$1" 2>/dev/null && s=1; printf "%s\\t%s\\t%s\\n" "${m:-0}" "$f" "$s" ;; *) ls -1 "$1" 2>/dev/null | grep -iE "\\.(png|jpe?g|webp|bmp|gif|heic|heif)$" | while IFS= read -r f; do m=$(stat -c %Y "$1/$f" 2>/dev/null); s=0; case "$f" in *.heic|*.HEIC|*.heif|*.HEIF) grep -aq "apple_desktop" "$1/$f" 2>/dev/null && s=1 ;; esac; printf "%s\\t%s\\t%s\\n" "${m:-0}" "$f" "$s"; done ;; esac',
+            'case "$2" in file) f=$(basename -- "$1"); m=$(stat -c %Y "$1" 2>/dev/null); s=0; grep -aq "apple_desktop:solar\|apple_desktop:h24" "$1" 2>/dev/null && s=1; printf "%s\\t%s\\t%s\\n" "${m:-0}" "$f" "$s" ;; *) ls -1 "$1" 2>/dev/null | grep -iE "\\.(png|jpe?g|webp|bmp|gif|heic|heif)$" | while IFS= read -r f; do m=$(stat -c %Y "$1/$f" 2>/dev/null); s=0; case "$f" in *.heic|*.HEIC|*.heif|*.HEIF) grep -aq "apple_desktop:solar\|apple_desktop:h24" "$1/$f" 2>/dev/null && s=1 ;; esac; printf "%s\\t%s\\t%s\\n" "${m:-0}" "$f" "$s"; done ;; esac',
             "probe", dir, root._activeKind]
         folderProc.running = true
     }
@@ -360,22 +364,32 @@ Singleton {
         return /\.(heic|heif)$/i.test(name) ? "file" : "folder"
     }
 
-    // --- solar HEIF resolution ------------------------------------------
-    // The solar map lives inside the file as an apple_desktop:solar XMP
-    // plist; extracting it needs a plist parse, which plain sh cannot do.
-    // python3 is an official Arch package, installed on every machine the
-    // shell runs on — the smallest sanctioned way to turn the map into a
-    // list of "z i" lines WITHOUT converting any pixels (that is left to
-    // magick, only for the frame that is actually shown).
+    // --- timeline HEIF resolution ------------------------------------------
+    // The map lives inside the file as an apple_desktop:solar or
+    // apple_desktop:h24 XMP plist; extracting it needs a plist parse, which
+    // plain sh cannot do. python3 is an official Arch package, installed on
+    // every machine the shell runs on — the smallest sanctioned way to turn
+    // the map into "S z i" / "H minutes i" lines WITHOUT converting any
+    // pixels (that is left to magick, only for the frame that is actually
+    // shown). The tag on the first line tells the collector which kind.
     readonly property string _solarScript:
         "import base64,plistlib,re,sys\n"
         + "d=open(sys.argv[1],'rb').read()\n"
-        + "m=re.search(rb'apple_desktop:solar=\"([A-Za-z0-9+/=]+)\"',d)\n"
-        + "if not m: sys.exit(0)\n"
-        + "try: si=plistlib.loads(base64.b64decode(m.group(1))).get('si',[])\n"
-        + "except Exception: sys.exit(0)\n"
-        + "for e in si:\n"
-        + "  if 'z' in e and 'i' in e: print(e['z'],e['i'])"
+        + "def dec(ab,kb):\n"
+        + "  m=re.search(rb'apple_desktop:'+ab+rb'[=>]\"?([A-Za-z0-9+/=]+)',d)\n"
+        + "  if not m: return None\n"
+        + "  s=m.group(1)+(b'='*((4-len(m.group(1))%4)%4))\n"
+        + "  try: return plistlib.loads(base64.b64decode(s)).get(kb,[])\n"
+        + "  except Exception: return None\n"
+        + "si=dec(b'solar','si')\n"
+        + "if si:\n"
+        + "  for e in si:\n"
+        + "    if 'z' in e and 'i' in e: print('S',e['z'],e['i'])\n"
+        + "  sys.exit(0)\n"
+        + "ti=dec(b'h24','ti')\n"
+        + "if ti:\n"
+        + "  for e in ti:\n"
+        + "    if 't' in e and 'i' in e: print('H',round(float(e['t'])*1440)%1440,e['i'])"
 
     function _resolveSolar(file) {
         root._solarTarget = file
@@ -396,10 +410,15 @@ Singleton {
                 root._solarTarget = null
                 var lines = this.text.split("\n").map((s) => s.trim()).filter((s) => s.length > 0)
                 var map = []
+                var kind = "solar"
                 for (var k = 0; k < lines.length; k++) {
                     var parts = lines[k].split(/\s+/)
-                    var z = parseFloat(parts[0]), i = parseInt(parts[1])
-                    if (!isNaN(z) && !isNaN(i)) map.push({ z: z, i: i })
+                    if (k === 0 && parts[0] === "H") kind = "h24"
+                    var v = parseFloat(parts[1]), i = parseInt(parts[2])
+                    if (!isNaN(v) && !isNaN(i)) {
+                        if (kind === "h24") map.push({ minutes: v, i: i })
+                        else map.push({ z: v, i: i })
+                    }
                 }
                 if (map.length < 2) {
                     // The marked file carries no usable map after all — fold
@@ -413,9 +432,12 @@ Singleton {
                     return
                 }
                 root._solarMap = map
+                root.solarKind = kind
                 root._solarMtime = target.mtime
                 root.solarFile = target.file
-                root._showSolarFrame(root._frameAt(map, root._nowAngle()))
+                root._showSolarFrame(kind === "h24"
+                    ? root._frameAtTime(map, root._nowMinutes())
+                    : root._frameAt(map, root._nowAngle()))
             }
         }
     }
@@ -465,13 +487,45 @@ Singleton {
         return best < 0 ? -1 : best / 360 * 86400 * 1000
     }
 
+    // h24 variant ("Apple 24-hour timeline"): each entry is the minute of
+    // day (0..1439) at which that frame starts showing; the frame runs
+    // until the next entry's start (the day's last window runs past
+    // midnight). Selection is a plain interval lookup, and a boundary is
+    // each future start itself — not a midpoint.
+    function _nowMinutes() {
+        var d = new Date()
+        return d.getHours() * 60 + d.getMinutes()
+    }
+
+    function _frameAtTime(map, minutes) {
+        var best = null, latest = null
+        for (var k = 0; k < map.length; k++) {
+            if (latest === null || map[k].minutes > latest.minutes) latest = map[k]
+            if (map[k].minutes <= minutes && (best === null || map[k].minutes > best.minutes)) best = map[k]
+        }
+        if (!best) best = latest // before the cycle's first start, the last window still runs
+        return { i: best.i, minutes: best.minutes }
+    }
+
+    function _msToNextTimeBoundary(map, minutes) {
+        var best = -1
+        for (var k = 0; k < map.length; k++) {
+            var dm = map[k].minutes - minutes
+            if (dm <= 0) dm += 1440
+            if (best < 0 || dm < best) best = dm
+        }
+        return best < 0 ? -1 : best * 60000
+    }
+
     function _showSolarFrame(pair) {
         root.solarFrame = pair.i
         var h = Math.floor(pair.minutes / 60)
         var m = pair.minutes % 60
         root.solarTimeText = (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m
         root._renderHeic(root.solarFile, String(pair.i), root._solarMtime)
-        var next = root._msToNextSolarBoundary(root._solarMap, root._nowAngle())
+        var next = root.solarKind === "h24"
+            ? root._msToNextTimeBoundary(root._solarMap, root._nowMinutes())
+            : root._msToNextSolarBoundary(root._solarMap, root._nowAngle())
         if (next >= 0) {
             root._solarNextBoundary = next
             if (root.enabled && root.activeName.length > 0 && !Services.PowerBridge.batterySaverActive) {
@@ -483,6 +537,7 @@ Singleton {
 
     function _solarClear() {
         root._solarMap = []
+        root.solarKind = "solar"
         root._solarMtime = ""
         root._solarTarget = null
         root._solarNextBoundary = -1
@@ -701,7 +756,10 @@ Singleton {
         // so a map midpoint step provokes a probe on its own.
         var solarKey = ""
         if (root.solarFile.length > 0 && root._solarMap.length >= 2) {
-            solarKey = root.solarFile + "|" + root._frameAt(root._solarMap, root._nowAngle()).i
+            var sp = root.solarKind === "h24"
+                ? root._frameAtTime(root._solarMap, root._nowMinutes())
+                : root._frameAt(root._solarMap, root._nowAngle())
+            solarKey = root.solarFile + "|" + sp.i
         }
         var key = (root.enabled ? "1" : "0") + "|" + root.activeName + "|"
             + root.currentDaytime + "|" + root.currentSeason + "|" + root.currentWeather
