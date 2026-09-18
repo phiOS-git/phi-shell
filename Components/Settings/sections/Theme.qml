@@ -517,6 +517,36 @@ Column {
         }
     }
 
+    // A tile-shaped loading placeholder for the wallpaper grids: the same
+    // quiet "breathe" (motion category A) Widgets/Skeleton.qml uses, filling
+    // whichever tile it sits on, so a thumbnail still decoding — or a
+    // dynamic .heic preview still converting — reads as "loading" rather
+    // than a blank white box. `visible` gates it; once hidden the breathe
+    // animation stops with it.
+    component WallpaperTileSkeleton: Rectangle {
+        id: wts
+        anchors.fill: parent
+        // Same inset as the tile's Image layers, so the tile's own border
+        // (hover / selection) stays visible on top of the placeholder.
+        anchors.margins: Config.Appearance.borderWidth
+        radius: Config.Appearance.radiusSmall
+        color: Config.Appearance.surface2
+        SequentialAnimation on opacity {
+            running: wts.visible
+            loops: Animation.Infinite
+            NumberAnimation {
+                from: 1.0; to: 0.4
+                duration: Config.Appearance.motionAPeriod / 2
+                easing.type: Config.Appearance.motionAEasing === "linear" ? Easing.Linear : Easing.OutQuad
+            }
+            NumberAnimation {
+                from: 0.4; to: 1.0
+                duration: Config.Appearance.motionAPeriod / 2
+                easing.type: Config.Appearance.motionAEasing === "linear" ? Easing.Linear : Easing.OutQuad
+            }
+        }
+    }
+
     // --- Appearance ----------------------------------------------------
     Modules.SettingsGroup {
         title: "Appearance"
@@ -1328,8 +1358,14 @@ Column {
     }
 
     // --- Wallpaper ------------------------------------------------
+    // Three groups by context — the base layers, the image and how it
+    // fills the screen, and the dynamic rotation — so options that belong
+    // together (solid colour next to texture, fit mode next to the
+    // picker) sit together instead of being scattered down one long wall
+    // of rows.
     Modules.SettingsGroup {
-        title: "Wallpaper"
+        title: "Wallpaper — base"
+        caption: "The solid colour underneath the picture, with an optional grain."
         Component.onCompleted: {
             Services.Background.refreshAvailable()
             Services.DynamicWallpaper.refresh()
@@ -1339,12 +1375,61 @@ Column {
             optionId: "theme.wallpaper.color"
             title: "Solid colour"
             description: "The base layer beneath the image."
-            wide: true
             Widgets.ColorField {
                 value: Services.Background.color
                 onCommitted: (hex) => Services.Background.setColor(hex)
             }
         }
+
+        Modules.SettingsRow {
+            optionId: "theme.wallpaper.texture"
+            title: "Texture"
+            description: Services.Background.textureApplies
+                ? "A generated grain over the solid colour."
+                : "Only with no image or contain/repeat."
+            enabled: Services.Background.textureApplies
+            Column {
+                spacing: root.gap
+                Row {
+                    spacing: 6
+                    Widgets.StyledButton {
+                        label: "none"
+                        active: Services.Background.texture.length === 0
+                        onClicked: Services.Background.setTexture("", Services.Background.textureIntensity)
+                    }
+                    Repeater {
+                        model: Config.Appearance.textureModes
+                        Widgets.StyledButton {
+                            required property string modelData
+                            label: modelData
+                            active: Services.Background.texture === modelData
+                            onClicked: Services.Background.setTexture(modelData, Services.Background.textureIntensity)
+                        }
+                    }
+                }
+                Row {
+                    spacing: root.gap
+                    visible: Services.Background.texture.length > 0
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Intensity" }
+                    Widgets.Meter {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: root.chWidth * 14
+                        interactive: true
+                        value: Services.Background.textureIntensity / 100
+                        onReleased: (v) => Services.Background.setTextureIntensity(Math.round(v * 100))
+                    }
+                    Widgets.StyledText {
+                        anchors.verticalCenter: parent.verticalCenter
+                        mono: true; text: Services.Background.textureIntensity + "%"
+                    }
+                }
+            }
+        }
+    }
+
+    Modules.SettingsGroup {
+        title: "Wallpaper — image"
+        caption: "Pick a picture, then how it fills the screen."
 
         Modules.SettingsRow {
             optionId: "theme.wallpaper.image"
@@ -1422,6 +1507,7 @@ Column {
                                             ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
                                         }
                                         Image {
+                                            id: wpImg
                                             anchors.fill: parent
                                             anchors.margins: Config.Appearance.borderWidth
                                             // Lazy: nothing loads while the
@@ -1430,6 +1516,13 @@ Column {
                                             fillMode: Image.PreserveAspectCrop
                                             asynchronous: true
                                             sourceSize.width: 256
+                                        }
+                                        // Breathing placeholder while the
+                                        // thumbnail decodes, so an opening
+                                        // section reads as loading instead
+                                        // of a wall of blank tiles.
+                                        WallpaperTileSkeleton {
+                                            visible: section.expanded && wpImg.status === Image.Loading
                                         }
                                         HoverHandler { id: wpHover; cursorShape: Qt.PointingHandCursor }
                                         TapHandler { onTapped: Services.Background.setImage(modelData) }
@@ -1464,15 +1557,51 @@ Column {
             }
         }
 
-        // --- Dynamic wallpaper ----------------------------------------
-        // Entries under wallpapers/dynamic/ (a folder of state images, or
-        // a bare dynamic .heic) that rotate the wallpaper by daytime, season
-        // and (future) weather. All state lives in
-        // Services/DynamicWallpaper.qml — this group only reads it and
-        // calls its setters. While it is on, the image shown becomes the
-        // entry's most specific image for the current slot; while off, or
-        // paused by battery saver, the static pick above (and the mode /
-        // scale / texture rows below) apply unchanged.
+        Modules.SettingsRow {
+            optionId: "theme.wallpaper.mode"
+            title: "Fit mode"
+            enabled: Services.Background.image.length > 0
+            Row {
+                spacing: 6
+                Repeater {
+                    model: ["cover", "contain", "stretch", "repeat"]
+                    Widgets.StyledButton {
+                        required property string modelData
+                        label: modelData
+                        active: Services.Background.mode === modelData
+                        onClicked: Services.Background.setMode(modelData)
+                    }
+                }
+            }
+        }
+
+        Modules.SettingsRow {
+            optionId: "theme.wallpaper.scale"
+            title: "Scale"
+            description: "Zoom for contain and repeat."
+            enabled: Services.Background.image.length > 0
+                && (Services.Background.mode === "contain" || Services.Background.mode === "repeat")
+            Widgets.NumberField {
+                value: Services.Background.scale
+                step: 0.1; decimals: 1; from: 0.1; to: 4.0
+                onCommitted: (v) => Services.Background.setScale(v)
+            }
+        }
+    }
+
+    // --- Dynamic wallpaper ----------------------------------------
+    // Entries under wallpapers/dynamic/ (a folder of state images, or
+    // a bare dynamic .heic) that rotate the wallpaper by daytime, season
+    // and (future) weather. All state lives in
+    // Services/DynamicWallpaper.qml — this group only reads it and
+    // calls its setters. While it is on, the image shown becomes the
+    // entry's most specific image for the current slot; while off, or
+    // paused by battery saver, the static pick above (and the mode /
+    // scale / texture rows in the image group above) apply unchanged.
+    Modules.SettingsGroup {
+        title: "Wallpaper — dynamic"
+        caption: "Rotate the wallpaper by time of day and season."
+
         Modules.SettingsRow {
             optionId: "theme.wallpaper.dynamic"
             title: "Dynamic wallpaper"
@@ -1523,6 +1652,23 @@ Column {
                                     ? [Services.DynamicWallpaper.previews[modelData.name]] : [])
                             property int cycleIdx: 0
                             property bool frontIsA: true
+                            // True once any frame has actually painted on
+                            // either layer; the skeleton then never shows
+                            // again, even while hover-cycling swaps frames.
+                            property bool _everReady: false
+                            // A preview that never converts (an undecodable
+                            // heic) stops breathing after this long instead
+                            // of looking like it is loading forever. Long
+                            // enough to also cover a queued backlog of
+                            // several big heic conversions.
+                            property bool _giveUp: false
+
+                            Timer {
+                                id: previewWait
+                                interval: 15000
+                                running: dynTile.frames.length === 0 && !dynTile._everReady && !dynTile._giveUp
+                                onTriggered: dynTile._giveUp = true
+                            }
 
                             Component.onCompleted:
                                 if (modelData.kind === "file") Services.DynamicWallpaper.ensureFilePreview(modelData.name)
@@ -1539,6 +1685,7 @@ Column {
                                 fillMode: Image.PreserveAspectCrop
                                 asynchronous: true
                                 sourceSize.width: 256
+                                onStatusChanged: if (status === Image.Ready) dynTile._everReady = true
                                 Behavior on opacity {
                                     NumberAnimation { duration: Config.Appearance.motionBDuration * 2; easing.type: Easing.InOutQuad }
                                 }
@@ -1551,9 +1698,22 @@ Column {
                                 fillMode: Image.PreserveAspectCrop
                                 asynchronous: true
                                 sourceSize.width: 256
+                                onStatusChanged: if (status === Image.Ready) dynTile._everReady = true
                                 Behavior on opacity {
                                     NumberAnimation { duration: Config.Appearance.motionBDuration * 2; easing.type: Easing.InOutQuad }
                                 }
+                            }
+
+                            // Breathing placeholder until this tile has
+                            // something to paint: the .heic preview is still
+                            // converting, or the first frame is still
+                            // decoding. Once any frame has painted, hover-
+                            // cycling swaps cached frames and the
+                            // placeholder stays gone.
+                            WallpaperTileSkeleton {
+                                visible: (dynTile.frames.length === 0 && !dynTile._giveUp)
+                                    || (dynTile.frames.length > 0 && !dynTile._everReady
+                                        && (dynTile.frontIsA ? dynA.status === Image.Loading : dynB.status === Image.Loading))
                             }
 
                             Timer {
@@ -1662,85 +1822,6 @@ Column {
             wide: true
         }
 
-        Modules.SettingsRow {
-            optionId: "theme.wallpaper.mode"
-            title: "Fit mode"
-            enabled: Services.Background.image.length > 0
-            Row {
-                spacing: 6
-                Repeater {
-                    model: ["cover", "contain", "stretch", "repeat"]
-                    Widgets.StyledButton {
-                        required property string modelData
-                        label: modelData
-                        active: Services.Background.mode === modelData
-                        onClicked: Services.Background.setMode(modelData)
-                    }
-                }
-            }
-        }
-
-        Modules.SettingsRow {
-            optionId: "theme.wallpaper.scale"
-            title: "Scale"
-            description: "Zoom for contain and repeat."
-            enabled: Services.Background.image.length > 0
-                && (Services.Background.mode === "contain" || Services.Background.mode === "repeat")
-            Widgets.NumberField {
-                value: Services.Background.scale
-                step: 0.1; decimals: 1; from: 0.1; to: 4.0
-                onCommitted: (v) => Services.Background.setScale(v)
-            }
-        }
-
-        Modules.SettingsRow {
-            optionId: "theme.wallpaper.texture"
-            title: "Texture"
-            description: Services.Background.textureApplies
-                ? "A generated grain over the solid colour."
-                : "Only with no image or contain/repeat."
-            enabled: Services.Background.textureApplies
-            wide: true
-            Column {
-                width: parent.width
-                spacing: root.gap
-                Flow {
-                    width: parent.width
-                    spacing: 6
-                    Widgets.StyledButton {
-                        label: "none"
-                        active: Services.Background.texture.length === 0
-                        onClicked: Services.Background.setTexture("", Services.Background.textureIntensity)
-                    }
-                    Repeater {
-                        model: Config.Appearance.textureModes
-                        Widgets.StyledButton {
-                            required property string modelData
-                            label: modelData
-                            active: Services.Background.texture === modelData
-                            onClicked: Services.Background.setTexture(modelData, Services.Background.textureIntensity)
-                        }
-                    }
-                }
-                Row {
-                    width: parent.width
-                    spacing: root.gap
-                    visible: Services.Background.texture.length > 0
-                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Intensity" }
-                    Widgets.Meter {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: parent.width - 14 * root.chWidth
-                        interactive: true
-                        value: Services.Background.textureIntensity / 100
-                        onReleased: (v) => Services.Background.setTextureIntensity(Math.round(v * 100))
-                    }
-                    Widgets.StyledText {
-                        anchors.verticalCenter: parent.verticalCenter
-                        mono: true; text: Services.Background.textureIntensity + "%"
-                    }
-                }
-            }
-        }
     }
 
     // The global "reset every override" sits as a footer action at the very
