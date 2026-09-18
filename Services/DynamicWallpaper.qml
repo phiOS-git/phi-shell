@@ -299,7 +299,7 @@ Singleton {
     function _probeActiveFolder() {
         var dir = Config.Paths.dynamicWallpaperDir + "/" + root.activeName
         folderProc.command = ["sh", "-c",
-            'case "$2" in file) f=$(basename -- "$1"); m=$(stat -c %Y "$1" 2>/dev/null); s=0; grep -aq "apple_desktop:solar\|apple_desktop:h24" "$1" 2>/dev/null && s=1; printf "%s\\t%s\\t%s\\n" "${m:-0}" "$f" "$s" ;; *) ls -1 "$1" 2>/dev/null | grep -iE "\\.(png|jpe?g|webp|bmp|gif|heic|heif)$" | while IFS= read -r f; do m=$(stat -c %Y "$1/$f" 2>/dev/null); s=0; case "$f" in *.heic|*.HEIC|*.heif|*.HEIF) grep -aq "apple_desktop:solar\|apple_desktop:h24" "$1/$f" 2>/dev/null && s=1 ;; esac; printf "%s\\t%s\\t%s\\n" "${m:-0}" "$f" "$s"; done ;; esac',
+            'case "$2" in file) f=$(basename -- "$1"); m=$(stat -c %Y "$1" 2>/dev/null); s=0; grep -aqE "apple_desktop:(solar|h24)" "$1" 2>/dev/null && s=1; printf "%s\\t%s\\t%s\\n" "${m:-0}" "$f" "$s" ;; *) ls -1 "$1" 2>/dev/null | grep -iE "\\.(png|jpe?g|webp|bmp|gif|heic|heif)$" | while IFS= read -r f; do m=$(stat -c %Y "$1/$f" 2>/dev/null); s=0; case "$f" in *.heic|*.HEIC|*.heif|*.HEIF) grep -aqE "apple_desktop:(solar|h24)" "$1/$f" 2>/dev/null && s=1 ;; esac; printf "%s\\t%s\\t%s\\n" "${m:-0}" "$f" "$s"; done ;; esac',
             "probe", dir, root._activeKind]
         folderProc.running = true
     }
@@ -558,17 +558,19 @@ Singleton {
     // surface points at the cache file. The cache name keys on source mtime
     // + frame index, so a replaced source or a different frame lands in a
     // fresh file and re-converts. Latest-wins: at most one conversion runs
-    // at a time and `_heicWanted` holds the newest request, so a rapid
-    // frame change replaces the pending one instead of queueing both. The
-    // sh wrapper echoes the cache path it wrote as its only stdout, so the
-    // collector can confirm which job finished before touching
-    // currentImage — the finish happens before `exited` (Quickshell nulls
-    // the process first), which is also why this Process deliberately has
-    // no `onExited: running = false`: that would terminate the next
-    // conversion, which is already launched by then. The same pipeline
-    // also serves previews for bare .heic entries (kind "preview": frame 0
-    // into the cache, surfaced through `previews` instead of currentImage).
+    // at a time and `_heicWanted` holds the newest render request, so a
+    // rapid frame change replaces the pending one instead of queueing both.
+    // Previews for bare .heic entries (kind "preview": frame 0 into the
+    // cache, surfaced through `previews` instead of currentImage) are less
+    // urgent and less unique — several tiles can ask at once — so they go
+    // into `_heicQueue` and are served in order. The sh wrapper echoes the
+    // cache path it wrote as its only stdout, so the collector can confirm
+    // which job finished before touching currentImage — the finish happens
+    // before `exited` (Quickshell nulls the process first), which is also
+    // why this Process deliberately has no `onExited: running = false`:
+    // that would terminate the next conversion, already launched by then.
     property var _heicWanted: null
+    property var _heicQueue: []
     property var _heicCurrent: null
 
     function _renderHeic(file, index, mtime) {
@@ -581,7 +583,9 @@ Singleton {
     }
 
     // Preview for a bare .heic entry's settings tile: frame 0 converted to
-    // a cached JPEG, exposed via `previews[name]`. No-op once cached.
+    // a cached JPEG, exposed via `previews[name]`. No-op once cached; queued
+    // requests are deduplicated so several tiles asking at once never
+    // double-convert (or overwrite each other's pending request).
     function ensureFilePreview(name) {
         if (root.previews[name]) return
         for (var k = 0; k < root.available.length; k++) {
@@ -589,18 +593,25 @@ Singleton {
             if (e.name !== name || e.kind !== "file") continue
             var cache = Config.Paths.dynamicWallpaperCacheDir + "/" + e.name + "/"
                 + e.name + "." + (e.mtime || "0") + ".0.jpg"
-            if (root._heicWanted !== null && root._heicWanted.kind === "preview"
-                && root._heicWanted.cache === cache) return
-            root._heicWanted = { kind: "preview", file: e.name, frame: "0", cache: cache }
+            if (root._heicCurrent !== null && root._heicCurrent.cache === cache) return
+            for (var q = 0; q < root._heicQueue.length; q++)
+                if (root._heicQueue[q].cache === cache) return
+            root._heicQueue.push({ kind: "preview", file: e.name, frame: "0", cache: cache })
             root._heicStart()
             return
         }
     }
 
     function _heicStart() {
-        if (heicProc.running || root._heicWanted === null) return
-        var job = root._heicWanted
-        root._heicWanted = null
+        if (heicProc.running) return
+        var job = null
+        if (root._heicWanted !== null) {
+            job = root._heicWanted
+            root._heicWanted = null
+        } else if (root._heicQueue.length > 0) {
+            job = root._heicQueue.shift()
+        }
+        if (job === null) return
         root._heicCurrent = job
         var src = job.kind === "preview"
             ? Config.Paths.dynamicWallpaperDir + "/" + job.file
