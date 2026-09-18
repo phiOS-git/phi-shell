@@ -4,12 +4,17 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../glyphs.js" as Glyphs
 
-// A right-isle glyph for the active MPRIS player: a music note while no
-// player is connected, flipping to play/pause once one is (pause while
-// playing, play while paused). A left click opens the Media popout
-// (Services.BarPopout.toggle with the "media" key, same click-to-toggle
-// shape as the volume/network buttons); a right click plays/pauses the
-// active player directly — the one touch that shouldn't need a card open.
+// A right-isle glyph for the active MPRIS player. Hidden entirely while
+// no player is connected — a media control with nothing to control earns
+// no bar slot (Bar.qml's Loaders already mirror a self-hiding module's
+// `visible`, so no blank gap is left). Once a player is active the glyph
+// shows the player's current STATE, not the next action: a play icon
+// while playing, a pause icon while paused (deliberately the opposite of
+// the transport button in the popout, which shows what pressing it will
+// do). A left click opens the Media popout (Services.BarPopout.toggle
+// with the "media" key, same click-to-toggle shape as the volume/network
+// buttons); a right click plays/pauses the active player directly — the
+// one touch that shouldn't need a card open.
 //
 // The secondary action sits on a SECOND TapHandler, the same "add the
 // button the other never claimed" pattern
@@ -44,11 +49,22 @@ Widgets.Segment {
     active: Services.BarPopout.which === "media"
 
     readonly property var player: Services.Mpris.active
+    visible: root.player !== null
     glyph: root.player !== null
-        ? (root.player.isPlaying ? Glyphs.pause : Glyphs.play)
-        : Glyphs.musicNote
+        ? (root.player.isPlaying ? Glyphs.play : Glyphs.pause)
+        : Glyphs.play
 
     onActivated: Services.BarPopout.toggle("media", root.rightX())
+
+    // This button is the only way the "media" popout can be opened AND
+    // closed, so the card must not outlive its trigger: the moment no
+    // player is connected the segment hides, and an open card would hang
+    // there with no way back — close it. A player SWITCH (one source
+    // stops, another takes over) leaves it open; only going to null does.
+    onPlayerChanged: {
+        if (root.player === null && Services.BarPopout.which === "media")
+            Services.BarPopout.hide()
+    }
 
     TapHandler {
         acceptedButtons: Qt.RightButton

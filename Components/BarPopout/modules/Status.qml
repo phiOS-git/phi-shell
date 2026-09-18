@@ -119,32 +119,14 @@ Widgets.StaggerReveal {
             spacing: root.chWidth * Config.Appearance.space1
 
             Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Media control" }
-            Widgets.StyledText {
+            // The same controls body as the dedicated Media popout —
+            // Local.MediaControls (this directory's shared section) is the
+            // one place the track info, progress and transport live, so
+            // the two cards can't drift apart.
+            Local.MediaControls {
                 width: parent.width
-                sizeStep: 0
-                elide: Text.ElideRight
-                text: Services.Mpris.active !== null
-                    ? (Services.Mpris.active.trackArtist + " — " + Services.Mpris.active.trackTitle)
-                    : ""
-            }
-            Row {
-                spacing: root.chWidth * Config.Appearance.space2
-                Widgets.SmallButton {
-                    label: "Previous"
-                    enabled: Services.Mpris.active !== null && Services.Mpris.active.canGoPrevious
-                    onClicked: Services.Mpris.active.previous()
-                }
-                Widgets.SmallButton {
-                    label: (Services.Mpris.active !== null && Services.Mpris.active.isPlaying) ? "Pause" : "Play"
-                    enabled: Services.Mpris.active !== null
-                        && (Services.Mpris.active.canPlay || Services.Mpris.active.canPause)
-                    onClicked: Services.Mpris.active.togglePlaying()
-                }
-                Widgets.SmallButton {
-                    label: "Next"
-                    enabled: Services.Mpris.active !== null && Services.Mpris.active.canGoNext
-                    onClicked: Services.Mpris.active.next()
-                }
+                chWidth: root.chWidth
+                active: root.active
             }
         }
     }

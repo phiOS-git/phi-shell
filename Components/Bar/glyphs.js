@@ -78,13 +78,17 @@ var hibernate       = _c(0xF0717)   // nf-md-snowflake (power menu: Hibernate) �
                                      // menu).
 var copy            = _c(0xF018F)   // nf-md-content_copy (chat bubble: copy this message)
 
-// Bar/modules/Media.qml — the media glyph in the top bar's right isle.
-// No text label next to it, so a wrong codepoint here is a bare box.
-var musicNote       = _c(0xF0387)   // nf-md-music_note (no MPRIS player connected)
-var play            = _c(0xF040A)   // nf-md-play (player connected, paused)
-var pause           = _c(0xF03E4)   // nf-md-pause (player connected, playing)
-var skipPrev        = _c(0xF04AE)   // nf-md-skip_previous (media popout: previous track)
-var skipNext        = _c(0xF04AD)   // nf-md-skip_next (media popout: next track)
+// Bar/modules/Media.qml + the shared MediaControls section it and the
+// status card's "Media control" use. The bar glyph shows the current
+// STATE (play while playing, pause while paused) and the module hides
+// entirely while no player is connected, so there is no idle placeholder.
+// The popout's play/pause button uses the same two glyphs the other way
+// round (what pressing it will do). No text label next to the bar glyph,
+// so a wrong codepoint here is a bare box.
+var play            = _c(0xF040A)   // nf-md-play (bar: playing state / popout: play action)
+var pause           = _c(0xF03E4)   // nf-md-pause (bar: paused state / popout: pause action)
+var skipPrev        = _c(0xF04AE)   // nf-md-skip_previous (MediaControls: previous track)
+var skipNext        = _c(0xF04AD)   // nf-md-skip_next (MediaControls: next track)
 
 // Bar/modules/Screenshot.qml + its popout — also glyph-only on the bar, so
 // the same wrong-codepoint risk applies.
