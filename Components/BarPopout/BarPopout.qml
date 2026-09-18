@@ -129,6 +129,11 @@ Widgets.PopoutSurface {
         case "timer": return "notifications.timers"
         case "microphone": return "security.sensors"
         case "camera": return "security.sensors"
+        // battery/clipboard go straight to the one Settings group that
+        // owns them (Devices › Battery — the battery card's controls) and
+        // Security › Clipboard history rules.
+        case "battery": return "devices.battery"
+        case "clipboard": return "security.clipboard"
         }
         return ""
     }
