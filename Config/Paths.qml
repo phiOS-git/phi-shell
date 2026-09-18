@@ -62,6 +62,11 @@ Singleton {
     // Dynamic-wallpaper settings (enabled, active folder, dawn/dusk hours).
     // Owned by Services/DynamicWallpaper.qml.
     readonly property string dynamicWallpaperPrefsFile: root.stateDir + "/dynamic-wallpaper.json"
+    // HEIC/HEIF frames rendered for the dynamic wallpaper. Qt has no HEIC
+    // decoder, so Services/DynamicWallpaper.qml converts the picked frame
+    // with ImageMagick into one cached JPEG per source file, keyed by the
+    // file's mtime + the frame index.
+    readonly property string dynamicWallpaperCacheDir: root.dataDir + "/dynamic-heic-cache"
     // Cached `phi wallpaper texture` output, named "<mode>-<intensity>.png".
     readonly property string texturesDir: root.dataDir + "/textures"
 

@@ -75,7 +75,7 @@ var OPTIONS = [
     { id: "theme.animations",         title: "Animations",             keywords: "motion transition duration easing bezier curve editor" },
     { id: "theme.wallpaper.color",    title: "Wallpaper solid colour", keywords: "background base fill" },
     { id: "theme.wallpaper.image",    title: "Wallpaper image",        keywords: "background picture photo folder pick add" },
-    { id: "theme.wallpaper.dynamic",  title: "Dynamic wallpaper",      keywords: "background rotating automatic daytime dawn day dusk night season weather rotate" },
+    { id: "theme.wallpaper.dynamic",  title: "Dynamic wallpaper",      keywords: "background rotating automatic daytime dawn day dusk night season weather heic heif solar rotate" },
     { id: "theme.wallpaper.dynamic.folder", title: "Dynamic wallpaper folder", keywords: "background dynamic archive collection naming convention daylight season weather" },
     { id: "theme.wallpaper.dynamic.dawn",   title: "Sunrise hour",      keywords: "background dynamic dawn sunrise morning boundary start day" },
     { id: "theme.wallpaper.dynamic.dusk",   title: "Sunset hour",       keywords: "background dynamic dusk sunset evening boundary night" },

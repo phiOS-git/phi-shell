@@ -54,8 +54,26 @@ import qs.Services as Services
 // falls on (a single-shot timer armed to the next boundary, see
 // _armTimer()), with a coarse 1-minute safety timer catching suspend/resume
 // or drift. Re-evaluation is deduplicated against the last (enabled, folder,
-// daytime, season, weather) tuple, so the steady-state safety ticks are
-// no-ops.
+// daytime, season, weather, solar frame) tuple, so the steady-state safety
+// ticks are no-ops.
+//
+// HEIC/HEIF dynamic desktops
+// --------------------------
+// Apple "Dynamic Desktop"-style files — one multi-image HEIF carrying an
+// `apple_desktop:solar` XMP map of {zenith-of-day → frame} — are supported
+// as a whole-day wallpaper: a single .heic that schedules every hour of the
+// day itself. Such a file in the active folder takes over the whole day
+// (conventional named images in the same folder are ignored while it is
+// present). The map's `z` values are day angles, 0..360 == 00:00..24:00;
+// the frame whose z is nearest right now wins, and the boundary timer is
+// armed to each map midpoint so the next frame lands at its exact minute.
+// Season/weather do not apply to a solar file — it is its own schedule.
+// Qt cannot decode HEIC at all (no QImageReader plugin), so the chosen
+// frame is converted on demand with ImageMagick (libheif-backed) into a
+// cached JPEG under Config.Paths.dynamicWallpaperCacheDir, keyed on source
+// mtime + frame index so a replaced source re-converts. A non-solar .heic
+// (no such map) is an ordinary named image and shows its first frame when
+// picked like any raster.
 //
 // Season is computed from the current month (meteorological quarters,
 // Northern hemisphere — winter Dec-Feb, spring Mar-May, summer Jun-Aug,
@@ -114,6 +132,14 @@ Singleton {
     // Names of the folders in wallpapers/dynamic/, refreshed on demand
     // (settings open, after a restart).
     property var available: []
+
+    // --- solar HEIF state (see the HEIC section in the header comment) ---
+    // While a solar-carrying HEIF drives the folder, these describe what is
+    // painted; they stay empty/default when the folder uses conventional
+    // names. Exposed for the settings "Now showing" status row.
+    property string solarFile: ""        // base name of the solar HEIF
+    property int solarFrame: -1          // frame index currently painted
+    property string solarTimeText: ""    // its mapped time, "HH:MM"
 
     readonly property bool lowPowerActive: Services.PowerBridge.batterySaverActive
     // Dynamic is actually driving the wallpaper right now: on, a folder is
@@ -223,10 +249,14 @@ Singleton {
     // per evaluation — evaluations happen at most at each boundary plus on
     // user interaction, and the folder is hand-edited, so always reading it
     // fresh means edits show up without any file watcher plumbed through.
+    // Each output line is "mtime\tname\tsolar": the mtime keys the HEIC
+    // render cache, and `solar` flags Apple dynamic-desktop HEIF files
+    // (they carry an apple_desktop:solar time → frame map and drive the
+    // whole day on their own — see the header comment).
     function _probeActiveFolder() {
         folderProc.command = ["sh", "-c",
-            'ls -1 "$1" 2>/dev/null | grep -iE "\\.(png|jpe?g|webp|bmp|gif)$"',
-            "ls", Config.Paths.dynamicWallpaperDir + "/" + root.activeName]
+            'ls -1 "$1" 2>/dev/null | grep -iE "\\.(png|jpe?g|webp|bmp|gif|heic|heif)$" | while IFS= read -r f; do m=$(stat -c %Y "$1/$f" 2>/dev/null); s=0; case "$f" in *.heic|*.HEIC|*.heif|*.HEIF) grep -aq "apple_desktop" "$1/$f" 2>/dev/null && s=1 ;; esac; printf "%s\\t%s\\t%s\\n" "${m:-0}" "$f" "$s"; done',
+            "probe", Config.Paths.dynamicWallpaperDir + "/" + root.activeName]
         folderProc.running = true
     }
 
@@ -235,12 +265,36 @@ Singleton {
         onExited: folderProc.running = false
         stdout: StdioCollector {
             onStreamFinished: {
-                var lines = this.text.split("\n").map((s) => s.trim()).filter((s) => s.length > 0)
-                var entries = lines.map(root._parseEntry).filter((e) => e !== null)
+                var files = this.text.split("\n").map((s) => s.trim()).filter((s) => s.length > 0)
+                    .map((l) => {
+                        var p = l.split("\t")
+                        return { mtime: p[0] || "0", file: p[1] || "", solar: p[2] === "1" }
+                    })
+                // A solar-carrying HEIF owns the folder: it schedules the
+                // whole day from its own map, so conventional names are
+                // ignored while it is here. `_solarRejected` marks a flagged
+                // file whose map failed to parse (same name + mtime), so a
+                // degenerate file degrades to the convention path instead of
+                // re-resolving forever.
+                for (var f = 0; f < files.length; f++) {
+                    if (files[f].solar
+                        && !(root._solarRejected !== null
+                            && root._solarRejected.name === files[f].file
+                            && root._solarRejected.mtime === files[f].mtime)) {
+                        root._resolveSolar(files[f]); return
+                    }
+                }
+                root._solarClear()
+                var entries = files.map((x) => root._parseEntry(x.file)).filter((e) => e !== null)
                 var pick = root._pick(entries, root.currentDaytime, root.currentSeason, root.currentWeather)
-                var next = pick
-                    ? Config.Paths.dynamicWallpaperDir + "/" + root.activeName + "/" + pick.file
-                    : ""
+                if (!pick) { if (root.currentImage !== "") root.currentImage = ""; return }
+                // Qt cannot decode HEIC — a named .heic renders its first
+                // frame into the cache like every other image.
+                if (/\.(heic|heif)$/i.test(pick.file)) {
+                    root._renderHeic(pick.file, "0", root._mtimeOf(files, pick.file))
+                    return
+                }
+                var next = Config.Paths.dynamicWallpaperDir + "/" + root.activeName + "/" + pick.file
                 // Only assign on a real change so the surface's crossfade
                 // fires once per transition, not on every safety tick.
                 if (next !== root.currentImage) root.currentImage = next
@@ -248,10 +302,213 @@ Singleton {
         }
     }
 
+    function _mtimeOf(files, name) {
+        for (var k = 0; k < files.length; k++) if (files[k].file === name) return files[k].mtime
+        return "0"
+    }
+
+    // --- solar HEIF resolution ------------------------------------------
+    // The solar map lives inside the file as an apple_desktop:solar XMP
+    // plist; extracting it needs a plist parse, which plain sh cannot do.
+    // python3 is an official Arch package, installed on every machine the
+    // shell runs on — the smallest sanctioned way to turn the map into a
+    // list of "z i" lines WITHOUT converting any pixels (that is left to
+    // magick, only for the frame that is actually shown).
+    readonly property string _solarScript:
+        "import base64,plistlib,re,sys\n"
+        + "d=open(sys.argv[1],'rb').read()\n"
+        + "m=re.search(rb'apple_desktop:solar=\"([A-Za-z0-9+/=]+)\"',d)\n"
+        + "if not m: sys.exit(0)\n"
+        + "try: si=plistlib.loads(base64.b64decode(m.group(1))).get('si',[])\n"
+        + "except Exception: sys.exit(0)\n"
+        + "for e in si:\n"
+        + "  if 'z' in e and 'i' in e: print(e['z'],e['i'])"
+
+    function _resolveSolar(file) {
+        root._solarTarget = file
+        solarProc.command = ["python3", "-c", root._solarScript,
+            Config.Paths.dynamicWallpaperDir + "/" + root.activeName + "/" + file.file]
+        solarProc.running = true
+    }
+
+    Process {
+        id: solarProc
+        onExited: solarProc.running = false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                // Completion always serves the newest _solarTarget, so a
+                // stale run for a folder that was switched away is
+                // superseded rather than applied twice.
+                var target = root._solarTarget
+                if (!target) return
+                root._solarTarget = null
+                var lines = this.text.split("\n").map((s) => s.trim()).filter((s) => s.length > 0)
+                var map = []
+                for (var k = 0; k < lines.length; k++) {
+                    var parts = lines[k].split(/\s+/)
+                    var z = parseFloat(parts[0]), i = parseInt(parts[1])
+                    if (!isNaN(z) && !isNaN(i)) map.push({ z: z, i: i })
+                }
+                if (map.length < 2) {
+                    // The marked file carries no usable map after all — fold
+                    // back to the convention path for the folder. Reject by
+                    // name + mtime so the next probe skips it (a replaced
+                    // file with a new mtime gets retried).
+                    root._solarRejected = { name: target.file, mtime: target.mtime }
+                    root._solarClear()
+                    root._lastKey = ""
+                    root._evaluate()
+                    return
+                }
+                root._solarMap = map
+                root._solarMtime = target.mtime
+                root.solarFile = target.file
+                root._showSolarFrame(root._frameAt(map, root._nowAngle()))
+            }
+        }
+    }
+
+    // --- the solar schedule ----------------------------------------------
+    // Frame selection: the map entry whose z is nearest the current 0..360
+    // day angle (wrap aware) — the photo whose time is closest to right
+    // now. Frame switches therefore land at the MIDPOINTS between
+    // neighbouring z's, and that is what the boundary timer gets armed to.
+    function _nowAngle() {
+        var d = new Date()
+        return ((d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds()) / 86400) * 360
+    }
+
+    function _frameAt(map, angle) {
+        var best = null, bestD = 361
+        for (var k = 0; k < map.length; k++) {
+            var dz = Math.abs(map[k].z - angle)
+            if (dz > 180) dz = 360 - dz
+            if (dz < bestD) { bestD = dz; best = map[k] }
+        }
+        if (!best) return { i: 0, z: 0, minutes: 0 }
+        return { i: best.i, z: best.z, minutes: Math.round(best.z / 360 * 1440) % 1440 }
+    }
+
+    // Milliseconds until the next frame switch: the nearest map midpoint
+    // ahead in day-angle, or -1 for an empty map. The boundary timer is
+    // re-armed with this after every show, so the next frame lands at its
+    // exact minute rather than on a safety tick.
+    function _msToNextSolarBoundary(map, angle) {
+        var zs = []
+        for (var k = 0; k < map.length; k++) zs.push(map[k].z)
+        zs.sort((a, b) => a - b)
+        var mid = []
+        for (var s = 0; s < zs.length; s++) {
+            var lo = zs[s]
+            var hi = zs[(s + 1) % zs.length]
+            if (s === zs.length - 1) hi += 360
+            mid.push((lo + hi) / 2)
+        }
+        var best = -1
+        for (var m = 0; m < mid.length; m++) {
+            var dz = mid[m] - angle
+            if (dz <= 0) dz += 360
+            if (best < 0 || dz < best) best = dz
+        }
+        return best < 0 ? -1 : best / 360 * 86400 * 1000
+    }
+
+    function _showSolarFrame(pair) {
+        root.solarFrame = pair.i
+        var h = Math.floor(pair.minutes / 60)
+        var m = pair.minutes % 60
+        root.solarTimeText = (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m
+        root._renderHeic(root.solarFile, String(pair.i), root._solarMtime)
+        var next = root._msToNextSolarBoundary(root._solarMap, root._nowAngle())
+        if (next >= 0) {
+            root._solarNextBoundary = next
+            if (root.enabled && root.activeName.length > 0 && !Services.PowerBridge.batterySaverActive) {
+                boundaryTimer.interval = Math.max(1000, next)
+                boundaryTimer.restart()
+            }
+        }
+    }
+
+    function _solarClear() {
+        root._solarMap = []
+        root._solarMtime = ""
+        root._solarTarget = null
+        root._solarNextBoundary = -1
+        root.solarFile = ""
+        root.solarFrame = -1
+        root.solarTimeText = ""
+    }
+
+    property var _solarMap: []
+    property string _solarMtime: ""
+    property var _solarTarget: null
+    property var _solarRejected: null
+    property real _solarNextBoundary: -1
+
+    // --- HEIC rendering --------------------------------------------------
+    // Qt has no HEIC decoder, so every heic/heif that gets picked is first
+    // rendered with ImageMagick (libheif-backed) to a cached JPEG, and the
+    // surface points at the cache file. The cache name keys on source mtime
+    // + frame index, so a replaced source or a different frame lands in a
+    // fresh file and re-converts. Latest-wins: at most one conversion runs
+    // at a time and `_heicWanted` holds the newest request, so a rapid
+    // frame change replaces the pending one instead of queueing both. The
+    // sh wrapper echoes the cache path it wrote as its only stdout, so the
+    // collector can confirm which job finished before touching
+    // currentImage — the finish happens before `exited` (Quickshell nulls
+    // the process first), which is also why this Process deliberately has
+    // no `onExited: running = false`: that would terminate the next
+    // conversion, which is already launched by then.
+    property var _heicWanted: null
+    property var _heicCurrent: null
+
+    function _renderHeic(file, index, mtime) {
+        var folder = root.activeName
+        var cache = Config.Paths.dynamicWallpaperCacheDir + "/" + folder + "/"
+            + file + "." + (mtime || "0") + "." + index + ".jpg"
+        if (cache === root.currentImage) return
+        root._heicWanted = { folder: folder, file: file, frame: index, cache: cache }
+        root._heicStart()
+    }
+
+    function _heicStart() {
+        if (heicProc.running || root._heicWanted === null) return
+        var job = root._heicWanted
+        root._heicWanted = null
+        root._heicCurrent = job
+        var src = Config.Paths.dynamicWallpaperDir + "/" + job.folder + "/" + job.file
+        heicProc.command = ["sh", "-c",
+            'f="$3"; n="$4"; mkdir -p "$2" || exit 1; if [ ! -f "$f" ]; then magick "$1[$n]" -strip -quality 92 "$f" || exit 1; fi; if [ -f "$f" ]; then printf "%s" "$f"; fi',
+            "heic", src, Config.Paths.dynamicWallpaperCacheDir + "/" + job.folder, job.cache, job.frame]
+        heicProc.running = true
+    }
+
+    Process {
+        id: heicProc
+        stdout: StdioCollector {
+            onStreamFinished: {
+                // Apply only the conversion that actually finished, and only
+                // if it still belongs to the active folder — a folder
+                // switch away leaves stale completions unapplied.
+                var cache = this.text.trim()
+                var job = root._heicCurrent
+                if (cache.length > 0 && job !== null
+                    && job.folder === root.activeName
+                    && job.cache === cache
+                    && cache !== root.currentImage) {
+                    root.currentImage = cache
+                }
+                root._heicCurrent = null
+                // A newer request may have landed while this one ran.
+                root._heicStart()
+            }
+        }
+    }
+
     // --- filename parsing ------------------------------------------------
     function _parseEntry(p) {
         var base = p.split("/").pop()
-        var noext = base.replace(/\.(png|jpe?g|webp|bmp|gif)$/i, "")
+        var noext = base.replace(/\.(png|jpe?g|webp|bmp|gif|heic|heif)$/i, "")
         var parts = noext.split("-")
         if (parts.length === 0 || root._daytimes.indexOf(parts[0]) < 0) return null
         var season = ""
@@ -341,10 +598,14 @@ Singleton {
 
     // --- evaluation ----------------------------------------------------------
     function _evaluate() {
-        // Always re-arm first: on/off and hour changes shift the next
-        // boundary even when the current image doesn't change.
+        // Always re-arm first: on/off, hour changes and solar map picks
+        // shift the next event even when the current image doesn't change.
         if (!root.enabled || root.activeName.length === 0 || Services.PowerBridge.batterySaverActive) {
             boundaryTimer.stop()
+        } else if (root._solarNextBoundary >= 0 && root.solarFile.length > 0) {
+            // A solar HEIF schedules its own boundaries (map midpoints).
+            boundaryTimer.interval = Math.max(1000, root._solarNextBoundary)
+            boundaryTimer.restart()
         } else {
             boundaryTimer.interval = Math.max(1000, root._msToNextBoundary())
             boundaryTimer.restart()
@@ -355,8 +616,16 @@ Singleton {
         root.currentWeather = root._weather()
 
         // Deduplicate: nothing to redo unless the deciding inputs changed.
+        // For solar folders the deciding input is the frame the map picks
+        // for right now (computed from the cached map, not the one shown),
+        // so a map midpoint step provokes a probe on its own.
+        var solarKey = ""
+        if (root.solarFile.length > 0 && root._solarMap.length >= 2) {
+            solarKey = root.solarFile + "|" + root._frameAt(root._solarMap, root._nowAngle()).i
+        }
         var key = (root.enabled ? "1" : "0") + "|" + root.activeName + "|"
             + root.currentDaytime + "|" + root.currentSeason + "|" + root.currentWeather
+            + "|" + solarKey
         if (key === root._lastKey) return
         root._lastKey = key
 

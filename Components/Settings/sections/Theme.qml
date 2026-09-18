@@ -1465,7 +1465,7 @@ Column {
         Modules.SettingsRow {
             optionId: "theme.wallpaper.dynamic.folder"
             title: "Folder"
-            description: "One folder under wallpapers/dynamic/ is one dynamic wallpaper. Images are named <daytime>[-<season>][-<weather>].png: daytime is required (dawn, day, dusk, night); season (spring, summer, autumn, winter) and weather (clear, cloudy, rain, snow, storm, fog) are optional — the most specific matching image wins, and an image that names a season or weather only ever shows during that season/weather. Weather-tagged images are not picked yet: the weather source is a documented placeholder."
+            description: "One folder under wallpapers/dynamic/ is one dynamic wallpaper. Images are named <daytime>[-<season>][-<weather>].png: daytime is required (dawn, day, dusk, night); season (spring, summer, autumn, winter) and weather (clear, cloudy, rain, snow, storm, fog) are optional — the most specific matching image wins, and an image that names a season or weather only ever shows during that season/weather. Weather-tagged images are not picked yet: the weather source is a documented placeholder. A single Apple-style dynamic-desktop HEIF (.heic or .heif, carrying its own apple_desktop:solar time → frame schedule) is supported too: such a file in the folder drives the whole day by its own schedule and takes over the folder."
             wide: true
             Column {
                 width: parent.width
@@ -1639,6 +1639,11 @@ Column {
         const s = Services.DynamicWallpaper
         if (s.activeName.length === 0) return "No dynamic folder picked — pick the folder above."
         if (s.pausedByLowPower) return "Paused by battery saver, showing the static image. Picks up again when power is back."
+        if (s.solarFile.length > 0) {
+            const fr = s.solarFrame < 0 ? "…" : String(s.solarFrame)
+            return "Showing " + s.activeName + " · solar " + s.solarFile + " frame " + fr
+                + " (" + s.solarTimeText + ") — the file's own schedule picked this frame for right now; it is rendered to a cached JPEG because Qt cannot decode HEIC."
+        }
         if (s.currentImage.length === 0) {
             const none = [s.currentDaytime]
             if (s.currentSeason.length > 0) none.push(s.currentSeason)
