@@ -1330,7 +1330,10 @@ Column {
     // --- Wallpaper ------------------------------------------------
     Modules.SettingsGroup {
         title: "Wallpaper"
-        Component.onCompleted: Services.Background.refreshAvailable()
+        Component.onCompleted: {
+            Services.Background.refreshAvailable()
+            Services.DynamicWallpaper.refresh()
+        }
 
         Modules.SettingsRow {
             optionId: "theme.wallpaper.color"
@@ -1435,6 +1438,94 @@ Column {
                     }
                 }
             }
+        }
+
+        // --- Dynamic wallpaper ----------------------------------------
+        // Folders under wallpapers/dynamic/ that rotate the wallpaper by
+        // daytime, season and (future) weather. All state lives in
+        // Services/DynamicWallpaper.qml — this group only reads it and
+        // calls its setters. While it is on, the image shown becomes the
+        // folder's most specific entry for the current slot; while off, or
+        // paused by battery saver, the static pick above (and the mode /
+        // scale / texture rows below) apply unchanged.
+        Modules.SettingsRow {
+            optionId: "theme.wallpaper.dynamic"
+            title: "Dynamic wallpaper"
+            description: Services.DynamicWallpaper.enabled
+                ? (Services.DynamicWallpaper.activeNow
+                    ? "Active — the wallpaper is the current entry of the folder picked below, changing by itself at each daytime boundary."
+                    : "Paused by battery saver, so the static image stays until power is back.")
+                : "Off — the wallpaper is the static image above. Turn on to let a dynamic folder rotate it by time of day, season and weather."
+            Widgets.Toggle {
+                checked: Services.DynamicWallpaper.enabled
+                onToggled: (v) => Services.DynamicWallpaper.setEnabled(v)
+            }
+        }
+
+        Modules.SettingsRow {
+            optionId: "theme.wallpaper.dynamic.folder"
+            title: "Folder"
+            description: "One folder under wallpapers/dynamic/ is one dynamic wallpaper. Images are named <daytime>[-<season>][-<weather>].png: daytime is required (dawn, day, dusk, night); season (spring, summer, autumn, winter) and weather (clear, cloudy, rain, snow, storm, fog) are optional — the most specific matching image wins, and an image that names a season or weather only ever shows during that season/weather. Weather-tagged images are not picked yet: the weather source is a documented placeholder."
+            wide: true
+            Column {
+                width: parent.width
+                spacing: root.gap
+                Flow {
+                    width: parent.width
+                    spacing: 6
+                    Repeater {
+                        model: Services.DynamicWallpaper.available
+                        Widgets.StyledButton {
+                            required property string modelData
+                            label: modelData
+                            active: Services.DynamicWallpaper.activeName === modelData
+                            onClicked: Services.DynamicWallpaper.setActive(modelData)
+                        }
+                    }
+                    Widgets.StyledText {
+                        visible: Services.DynamicWallpaper.available.length === 0
+                        kind: "label"; sizeStep: 0
+                        text: "No dynamic folders yet — create wallpapers/dynamic/<name>/ and drop images in."
+                    }
+                }
+                Widgets.SmallButton {
+                    label: "Open dynamic folder"
+                    onClicked: Quickshell.execDetached(["xdg-open", Config.Paths.dynamicWallpaperDir])
+                }
+            }
+        }
+
+        Modules.SettingsRow {
+            optionId: "theme.wallpaper.dynamic.dawn"
+            title: "Sunrise starts at"
+            description: "Dawn runs from this hour for one hour; day follows until the sunset hour."
+            Widgets.NumberField {
+                value: Services.DynamicWallpaper.dawnHour
+                step: 1; suffix: ":00"; from: 0; to: 23
+                onCommitted: (v) => Services.DynamicWallpaper.setDawnHour(v)
+            }
+        }
+
+        Modules.SettingsRow {
+            optionId: "theme.wallpaper.dynamic.dusk"
+            title: "Sunset starts at"
+            description: "Dusk runs from this hour for one hour; night follows until tomorrow's sunrise."
+            Widgets.NumberField {
+                value: Services.DynamicWallpaper.duskHour
+                step: 1; suffix: ":00"; from: 0; to: 23
+                onCommitted: (v) => Services.DynamicWallpaper.setDuskHour(v)
+            }
+        }
+
+        // Read-only status — a cheap way to see what the matcher resolved
+        // without waiting for a boundary: the slot, the season/weather
+        // considered, and the filename actually painted. Only meaningful
+        // while the feature is on, so it hides (not dims) when off.
+        Modules.SettingsRow {
+            visible: Services.DynamicWallpaper.enabled
+            title: "Now showing"
+            description: root._dynamicStatus()
+            wide: true
         }
 
         Modules.SettingsRow {
@@ -1542,6 +1633,23 @@ Column {
                 })
             }
         }
+    }
+
+    function _dynamicStatus() {
+        const s = Services.DynamicWallpaper
+        if (s.activeName.length === 0) return "No dynamic folder picked — pick the folder above."
+        if (s.pausedByLowPower) return "Paused by battery saver, showing the static image. Picks up again when power is back."
+        if (s.currentImage.length === 0) {
+            const none = [s.currentDaytime]
+            if (s.currentSeason.length > 0) none.push(s.currentSeason)
+            if (s.currentWeather.length > 0) none.push(s.currentWeather)
+            return "No image matches " + none.join(" · ") + " in " + s.activeName + " (and none of the following slots) — the static image is showing."
+        }
+        const parts = [s.currentDaytime]
+        if (s.currentSeason.length > 0) parts.push(s.currentSeason)
+        if (s.currentWeather.length > 0) parts.push(s.currentWeather)
+        const file = s.currentImage.split("/").pop()
+        return "Showing " + s.activeName + " · " + parts.join(" · ") + " — " + file + ". This is the most specific image for right now; weather-specific entries wait for the weather source."
     }
 
     function _addWallpaper(srcPath) {

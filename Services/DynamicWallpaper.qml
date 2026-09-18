@@ -20,10 +20,10 @@ import qs.Services as Services
 //   wallpapers/dynamic/<name>/dusk-spring-rain.png — daytime + season + weather
 //   wallpapers/dynamic/<name>/day-clear.png      — daytime + weather only
 //
-// One directory per dynamic wallpaper; `/` separated. Every image file is
-// named `<daytime>[-<optional>...].<ext>` where the FIRST token is the
-// required daytime slot and the following tokens (up to one season and one
-// weather each, in any order) narrow the match:
+// One directory per dynamic wallpaper. Every image file is named
+// `<daytime>[-<optional>...].<ext>` where the FIRST token is the required
+// daytime slot and the following tokens (up to one season and one weather
+// each, in any order) narrow the match:
 //   daytime: dawn | day | dusk | night          (required)
 //   season:  spring | summer | autumn | winter  (optional)
 //   weather: clear | cloudy | rain | snow | storm | fog  (optional,
@@ -196,15 +196,21 @@ Singleton {
         }
     }
 
-    // --- dir + folder probing -------------------------------------------
     // Re-list the dynamic folders (settings open, new folders dropped in).
-    function refresh() { dirsProc.running = true }
+    // Also force a folder re-probe so an image dropped into / replaced in
+    // the active folder shows without waiting for the next boundary — the
+    // dedupe key is cleared so the next _evaluate() re-reads it.
+    function refresh() {
+        root._lastKey = ""
+        dirsProc.running = true
+        if (root.enabled && root.activeName.length > 0) root._probeActiveFolder()
+    }
 
     Process {
         id: dirsProc
         onExited: dirsProc.running = false
         command: ["sh", "-c",
-            'mkdir -p "$1" && find "$1" -mindepth 1 -maxdepth 1 -type d -printf "%f\\n" | sort',
+            'mkdir -p "$1" && ls -1 "$1" 2>/dev/null | while IFS= read -r d; do [ -d "$1/$d" ] && printf "%s\\n" "$d"; done | sort',
             "dirs", Config.Paths.dynamicWallpaperDir]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -367,6 +373,13 @@ Singleton {
         id: boundaryTimer
         interval: 3600000
         onTriggered: root._evaluate()
+    }
+
+    // Battery saver pausing/resuming must land immediately, not on the next
+    // safety tick — the wallpaper pauses exactly when the mode flips.
+    Connections {
+        target: Services.PowerBridge
+        function onBatterySaverActiveChanged() { root._evaluate() }
     }
 
     // Coarse safety net: suspend/resume, timer drift, folder edits made

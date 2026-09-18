@@ -3,6 +3,7 @@ import QtQml
 import Quickshell
 import Quickshell.Io
 import qs.Config as Config
+import qs.Services as Services
 
 // Shared wallpaper state — a per-screen Components/Background.qml surface
 // can't own its own IPC or state without colliding across instances (same
@@ -38,10 +39,25 @@ Singleton {
     // opens or a new image is added.
     property var available: []
 
+    // The image actually painted on the shell surface: while a dynamic
+    // wallpaper is driving the wallpaper (Services/DynamicWallpaper.activeNow)
+    // it is that service's current entry, otherwise the user's manually
+    // picked static image. One source of truth, so the surface, the
+    // texture-applies check and the settings all agree on what is shown.
+    // Falls back to the static pick whenever the dynamic entry is empty —
+    // before its first probe resolves, and whenever the active folder has
+    // no matching image — so the wallpaper never blanks for a feature.
+    readonly property string displayImage: Services.DynamicWallpaper.activeNow
+            && Services.DynamicWallpaper.currentImage.length > 0
+        ? Services.DynamicWallpaper.currentImage
+        : root.image
+
     // The texture only means anything when there is no image, or the image
     // does not fully cover the solid colour (contain / repeat leave gaps,
-    // where the colour + texture show through).
-    readonly property bool textureApplies: root.image.length === 0
+    // where the colour + texture show through). Judged on `displayImage` —
+    // the image actually shown — not the static pick, so a covering
+    // dynamic image suppresses the grain exactly like a static one.
+    readonly property bool textureApplies: root.displayImage.length === 0
         || (root.mode !== "cover" && root.mode !== "stretch")
 
     function setPath(p) { root.setImage(p) }

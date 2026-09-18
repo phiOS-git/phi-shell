@@ -192,11 +192,14 @@ ShellRoot {
     Component.onCompleted: {
         console.log("phi-shell: " + Quickshell.screens.length + " screen(s), variant=" + Config.Appearance.variant + ", gpu=" + Config.Capabilities.gpuVendor);
 
-        // QML singletons are lazy on first use — these three reads force
-        // Clipboard/NightShift/Chroma to start at session start instead of
-        // whenever their settings section is opened for the first time.
+        // QML singletons are lazy on first use — these four reads force
+        // Clipboard/NightShift/Chroma/DynamicWallpaper to start at session
+        // start instead of whenever their settings section is opened for
+        // the first time. DynamicWallpaper in particular must arm its
+        // daytime boundary timer at boot, not when Settings opens.
         Services.Clipboard.entries;
         Services.NightShift.enabled;
         Services.Chroma.enabled;
+        Services.DynamicWallpaper.currentImage;
     }
 }

@@ -23,7 +23,7 @@
 //                  land on either. Titles/keywords mirror sections.json.
 var SECTIONS = [
     { id: "general",       title: "General",       keywords: "machine hardware hostname cpu gpu ram memory disk storage os kernel uptime model" },
-    { id: "theme",         title: "Theme",         keywords: "appearance colour color palette accent font typography size scale spacing radius border variant dark light animation motion easing bezier wallpaper texture night shift true tone cursor spotlight lock screen effect lava lamp matrix starfield" },
+    { id: "theme",         title: "Theme",         keywords: "appearance colour color palette accent font typography size scale spacing radius border variant dark light animation motion easing bezier wallpaper dynamic daytime dawn dusk night season weather texture night shift true tone cursor spotlight lock screen effect lava lamp matrix starfield" },
     { id: "connectivity",  title: "Connectivity",  keywords: "network tailscale vpn wireguard wifi wi-fi ssid bluetooth speed ping download upload latency overlay firewall nftables port" },
     { id: "devices",       title: "Devices",       keywords: "audio volume mute output input sink source microphone monitor display resolution scaling chroma keyboard backlight per-key rgb mouse trackpad pointer sensitivity brightness" },
     { id: "keybindings",   title: "Keybindings",   keywords: "shortcuts binds hotkeys hyprland keys reference cheatsheet context" },
@@ -75,6 +75,10 @@ var OPTIONS = [
     { id: "theme.animations",         title: "Animations",             keywords: "motion transition duration easing bezier curve editor" },
     { id: "theme.wallpaper.color",    title: "Wallpaper solid colour", keywords: "background base fill" },
     { id: "theme.wallpaper.image",    title: "Wallpaper image",        keywords: "background picture photo folder pick add" },
+    { id: "theme.wallpaper.dynamic",  title: "Dynamic wallpaper",      keywords: "background rotating automatic daytime dawn day dusk night season weather rotate" },
+    { id: "theme.wallpaper.dynamic.folder", title: "Dynamic wallpaper folder", keywords: "background dynamic archive collection naming convention daylight season weather" },
+    { id: "theme.wallpaper.dynamic.dawn",   title: "Sunrise hour",      keywords: "background dynamic dawn sunrise morning boundary start day" },
+    { id: "theme.wallpaper.dynamic.dusk",   title: "Sunset hour",       keywords: "background dynamic dusk sunset evening boundary night" },
     { id: "theme.wallpaper.mode",     title: "Wallpaper mode",         keywords: "background fit cover contain stretch repeat fill" },
     { id: "theme.wallpaper.scale",    title: "Wallpaper scale",        keywords: "background zoom size" },
     { id: "theme.wallpaper.texture",  title: "Wallpaper texture",      keywords: "background grain leather rock noise paper overlay intensity" },

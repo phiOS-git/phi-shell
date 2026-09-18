@@ -56,6 +56,12 @@ Singleton {
         return base + "/phi"
     }
     readonly property string wallpaperDir: root.dataDir + "/wallpapers"
+    // One folder per dynamic wallpaper, each with its own image set (see
+    // Services/DynamicWallpaper.qml for the naming convention).
+    readonly property string dynamicWallpaperDir: root.wallpaperDir + "/dynamic"
+    // Dynamic-wallpaper settings (enabled, active folder, dawn/dusk hours).
+    // Owned by Services/DynamicWallpaper.qml.
+    readonly property string dynamicWallpaperPrefsFile: root.stateDir + "/dynamic-wallpaper.json"
     // Cached `phi wallpaper texture` output, named "<mode>-<intensity>.png".
     readonly property string texturesDir: root.dataDir + "/textures"
 
