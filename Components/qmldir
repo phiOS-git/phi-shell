@@ -9,6 +9,7 @@ Settings 1.0 Settings/Settings.qml
 AgentPanel 1.0 AgentPanel/AgentPanel.qml
 BarPopout 1.0 BarPopout/BarPopout.qml
 Calendar 1.0 Calendar/Calendar.qml
+ContextMenu 1.0 ContextMenu/ContextMenu.qml
 QuickNote 1.0 QuickNote.qml
 Cheatsheet 1.0 Cheatsheet.qml
 Toast 1.0 Toast.qml
@@ -17,6 +18,7 @@ Background 1.0 Background.qml
 Overview 1.0 Overview.qml
 ImageWindow 1.0 ImageWindow.qml
 
+# TODO : improve imports
 ConfirmDialog 1.0 Dialogs/ConfirmDialog.qml
 SensorPermissionPrompt 1.0 Dialogs/SensorPermissionPrompt.qml
 BatteryAlert 1.0 Dialogs/BatteryAlert.qml
