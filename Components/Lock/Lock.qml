@@ -73,6 +73,15 @@ WlSessionLock {
     property int attempts: 0
     property string errorText: ""
 
+    // True from the moment a password is submitted until PAM answers —
+    // the only clearers are the `pam.completed` and `pam.error` handlers
+    // below. On this machine pam_unix's verification alone takes roughly
+    // two seconds per attempt (the shadow hash is memory-hard), so this
+    // wait is very visible: the lock shows "Verifying…" and pulses the
+    // field's border while it is set, so the delay reads as deliberate
+    // processing instead of a dead screen.
+    property bool validating: false
+
     // Purely additive, on top of the fail-closed switch below — it never
     // touches the PamResult.Success branch, and every branch it DOES
     // touch already led to "stay locked" before this; the only behaviour
@@ -182,6 +191,10 @@ WlSessionLock {
 
     Component.onCompleted: {
         root.pam.completed.connect((result) => {
+            // The PAM conversation has ended — whatever the outcome, the
+            // validating state must clear; only success/failure branches
+            // below decide what comes next.
+            root.validating = false
             // Broadcast the outcome first — the screensaver pulse needs
             // the raw result, and nothing about the unlock below depends
             // on it. See the `validationAttempt` property comment.
@@ -223,6 +236,7 @@ WlSessionLock {
         // config mistake into a second, worse incident. `errorRetryTimer`
         // below is deliberately slow instead.
         root.pam.error.connect((err) => {
+            root.validating = false
             root.errorText = PamError.toString(err)
             if (root.locked) root.errorRetryTimer.restart()
         })
@@ -247,6 +261,7 @@ WlSessionLock {
         function lock(): void {
             root.attempts = 0
             root.errorText = ""
+            root.validating = false
             root.lockedOut = false
             root.lockoutRemaining = 0
             // A fresh timestamp and an empty list: the notification area
@@ -345,6 +360,30 @@ WlSessionLock {
             running: passwordField.activeFocus
             repeat: true
             onTriggered: caret.on = !caret.on
+        }
+
+        // Validation pulse: a soft in/out on the password field's border
+        // while `root.validating` is set. pam_unix's verification alone
+        // takes roughly two seconds per attempt on this machine
+        // (memory-hard shadow hash), so the wait is real and must read as
+        // deliberate processing, not a dead screen. Category A — a
+        // continuous loop, same period and easing split as WifiIcon's
+        // search pulse. Suppressed under battery saver like the rest of
+        // the lock's motion; the static "Verifying…" line stays.
+        property real validationPulse: 0.0
+        SequentialAnimation on validationPulse {
+            running: root.validating && !Services.PowerBridge.batterySaverActive
+            loops: Animation.Infinite
+            NumberAnimation {
+                to: 1.0
+                duration: Config.Appearance.motionAPeriod / 2
+                easing.type: Config.Appearance.motionAEasing === "linear" ? Easing.Linear : Easing.OutQuad
+            }
+            NumberAnimation {
+                to: 0.0
+                duration: Config.Appearance.motionAPeriod / 2
+                easing.type: Config.Appearance.motionAEasing === "linear" ? Easing.Linear : Easing.OutQuad
+            }
         }
 
         // The lock content fades in when the surface appears and fades
@@ -627,13 +666,31 @@ WlSessionLock {
                     // `invalid` (wrong password) is untouched — Panel.qml's
                     // own override gate keeps the real error colour full
                     // strength the instant something actually goes wrong.
-                    borderColorOverride: Config.Appearance.border
+                    // While `root.validating` the override lerps between
+                    // border and borderStrong on the category-A
+                    // `validationPulse` loop above — the ~2s PAM wait shown
+                    // as deliberate processing.
+                    borderColorOverride: root.validating
+                        ? Qt.rgba(
+                            Config.Appearance.border.r
+                                + (Config.Appearance.borderStrong.r - Config.Appearance.border.r) * validationPulse,
+                            Config.Appearance.border.g
+                                + (Config.Appearance.borderStrong.g - Config.Appearance.border.g) * validationPulse,
+                            Config.Appearance.border.b
+                                + (Config.Appearance.borderStrong.b - Config.Appearance.border.b) * validationPulse,
+                            Config.Appearance.border.a
+                                + (Config.Appearance.borderStrong.a - Config.Appearance.border.a) * validationPulse)
+                        : Config.Appearance.border
                     borderWidthOverride: Config.Appearance.borderWidth
                     // invalid alone is enough here — WidgetStates.resolve()
                     // already gives invalid precedence over loading, so a
                     // `loading: root.lockedOut` alongside this would be a
-                    // silent no-op, not a second real effect.
-                    invalid: root.errorText.length > 0 || root.lockedOut
+                    // silent no-op, not a second real effect. Gated on
+                    // `!root.validating`: PAM's answer takes seconds on this
+                    // machine, and the previous attempt's stale error text
+                    // must not paint the field red while the new attempt is
+                    // still being verified.
+                    invalid: (root.errorText.length > 0 || root.lockedOut) && !root.validating
 
                     // A short, deliberate shake on every failed attempt,
                     // triggered once per errorText change rather than
@@ -711,7 +768,13 @@ WlSessionLock {
                         // the field is invisible-broken instead of just inert.
 
                         Keys.onReturnPressed: {
-                            if (!root.lockedOut && root.pam.responseRequired) root.pam.respond(text)
+                            if (!root.lockedOut && root.pam.responseRequired) {
+                                root.pam.respond(text)
+                                // Starts the validating state — the field
+                                // pulses and the line below says "Verifying…"
+                                // until PAM's `completed`/`error` clears it.
+                                root.validating = true
+                            }
                             text = ""
                         }
                     }
@@ -720,11 +783,20 @@ WlSessionLock {
                 Widgets.StyledText {
                     id: errorText
                     anchors.horizontalCenter: parent.horizontalCenter
-                    tone: "error"
-                    invalid: root.errorText.length > 0 || root.lockedOut
-                    text: root.lockedOut
-                        ? ("Too many attempts — try again in " + root.lockoutRemaining + "s")
-                        : (root.errorText.length > 0 ? root.errorText : (root.pam.message.length > 0 ? root.pam.message : " "))
+                    // While `root.validating` this line is the wait's static
+                    // label: neutral "Verifying…" in place of the previous
+                    // attempt's (stale) error, which neither lingers in red
+                    // nor vanishes mid-wait. The field's border pulse above
+                    // carries the motion side of the same state. Outside the
+                    // validating window every binding below is exactly what
+                    // it was before this state existed.
+                    tone: root.validating ? "" : "error"
+                    invalid: (root.errorText.length > 0 || root.lockedOut) && !root.validating
+                    text: root.validating
+                        ? "Verifying…"
+                        : (root.lockedOut
+                            ? ("Too many attempts — try again in " + root.lockoutRemaining + "s")
+                            : (root.errorText.length > 0 ? root.errorText : (root.pam.message.length > 0 ? root.pam.message : " ")))
                 }
 
                 // Same pill row as Components/Dialogs/PowerMenu.qml, minus
