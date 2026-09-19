@@ -89,20 +89,21 @@ Widgets.StaggerReveal {
 
                 // One plain Item-rooted button per action, tiling the row's full
                 // width edge-to-edge: with no spacing each button is
-                // exactly one sixth of the row, and the tile height keeps
-                // top/bottom padding around the centered glyph (the same
-                // chWidth*4 rhythm as the sensor buttons below) instead of
-                // a wash hugging the icon. On hover the whole button fills
+                // exactly one sixth of the row and as tall as it is wide
+                // (1/1), the glyph centered with even padding on all four
+                // sides. On hover the whole button fills
                 // with its action's own semantic tone (powerActions.toneFor
                 // — the same map PowerMenu's pills use, so a shutdown
                 // action always reads error-red here too) and the glyph
                 // flips to that tone's paired text token, carrying the
                 // colour identity the way the pill row does. At rest the
-                // tile is surface1-identical, ringed by the same thin
-                // hairline every outline here uses, so the six read as
-                // bare power icons in outlined slots; the glyphs stay
-                // uniformly textPrimary, differing by shape
-                // (powerActions.glyph) alone until hovered.
+                // tile is surface1-identical, ringed by a thin
+                // borderWidth outline in borderStrong — the same visible
+                // resting outline Radio and Checkbox draw; the plain
+                // `border` hairline was effectively invisible on the
+                // card — so the six read as bare power icons in outlined
+                // slots; the glyphs stay uniformly textPrimary, differing
+                // by shape (powerActions.glyph) alone until hovered.
                 //
                 // Plain Item, not Widgets.Panel, on purpose: Panel routes
                 // declared children into its padded contentItem, and
@@ -119,7 +120,7 @@ Widgets.StaggerReveal {
                     id: pwrBtn
                     required property string modelData
                     width: pwrRow.width / 6
-                    height: root.chWidth * 4
+                    height: width
 
                     Rectangle {
                         anchors.fill: parent
@@ -128,7 +129,7 @@ Widgets.StaggerReveal {
                             ? powerActions.toneFor(pwrBtn.modelData)
                             : "transparent"
                         border.width: Config.Appearance.borderWidth
-                        border.color: Config.Appearance.border
+                        border.color: Config.Appearance.borderStrong
 
                         Behavior on color {
                             ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
