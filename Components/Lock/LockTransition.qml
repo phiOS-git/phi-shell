@@ -98,8 +98,18 @@ Item {
             to: 0
             duration: root.elementDuration
             easing.type: Easing.OutQuad
-            onFinished: root.concealFinished()
         }
+        // Completion hook on the SEQUENCE, deliberately not on the child
+        // fade: when a SequentialAnimation ends naturally it suppresses
+        // its current (last) child's `finished` signal (verified against
+        // the Qt 6.11 animation runtime — the sequence's own `finished`
+        // fires, the inner NumberAnimation's does not), so an
+        // `onFinished` on `concealFade` would silently never run and
+        // Lock.qml's unlock would never see `concealFinished`. The
+        // sequence's `finished` fires exactly on natural completion and
+        // never on an external `stop()`, so it is the reliable, no-extra-
+        // fire hook for "the conceal has fully closed".
+        onFinished: root.concealFinished()
     }
 
     // --- per-element cascade -------------------------------------------
