@@ -87,44 +87,53 @@ Widgets.StaggerReveal {
             Repeater {
                 model: ["lock", "suspend", "hibernate", "logout", "reboot", "shutdown"]
 
-                // One Widgets.Panel per action, tiling the row's full
+                // One plain Item-rooted button per action, tiling the row's full
                 // width edge-to-edge: with no spacing each button is
                 // exactly one sixth of the row, and the tile height keeps
                 // top/bottom padding around the centered glyph (the same
                 // chWidth*4 rhythm as the sensor buttons below) instead of
-                // a wash hugging the icon. On hover the whole button
-                // fills with its action's own semantic tone
-                // (powerActions.toneFor — the same map PowerMenu's pills
-                // use, so a shutdown action always reads error-red here
-                // too) and the glyph flips to that tone's paired text
-                // token, carrying the colour identity the way the pill row
-                // does. At rest the tile is surface1 (indistinguishable
-                // from the card's own surface1) ringed by the same thin
+                // a wash hugging the icon. On hover the whole button fills
+                // with its action's own semantic tone (powerActions.toneFor
+                // — the same map PowerMenu's pills use, so a shutdown
+                // action always reads error-red here too) and the glyph
+                // flips to that tone's paired text token, carrying the
+                // colour identity the way the pill row does. At rest the
+                // tile is surface1-identical, ringed by the same thin
                 // hairline every outline here uses, so the six read as
                 // bare power icons in outlined slots; the glyphs stay
                 // uniformly textPrimary, differing by shape
                 // (powerActions.glyph) alone until hovered.
                 //
-                // Both pointer handlers name `pwrBtn` as their explicit
-                // `target`: declared inside Widgets.Panel their default
-                // target would resolve to the Panel's *contentItem* — the
-                // padded inner box — leaving the tile's padding rim (and
-                // the border, once the wash fills it) hoverable in theory
-                // but dead to the cursor. Scoping them to the button makes
-                // the whole tile, border included, the hover/click area,
-                // exactly matching the wash.
-                Widgets.Panel {
+                // Plain Item, not Widgets.Panel, on purpose: Panel routes
+                // declared children into its padded contentItem, and
+                // pointer handlers only receive hover/click along the hit
+                // item's own ancestry — a handler living inside contentItem
+                // never reacts to a cursor over the background Rectangle
+                // (its sibling), so only the glyph's own area ever hovered
+                // while the wash still filled the whole tile. Rooting the
+                // full-bleed wash Rectangle and both handlers on this Item
+                // itself (the same shape as Widgets/IconButton — a click
+                // target that is the entire control) puts every pixel of
+                // the tile — wash, border, glyph — under the handlers.
+                Item {
                     id: pwrBtn
                     required property string modelData
                     width: pwrRow.width / 6
                     height: root.chWidth * 4
-                    radius: Config.Appearance.radiusSmall
-                    hovered: pwrHover.hovered
-                    borderWidthOverride: Config.Appearance.borderWidth
-                    borderColorOverride: Config.Appearance.border
-                    bgColorOverride: pwrHover.hovered
-                        ? powerActions.toneFor(pwrBtn.modelData)
-                        : "transparent"
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: Config.Appearance.radiusSmall
+                        color: pwrHover.hovered
+                            ? powerActions.toneFor(pwrBtn.modelData)
+                            : "transparent"
+                        border.width: Config.Appearance.borderWidth
+                        border.color: Config.Appearance.border
+
+                        Behavior on color {
+                            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                        }
+                    }
 
                     Widgets.StyledIcon {
                         anchors.centerIn: parent
@@ -135,8 +144,8 @@ Widgets.StaggerReveal {
                             : Config.Appearance.textPrimary
                     }
 
-                    HoverHandler { id: pwrHover; target: pwrBtn; cursorShape: Qt.PointingHandCursor }
-                    TapHandler { target: pwrBtn; onTapped: powerActions.request(pwrBtn.modelData) }
+                    HoverHandler { id: pwrHover; cursorShape: Qt.PointingHandCursor }
+                    TapHandler { onTapped: powerActions.request(pwrBtn.modelData) }
                 }
             }
         }
