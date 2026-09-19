@@ -77,40 +77,50 @@ Widgets.StaggerReveal {
         }
     }
 
-    // --- power icons row, tiling the card's full width in six equal slots ---
+    // --- power actions, a full-width band of six equal tiled buttons ---
     Widgets.OverlaySection {
         width: parent.width
         Row {
             id: pwrRow
             width: parent.width
-            spacing: root.chWidth * Config.Appearance.space1
+            spacing: 0
             Repeater {
                 model: ["lock", "suspend", "hibernate", "logout", "reboot", "shutdown"]
 
-                // One Widgets.Panel per action — the same tile-and-hover-wash
-                // recipe the tiling grid below uses: the button covers its
-                // whole slot, and hover shades the slot to surface2, so the
-                // wash is unmistakably the button, never a box wrapped
-                // around the glyph. A full-tile hover target is what stops
-                // the wash from flickering when the cursor rides a button
-                // edge. Resting invisible (surface1 on the card's own
-                // surface1), the six read as bare power icons; every action
-                // stays textPrimary, the icons differ by shape
-                // (powerActions.glyph) alone.
+                // One Widgets.Panel per action, tiling the row's full
+                // width edge-to-edge: with no spacing each button is
+                // exactly one sixth of the row, and the tile height keeps
+                // top/bottom padding around the centered glyph (the same
+                // chWidth*4 rhythm as the sensor buttons below) instead of
+                // a wash hugging the icon. On hover the whole button
+                // fills with its action's own semantic tone
+                // (powerActions.toneFor — the same map PowerMenu's pills
+                // use, so a shutdown action always reads error-red here
+                // too) and the glyph flips to that tone's paired text
+                // token, carrying the colour identity the way the pill row
+                // does. At rest the tile is invisible (surface1 on the
+                // card's own surface1) and every glyph is uniformly
+                // textPrimary — the six differ by shape
+                // (powerActions.glyph) alone until hovered.
                 Widgets.Panel {
                     id: pwrBtn
                     required property string modelData
-                    width: (pwrRow.width - pwrRow.spacing * 5) / 6
+                    width: pwrRow.width / 6
                     height: root.chWidth * 4
                     radius: Config.Appearance.radiusSmall
                     hovered: pwrHover.hovered
                     borderWidthOverride: 0
+                    bgColorOverride: pwrHover.hovered
+                        ? powerActions.toneFor(pwrBtn.modelData)
+                        : "transparent"
 
                     Widgets.StyledIcon {
                         anchors.centerIn: parent
                         glyph: powerActions.glyph(pwrBtn.modelData)
                         sizeStep: 3
-                        color: Config.Appearance.textPrimary
+                        color: pwrHover.hovered
+                            ? powerActions.toneTextFor(pwrBtn.modelData)
+                            : Config.Appearance.textPrimary
                     }
 
                     HoverHandler { id: pwrHover; cursorShape: Qt.PointingHandCursor }
