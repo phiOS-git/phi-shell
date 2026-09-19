@@ -10,9 +10,17 @@ import "../Bar/glyphs.js" as Glyphs
 
 // phiOS — Panels/AgentPanel (OOP-27, phios-agente-delta.md D-06). The
 // shell-summoned phi agent surface: a left-edge dock that slides in, with
-// THREE sections — Chat, Coding sessions, Status — on a thin nav rail. The
-// panel is a dedicated surface, not a tabs.json instance (ADR 100 stays
-// satisfied: the surface TYPE is code written once).
+// THREE sections — Chat, Coding sessions, Status — on a header tab strip.
+// The panel is a dedicated surface, not a tabs.json instance (ADR 100
+// stays satisfied: the surface TYPE is code written once).
+//
+// 2026-09-19 (agent instruction: "move the main tabs in the header"): the
+// three sections used to sit on a thin vertical nav rail down the dock's
+// left edge (icon-only squares with the indicator on the rail's inner
+// edge); they now live in a horizontal header strip at the panel's top —
+// glyph + label with the shared tab grammar's bottom-edge "you are here"
+// marker — and the settings deep link sits at that strip's far right,
+// level with the tabs instead of above the content row.
 //
 // Interface rework Phase 4 (rework.md's "ai chat panel" entry): the dock
 // now stays clear of BOTH status bars (Services.BarMetrics.height and its
@@ -149,10 +157,11 @@ PanelWindow {
             root.agent.openSession(mostRecent.ID || mostRecent.id)
         }
     }
-    // The nav rail's MouseArea doesn't take keyboard focus, so switching
-    // sections while a field has focus destroys that field (the Loader
-    // swaps sourceComponent) with nothing left to reclaim it — same class
-    // of hazard as above.
+    // The section tabs don't take keyboard focus on a mouse click (QML
+    // TapHandler never moves active focus), so switching sections while a
+    // field has focus destroys that field (the Loader swaps
+    // sourceComponent) with nothing left to reclaim it — same class of
+    // hazard as above.
     onSectionChanged: keyScope.forceActiveFocus()
 
     TextMetrics {
@@ -292,149 +301,118 @@ PanelWindow {
                 anchors.fill: parent
                 radius: Config.Appearance.panelRadius
 
-                // Interface rework Phase 4 (rework.md: "in the top right
-                // corner it has a small settings button to open the
-                // settings panel"). Used to be a TabButton pinned to the
-                // BOTTOM of the nav rail — moved off the rail entirely
-                // into a small corner icon reachable from every section, so
-                // it needs its own reserved strip across the FULL panel
-                // width rather than sitting inside the rail's narrow
-                // column (a section's own header content — Chat's rename/
-                // new controls, Coding sessions'/Status's Refresh — already
-                // runs to the content area's own right edge, so a corner
-                // icon merely overlaid on top of that would collide with
-                // it). Same small-icon-button pattern Phase 3's overlays
-                // already use for this exact "deep link to Settings"
-                // affordance (Panels/BarPopout.qml's per-section "⚙"
-                // SmallButtons).
-                // rework-issues.md item 6: "the same should be applied to
-                // the settings icon in the chat panel" — a plain
-                // Widgets.IconButton (opacity-on-hover, no background/
-                // border/padding), not a SmallButton.
-                Widgets.IconButton {
-                    id: panelSettingsBtn
-                    anchors.top: parent.top
-                    anchors.right: parent.right
-                    glyph: Glyphs.settings
-                    onActivated: Services.SettingsPanel.openSection("aiAgent")
+                // --- header: horizontal section tabs -----------------
+                // 2026-09-19 (agent instruction: "move the main tabs in
+                // the header"). The three section switchers used to sit on
+                // a thin vertical rail down the dock's left edge (icon-only
+                // squares, indicator on the rail's inner edge); they are
+                // now the panel's top header strip — glyph + label, laid
+                // out horizontally with the shared tab grammar's default
+                // bottom-edge indicator, the same "you are here" read as
+                // Panels/Sidebar's own tab strip. What used to be the
+                // rail's ~44px-wide column becomes content space again.
+                Item {
+                    id: header
+                    anchors { top: parent.top; left: parent.left; right: parent.right }
+                    height: Math.max(tabStrip.implicitHeight, panelSettingsBtn.implicitHeight)
+
+                    Row {
+                        id: tabStrip
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: root.chWidth * Config.Appearance.space1
+
+                        // Full chat-panel rework 2026-09-15: "Dashboard" is
+                        // gone as its own destination — Modules.ChatShell
+                        // folds it into a persistent sidebar next to the
+                        // active chat instead, the same layout every
+                        // mainstream chat app uses, so there is nothing
+                        // left to separately navigate to.
+                        // Interface rework Phase 4: "memory" renamed to
+                        // "status" — Modules.MemoryProposals.qml (component
+                        // id kept as `statusComp` below, file itself
+                        // unchanged) now opens with a system-status-overview
+                        // section above its existing proposals list.
+                        Repeater {
+                            model: [
+                                { key: "chat", glyph: "▷", label: "Chat" },
+                                { key: "code", glyph: "⌘", label: "Coding sessions" },
+                                { key: "status", glyph: "▤", label: "Status" }
+                            ]
+                            delegate: Widgets.TabButton {
+                                required property var modelData
+                                glyph: modelData.glyph
+                                label: modelData.label
+                                indicatorEdge: "bottom"
+                                badge: modelData.key === "status" ? root.agent.totalPendingProposals : 0
+                                active: root.section === modelData.key
+                                onActivated: {
+                                    root.section = modelData.key
+                                    if (modelData.key === "code") root.agent.refreshCodingSessions()
+                                    if (modelData.key === "status") {
+                                        root.agent.refreshAllProposals()
+                                        root.agent.refreshHealth()
+                                        Services.AgentInfra.refresh()
+                                    }
+                                    if (modelData.key === "chat") root.agent.refreshChats()
+                                }
+                            }
+                        }
+                    }
+
+                    // Interface rework Phase 4 (rework.md: "in the top right
+                    // corner it has a small settings button to open the
+                    // settings panel"). Was a TabButton pinned to the BOTTOM
+                    // of the nav rail, then a corner icon floating above the
+                    // content row; it now shares the header strip's right
+                    // end, level with the tabs, and stays reachable from
+                    // every section because a section's own header content
+                    // (Chat's rename/new controls, Coding sessions'/Status's
+                    // Refresh) starts below the strip's separator.
+                    // rework-issues.md item 6: "the same should be applied
+                    // to the settings icon in the chat panel" — a plain
+                    // Widgets.IconButton (opacity-on-hover, no background/
+                    // border/padding), not a SmallButton.
+                    Widgets.IconButton {
+                        id: panelSettingsBtn
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        glyph: Glyphs.settings
+                        onActivated: Services.SettingsPanel.openSection("aiAgent")
+                    }
                 }
 
-                Row {
-                    anchors.top: panelSettingsBtn.bottom
+                Widgets.Separator {
+                    id: headerSep
+                    anchors { top: header.bottom; left: parent.left; right: parent.right }
                     anchors.topMargin: root.gap
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    spacing: 0
+                }
 
-                    // --- nav rail -------------------------------------
-                    // Style pass 2026-09-14: was a bespoke hover-wash +
-                    // hairline marker, the ONLY tab-like surface in the shell
-                    // not built from the shared tab grammar (Widgets/
-                    // TabButton) — now unified with Panels/Sidebar's own tab
-                    // strip so "you are here" reads identically everywhere:
-                    // accent content colour + a thin accent bar on the edge
-                    // facing the section body (this rail sits at the dock's
-                    // left edge, so its inner edge is its own right edge).
-                    Item {
-                        id: rail
-                        // Style pass 2026-09-15 (reported directly: "icons
-                        // are miniscule and uncomfortable to press"). Was
-                        // chWidth*3.4 (~26px square on this shell's own
-                        // tokens) — smaller than even this shell's own
-                        // ordinary control height (~30px, WidgetStates.
-                        // controlHeight), let alone a real target: chat-UI
-                        // research recommends at least 44px for a primary
-                        // action (composer send/stop button), applied here
-                        // to every icon-only nav square for the same
-                        // "actually comfortable to press" reason.
-                        width: root.chWidth * 5.5
-                        height: parent.height
+                // --- section body ------------------------------------
+                Item {
+                    id: sectionBody
+                    anchors { top: headerSep.bottom; bottom: parent.bottom; left: parent.left; right: parent.right }
+                    anchors.topMargin: root.gap
+                    clip: true
 
-                        Column {
-                            id: railTop
-                            anchors.top: parent.top
-                            width: parent.width
-                            spacing: root.chWidth * Config.Appearance.space1
-
-                            // Full chat-panel rework 2026-09-15: "Dashboard"
-                            // is gone as its own rail destination —
-                            // Panels/tabs/agent/ChatShell.qml folds it into
-                            // a persistent sidebar right next to the active
-                            // chat instead, the same layout every
-                            // mainstream chat app uses, so there is nothing
-                            // left to separately navigate to.
-                            // Interface rework Phase 4: "memory" renamed to
-                            // "status" — Panels/tabs/agent/MemoryProposals.
-                            // qml (component id kept as `statusComp` below,
-                            // file itself unchanged) now opens with a
-                            // system-status-overview section above its
-                            // existing proposals list, per rework.md's own
-                            // "status: will show a quick overview of the
-                            // system status ... and the list of memory
-                            // proposal".
-                            Repeater {
-                                model: [
-                                    { key: "chat", glyph: "▷", label: "Chat" },
-                                    { key: "code", glyph: "⌘", label: "Coding sessions" },
-                                    { key: "status", glyph: "▤", label: "Status" }
-                                ]
-                                delegate: Widgets.TabButton {
-                                    required property var modelData
-                                    width: rail.width
-                                    height: rail.width
-                                    iconOnly: true
-                                    indicatorEdge: "right"
-                                    glyph: modelData.glyph
-                                    badge: modelData.key === "status" ? root.agent.totalPendingProposals : 0
-                                    active: root.section === modelData.key
-                                    onActivated: {
-                                        root.section = modelData.key
-                                        if (modelData.key === "code") root.agent.refreshCodingSessions()
-                                        if (modelData.key === "status") {
-                                            root.agent.refreshAllProposals()
-                                            root.agent.refreshHealth()
-                                            Services.AgentInfra.refresh()
-                                        }
-                                        if (modelData.key === "chat") root.agent.refreshChats()
-                                    }
-                                }
+                    Loader {
+                        id: sectionLoader
+                        anchors.fill: parent
+                        sourceComponent: {
+                            switch (root.section) {
+                            case "code": return codeComp
+                            case "status": return statusComp
+                            default: return chatComp
                             }
                         }
-                        // Interface rework Phase 4: the rail's own bottom-
-                        // pinned Settings entry (Style pass 2026-09-15) is
-                        // gone — rework.md wants it in the panel's top-right
-                        // corner instead, reachable from every section the
-                        // same way, see `panelSettingsBtn` above the rail.
                     }
-
-                    Widgets.Separator { vertical: true; height: parent.height }
-
-                    // --- section body --------------------------------
-                    Item {
-                        width: parent.width - rail.width - 1
-                        height: parent.height
-                        clip: true
-
-                        Loader {
-                            id: sectionLoader
-                            anchors.fill: parent
-                            sourceComponent: {
-                                switch (root.section) {
-                                case "code": return codeComp
-                                case "status": return statusComp
-                                default: return chatComp
-                                }
-                            }
-                        }
-                        Component { id: chatComp;   Modules.ChatShell { onRequestSection: (s) => root.section = s; onBlurred: keyScope.forceActiveFocus() } }
-                        Component { id: codeComp;   Modules.CodingSessions {} }
-                        // File kept as MemoryProposals.qml (its own header
-                        // comment explains the additive status-overview
-                        // section) — only the rail key/section string and
-                        // this Component's id changed to "status".
-                        Component { id: statusComp; Modules.MemoryProposals {} }
-                    }
+                    Component { id: chatComp;   Modules.ChatShell { onRequestSection: (s) => root.section = s; onBlurred: keyScope.forceActiveFocus() } }
+                    Component { id: codeComp;   Modules.CodingSessions {} }
+                    // File kept as MemoryProposals.qml (its own header
+                    // comment explains the additive status-overview
+                    // section) — only the section key/string and this
+                    // Component's id changed to "status".
+                    Component { id: statusComp; Modules.MemoryProposals {} }
                 }
             }
         }

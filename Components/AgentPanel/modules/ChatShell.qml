@@ -3,6 +3,7 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 import "." as Local
+import "../../Bar/glyphs.js" as Glyphs
 
 // phiOS — agent ChatShell (2026-09-15, direct instruction: "a full rework
 // of the chat panel with UX at its core... do not stop until it's
@@ -315,19 +316,34 @@ Item {
     // technique, and the same reasoning, as Chat.qml's own personaCard:
     // no anchor-direction risk to get wrong between items that are not
     // strict siblings). Stays reachable at any width, sidebar fully
-    // expanded or fully collapsed to zero. Same SmallButton corner-icon
-    // pattern this repo already uses elsewhere for a minor, always-visible
-    // control (Panels/BarPopout.qml's settings icons), a chevron in place
-    // of a glyph icon: it points the direction the sidebar's edge will
-    // move on click.
-    Widgets.SmallButton {
+    // expanded or fully collapsed to zero.
+    //
+    // 2026-09-19 (agent instruction: "in the chat view make the dashboard
+    // toggleable with an icon"): was a SmallButton carrying a text "‹"/"›"
+    // chevron label; now the same bare Widgets.IconButton grammar this
+    // shell's other minor always-visible controls use (BarPopout's media/
+    // network rows, AgentPanel's settings corner icon), MDI's
+    // page-layout-with-left-sidebar pictogram
+    // (nf-md-page_layout_sidebar_left, Glyphs.dashboard — verified against
+    // nerd-fonts' glyphnames.json, not recalled from memory). The one glyph
+    // serves both states, coloured the way BarPopout's shuffle button shows
+    // its own on/off: accent while the dashboard is visible, muted while
+    // collapsed. Keeps an explicit chWidth-sized square hit box around the
+    // bare glyph — the same comfort floor the nav squares got, and the
+    // reason the old control floored height at controlHeight.
+    Widgets.IconButton {
         id: sidebarToggle
         readonly property point _anchor: sidebar.mapToItem(root, sidebar.width, 0)
         x: sidebarToggle._anchor.x
-        y: (root.height - sidebarToggle.implicitHeight) / 2
+        y: (root.height - sidebarToggle.height) / 2
         z: 5
-        label: root.sidebarCollapsed ? "›" : "‹"
-        onClicked: root.sidebarCollapsed = !root.sidebarCollapsed
+        width: root.chWidth * 4
+        height: root.chWidth * 4
+        glyph: Glyphs.dashboard
+        sizeStep: 1
+        color: root.sidebarCollapsed ? Config.Appearance.textMuted : Config.Appearance.accent
+        hoverColor: Config.Appearance.textPrimary
+        onActivated: root.sidebarCollapsed = !root.sidebarCollapsed
     }
 
     // Style pass 2026-09-14 (kept from Dashboard.qml): the star glyph only
