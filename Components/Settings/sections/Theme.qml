@@ -547,6 +547,49 @@ Column {
         }
     }
 
+    // One static wallpaper tile in the picker grid: thumbnail, hover / active
+    // border (accent marks the current selection), keyboard reachability and
+    // the breathing placeholder while decoding — shared by the flat row of
+    // root-folder files and every subfolder section, so both look identical.
+    // `loading` gates the source: a collapsed section passes false, and
+    // nothing decodes until the section opens.
+    component StaticWallpaperTile: Rectangle {
+        id: sTile
+        required property string modelData
+        property bool loading: true
+        width: root.chWidth * 12; height: root.chWidth * 8
+        radius: Config.Appearance.radiusSmall
+        color: Config.Appearance.surface1
+        clip: true
+        border.width: Config.Appearance.borderWidth
+        border.color: Services.Background.image === sTile.modelData
+            ? Config.Appearance.accent
+            : ((sHover.hovered || sTile.activeFocus) ? Config.Appearance.borderStrong : Config.Appearance.border)
+        Behavior on border.color {
+            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+        }
+        Image {
+            id: sImg
+            anchors.fill: parent
+            anchors.margins: Config.Appearance.borderWidth
+            source: sTile.loading ? "file://" + sTile.modelData : ""
+            fillMode: Image.PreserveAspectCrop
+            asynchronous: true
+            sourceSize.width: 256
+        }
+        // Breathing placeholder while the thumbnail decodes, so the tile
+        // reads as loading instead of a blank box.
+        WallpaperTileSkeleton {
+            visible: sTile.loading && sImg.status === Image.Loading
+        }
+        HoverHandler { id: sHover; cursorShape: Qt.PointingHandCursor }
+        TapHandler { onTapped: Services.Background.setImage(sTile.modelData) }
+        // Same Tab-reachability fix as the colour swatches / "none" tile.
+        activeFocusOnTab: true
+        Keys.onReturnPressed: Services.Background.setImage(sTile.modelData)
+        Keys.onSpacePressed: Services.Background.setImage(sTile.modelData)
+    }
+
     // --- Appearance ----------------------------------------------------
     Modules.SettingsGroup {
         title: "Appearance"
@@ -1470,67 +1513,38 @@ Column {
                         Keys.onReturnPressed: Services.Background.clearImage()
                         Keys.onSpacePressed: Services.Background.clearImage()
                     }
+
+                    // The wallpaper folder's loose top-level files sit
+                    // flat here, next to "none"; only subfolders
+                    // collapse below.
+                    Repeater {
+                        model: Services.Background.rootImages
+                        delegate: StaticWallpaperTile {
+                            loading: true
+                        }
+                    }
                 }
 
                 // One collapsible section per subfolder of the wallpaper
-                // folder ("General" holds the loose top-level files). A
-                // closed section loads nothing: a tile's image only gets a
-                // source once its section is open, which is what stops a
-                // large folder from decoding every thumbnail at once.
+                // folder. A closed section loads nothing: a tile only gets
+                // a source once its section is open, which is what stops a
+                // large folder from decoding every thumbnail at once. The
+                // loose top-level files are not a section — they sit flat
+                // beside "none" above.
                 Repeater {
-                    model: Services.Background.groups
+                    model: Services.Background.groups.filter(g => g.name !== "General")
                     delegate: Widgets.Accordion {
                         id: section
                         required property var modelData
                         title: modelData.name
-                        // The first group (always "General") starts open;
-                        // the rest stay closed until chosen.
-                        expanded: index === 0
                         content:
                             Flow {
                                 width: parent.width
                                 spacing: 6
                                 Repeater {
                                     model: section.modelData.images
-                                    delegate: Rectangle {
-                                        id: wpTile
-                                        required property string modelData
-                                        width: root.chWidth * 12; height: root.chWidth * 8
-                                        radius: Config.Appearance.radiusSmall
-                                        color: Config.Appearance.surface1
-                                        clip: true
-                                        border.width: Config.Appearance.borderWidth
-                                        border.color: Services.Background.image === modelData
-                                            ? Config.Appearance.accent
-                                            : ((wpHover.hovered || wpTile.activeFocus) ? Config.Appearance.borderStrong : Config.Appearance.border)
-                                        Behavior on border.color {
-                                            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
-                                        }
-                                        Image {
-                                            id: wpImg
-                                            anchors.fill: parent
-                                            anchors.margins: Config.Appearance.borderWidth
-                                            // Lazy: nothing loads while the
-                                            // section stays collapsed.
-                                            source: section.expanded ? "file://" + modelData : ""
-                                            fillMode: Image.PreserveAspectCrop
-                                            asynchronous: true
-                                            sourceSize.width: 256
-                                        }
-                                        // Breathing placeholder while the
-                                        // thumbnail decodes, so an opening
-                                        // section reads as loading instead
-                                        // of a wall of blank tiles.
-                                        WallpaperTileSkeleton {
-                                            visible: section.expanded && wpImg.status === Image.Loading
-                                        }
-                                        HoverHandler { id: wpHover; cursorShape: Qt.PointingHandCursor }
-                                        TapHandler { onTapped: Services.Background.setImage(modelData) }
-                                        // Same fix as the colour swatches /
-                                        // "none" tile above.
-                                        activeFocusOnTab: true
-                                        Keys.onReturnPressed: Services.Background.setImage(modelData)
-                                        Keys.onSpacePressed: Services.Background.setImage(modelData)
+                                    delegate: StaticWallpaperTile {
+                                        loading: section.expanded
                                     }
                                 }
                             }

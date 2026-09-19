@@ -43,6 +43,16 @@ Singleton {
     // opens or a new image is added.
     property var groups: []
 
+    // The wallpaper folder's loose top-level files, for the flat row next
+    // to the picker's "none" tile — the "General" group is not shown as a
+    // section itself, only subfolders are. Same source the picker's
+    // accordions filter out.
+    readonly property var rootImages: {
+        for (var i = 0; i < root.groups.length; i++)
+            if (root.groups[i].name === "General") return root.groups[i].images
+        return []
+    }
+
     // The image actually painted on the shell surface: while a dynamic
     // wallpaper is driving the wallpaper (Services/DynamicWallpaper.activeNow)
     // it is that service's current entry, otherwise the user's manually
