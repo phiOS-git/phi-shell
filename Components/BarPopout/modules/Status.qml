@@ -98,10 +98,21 @@ Widgets.StaggerReveal {
                 // use, so a shutdown action always reads error-red here
                 // too) and the glyph flips to that tone's paired text
                 // token, carrying the colour identity the way the pill row
-                // does. At rest the tile is invisible (surface1 on the
-                // card's own surface1) and every glyph is uniformly
-                // textPrimary — the six differ by shape
+                // does. At rest the tile is surface1 (indistinguishable
+                // from the card's own surface1) ringed by the same thin
+                // hairline every outline here uses, so the six read as
+                // bare power icons in outlined slots; the glyphs stay
+                // uniformly textPrimary, differing by shape
                 // (powerActions.glyph) alone until hovered.
+                //
+                // Both pointer handlers name `pwrBtn` as their explicit
+                // `target`: declared inside Widgets.Panel their default
+                // target would resolve to the Panel's *contentItem* — the
+                // padded inner box — leaving the tile's padding rim (and
+                // the border, once the wash fills it) hoverable in theory
+                // but dead to the cursor. Scoping them to the button makes
+                // the whole tile, border included, the hover/click area,
+                // exactly matching the wash.
                 Widgets.Panel {
                     id: pwrBtn
                     required property string modelData
@@ -109,7 +120,8 @@ Widgets.StaggerReveal {
                     height: root.chWidth * 4
                     radius: Config.Appearance.radiusSmall
                     hovered: pwrHover.hovered
-                    borderWidthOverride: 0
+                    borderWidthOverride: Config.Appearance.borderWidth
+                    borderColorOverride: Config.Appearance.border
                     bgColorOverride: pwrHover.hovered
                         ? powerActions.toneFor(pwrBtn.modelData)
                         : "transparent"
@@ -123,8 +135,8 @@ Widgets.StaggerReveal {
                             : Config.Appearance.textPrimary
                     }
 
-                    HoverHandler { id: pwrHover; cursorShape: Qt.PointingHandCursor }
-                    TapHandler { onTapped: powerActions.request(pwrBtn.modelData) }
+                    HoverHandler { id: pwrHover; target: pwrBtn; cursorShape: Qt.PointingHandCursor }
+                    TapHandler { target: pwrBtn; onTapped: powerActions.request(pwrBtn.modelData) }
                 }
             }
         }
