@@ -50,6 +50,13 @@ Item {
     property bool lockedOut: false
     property real lockoutProgress: 0
 
+    // --- preview features ------------------------------------------------
+    // The auth reactions this effect implements, for the settings
+    // gallery's per-feature test buttons (Settings/sections/Theme.qml
+    // maps these ids to labels and triggers). `wave-*` are the two
+    // outcomes of the password-validation pulse below.
+    readonly property var features: ["verification", "wave-wrong", "wave-correct", "lockout"]
+
     // --- password-validation pulse (optional) ---------------------------
     // Lock.qml broadcasts every completed attempt's outcome here:
     // triggerValidation(true) = correct password, false = any failure.

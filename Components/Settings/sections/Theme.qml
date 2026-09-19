@@ -1324,14 +1324,14 @@ Column {
         }
 
         // --- simulated lock/auth state ---------------------------------
-        // The buttons below fake the three auth states every effect reacts
-        // to — the same four properties Lock.qml binds on the real lock
-        // screen — so a reaction can be previewed without locking the
-        // machine. Durations are the real ones: the ~2s verification wait
-        // (the measured pam_unix shadow-hash round-trip, see Lock.qml's
-        // own validating comment) and the 30s lockout cooldown (Lock.qml's
-        // lockoutSeconds), so what drains here is what the lock screen
-        // actually does.
+        // The feature buttons below fake the auth states the SELECTED
+        // effect declares — the same four properties Lock.qml binds on
+        // the real lock screen — so a reaction can be previewed without
+        // locking the machine. Durations are the real ones: the ~2s
+        // verification wait (the measured pam_unix shadow-hash
+        // round-trip, see Lock.qml's own validating comment) and the 30s
+        // lockout cooldown (Lock.qml's lockoutSeconds), so what drains
+        // here is what the lock screen actually does.
         property bool fxValidating: false
         property bool fxLockedOut: false
         readonly property int fxLockoutSeconds: 30
@@ -1389,6 +1389,61 @@ Column {
             if (fx && typeof fx.triggerValidation === "function") fx.triggerValidation(success)
         }
 
+        // Feature catalogue helpers for the test buttons: the label, the
+        // active highlight, the enable guard and the trigger for each
+        // feature id a screensaver declares in its `features` list.
+        function _featureLabel(id) {
+            switch (id) {
+            case "verification":
+                return screensaverPreviewGroup.fxValidating ? "Verifying…" : "Verify"
+            case "lockout":
+                return screensaverPreviewGroup.fxLockedOut
+                    ? "Locked — " + screensaverPreviewGroup.fxLockoutRemaining + "s"
+                    : "Locked account"
+            case "wave-wrong": return "Wrong password"
+            case "wave-correct": return "Correct password"
+            default: return id
+            }
+        }
+        function _featureActive(id) {
+            if (id === "verification") return screensaverPreviewGroup.fxValidating
+            if (id === "lockout") return screensaverPreviewGroup.fxLockedOut
+            return false
+        }
+        function _featureEnabled(id) {
+            // Mutually exclusive, mirroring the real screen's respond()
+            // guard: no verification while locked out, no lockout while a
+            // verification is running.
+            if (id === "verification") return !screensaverPreviewGroup.fxLockedOut
+            if (id === "lockout") return !screensaverPreviewGroup.fxValidating
+            return true
+        }
+        function _triggerFeature(id) {
+            switch (id) {
+            case "verification":
+                if (screensaverPreviewGroup.fxValidating) {
+                    screensaverPreviewGroup.fxValidating = false
+                    verifySim.stop()
+                } else {
+                    screensaverPreviewGroup.fxValidating = true
+                    verifySim.restart()
+                }
+                break
+            case "lockout":
+                if (screensaverPreviewGroup.fxLockedOut) {
+                    screensaverPreviewGroup.fxLockedOut = false
+                    screensaverPreviewGroup.fxLockoutRemaining = 0
+                } else {
+                    screensaverPreviewGroup.fxLockedOut = true
+                    screensaverPreviewGroup.fxLockoutRemaining = screensaverPreviewGroup.fxLockoutSeconds
+                }
+                break
+            case "wave-wrong": screensaverPreviewGroup._pulsePreview(false); break
+            case "wave-correct": screensaverPreviewGroup._pulsePreview(true); break
+            default: break
+            }
+        }
+
         Modules.SettingsRow {
             wide: true
             title: "Live preview"
@@ -1409,57 +1464,29 @@ Column {
                     label: screensaverPreviewGroup.previewLive ? "Hide preview" : "Show preview"
                     onClicked: screensaverPreviewGroup.previewLive = !screensaverPreviewGroup.previewLive
                 }
-                // The auth-effect buttons drive the simulated states above
-                // on the effect currently loaded in the preview, exactly
-                // the way Lock.qml drives the real screensaver. "Verify"
-                // and "Locked account" apply to every effect (all six
-                // carry the four bound state properties); "Wrong/Correct
-                // password" fire the outcome wave — only Plasma implements
-                // triggerValidation(), so they only appear for it. The two
-                // toggles are mutually exclusive just like the real screen
-                // (respond() is guarded by !lockedOut).
+                // One test button per reaction the SELECTED effect
+                // declares — its `features` list — so the row is a
+                // truthful catalogue, never a fixed set (ADR 074).
+                // Every effect answers "verification" (the ~2s wait) and
+                // "lockout" (the 30s cooldown) through the state bindings
+                // below; only Plasma adds the outcome-wave entries.
+                // Clicking drives the simulated states on the preview
+                // instance exactly the way Lock.qml wires the real lock —
+                // see _triggerFeature. The two state toggles are mutually
+                // exclusive like the real screen (respond() is guarded by
+                // !lockedOut), enforced in _featureEnabled.
                 Flow {
                     width: parent.width
                     spacing: root.gap
                     visible: screensaverPreviewGroup.previewLive
-                    Widgets.SmallButton {
-                        label: screensaverPreviewGroup.fxValidating ? "Verifying…" : "Verify"
-                        active: screensaverPreviewGroup.fxValidating
-                        enabled: !screensaverPreviewGroup.fxLockedOut
-                        onClicked: {
-                            if (screensaverPreviewGroup.fxValidating) {
-                                screensaverPreviewGroup.fxValidating = false
-                                verifySim.stop()
-                            } else {
-                                screensaverPreviewGroup.fxValidating = true
-                                verifySim.restart()
-                            }
-                        }
-                    }
-                    Widgets.SmallButton {
-                        label: "Wrong password"
-                        visible: Config.LockPrefs.effect === "plasma"
-                        onClicked: screensaverPreviewGroup._pulsePreview(false)
-                    }
-                    Widgets.SmallButton {
-                        label: "Correct password"
-                        visible: Config.LockPrefs.effect === "plasma"
-                        onClicked: screensaverPreviewGroup._pulsePreview(true)
-                    }
-                    Widgets.SmallButton {
-                        label: screensaverPreviewGroup.fxLockedOut
-                            ? "Locked — " + screensaverPreviewGroup.fxLockoutRemaining + "s"
-                            : "Locked account"
-                        active: screensaverPreviewGroup.fxLockedOut
-                        enabled: !screensaverPreviewGroup.fxValidating
-                        onClicked: {
-                            if (screensaverPreviewGroup.fxLockedOut) {
-                                screensaverPreviewGroup.fxLockedOut = false
-                                screensaverPreviewGroup.fxLockoutRemaining = 0
-                            } else {
-                                screensaverPreviewGroup.fxLockedOut = true
-                                screensaverPreviewGroup.fxLockoutRemaining = screensaverPreviewGroup.fxLockoutSeconds
-                            }
+                    Repeater {
+                        model: previewLoader.item ? previewLoader.item.features : []
+                        delegate: Widgets.SmallButton {
+                            required property string modelData
+                            label: screensaverPreviewGroup._featureLabel(modelData)
+                            active: screensaverPreviewGroup._featureActive(modelData)
+                            enabled: screensaverPreviewGroup._featureEnabled(modelData)
+                            onClicked: screensaverPreviewGroup._triggerFeature(modelData)
                         }
                     }
                 }

@@ -53,11 +53,19 @@ Item {
     // `validationProgress` pulses 0→1 in step with the field's own pulse;
     // `lockedOut` covers the post-threshold cooldown, `lockoutProgress`
     // draining 1→0 with the countdown (the "N s" the field shows). An
-    // effect reacts to these or ignores them; never writes.
+    // effect reacts to these or ignores them; never writes. This effect
+    // answers: a full-surface cast toward `info` while verifying, and
+    // toward `error` that fades as the lockout drains (see onPaint).
     property bool validating: false
     property real validationProgress: 0
     property bool lockedOut: false
     property real lockoutProgress: 0
+
+    // --- preview features ------------------------------------------------
+    // The auth reactions this effect implements, for the settings
+    // gallery's per-feature test buttons (Settings/sections/Theme.qml
+    // maps these ids to labels and triggers).
+    readonly property var features: ["verification", "lockout"]
 
     property int blobCount: 9
     // Multiplier on the elliptical morph amplitude and the horizontal
@@ -183,6 +191,24 @@ Item {
                 ctx.restore()
             }
             ctx.globalCompositeOperation = "source-over"
+
+            // Auth reactions (the bound state above): a full-surface cast
+            // toward `info` that breathes with the field's pulse while
+            // `validating`, and toward `error` that fades as the lockout
+            // countdown drains. The two can't overlap — respond() is
+            // guarded by `!lockedOut` — but the `else if` keeps it
+            // explicit.
+            if (root.validating && root.validationProgress > 0.001) {
+                var lift = Config.Appearance.info
+                ctx.fillStyle = Qt.rgba(lift.r, lift.g, lift.b,
+                    Math.min(0.30, root.validationProgress * 0.28))
+                ctx.fillRect(0, 0, width, height)
+            } else if (root.lockedOut) {
+                var cast = Config.Appearance.error
+                ctx.fillStyle = Qt.rgba(cast.r, cast.g, cast.b,
+                    0.08 + 0.06 * root.lockoutProgress)
+                ctx.fillRect(0, 0, width, height)
+            }
         }
     }
 }
