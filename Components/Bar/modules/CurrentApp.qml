@@ -28,7 +28,7 @@ Widgets.StyledText {
         font.pixelSize: Config.Appearance.fontSize1
         text: "0"
     }
-    readonly property real _cap: chMetrics.width * 30
+    readonly property real _cap: chMetrics.width * 90
 
     text: onThisScreen ? activeToplevel.title : ""
     mono: true
