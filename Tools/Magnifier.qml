@@ -40,8 +40,10 @@ import qs.Widgets as Widgets
 //
 // Not verifiable without a compositor — flagged for the screenshot pass:
 // whether `captureFrame()` + the hide/grab timing is blink-free enough,
-// whether ScreencopyView honours the explicit scaled size, `mask: Region
-// {}` click-through, and the recapture cadence.
+// `mask: Region {}` click-through, and the recapture cadence. (That
+// ScreencopyView honours the explicit scaled width/height — the zoom — is
+// confirmed from its source: the buffer is painted scaled to the item's
+// boundingRect.)
 
 PanelWindow {
     id: root
@@ -232,28 +234,30 @@ PanelWindow {
             Item {
                 id: feedClip
                 anchors.fill: parent
+                // Hidden source, NO layer: MultiEffect feeds a hidden source
+                // through its internal ShaderEffectSource proxy, which
+                // renders hidden sources into the input texture (Qt's
+                // documented invisible-source pattern; Qt's own MultiEffect
+                // baseline tests use a hidden source exactly like this). A
+                // `layer.enabled: true` source is read straight from the
+                // item's own layer texture instead — and a hidden item's
+                // layer never carries the dynamic screencopy content, so
+                // the effect input stayed empty: that was the blank lens.
                 visible: false
-                layer.enabled: true
 
                 ScreencopyView {
                     id: scv
                     captureSource: root.screen
                     live: false
                     paintCursor: false
+                    // `width`/`height` here ARE the magnification:
+                    // ScreencopyView paints each captured buffer scaled to
+                    // fill its own boundingRect (WlBufferQSGDisplayNode
+                    // .setRect), so a screen.width * zoom wide item paints
+                    // every screen pixel zoom × zoom — a plain lens window
+                    // of it then shows zoom×.
                     width: root.screen.width * root.zoom
                     height: root.screen.height * root.zoom
-                    // `width`/`height` above are QQuickItem's own generic
-                    // geometry — confirmed against the real type
-                    // (Quickshell.Wayland._Screencopy's own qmltypes) to
-                    // carry no special meaning for ScreencopyView: it has
-                    // no scaling contract on width/height at all. The
-                    // property that actually controls the rendered content
-                    // size is `constraintSize` (QSizeF, read-write) — never
-                    // set anywhere in this file before now, which is very
-                    // likely the whole bug: content was always painted at
-                    // its native `sourceSize`, unmagnified, regardless of
-                    // width/height or zoom.
-                    constraintSize: Qt.size(root.screen.width * root.zoom, root.screen.height * root.zoom)
                     // Pan so (viewX, viewY) in screen space lands at the
                     // lens centre.
                     x: root.lensSize / 2 - root.viewX * root.zoom
@@ -266,6 +270,10 @@ PanelWindow {
                 anchors.fill: parent
                 radius: width / 2
                 visible: false
+                // A hidden-but-layered item is the maskSource shape Qt's own
+                // MultiEffect baseline tests use; the effect samples the
+                // layer texture for the mask alpha.
+                layer.enabled: true
             }
 
             MultiEffect {
