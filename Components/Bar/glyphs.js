@@ -44,6 +44,7 @@ var steam           = _c(0xF04D3)   // nf-md-steam (Steam workspace icon) — wa
                                      // which is actually nf-md-phone_incoming; a wrong
                                      // guessed codepoint, corrected against nerd-fonts'
                                      // own glyphnames.json
+var add             = _c(0xF067)    // nf-fa-plus
 var console         = _c(0xF018D)   // nf-md-console (scratchpad toggle icon) — was
                                      // 0xF0295, which is actually nf-md-function; the
                                      // same wrong-codepoint mistake as `steam` above,
