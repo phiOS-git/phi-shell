@@ -14,11 +14,15 @@ import qs.Config as Config
 // from Config.Appearance tokens only — here `surface1` → `accent` →
 // `info`, the same accent/info pairing LavaLamp uses for its blobs.
 //
-// One OPTIONAL extension: the password-validation pulse. Lock.qml calls
-// `triggerValidation(success)` after every completed password attempt;
-// an effect may react or ignore it entirely — effects that never declare
-// the function are simply never called. This effect answers with a
-// travelling wave in the outcome's colour band (see below).
+// Two OPTIONAL inputs. (1) The password-validation pulse: Lock.qml calls
+// `triggerValidation(success)` after every completed password attempt; an
+// effect may react or ignore it entirely — effects that never declare the
+// function are simply never called. (2) The bound lock/auth state below
+// (`validating`/`validationProgress`, `lockedOut`/`lockoutProgress`),
+// wired from Lock.qml on the active effect. This effect answers all of
+// them: a travelling wave in the outcome's colour band, a breathing lift
+// while verifying, and a draining error cast during the lockout cooldown
+// (see onPaint).
 
 Item {
     id: root
@@ -30,6 +34,21 @@ Item {
     // more fill cost per frame; <1 = coarser, cheaper). 1.0 keeps the
     // original fixed 32×18 grid.
     property real resolution: 1.0
+    // --- lock/auth state (bound by Lock.qml on the active effect) -------
+    // Read-only reaction inputs for the auth flow, wired straight from
+    // the lock surface: `validating` is true while a submitted password
+    // is being verified (~2s of PAM on this machine) and
+    // `validationProgress` pulses 0→1 in step with the field's own pulse;
+    // `lockedOut` covers the post-threshold cooldown, `lockoutProgress`
+    // draining 1→0 with the countdown (the "N s" the field shows). An
+    // effect reacts to these or ignores them; never writes. This effect
+    // answers: a soft lift toward `info` that breathes with the field's
+    // pulse while verifying, and a cast toward `error` that fades as the
+    // cooldown drains (see onPaint).
+    property bool validating: false
+    property real validationProgress: 0
+    property bool lockedOut: false
+    property real lockoutProgress: 0
 
     // --- password-validation pulse (optional) ---------------------------
     // Lock.qml broadcasts every completed attempt's outcome here:
@@ -117,6 +136,21 @@ Item {
                                 root.validationSuccess ? Config.Appearance.success : Config.Appearance.error,
                                 wave * root.validationPulse * 0.5)
                         }
+                    }
+                    // Ongoing-auth reactions (the bound state above):
+                    // - while `validating`, a neutral lift toward `info`
+                    //   that breathes in step with the field's border pulse;
+                    // - while `lockedOut`, a steady cast toward `error` that
+                    //   fades as the countdown drains (lockoutProgress 1→0).
+                    // Both are pure mix-ins at the very end, same as the
+                    // wave. They can't overlap — respond() is guarded by
+                    // `!lockedOut` — but the `else if` keeps it explicit.
+                    if (root.validating && root.validationProgress > 0.001) {
+                        colour = root._mix(colour, Config.Appearance.info,
+                            root.validationProgress * 0.18)
+                    } else if (root.lockedOut) {
+                        colour = root._mix(colour, Config.Appearance.error,
+                            0.10 + 0.06 * root.lockoutProgress)
                     }
                     ctx.fillStyle = colour
                     // +1px overlap so the grid seams don't show as hairline gaps.

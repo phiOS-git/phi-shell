@@ -29,6 +29,18 @@ Item {
     // inversely: doubling speed halves stepEveryTicks, so generations
     // advance twice as often.
     property real speed: 1.0
+    // --- lock/auth state (bound by Lock.qml on the active effect) -------
+    // Read-only reaction inputs for the auth flow, wired straight from
+    // the lock surface: `validating` is true while a submitted password
+    // is being verified (~2s of PAM on this machine) and
+    // `validationProgress` pulses 0→1 in step with the field's own pulse;
+    // `lockedOut` covers the post-threshold cooldown, `lockoutProgress`
+    // draining 1→0 with the countdown (the "N s" the field shows). An
+    // effect reacts to these or ignores them; never writes.
+    property bool validating: false
+    property real validationProgress: 0
+    property bool lockedOut: false
+    property real lockoutProgress: 0
     // Same grid-resolution multiplier shape as Lock/Plasma.qml's own
     // identical property; 1.0 keeps the original fixed 48×27 grid.
     property real resolution: 1.0

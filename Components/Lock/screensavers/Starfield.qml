@@ -16,6 +16,18 @@ Item {
     property bool running: true
     property real intensity: 0.9
     property real speed: 1.0
+    // --- lock/auth state (bound by Lock.qml on the active effect) -------
+    // Read-only reaction inputs for the auth flow, wired straight from
+    // the lock surface: `validating` is true while a submitted password
+    // is being verified (~2s of PAM on this machine) and
+    // `validationProgress` pulses 0→1 in step with the field's own pulse;
+    // `lockedOut` covers the post-threshold cooldown, `lockoutProgress`
+    // draining 1→0 with the countdown (the "N s" the field shows). An
+    // effect reacts to these or ignores them; never writes.
+    property bool validating: false
+    property real validationProgress: 0
+    property bool lockedOut: false
+    property real lockoutProgress: 0
     property int starCount: 140
     property var stars: []
 

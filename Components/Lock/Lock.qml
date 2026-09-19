@@ -94,6 +94,11 @@ WlSessionLock {
     readonly property int lockoutSeconds: 30
     property bool lockedOut: false
     property int lockoutRemaining: 0
+    // 1 → 0 as the lockout cooldown drains, fed by the 1s countdown below —
+    // the timer made arithmetic, so the field's drain bar and any
+    // screensaver reaction can draw the countdown without knowing PAM.
+    readonly property real lockoutProgress: root.lockoutSeconds > 0
+        ? root.lockoutRemaining / root.lockoutSeconds : 0
 
     Timer {
         id: lockoutCountdown
@@ -352,12 +357,14 @@ WlSessionLock {
         }
 
         // Block-caret blink: a hard on/off toggle at half the tracking
-        // period, running only while the field holds focus.
+        // period, running only while the field holds focus. Paused while
+        // `root.validating` — during the wait the caret stops blinking and
+        // instead pulses with `validationPulse` (see the cursorDelegate).
         QtObject { id: caret; property bool on: true }
         Timer {
             id: caretBlink
             interval: Config.Appearance.motionAPeriod / 2
-            running: passwordField.activeFocus
+            running: passwordField.activeFocus && !root.validating
             repeat: true
             onTriggered: caret.on = !caret.on
         }
@@ -464,27 +471,39 @@ WlSessionLock {
                 speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("lava")
                 blobCount: Config.LockPrefs.paramFor("lava", "blobCount", 9)
                 wobble: Config.LockPrefs.paramFor("lava", "wobble", 1.0)
+                validating: root.validating; validationProgress: validationPulse
+                lockedOut: root.lockedOut; lockoutProgress: root.lockoutProgress
             } }
             Component { id: matrixFx; Screensavers.MatrixRain {
                 speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("matrix")
                 density: Config.LockPrefs.paramFor("matrix", "density", 1.0)
+                validating: root.validating; validationProgress: validationPulse
+                lockedOut: root.lockedOut; lockoutProgress: root.lockoutProgress
             } }
             Component { id: starFx; Screensavers.Starfield {
                 speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("starfield")
                 starCount: Config.LockPrefs.paramFor("starfield", "starCount", 140)
+                validating: root.validating; validationProgress: validationPulse
+                lockedOut: root.lockedOut; lockoutProgress: root.lockoutProgress
             } }
             Component { id: plasmaFx; Screensavers.Plasma {
                 speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("plasma")
                 resolution: Config.LockPrefs.paramFor("plasma", "resolution", 1.0)
+                validating: root.validating; validationProgress: validationPulse
+                lockedOut: root.lockedOut; lockoutProgress: root.lockoutProgress
             } }
             Component { id: lifeFx; Screensavers.Life {
                 speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("life")
                 resolution: Config.LockPrefs.paramFor("life", "resolution", 1.0)
                 seedDensity: Config.LockPrefs.paramFor("life", "seedDensity", 0.28)
+                validating: root.validating; validationProgress: validationPulse
+                lockedOut: root.lockedOut; lockoutProgress: root.lockoutProgress
             } }
             Component { id: boidsFx; Screensavers.Boids {
                 speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("boids")
                 boidCount: Config.LockPrefs.paramFor("boids", "boidCount", 40)
+                validating: root.validating; validationProgress: validationPulse
+                lockedOut: root.lockedOut; lockoutProgress: root.lockoutProgress
             } }
 
             // New-notification area: the couple of entries that arrived
@@ -713,6 +732,17 @@ WlSessionLock {
                         id: passwordField
                         width: parent.width
                         enabled: !root.lockedOut
+                        // Editing is blocked for the duration of the
+                        // verification only, with the caret visibly pulsing
+                        // and the border pulsing in step — typing into a
+                        // password that has already been submitted is noise,
+                        // and the wait (~2s of PAM on this machine) is long
+                        // enough that letting edits land would read as broken.
+                        // Deliberately NOT `enabled: root.pam.responseRequired`
+                        // (see below): readOnly is scoped to `validating`
+                        // alone, so the field's usability never depends on
+                        // PAM's conversational state.
+                        readOnly: root.validating
                         // A CLOSED LOOP: this field opts into the tab chain
                         // (it never did before, only ever focused
                         // programmatically via forceActiveFocus), so Tab
@@ -738,7 +768,14 @@ WlSessionLock {
                             width: fieldCell.width
                             height: fieldCell.height
                             color: passwordPanel.contentColor
-                            visible: passwordField.activeFocus && caret.on
+                            // While `root.validating` the blink is paused and
+                            // the caret instead pulses its opacity 0.35→1 in
+                            // step with the border's `validationPulse` — the
+                            // verification rendered inside the field itself,
+                            // not only on its edge. (readOnly below also
+                            // blocks editing for the whole wait.)
+                            opacity: root.validating ? 0.35 + 0.65 * validationPulse : 1.0
+                            visible: passwordField.activeFocus && (root.validating || caret.on)
                         }
                         onTextChanged: {
                             caret.on = true
@@ -776,6 +813,38 @@ WlSessionLock {
                                 root.validating = true
                             }
                             text = ""
+                        }
+                    }
+                }
+
+                // Lockout countdown drain: while `root.lockedOut` a hairline
+                // under the field drains 1→0 in step with the 1s countdown —
+                // the locked-account state handled as a live timer, not just
+                // the "N s" line below. Token error colour at reduced alpha;
+                // each 1s tick eases on category B (the same curve the
+                // battery icon uses) so the drain is continuous, not stepped.
+                // Sits between field and error line, and never moves the
+                // field itself — the vertical layout only grows by this strip
+                // while locked out.
+                Item {
+                    id: lockoutBar
+                    width: passwordPanel.width
+                    height: Math.max(1, Math.round(surface.chWidth * 0.35))
+                    visible: root.lockedOut
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        width: parent.width * root.lockoutProgress
+                        color: Qt.rgba(Config.Appearance.error.r,
+                                       Config.Appearance.error.g,
+                                       Config.Appearance.error.b, 0.6)
+                        Behavior on width {
+                            NumberAnimation {
+                                duration: Config.Appearance.motionBDuration
+                                easing.type: Easing.Bezier
+                                easing.bezierCurve: Config.Appearance.motionBCurve
+                            }
                         }
                     }
                 }
