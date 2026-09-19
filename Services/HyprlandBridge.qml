@@ -130,7 +130,25 @@ Singleton {
         if (index === -1) index = direction > 0 ? -1 : onThisMonitor.length
 
         const targetIndex = index + direction
-        if (targetIndex < 0 || targetIndex >= onThisMonitor.length) return
+        if (targetIndex < 0) return
+        if(targetIndex >= onThisMonitor.length) {
+            focusAdditionalWorkspace()
+            return
+        }
         onThisMonitor[targetIndex].activate()
     }
+
+    function focusAdditionalWorkspace() {
+        const monitor = root.focusedMonitor
+        if(!monitor) return -1
+        const lastWorkspace = root.workspaces.values[root.workspaces.values.length - 1]
+        const targetId = lastWorkspace.id + 1
+        dispatch('hl.dsp.focus({ workspace = ' + targetId + ' })')
+        return targetId
+    }
+
+    function toggleScratchPad() {
+        return dispatch('hl.dsp.workspace.toggle_special("scratch")')
+    }
+
 }

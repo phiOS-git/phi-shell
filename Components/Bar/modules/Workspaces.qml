@@ -88,6 +88,21 @@ Item {
             }
         }
 
+
+        Widgets.Segment {
+            id: wsExtraButton
+
+            visible: true
+            ambient: "workspace"
+            squared: true
+            label: Glyphs.add
+            active: false
+
+            widthBoost: 0
+            onActivated: Services.HyprlandBridge.focusAdditionalWorkspace()
+
+        }
+
         // Scratchpad toggle (hyprland.lua: MOD+A binds
         // `workspace.toggle_special("scratch")`; MOD+SHIFT+A moves the
         // focused window into it). No `active` state — the special
@@ -102,7 +117,8 @@ Item {
             squared: true
             glyph: Glyphs.console
             label: ""
-            onActivated: Services.HyprlandBridge.dispatch('hl.dsp.workspace.toggle_special("scratch")')
+            onActivated: Services.HyprlandBridge.toggleScratchPad()
+            //.dispatch('hl.dsp.workspace.toggle_special("scratch")')
         }
     }
 }
