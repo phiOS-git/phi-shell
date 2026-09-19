@@ -1311,7 +1311,82 @@ Column {
         // flags for a *different* parent-vs-contentItem indirection).
         Connections {
             target: Config.LockPrefs
-            function onEffectChanged() { screensaverPreviewGroup.previewLive = true }
+            // A changed selection is exactly the moment a live look is
+            // wanted, and a fresh effect starts from a fresh simulated
+            // auth state — the same way a real lock never surfaces with a
+            // mid-verification or mid-cooldown state still running.
+            function onEffectChanged() {
+                screensaverPreviewGroup.previewLive = true
+                screensaverPreviewGroup.fxValidating = false
+                screensaverPreviewGroup.fxLockedOut = false
+                screensaverPreviewGroup.fxLockoutRemaining = 0
+            }
+        }
+
+        // --- simulated lock/auth state ---------------------------------
+        // The buttons below fake the three auth states every effect reacts
+        // to — the same four properties Lock.qml binds on the real lock
+        // screen — so a reaction can be previewed without locking the
+        // machine. Durations are the real ones: the ~2s verification wait
+        // (the measured pam_unix shadow-hash round-trip, see Lock.qml's
+        // own validating comment) and the 30s lockout cooldown (Lock.qml's
+        // lockoutSeconds), so what drains here is what the lock screen
+        // actually does.
+        property bool fxValidating: false
+        property bool fxLockedOut: false
+        readonly property int fxLockoutSeconds: 30
+        property int fxLockoutRemaining: 0
+        readonly property real fxLockoutProgress: screensaverPreviewGroup.fxLockoutSeconds > 0
+            ? fxLockoutRemaining / screensaverPreviewGroup.fxLockoutSeconds : 0
+        // The same category-A pulse Lock.qml's field border runs through
+        // a real verification; the effects' `validationProgress` reads
+        // this, so the preview breathes in step with the real screen.
+        property real fxValidationPulse: 0.0
+        SequentialAnimation on fxValidationPulse {
+            running: screensaverPreviewGroup.fxValidating
+            loops: Animation.Infinite
+            NumberAnimation {
+                to: 1.0
+                duration: Config.Appearance.motionAPeriod / 2
+                easing.type: Config.Appearance.motionAEasing === "linear" ? Easing.Linear : Easing.OutQuad
+            }
+            NumberAnimation {
+                to: 0.0
+                duration: Config.Appearance.motionAPeriod / 2
+                easing.type: Config.Appearance.motionAEasing === "linear" ? Easing.Linear : Easing.OutQuad
+            }
+        }
+
+        // Simulated PAM round-trip length — a real-world duration, not a
+        // motion token.
+        Timer {
+            id: verifySim
+            interval: 2000
+            onTriggered: screensaverPreviewGroup.fxValidating = false
+        }
+
+        // The 30s lockout cooldown, counting down exactly like Lock.qml's
+        // own lockoutCountdown timer.
+        Timer {
+            id: lockoutSim
+            interval: 1000
+            repeat: true
+            running: screensaverPreviewGroup.fxLockedOut
+            onTriggered: {
+                screensaverPreviewGroup.fxLockoutRemaining -= 1
+                if (screensaverPreviewGroup.fxLockoutRemaining <= 0) {
+                    screensaverPreviewGroup.fxLockedOut = false
+                    screensaverPreviewGroup.fxLockoutRemaining = 0
+                }
+            }
+        }
+
+        // Same typeof-guarded broadcast Lock.qml's _pulseScreensaver uses:
+        // an effect without triggerValidation() (all but Plasma) is
+        // simply never called.
+        function _pulsePreview(success) {
+            var fx = previewLoader.item
+            if (fx && typeof fx.triggerValidation === "function") fx.triggerValidation(success)
         }
 
         Modules.SettingsRow {
@@ -1334,6 +1409,60 @@ Column {
                     label: screensaverPreviewGroup.previewLive ? "Hide preview" : "Show preview"
                     onClicked: screensaverPreviewGroup.previewLive = !screensaverPreviewGroup.previewLive
                 }
+                // The auth-effect buttons drive the simulated states above
+                // on the effect currently loaded in the preview, exactly
+                // the way Lock.qml drives the real screensaver. "Verify"
+                // and "Locked account" apply to every effect (all six
+                // carry the four bound state properties); "Wrong/Correct
+                // password" fire the outcome wave — only Plasma implements
+                // triggerValidation(), so they only appear for it. The two
+                // toggles are mutually exclusive just like the real screen
+                // (respond() is guarded by !lockedOut).
+                Flow {
+                    width: parent.width
+                    spacing: root.gap
+                    visible: screensaverPreviewGroup.previewLive
+                    Widgets.SmallButton {
+                        label: screensaverPreviewGroup.fxValidating ? "Verifying…" : "Verify"
+                        active: screensaverPreviewGroup.fxValidating
+                        enabled: !screensaverPreviewGroup.fxLockedOut
+                        onClicked: {
+                            if (screensaverPreviewGroup.fxValidating) {
+                                screensaverPreviewGroup.fxValidating = false
+                                verifySim.stop()
+                            } else {
+                                screensaverPreviewGroup.fxValidating = true
+                                verifySim.restart()
+                            }
+                        }
+                    }
+                    Widgets.SmallButton {
+                        label: "Wrong password"
+                        visible: Config.LockPrefs.effect === "plasma"
+                        onClicked: screensaverPreviewGroup._pulsePreview(false)
+                    }
+                    Widgets.SmallButton {
+                        label: "Correct password"
+                        visible: Config.LockPrefs.effect === "plasma"
+                        onClicked: screensaverPreviewGroup._pulsePreview(true)
+                    }
+                    Widgets.SmallButton {
+                        label: screensaverPreviewGroup.fxLockedOut
+                            ? "Locked — " + screensaverPreviewGroup.fxLockoutRemaining + "s"
+                            : "Locked account"
+                        active: screensaverPreviewGroup.fxLockedOut
+                        enabled: !screensaverPreviewGroup.fxValidating
+                        onClicked: {
+                            if (screensaverPreviewGroup.fxLockedOut) {
+                                screensaverPreviewGroup.fxLockedOut = false
+                                screensaverPreviewGroup.fxLockoutRemaining = 0
+                            } else {
+                                screensaverPreviewGroup.fxLockedOut = true
+                                screensaverPreviewGroup.fxLockoutRemaining = screensaverPreviewGroup.fxLockoutSeconds
+                            }
+                        }
+                    }
+                }
                 Item {
                     width: parent.width
                     // Tall enough that the live effect reads as the
@@ -1344,6 +1473,7 @@ Column {
                     visible: screensaverPreviewGroup.previewLive
 
                     Loader {
+                        id: previewLoader
                         anchors.fill: parent
                         // Settings/Settings.qml's own Loader already
                         // destroys this whole section (and everything in
@@ -1368,32 +1498,59 @@ Column {
                     // preview actually shows what the fields above are set
                     // to, live, matching what Lock/Lock.qml itself will
                     // use at the next real lock — same defaults as that
-                    // file's own component list.
+                    // file's own component list. The lock/auth state
+                    // bindings below mirror Lock.qml's own fx wiring
+                    // (validating/validationProgress/lockedOut/lockoutProgress),
+                    // fed by the simulated states and the buttons above.
                     Component { id: lavaPreview; LockFx.LavaLamp {
                         running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("lava")
                         blobCount: Config.LockPrefs.paramFor("lava", "blobCount", 9)
                         wobble: Config.LockPrefs.paramFor("lava", "wobble", 1.0)
+                        validating: screensaverPreviewGroup.fxValidating
+                        validationProgress: screensaverPreviewGroup.fxValidationPulse
+                        lockedOut: screensaverPreviewGroup.fxLockedOut
+                        lockoutProgress: screensaverPreviewGroup.fxLockoutProgress
                     } }
                     Component { id: matrixPreview; LockFx.MatrixRain {
                         running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("matrix")
                         density: Config.LockPrefs.paramFor("matrix", "density", 1.0)
+                        validating: screensaverPreviewGroup.fxValidating
+                        validationProgress: screensaverPreviewGroup.fxValidationPulse
+                        lockedOut: screensaverPreviewGroup.fxLockedOut
+                        lockoutProgress: screensaverPreviewGroup.fxLockoutProgress
                     } }
                     Component { id: starPreview; LockFx.Starfield {
                         running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("starfield")
                         starCount: Config.LockPrefs.paramFor("starfield", "starCount", 140)
+                        validating: screensaverPreviewGroup.fxValidating
+                        validationProgress: screensaverPreviewGroup.fxValidationPulse
+                        lockedOut: screensaverPreviewGroup.fxLockedOut
+                        lockoutProgress: screensaverPreviewGroup.fxLockoutProgress
                     } }
                     Component { id: plasmaPreview; LockFx.Plasma {
                         running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("plasma")
                         resolution: Config.LockPrefs.paramFor("plasma", "resolution", 1.0)
+                        validating: screensaverPreviewGroup.fxValidating
+                        validationProgress: screensaverPreviewGroup.fxValidationPulse
+                        lockedOut: screensaverPreviewGroup.fxLockedOut
+                        lockoutProgress: screensaverPreviewGroup.fxLockoutProgress
                     } }
                     Component { id: lifePreview; LockFx.Life {
                         running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("life")
                         resolution: Config.LockPrefs.paramFor("life", "resolution", 1.0)
                         seedDensity: Config.LockPrefs.paramFor("life", "seedDensity", 0.28)
+                        validating: screensaverPreviewGroup.fxValidating
+                        validationProgress: screensaverPreviewGroup.fxValidationPulse
+                        lockedOut: screensaverPreviewGroup.fxLockedOut
+                        lockoutProgress: screensaverPreviewGroup.fxLockoutProgress
                     } }
                     Component { id: boidsPreview; LockFx.Boids {
                         running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("boids")
                         boidCount: Config.LockPrefs.paramFor("boids", "boidCount", 40)
+                        validating: screensaverPreviewGroup.fxValidating
+                        validationProgress: screensaverPreviewGroup.fxValidationPulse
+                        lockedOut: screensaverPreviewGroup.fxLockedOut
+                        lockoutProgress: screensaverPreviewGroup.fxLockoutProgress
                     } }
                 }
             }
