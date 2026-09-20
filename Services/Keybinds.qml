@@ -7,12 +7,10 @@ import Quickshell.Io
 // the settings panel's read-only Keybindings section reads the exact same
 // data through the exact same parsing rather than a second copy.
 // Cheatsheet.qml reads this file instead of running its own Process.
-//
 // Still read-only and fetched fresh on every refresh() call, never cached
 // across a real config edit — there is no second place holding this data.
-//
 // context() derives a group label per binding, and groups() buckets the
-// live list into ordered sections — a derivation over the one live query,
+// live list into ordered sections — a derivation over the one live query
 // not a stored second copy. `hyprctl binds -j` carries no context field of
 // its own, so the signal is, in priority order: the `description` string
 // (every phi-shell bind sets one), then the dispatcher + arg, then the

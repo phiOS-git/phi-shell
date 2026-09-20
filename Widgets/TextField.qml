@@ -3,10 +3,9 @@ import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
 // The one text-entry primitive: a bordered box, a placeholder that clears
-// on input, a focus ring (the one control state that still shows accent),
+// on input, a focus ring (the one control state that still shows accent)
 // and an `invalid` tint for a field validating free text (a hex colour, a
 // number).
-//
 // Controlled, like Widgets/Toggle: `text` is a plain property the caller owns;
 // editing emits `edited(text)` continuously and `committed(text)` on Enter
 // or focus-out (Qt's TextInput.editingFinished). A caller that repaints the
@@ -133,7 +132,7 @@ Item {
     // onEditingFinished: Qt's TextInput emits editingFinished on ANY focus
     // loss, not just Enter — so `input.focus = false` here would otherwise
     // also fire root.committed(text), turning Escape into a silent commit
-    // of whatever half-typed text is in the field. Escape means cancel,
+    // of whatever half-typed text is in the field. Escape means cancel
     // not commit.
     property bool _escaping: false
 

@@ -6,21 +6,19 @@ import qs.Services as Services
 // Owns the Settings panel's shown state plus everything needed to summon
 // it AND navigate it from outside, so any surface can reach a specific
 // control in-process:
-//   - the Super+S bind (through the IpcHandler in Settings/Settings.qml)
-//   - the bar volume/brightness card's "settings" button
-//   - every bar-overlay "Show in settings" button
-//   - `qs ipc call settings reveal <option-id>` from a system overlay
-//   - Settings' own close button / Esc / click-outside
-//
+// - the Super+S bind (through the IpcHandler in Settings/Settings.qml)
+// - the bar volume/brightness card's "settings" button
+// - every bar-overlay "Show in settings" button
+// - `qs ipc call settings reveal <option-id>` from a system overlay
+// - Settings' own close button / Esc / click-outside
 // Two navigation targets, both consumed and cleared by Settings/Settings.qml:
-//   pendingSection — a sections.json `type` (or title) to select on open.
-//   pendingReveal  — a Settings/options.js option id ("theme.colors.accent").
-//                    Its section is the part before the first "." so nothing
-//                    has to look the mapping up. Settings.qml scrolls the
-//                    content pane to the SettingsRow that registered this id
-//                    and pulses it; if that section is still loading when the
-//                    request lands, the row's own registration retries it.
-//
+// pendingSection — a sections.json `type` (or title) to select on open.
+// pendingReveal — a Settings/options.js option id ("theme.colors.accent").
+// Its section is the part before the first "." so nothing
+// has to look the mapping up. Settings.qml scrolls the
+// content pane to the SettingsRow that registered this id
+// and pulses it; if that section is still loading when the
+// request lands, the row's own registration retries it.
 // `query` is the live search string, published here rather than kept private
 // to Settings.qml so a SettingsRow deep inside a section's Loader can bind
 // its own `highlighted` state to it without reaching back up the tree.
@@ -44,7 +42,7 @@ Singleton {
     property bool showAdvanced: false
     function setShowAdvanced(v) { root.showAdvanced = v }
 
-    // Reactive on `shown` rather than added to each setter individually,
+    // Reactive on `shown` rather than added to each setter individually
     // so it covers every entry point below (show, openSection, reveal)
     // the same way.
     onShownChanged: if (root.shown) {

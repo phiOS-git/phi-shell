@@ -8,7 +8,6 @@ import qs.Services as Services
 // A cursor-locator overlay. `shown` is driven by Services/Spotlight
 // (Super+G hold, or the settings toggle); the effect and its options are
 // also on that singleton.
-//
 // The dim/flashlight vignette is a SMALL Canvas "sprite" (a radial
 // gradient, transparent centre → solid scrim rim) painted ONCE and only
 // re-painted when a size/intensity option changes, never on cursor
@@ -18,14 +17,11 @@ import qs.Services as Services
 // moving the cursor only updates x/y/width/height bindings on GPU-
 // composited items, no CPU repaint at all. Crosshair / ring effects are
 // 1-2 Rectangles and never dim.
-//
 // WlrLayer.Overlay, mapped only while shown, so it comes up ABOVE an
 // already-open settings/notification/chat panel (all also Overlay). The
 // lock screen (WlSessionLock, a different protocol) still wins.
-//
 // `mask: Region {}` is fully click-through, so the overlay never eats a
 // click while it is up.
-//
 // Cursor position is `hyprctl cursorpos` polled while shown — there is no
 // cursor-move event on Hyprland's socket. `exclusionMode.Ignore` keeps
 // local (0,0) at the true screen origin.

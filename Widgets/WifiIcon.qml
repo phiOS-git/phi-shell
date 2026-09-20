@@ -5,12 +5,11 @@ import "WidgetStates.js" as WidgetStates
 // Same dumb/reusable Canvas-icon family as SunMoonIcon/VolumeIcon/
 // BatteryIcon — Bar/modules/Wifi.qml owns the Services/WifiBridge.qml
 // reads.
-//
 // No signal-STRENGTH gauge here, deliberately: Quickshell's Network API
 // (this project's pinned v0.3.1) exposes no signal-strength property
 // anywhere — a fabricated fluctuating strength bar would be decoration
 // with no real data behind it, which is worse than not building it. What
-// IS real and shown here: `connectAmount` (0..1 — connected vs not,
+// IS real and shown here: `connectAmount` (0..1 — connected vs not
 // Behavior-wrapped by the caller, category B) drives the base opacity of
 // the classic three-arc "wifi fan" silhouette, and `connecting` (a plain
 // bool — the real ConnectionState.Connecting device state) drives a

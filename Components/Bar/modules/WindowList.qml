@@ -4,24 +4,21 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// Bottom-bar centre isle: icons for all windows in the current workspace,
+// Bottom-bar centre isle: icons for all windows in the current workspace
 // active status for the focused one, click to focus.
-//
 // Data source: Services.HyprlandBridge.toplevels, filtered to the
 // workspace that is currently ACTIVE ON THIS BAR'S OWN SCREEN — found by
 // scanning Services.HyprlandBridge.workspaces the same way Bar/modules/
 // Workspaces.qml does, not the single global `activeToplevel`, since a
 // monitor keeps showing its own current workspace even while keyboard
 // focus is on a different monitor.
-//
 // `HyprlandToplevel` has no `wmClass` property — the real app id is one
 // level down, `.wayland.appId`, on the wrapped Wayland toplevel handle
-// (see `_wmClass`'s own comment below). It also has no `.activate()` —
+// (see `_wmClass`'s own comment below). It also has no `.activate()`
 // that's a HyprlandWorkspace method, not a HyprlandToplevel one; focusing
 // a window goes through `hl.dsp.focus({ window = "address:..." })` over
 // Services.HyprlandBridge.dispatch instead, the same fix
 // Components/Overview.qml's own `_focusWindow` needed.
-//
 // Icon resolution: the same DesktopEntries.heuristicLookup(wmClass) +
 // Quickshell.iconPath(...) pair Components/Overview.qml uses. A window
 // whose class resolves no desktop entry falls back to a single glyph-less

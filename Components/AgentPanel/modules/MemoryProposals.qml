@@ -7,7 +7,6 @@ import qs.Widgets as Widgets
 // Pending proposals grouped by level (system / personality / project). Each
 // shows the LITERAL append-diff — never a summary (§8.6). The panel widens
 // for this section (AgentPanel.targetWidth).
-//
 // Interface rework Phase 4 (Requested: the panel's "status" tab is "a quick
 // overview of the system status (use icons and small texts) and the list
 // of memory proposal"): this file is now that whole tab, not just the
@@ -35,7 +34,7 @@ Item {
     readonly property real chWidth: ch.width
     readonly property real gap: chWidth * Config.Appearance.space2
 
-    // key = level + " " + name  ->  { current, add }
+    // key = level + " " + name -> { current, add }
     property var diffs: ({})
 
     // Interface rework Phase 4 (s4, the StaggerReveal cascade below): armed
@@ -115,7 +114,7 @@ Item {
         // Interface rework Phase 4 (s4): the status chips row and the
         // proposals list below cascade in together, same shallow stagger
         // Phase 3's overlays already apply to their own lists
-        // (Panels/tabs/Clipboard.qml, Panels/tabs/Notifications.qml) —
+        // (Panels/tabs/Clipboard.qml, Panels/tabs/Notifications.qml)
         // StaggerReveal IS the column, no wrapping Column needed (see its
         // own header comment).
         Widgets.StaggerReveal {

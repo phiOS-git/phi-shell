@@ -3,11 +3,10 @@ import Quickshell
 import qs.Services as Services
 
 // Owns the shown state, identity (`which`) and on-screen x of the small
-// panel that drops below a bar button when clicked (volume, brightness,
+// panel that drops below a bar button when clicked (volume, brightness
 // network, wifi, bluetooth, battery, notifications, clipboard, ...). One
 // shared panel keyed by `which`, same one-owner shape as
 // Services/Calendar.qml.
-//
 // "notifications"/"clipboard" keep their historical getter-registration
 // shape (`*IconRightX`, `open*()`/`toggle*()`) rather than the plain
 // `toggle(key, x, edge)` every other key's bar icon calls directly: a
@@ -16,7 +15,7 @@ import qs.Services as Services
 // Components/Toast.qml's click-to-open must all resolve to the SAME
 // bell/clipboard icon position, and only the icon itself can compute
 // that. Each bar icon registers its own `rightX()` once, at
-// Component.onCompleted; every entry point calls whichever is registered,
+// Component.onCompleted; every entry point calls whichever is registered
 // fresh, regardless of what triggered it.
 Singleton {
     id: root
@@ -61,7 +60,7 @@ Singleton {
     function open(key, x, edge) { root.which = key; root._setAnchor(x, edge) }
     function hide() { root.which = "" }
 
-    // notifications/clipboard's own registered icon-position getters —
+    // notifications/clipboard's own registered icon-position getters
     // see this file's own header for why these two keys alone need one.
     property var notificationsIconRightX: null
     property var clipboardIconRightX: null
@@ -111,7 +110,7 @@ Singleton {
         case "microphone": return "Microphone"
         case "camera": return "Camera"
         // Notifications manages its own header content (its DND row and
-        // title line); the clipboard card now uses the shared card header,
+        // title line); the clipboard card now uses the shared card header
         // whose title ("Clipboard" + settings deep-link) is supplied here.
         case "notifications": return ""
         case "clipboard": return "Clipboard"

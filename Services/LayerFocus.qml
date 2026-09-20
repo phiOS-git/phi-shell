@@ -6,7 +6,6 @@ import Quickshell.Wayland
 // needs `WlrLayershell`, an ATTACHED property of `PanelWindow` — set from
 // `Component.onCompleted`, guarded by a null check, per its own source's
 // worked example ("on some systems [WlrLayershell] may not be present").
-//
 // Needed because every PanelWindow surface here defaults to
 // `WlrKeyboardFocus.None` ("no keyboard input will be accepted") — correct
 // for Components/Toast.qml, which must never steal focus, but wrong for
@@ -14,7 +13,6 @@ import Quickshell.Wayland
 // `searchField.forceActiveFocus()` only moves focus within the Qt Quick
 // scene; it does nothing if the surface itself was never granted
 // OS-level keyboard focus by the compositor.
-//
 // A plain singleton can't do this: `target.WlrLayershell` needs
 // `WlrLayershell` to be an imported, resolvable type in the file that
 // writes the attached-property expression, which defeats the point of
@@ -24,7 +22,6 @@ import Quickshell.Wayland
 // directly inside `PanelWindow { ... }` is actually parented under its
 // `contentItem`, not the window object itself, so `parent.WlrLayershell`
 // would resolve to nothing.
-//
 // `OnDemand` ("access to the keyboard as determined by the operating
 // system") is the default, not `Exclusive`: `Exclusive` is not a
 // substitute for a real lock screen (Components/Lock/Lock.qml uses the

@@ -3,18 +3,16 @@ import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
 // Same family as Widgets/SunMoonIcon: a dumb, reusable, Canvas-drawn icon
-// driven entirely by external properties, no Services/ reads of its own —
+// driven entirely by external properties, no Services/ reads of its own
 // Bar/modules/Volume.qml owns the state.
-//
 // A speaker body (fixed silhouette) + up to three sound-wave arcs whose
-// combined extent is a smooth, continuous function of `level` (0..1),
+// combined extent is a smooth, continuous function of `level` (0..1)
 // not a stepped 0/1/2/3-arc swap — `_waveExtent = level * 3` and each
 // arc's own opacity is `clamp(_waveExtent - i, 0, 1)`, so an arc fades in
 // gradually as the level crosses its threshold rather than popping in at
 // full opacity. `muted` fades a diagonal slash in/out on its own
 // Behavior-driven opacity rather than a hard show/hide, so toggling mute
 // reads as a real transition, not a flicker.
-//
 // Motion category: B (state transition — the same reasoning
 // Widgets/SunMoonIcon.qml documents in full: category C is restricted to
 // two named effects, category D forbids animation by default). Both
@@ -94,7 +92,7 @@ Item {
             }
             ctx.globalAlpha = 1
 
-            // Mute slash — a diagonal stroke through the whole icon,
+            // Mute slash — a diagonal stroke through the whole icon
             // opacity-only (no length/position animation): simplest thing
             // that still reads as a real fade rather than a snap.
             if (root.mutedAmount > 0.001) {

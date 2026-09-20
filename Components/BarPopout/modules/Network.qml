@@ -106,7 +106,7 @@ Widgets.StaggerReveal {
                     Widgets.StyledText { kind: "label"; sizeStep: 0
                         text: "ping " + (Services.NetStats.pingMs >= 0 ? Services.NetStats.pingMs + " ms" : "—") }
                 }
-                // A real active-speedtest trigger (Services/SpeedTest.qml,
+                // A real active-speedtest trigger (Services/SpeedTest.qml
                 // speedtest-cli), kept separate from the passive live-rate
                 // graph above (Services.NetStats) — a real bandwidth test
                 // actually saturates the link for a few seconds, so it only
@@ -252,7 +252,7 @@ Widgets.StaggerReveal {
     }
 
     // --- Firewall ------------------------------------------------------
-    // The compact on/off + preset picker; the full control surface (rules,
+    // The compact on/off + preset picker; the full control surface (rules
     // logging, blocked-connections log) lives in Settings/sections/
     // Connectivity.qml, reached from the header icon here.
     Widgets.OverlaySection {
