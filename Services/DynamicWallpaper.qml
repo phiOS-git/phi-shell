@@ -6,111 +6,83 @@ import qs.Config as Config
 import qs.Services as Services
 
 // Dynamic wallpapers: folders of images under
-// $XDG_DATA_HOME/phi/wallpapers/dynamic/<name>/ that rotate automatically
-// by time of day, season and — once a weather source exists — weather.
-// Read side only: Services/Background.qml composes the image actually
-// painted (this service's `currentImage` when active, else the manually
-// picked static one), so nothing here ever overwrites the user's static
-// choice.
+// $XDG_DATA_HOME/phi/wallpapers/dynamic/<name>/ that rotate by time of day,
+// season and — once a weather source exists — weather. Read side only:
+// Services/Background.qml composes what is actually painted, so the user's
+// static pick is never overwritten.
 //
-// Folder layout and naming convention
-// ------------------------------------
-//   wallpapers/dynamic/<name>/day.png            — daytime only (any season, any weather)
-//   wallpapers/dynamic/<name>/night-winter.png   — daytime + season
-//   wallpapers/dynamic/<name>/dusk-spring-rain.png — daytime + season + weather
-//   wallpapers/dynamic/<name>/day-clear.png      — daytime + weather only
+// Naming convention
+// -----------------
+// One directory per dynamic wallpaper, each file named
+// `<daytime>[-<optional>...].<ext>`:
 //
-// An entry is either a directory like these, or — for a solar Apple
-// dynamic-desktop file — the bare .heic/.heif itself sitting directly in
-// wallpapers/dynamic/ (wallpapers/dynamic/sunset.heic): the file needs no
-// folder, it carries its own whole-day schedule.
-//
-// One directory per dynamic wallpaper. Every image file is named
-// `<daytime>[-<optional>...].<ext>` where the FIRST token is the required
-// daytime slot and the following tokens (up to one season and one weather
-// each, in any order) narrow the match:
-//   daytime: dawn | day | dusk | night          (required)
+//   daytime: dawn | day | dusk | night          (required, first token)
 //   season:  spring | summer | autumn | winter  (optional)
-//   weather: clear | cloudy | rain | snow | storm | fog  (optional,
-//            placeholder vocabulary — see the weather TODO below)
-// Any other trailing token (e.g. "-2", "-dark") is decorative and ignored,
-// so a folder can hold several alternatives for one condition and swap
-// which one by editing ties (ties resolve alphabetically).
+//   weather: clear | cloudy | rain | snow | storm | fog  (optional)
 //
-// Matching: an entry is eligible when its daytime equals the current slot
-// AND every specified optional matches the current season/weather. Among
-// eligible entries the most specific wins (season+weather > season >
-// weather > bare daytime). When the current slot has no eligible entry,
-// the following slots of the day are tried in day order (dawn → day →
-// dusk → night) — so e.g. a folder with only day.png and night.png shows
-// the day image through the dawn hour. An image that specifies a season
-// or weather never matches a different season/weather value.
+// So day.png, night-winter.png, dusk-spring-rain.png, day-clear.png. Any
+// further token ("-2", "-dark") is decorative and ignored, so a folder can
+// hold alternatives for one condition; ties resolve alphabetically.
+//
+// An entry is eligible when its daytime equals the current slot and every
+// optional it names matches. The most specific eligible entry wins
+// (season+weather > season > weather > bare daytime). With nothing eligible,
+// later slots are tried in day order (dawn → day → dusk → night), so a folder
+// holding only day.png and night.png shows day through the dawn hour. An
+// image naming a season or weather never matches a different value.
+//
+// An entry may instead be a bare .heic/.heif sitting directly in
+// wallpapers/dynamic/ — it needs no folder, carrying its own whole-day
+// schedule.
 //
 // Daytime slots
 // -------------
-// Two configurable boundaries split the day (same wrap-aware hour math as
-// Services/NightShift.qml, defaults fitted to Central Europe):
-//   dawn:  [dawnHour,           dawnHour + transitionLength)
+// Two configurable boundaries split the day (wrap-aware hour math, as in
+// Services/NightShift.qml; defaults fitted to Central Europe):
+//
+//   dawn:  [dawnHour, dawnHour + transitionLength)
 //   day:   the hours in between
-//   dusk:  [duskHour,           duskHour + transitionLength)
-//   night: [dusk+transitionLength, 24) + [0, dawnHour)
-// transitionLength is a fixed 1-hour window for each transition, not
-// user-configurable. The check runs at the precise minute each boundary
-// falls on (a single-shot timer armed to the next boundary, see
-// _armTimer()), with a coarse 1-minute safety timer catching suspend/resume
-// or drift. Re-evaluation is deduplicated against the last (enabled, folder,
-// daytime, season, weather, solar frame) tuple, so the steady-state safety
-// ticks are no-ops.
+//   dusk:  [duskHour, duskHour + transitionLength)
+//   night: [dusk + transitionLength, 24) + [0, dawnHour)
+//
+// transitionLength is a fixed 1 hour, not user-configurable. A single-shot
+// timer is armed to the next boundary's exact minute, with a 1-minute safety
+// timer catching suspend/resume and drift. Re-evaluation is deduplicated
+// against the last (enabled, folder, daytime, season, weather, solar frame)
+// tuple, so steady-state ticks are no-ops.
 //
 // HEIC/HEIF dynamic desktops
 // --------------------------
-// Apple "Dynamic Desktop"-style files — one multi-image HEIF carrying an
-// `apple_desktop:solar` (sun-angle → frame) or `apple_desktop:h24`
-// (clock-start → frame) XMP map — are supported as a whole-day wallpaper:
-// a single .heic that schedules every hour of the day itself. Such a file
-// in the active folder takes over the whole day (conventional named images
-// in the same folder are ignored while it is present). The solar map's `z`
-// values are day angles, 0..360 == 00:00..24:00 — the frame whose z is
-// nearest right now wins, and the boundary timer is armed to each map
-// midpoint so the next frame lands at its exact minute. The h24 map's `t`
-// values are frame start times (fraction of a day): the frame whose start
-// has just passed wins and the timer is armed to the next start. Season/
-// weather do not apply to either — the file is its own schedule.
-// Qt cannot decode HEIC at all (no QImageReader plugin), so the chosen
-// frame is converted on demand with ImageMagick (libheif-backed) into a
-// cached JPEG under Config.Paths.dynamicWallpaperCacheDir, keyed on source
-// mtime + frame index so a replaced source re-converts. A .heic with
-// neither map is an ordinary named image and shows its first frame when
-// picked like any raster.
+// Apple Dynamic Desktop files carry an `apple_desktop:solar` (sun angle →
+// frame) or `apple_desktop:h24` (clock start → frame) XMP map. Such a file in
+// the active folder takes over the whole day, and conventional names beside it
+// are ignored. Solar `z` values are day angles where 0..360 == 00:00..24:00:
+// the nearest frame wins and the timer is armed to each map midpoint. h24 `t`
+// values are frame start times: the frame whose start has just passed wins and
+// the timer is armed to the next start. Season and weather do not apply —
+// the file is its own schedule.
 //
-// Season is computed from the current month (meteorological quarters,
-// Northern hemisphere — winter Dec-Feb, spring Mar-May, summer Jun-Aug,
-// autumn Sep-Nov); there is no location source for an astronomical season.
+// Qt cannot decode HEIC, so the chosen frame is converted on demand with
+// ImageMagick into a cached JPEG under Config.Paths.dynamicWallpaperCacheDir,
+// keyed on source mtime plus frame index so a replaced source re-converts. A
+// .heic with neither map is treated as an ordinary image.
 //
-// TODO(weather): the weather system is not implemented yet — nowhere in
-// this shell (or its phi CLI backend) reports a current condition. Until
-// it lands, `_weather()` always returns "" (no weather constraint), so
-// weather-specified images are never eligible and only daytime/season
-// images rotate. When a weather source exists (expected: a new
-// Services/Weather.qml exposing e.g. `current` — one of the `_weathers`
-// tokens below), this service only needs to make `_weather()` return it;
-// the parsing, matching and crossfade already handle it.
+// Season comes from the current month, Northern-hemisphere meteorological
+// quarters; there is no location source for an astronomical season.
 //
-// Low power mode
-// --------------
-// While Services/PowerBridge.qml's battery saver is active the dynamic
-// wallpaper is suppressed (`activeNow` false), so the shell paints the
-// static image the user picked. The suppression is read-side only, exactly
-// like Lock/Lock.qml's battery-saver gate — nothing is written back to
-// the user's settings. The static pick survives any session-start state.
+// While Services/PowerBridge.qml reports battery saver, the dynamic wallpaper
+// is suppressed and the static image is painted. Read-side only — nothing is
+// written back to the user's settings.
 //
-// Persistence
-// -----------
-// The four settings (enabled, activeName, dawnHour, duskHour) live in one
-// flat JSON file at Config.Paths.dynamicWallpaperPrefsFile, rewritten whole
-// on change — the ClockPrefs/LockPrefs pattern. NOT `phi state`: those
-// keys would be rejected by `phi` until the CLI grew new declared keys,
-// and nothing outside quickshell is touched by this feature.
+// The four settings (enabled, activeName, dawnHour, duskHour) live in one flat
+// JSON file, rewritten whole on change, following the ClockPrefs/LockPrefs
+// pattern. Not `phi state`: those keys would be rejected until the CLI
+// declared them, and nothing outside quickshell uses this feature.
+//
+// TODO(weather): no weather source exists yet, so `_weather()` returns "" and
+// weather-specified images are never eligible. When a Services/Weather.qml
+// lands, making `_weather()` return one of `_weathers` is the only change
+// needed — parsing, matching and crossfade already handle it.
 
 Singleton {
     id: root
@@ -140,20 +112,17 @@ Singleton {
     // composes this with the static image.
     property string currentImage: ""
 
-    // Entries under wallpapers/dynamic/, refreshed on demand (settings
-    // open, after a restart): a subfolder of state images (kind "folder",
-    // carrying its raster files' absolute paths for the settings preview)
-    // or a single .heic/.heif file directly in the folder (kind "file" —
-    // no folder needed, it schedules the day itself).
+    // Entries under wallpapers/dynamic/, refreshed on demand: a subfolder of state
+    // images (kind "folder", carrying absolute paths for the settings preview) or
+    // a single .heic/.heif file (kind "file", scheduling the day itself).
     property var available: []
     // Converted first-frame JPEG per bare .heic entry, for its settings
     // preview tile (Qt cannot decode HEIC, so previews point at these).
     property var previews: ({})
 
-    // --- timeline HEIF state (see the HEIC section in the header comment) ---
-    // While a timeline-carrying HEIF drives the folder, these describe what
-    // is painted; they stay empty/default when the folder uses conventional
-    // names. Exposed for the settings "Now showing" status row.
+    // While a timeline HEIF drives the folder these describe what is painted; they
+    // stay empty when the folder uses conventional names. Exposed for the settings
+    // "Now showing" row.
     property string solarFile: ""        // base name of the driving HEIF
     property int solarFrame: -1          // frame index currently painted
     property string solarTimeText: ""    // its mapped time, "HH:MM"
@@ -232,21 +201,16 @@ Singleton {
             root.refresh()
         }
         onLoadFailed: function (error) {
-            // Normal before the user has ever used dynamic wallpapers —
-            // every property stays at its default above. The FileView only
-            // fires once, so run the same startup dance here, with the
-            // defaults standing in for the missing prefs.
+            // Normal before the feature has ever been used: every property keeps its
+            // default. The FileView fires once, so the startup dance runs here too.
             root._evaluate()
             root.refresh()
         }
     }
 
-    // Re-list the dynamic entries (settings open, new folders dropped in).
-    // Also force an entry re-probe so an image dropped into / replaced in
-    // the active entry shows without waiting for the next boundary — the
-    // dedupe key is cleared so the next _evaluate() re-reads it. The probe
-    // after listing lives in listProc's completion so the entry kind is
-    // authoritative first.
+    // Re-list entries and force a re-probe, so an image dropped into the active
+    // entry shows without waiting for the next boundary. The probe lives in
+    // listProc's completion so the entry kind is authoritative first.
     function refresh() {
         root._lastKey = ""
         listProc.running = true
@@ -288,14 +252,10 @@ Singleton {
         }
     }
 
-    // List the image files of the active folder, then resolve. One probe
-    // per evaluation — evaluations happen at most at each boundary plus on
-    // user interaction, and the folder is hand-edited, so always reading it
-    // fresh means edits show up without any file watcher plumbed through.
-    // Each output line is "mtime\tname\tsolar": the mtime keys the HEIC
-    // render cache, and `solar` flags Apple dynamic-desktop HEIF files
-    // (they carry an apple_desktop:solar or apple_desktop:h24 time → frame
-    // map and drive the whole day on their own — see the header comment).
+    // List the active folder's images, then resolve. One probe per evaluation, and
+    // the folder is hand-edited, so reading it fresh means edits show up with no
+    // file watcher. Each line is "mtime\tname\tsolar": mtime keys the render
+    // cache, `solar` flags an Apple dynamic-desktop HEIF.
     function _probeActiveFolder() {
         var dir = Config.Paths.dynamicWallpaperDir + "/" + root.activeName
         folderProc.command = ["sh", "-c",
@@ -314,11 +274,9 @@ Singleton {
                         var p = l.split("\t")
                         return { mtime: p[0] || "0", file: p[1] || "", solar: p[2] === "1" }
                     })
-                // A solar-carrying HEIF owns the folder: it schedules the
-                // whole day from its own map, so conventional names are
-                // ignored while it is here. `_solarRejected` marks a flagged
-                // file whose map failed to parse (same name + mtime), so a
-                // degenerate file degrades to the convention path instead of
+                // A solar-carrying HEIF owns the folder, so conventional names are ignored
+                // while it is present. `_solarRejected` marks a flagged file whose map failed
+                // to parse (by name + mtime) so it degrades to the convention path instead of
                 // re-resolving forever.
                 for (var f = 0; f < files.length; f++) {
                     if (files[f].solar
@@ -364,14 +322,11 @@ Singleton {
         return /\.(heic|heif)$/i.test(name) ? "file" : "folder"
     }
 
-    // --- timeline HEIF resolution ------------------------------------------
-    // The map lives inside the file as an apple_desktop:solar or
-    // apple_desktop:h24 XMP plist; extracting it needs a plist parse, which
-    // plain sh cannot do. python3 is an official Arch package, installed on
-    // every machine the shell runs on — the smallest sanctioned way to turn
-    // the map into "S z i" / "H minutes i" lines WITHOUT converting any
-    // pixels (that is left to magick, only for the frame that is actually
-    // shown). The tag on the first line tells the collector which kind.
+    // The map is an apple_desktop XMP plist inside the file, which plain sh cannot
+    // parse. python3 is an official Arch package present on every machine the
+    // shell runs on — the smallest sanctioned way to turn the map into "S z i" /
+    // "H minutes i" lines without touching pixels. The tag on the first line tells
+    // the collector which kind it is.
     readonly property string _solarScript:
         "import base64,plistlib,re,sys\n"
         + "d=open(sys.argv[1],'rb').read()\n"
@@ -421,10 +376,8 @@ Singleton {
                     }
                 }
                 if (map.length < 2) {
-                    // The marked file carries no usable map after all — fold
-                    // back to the convention path for the folder. Reject by
-                    // name + mtime so the next probe skips it (a replaced
-                    // file with a new mtime gets retried).
+                    // The marked file carries no usable map: fold back to the convention path.
+                    // Rejected by name + mtime, so a replaced file is retried.
                     root._solarRejected = { name: target.file, mtime: target.mtime }
                     root._solarClear()
                     root._lastKey = ""
@@ -442,11 +395,9 @@ Singleton {
         }
     }
 
-    // --- the solar schedule ----------------------------------------------
-    // Frame selection: the map entry whose z is nearest the current 0..360
-    // day angle (wrap aware) — the photo whose time is closest to right
-    // now. Frame switches therefore land at the MIDPOINTS between
-    // neighbouring z's, and that is what the boundary timer gets armed to.
+    // Frame selection: the map entry whose z is nearest the current 0..360 day
+    // angle, wrap aware. Switches therefore land at the midpoints between
+    // neighbouring z values, which is what the boundary timer is armed to.
     function _nowAngle() {
         var d = new Date()
         return ((d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds()) / 86400) * 360
@@ -463,10 +414,8 @@ Singleton {
         return { i: best.i, z: best.z, minutes: Math.round(best.z / 360 * 1440) % 1440 }
     }
 
-    // Milliseconds until the next frame switch: the nearest map midpoint
-    // ahead in day-angle, or -1 for an empty map. The boundary timer is
-    // re-armed with this after every show, so the next frame lands at its
-    // exact minute rather than on a safety tick.
+    // Milliseconds to the next frame switch: the nearest midpoint ahead, or -1 for
+    // an empty map. Re-armed after every show so a frame lands on its exact minute.
     function _msToNextSolarBoundary(map, angle) {
         var zs = []
         for (var k = 0; k < map.length; k++) zs.push(map[k].z)
@@ -487,11 +436,9 @@ Singleton {
         return best < 0 ? -1 : best / 360 * 86400 * 1000
     }
 
-    // h24 variant ("Apple 24-hour timeline"): each entry is the minute of
-    // day (0..1439) at which that frame starts showing; the frame runs
-    // until the next entry's start (the day's last window runs past
-    // midnight). Selection is a plain interval lookup, and a boundary is
-    // each future start itself — not a midpoint.
+    // h24 variant: each entry is the minute of day (0..1439) a frame starts,
+    // running until the next entry (the last window wraps past midnight). Plain
+    // interval lookup, and each future start is itself a boundary, not a midpoint.
     function _nowMinutes() {
         var d = new Date()
         return d.getHours() * 60 + d.getMinutes()
@@ -552,23 +499,20 @@ Singleton {
     property var _solarRejected: null
     property real _solarNextBoundary: -1
 
-    // --- HEIC rendering --------------------------------------------------
-    // Qt has no HEIC decoder, so every heic/heif that gets picked is first
-    // rendered with ImageMagick (libheif-backed) to a cached JPEG, and the
-    // surface points at the cache file. The cache name keys on source mtime
-    // + frame index, so a replaced source or a different frame lands in a
-    // fresh file and re-converts. Latest-wins: at most one conversion runs
-    // at a time and `_heicWanted` holds the newest render request, so a
-    // rapid frame change replaces the pending one instead of queueing both.
-    // Previews for bare .heic entries (kind "preview": frame 0 into the
-    // cache, surfaced through `previews` instead of currentImage) are less
-    // urgent and less unique — several tiles can ask at once — so they go
-    // into `_heicQueue` and are served in order. The sh wrapper echoes the
-    // cache path it wrote as its only stdout, so the collector can confirm
-    // which job finished before touching currentImage — the finish happens
-    // before `exited` (Quickshell nulls the process first), which is also
-    // why this Process deliberately has no `onExited: running = false`:
-    // that would terminate the next conversion, already launched by then.
+    // Qt has no HEIC decoder, so a picked heic/heif is rendered with ImageMagick
+    // to a cached JPEG and the surface points at the cache file. The name keys on
+    // source mtime + frame index, so a replaced source or a different frame
+    // re-converts into a fresh file.
+    //
+    // Latest-wins for the shown frame: one conversion at a time, `_heicWanted`
+    // holding the newest request, so a rapid frame change replaces the pending one
+    // rather than queueing both. Previews (frame 0 for settings tiles) are less
+    // urgent and go through `_heicQueue` in order.
+    //
+    // The sh wrapper echoes the cache path it wrote as its only stdout so the
+    // collector can confirm which job finished. That finish arrives before
+    // `exited` (Quickshell nulls the process first), which is why this Process has
+    // no `onExited: running = false` — it would kill the next conversion.
     property var _heicWanted: null
     property var _heicQueue: []
     property var _heicCurrent: null
@@ -582,10 +526,9 @@ Singleton {
         root._heicStart()
     }
 
-    // Preview for a bare .heic entry's settings tile: frame 0 converted to
-    // a cached JPEG, exposed via `previews[name]`. No-op once cached; queued
-    // requests are deduplicated so several tiles asking at once never
-    // double-convert (or overwrite each other's pending request).
+    // Preview for a bare .heic entry's settings tile: frame 0 into the cache,
+    // exposed via `previews[name]`. No-op once cached, and queued requests are
+    // deduplicated so simultaneous tiles never double-convert.
     function ensureFilePreview(name) {
         if (root.previews[name]) return
         for (var k = 0; k < root.available.length; k++) {
@@ -628,10 +571,8 @@ Singleton {
         id: heicProc
         stdout: StdioCollector {
             onStreamFinished: {
-                // Apply only the conversion that actually finished: a render
-                // lands on currentImage when it still belongs to the active
-                // entry (a switch away leaves stale completions unapplied);
-                // a preview lands in `previews` for its tile.
+                // Apply only the conversion that finished: a render reaches currentImage only
+                // while it still belongs to the active entry; a preview lands in `previews`.
                 var cache = this.text.trim()
                 var job = root._heicCurrent
                 if (cache.length > 0 && job !== null) {
@@ -696,10 +637,8 @@ Singleton {
         return null
     }
 
-    // --- schedule -----------------------------------------------------------
-    // Wrap-aware window membership, same shape as NightShift._evaluateSchedule():
-    // start < end → inside [start, end); start > end → outside [end, start);
-    // equal → always true (a zero-width window has no other sensible reading).
+    // Wrap-aware window membership, as in NightShift: start < end → inside
+    // [start, end); start > end → outside [end, start); equal → always true.
     function _inWindow(m, start, end) {
         return start === end ? true
             : start < end ? (m >= start && m < end)
@@ -720,11 +659,9 @@ Singleton {
         return "day"
     }
 
-    // Seconds until the next daytime boundary, whatever it is. Whole
-    // hours + fixed windows → four boundaries: dawn start/end, dusk
-    // start/end. Purposely distinct from NightShift's minute-granularity
-    // polling: this feature changes an image, so it checks at the actual
-    // boundary second.
+    // Seconds to the next daytime boundary. Whole hours plus fixed windows give
+    // four: dawn start/end and dusk start/end. Distinct from NightShift's
+    // minute-granularity polling because this changes an image.
     function _msToNextBoundary() {
         var d = new Date()
         var now = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds()
@@ -761,10 +698,9 @@ Singleton {
         root.currentSeason = root._seasonOf(new Date().getMonth())
         root.currentWeather = root._weather()
 
-        // Deduplicate: nothing to redo unless the deciding inputs changed.
-        // For solar folders the deciding input is the frame the map picks
-        // for right now (computed from the cached map, not the one shown),
-        // so a map midpoint step provokes a probe on its own.
+        // Deduplicate: nothing to redo unless the deciding inputs changed. For solar
+        // folders that input is the frame the map picks for right now, computed from
+        // the cached map, so a midpoint step provokes a probe on its own.
         var solarKey = ""
         if (root.solarFile.length > 0 && root._solarMap.length >= 2) {
             var sp = root.solarKind === "h24"
@@ -811,21 +747,15 @@ Singleton {
         onTriggered: root._evaluate()
     }
 
-    // TODO(weather): the weather system is not implemented yet. When it
-    // lands (planned as a Services/Weather.qml reporting a current
-    // condition), return that condition here, normalized to one of
-    // `_weathers` (or mapped onto it). Until then "" means "no weather
-    // constraint", so weather-specified images are simply never eligible.
-    // Today's temperature/condition has no source in this shell: phi has
-    // no weather command, and this repo cannot reach a weather network API
-    // by itself (QML has no sanctioned fetch; that belongs in the phi CLI
-    // or a small daemon — outside this quickshell folder).
+    // TODO(weather): returns "" — no weather source exists. phi has no weather
+    // command and QML has no sanctioned fetch, so this belongs in the phi CLI or a
+    // small daemon, not here. When one lands, return its condition normalized to
+    // one of `_weathers`.
     function _weather() { return "" }
 
-    // Northern-hemisphere meteorological quarters. month is getMonth()
-    // (0-11). The user machines are all in the Northern hemisphere, and
-    // there is no location source for an astronomical season — document
-    // this assumption explicitly rather than pretend otherwise.
+    // Northern-hemisphere meteorological quarters; month is getMonth() (0-11). All
+    // three machines are northern and there is no location source, so the
+    // assumption is documented rather than hidden.
     function _seasonOf(month) {
         if (month === 11 || month <= 1) return "winter"
         if (month <= 4) return "spring"
