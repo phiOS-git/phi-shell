@@ -6,17 +6,9 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// READ-ONLY, sourced from `hyprctl binds -j` at the moment of display (via
-// Services/Keybinds.qml) — never a saved copy, and there is deliberately no
-// editing UI: a binding changed in hyprland.lua and reloaded shows up here on
-// the very next open because there's no second place holding it. A search
-// field, auto-focused on open; Esc or a click outside the panel closes it.
-// Rows are grouped by context (Services.Keybinds.groups — the same derivation
-// the settings panel's Keybindings section renders), each group under a small
-// caps header and a hairline, laid out in two side-by-side columns. The key
-// column width is the longest visible key string times one chWidth (mono font
-// → one glyph is one cell, so the columns line up exactly with no per-row
-// measurement).
+// Read-only from `hyprctl binds -j` (no saved copy, no editing). Search field,
+// auto-focused on open. Rows grouped by context (Services.Keybinds.groups),
+// two columns. Key column width = longest key * 1 chWidth (mono font, no per-row measurement).
 
 PanelWindow {
     id: root
@@ -25,8 +17,7 @@ PanelWindow {
     readonly property var binds: Services.Keybinds.binds
     property string query: ""
 
-    // Spans the whole screen and sits above the bar so the scrim dims it too,
-    // like every other full-screen overlay in this shell.
+    // Full-screen overlay (scrim dims it like others).
     anchors { top: true; bottom: true; left: true; right: true }
     exclusiveZone: -1
     color: "transparent"
