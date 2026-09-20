@@ -1,39 +1,20 @@
 import QtQuick
 import qs.Config as Config
 
-// Conway's Game of Life, a classic terminal-screensaver effect. Same
-// `running`/`intensity`/Timer-at-`motionCTypeStep` contract as
-// Lock/Starfield.qml. The shared `motionCTypeStep` tick (the same one every
-// other lock effect redraws on) is far too fast for a generation step — Life
-// would look like flicker, not a recognisable pattern. Rather than invent a
-// second ad-hoc duration, this file keeps the SAME shared tick for its Timer
-// and instead only advances the simulation every `stepEveryTicks` ticks (a
-// frame-skip ratio, not a duration) — the Canvas still redraws every tick so
-// cells can fade smoothly between generations rather than snapping instantly
-// on/off. Toroidal (wraparound) neighbour counting, standard B3/S23 rules. A
-// board that dies out completely (a real, common Life outcome) re-seeds itself
-// rather than leaving a blank lock screen indefinitely.
+// Conway's Game of Life. Uses motionCTypeStep tick but frame-skips
+// (stepEveryTicks) so generations don't flicker. Canvas redraws every tick for
+// smooth fades. Toroidal neighbors, B3/S23 rules. Re-seeds if board dies out.
 
 Item {
     id: root
 
     property bool running: true
     property real intensity: 0.85
-    // Life has no continuous per-tick delta to scale the way every other
-    // effect does (its motion is discrete generation steps, not smooth motion)
-    // — speed instead scales the frame-skip ratio itself inversely: doubling
-    // speed halves stepEveryTicks, so generations advance twice as often.
+    // Speed scales frame-skip ratio inversely (2x speed = 2x faster generations).
     property real speed: 1.0
-    // --- lock/auth state (bound by Lock.qml on the active effect) -------
-    // Read-only reaction inputs for the auth flow, wired straight from
-    // the lock surface: `validating` is true while a submitted password
-    // is being verified (~2s of PAM on this machine) and
-    // `validationProgress` pulses 0→1 in step with the field's own pulse;
-    // `lockedOut` covers the post-threshold cooldown, `lockoutProgress`
-    // draining 1→0 with the countdown (the "N s" the field shows). An
-    // effect reacts to these or ignores them; never writes. This effect
-    // answers: a full-surface cast toward `info` while verifying, and
-    // toward `error` that fades as the lockout drains (see onPaint).
+    // --- lock/auth state ---
+    // Auth reaction inputs: validating, validationProgress, lockedOut, lockoutProgress.
+    // This effect: full-surface cast toward info (verifying) or error (lockout).
     property bool validating: false
     property real validationProgress: 0
     property bool lockedOut: false

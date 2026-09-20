@@ -1,33 +1,18 @@
 import QtQuick
 import qs.Config as Config
 
-// Widgets/Reveal is the piece for a single block whose visibility a binding
-// drives. This is the NESTED case: a container that is already revealing
-// itself whose CHILDREN should not all snap in at once the instant the
-// container finishes each direct child fades in a few milliseconds after the
-// previous one in declaration order. Deliberately opacity-only, no slide — see
-// `_animate()`'s own comment for the mechanical reason a per-child position
-// slide is not safe to add. Usage — a settings-style column of rows inside an
-// already-fading-in Panel: Panel { visible: someOverlay.open // StaggerReveal
-// { shown: someOverlay.open anchors.fill: parent StyledText { text: "first
-// row" } StyledText { text: "second row" } StyledText { text: "third row" } }
-// } Every DIRECT child gets tagged in declaration order and faded in
-// `staggerStep` milliseconds after the previous one. Same category-B
-// duration/curve every widget in this shell already uses for its own opacity
-// Behavior `staggerStep` is the only new number, and it is a per-child DELAY
-// on top of that shared animation, not a second timing system.
+// Nested reveal: container already revealing, children fade in staggered.
+// Opacity-only (position slide not safe). Direct children fade staggerStep ms
+// after previous one. Uses standard category-B duration/curve.
 
 Column {
     id: root
 
     property bool shown: false
-    // Small enough that a five-row overlay finishes its whole cascade well
-    // inside a normal glance, not a perceptible sequential reveal.
+    // Five-row overlay cascades within one glance (not perceptible sequential).
     property int staggerStep: 24
 
     width: parent ? parent.width : 0
-    // No `default property alias` needed: Column's own default property
-    // already is `data`, so the consumer's directly-declared children land exactly
     // where `root.children` expects them with no extra indirection.
 
     // Re-tags and re-plays on every shown toggle, not just the first — an

@@ -4,26 +4,16 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../../Bar/glyphs.js" as Glyphs
 
-// Migrated from the old standalone NotificationsOverlay window (retired into a
-// plain BarPopout "which" card, same shape as every other module here. A DND
-// switch (with 30m/1h/4h quick- triggers), then the notification list grouped
-// by date, then by source within each date — both tiers collapsible (dates
-// default expanded sources default collapsed). This card keeps its own inline
-// title row rather than the shared Modules/Header.qml
-// (Services/BarPopout.qml's title("notifications") returns "" for exactly this
-// reason) since it predates that shared component and already carries its own
-// settings deep-link.
+// Notification list (grouped by date, source). DND switch (30m/1h/4h quick
+// triggers). Own inline title (predates Header.qml, carries settings deep-link).
 
 Item {
     id: root
 
     property bool active: false
-    // The real screen height, handed down by Components/BarPopout/
-    // BarPopout.qml — this card's own height is capped against it rather than
-    // growing to fit however much history exists.
+    // Screen height (card height capped against it).
     required property real screenHeight
-    // The pre-computed, padding-already-subtracted height budget this card may
-    // grow into (BarPopout.qml's own `_wideCardAvailableHeight`).
+    // Pre-computed available height budget (BarPopout._wideCardAvailableHeight).
     property real availableHeight: 0
 
     readonly property real naturalContentHeight: flick.contentHeight
