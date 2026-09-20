@@ -8,48 +8,19 @@ import qs.Widgets as Widgets
 import "modules" as Modules
 import "../Bar/glyphs.js" as Glyphs
 
-// phiOS — Panels/AgentPanel (OOP-27, phios-agente-delta.md D-06). The
-// shell-summoned phi agent surface: a left-edge dock that slides in, with
-// THREE sections — Chat, Coding sessions, Status — on a header tab strip.
-// The panel is a dedicated surface, not a tabs.json instance (ADR 100
-// stays satisfied: the surface TYPE is code written once).
+// The shell-summoned phi agent surface: a left-edge dock that slides in,
+// with three sections — Chat, Coding sessions, Status — on a header tab
+// strip, plus a settings deep link at the strip's right end. A dedicated
+// surface, not a registry instance; the surface type is code written once.
 //
-// 2026-09-19 (agent instruction: "move the main tabs in the header"): the
-// three sections used to sit on a thin vertical nav rail down the dock's
-// left edge (icon-only squares with the indicator on the rail's inner
-// edge); they now live in a horizontal header strip at the panel's top —
-// glyph + label with the shared tab grammar's bottom-edge "you are here"
-// marker — and the settings deep link sits at that strip's far right,
-// level with the tabs instead of above the content row.
+// Chat is one persistent sidebar-plus-conversation layout (Modules.ChatShell),
+// not a separate list and conversation destination.
 //
-// Interface rework Phase 4 (rework.md's "ai chat panel" entry): the dock
-// now stays clear of BOTH status bars (Services.BarMetrics.height and its
-// Phase-3 sibling .bottomHeight), "Memory proposals" is renamed "Status"
-// (Panels/tabs/agent/MemoryProposals.qml keeps its existing proposals list
-// and gains a system-status-overview section above it — additive, not a
-// rewrite), and the settings deep link moves off the nav rail into a small
-// corner icon at the dock's own top-right, reachable from every section
-// instead of being one more rail entry.
+// Every call goes through Services/Modules.qml, the one client point.
 //
-// Full chat-panel rework 2026-09-15 (direct instruction: "a full rework
-// of the chat panel with UX at its core"): "Chat" used to be two separate
-// destinations, Dashboard (search/projects/chat list) and Chat (the
-// active conversation) — Modules.ChatShell folds both into one persistent
-// sidebar-plus-conversation layout, the shape every mainstream chat app
-// already uses, so "Dashboard" no longer exists as its own rail icon.
-//
-// Every call goes through Services/Modules.qml, the one client point (ADR 098).
-//
-// features-change round 3 (panel style pass): the nav rail gained a hover
-// wash and a hairline "you are here" marker on its inner edge — it had no
-// clickable affordance at all before, only a weight change on the glyph.
-//
-// Entry points, all through Services/AgentPanel.qml:
-//   - the bar Φ segment  (Bar/modules/PhiModules.qml)
-//   - Super+P            (hyprland.lua.tmpl → `ipc call agent toggle`)
-//   - Settings › AI Agent "Open agent panel"
-//
-// UNVERIFIED: no compositor here. Every visual result is a screenshot.
+// Entry points, all via Services/AgentPanel.qml: the bar Φ segment,
+// Super+P (hyprland.lua.tmpl `ipc call agent toggle`), and
+// Settings › AI Agent › Open agent panel.
 
 PanelWindow {
     id: root
@@ -57,15 +28,9 @@ PanelWindow {
     readonly property bool shown: Services.AgentPanel.shown
     readonly property var agent: Services.Agent
 
-    // section: "chat" | "code" | "status"
-    // Style pass 2026-09-15 (reported directly: "it does not automatically
-    // open on a new chat or latest chat" — every open used to land on the
-    // Dashboard's list, one extra click away from anything actually
-    // useful). "chat" is now the default landing section; `_autoOpenArmed`
-    // and its Connections block below (triggered once real data exists)
-    // pick up the rest by opening whichever real conversation was touched
-    // last, so a returning user sees their conversation immediately
-    // instead of an empty composer.
+    // section: "chat" | "code" | "status". Chat is the landing section;
+    // `_autoOpenArmed` below then opens whichever conversation was touched last,
+    // so a returning user lands in it rather than an empty composer.
     property string section: "chat"
 
     property bool _animReady: false
@@ -85,43 +50,28 @@ PanelWindow {
         function open(): void { Services.AgentPanel.show() }
         function close(): void { Services.AgentPanel.hide() }
         function status(): void { root.section = "status"; Services.AgentPanel.show() }
-        // Interface rework Phase 4: "memory" renamed to "status" (the rail
-        // key and this section string both moved) — kept as a plain alias
-        // rather than dropped outright. No external caller was found for
-        // `qs ipc call agent memory` (grepped hyprland.lua.tmpl and docs/
-        // one level up: only `agent toggle` is bound to a key), but an
-        // IPC verb is a public surface this repo cannot fully account for
-        // by itself, so the old name keeps working at zero cost.
+        // "memory" is a kept alias for "status". No bound caller uses it, but an IPC
+        // verb is a public surface this repo cannot fully account for, so the old
+        // name keeps working at zero cost.
         function memory(): void { status() }
         function code(): void { root.section = "code"; Services.AgentPanel.show() }
     }
 
-    // Keyboard focus — the chat input and the search fields need it, and the
-    // placeholder-era panel never had it (the whole reason the old input was
-    // untypeable). Same as Panels/Sidebar / Settings.
+    // Keyboard focus, needed by the chat input and the search fields.
     Services.LayerFocus { target: root }
 
-    // Style pass 2026-09-15 — see `section`'s own comment above. `chats`
-    // loads asynchronously (Services/Modules.qml's refreshChats() spawns a
-    // process and fills the array once it exits), so this cannot just read
-    // `agent.chats` synchronously inside onShownChanged below; it arms
-    // here and resolves once in the onChatsChanged handler further down,
-    // whichever fires first. Guarded to fire at most once per panel
-    // opening: a later refreshChats() call (the user pinning a chat,
-    // renaming one, anything else in this file that re-lists them) must
-    // never yank an already-browsing user back into a conversation.
+    // `chats` loads asynchronously, so the landing chat cannot be read
+    // synchronously in onShownChanged: this arms here and resolves in
+    // onChatsChanged. Fires at most once per opening, so a later refresh
+    // (pinning, renaming) never yanks a browsing user into a conversation.
     property bool _autoOpenArmed: false
 
     onShownChanged: {
         if (root.shown) {
-            // Same reason Overview.qml's setShown() calls
-            // grid.forceActiveFocus() imperatively rather than trusting
-            // `focus: root.shown` alone: the focus system writes
-            // `keyScope.focus = false` the moment something else takes
-            // focus, which breaks that binding for good (QML does not
-            // restore it when the something-else later loses focus too).
-            // Without this, closing the panel any other way than Escape
-            // while a field had focus would leave Escape dead on reopen.
+            // Imperative, not `focus: root.shown`: the focus system sets
+            // `keyScope.focus = false` when anything else takes focus and never restores
+            // the binding. Without this, closing the panel while a field had focus would
+            // leave Escape dead on reopen.
             keyScope.forceActiveFocus()
             if (root.agent.currentSessionId.length === 0) root._autoOpenArmed = true
             root.agent.refreshHealth()
@@ -132,14 +82,9 @@ PanelWindow {
             if (root.section === "code") root.agent.refreshCodingSessions()
         }
     }
-    // Resolves `_autoOpenArmed` above once real chat data actually exists.
-    // Picks the most recently updated chat rather than trusting the list's
-    // own order — `updated` is the one field every entry is guaranteed to
-    // carry (Services/Modules.qml: "[{id,title,project,pinned,updated}]"),
-    // sorting defensively instead of assuming `phi agent chat list` already
-    // returns recency order. An empty list (genuinely no history yet) just
-    // disarms — the Chat section's own "new chat" empty state is correct
-    // there, nothing to resume.
+    // Resolves `_autoOpenArmed` once real chat data exists. Sorts by `updated`,
+    // the one field every entry carries, rather than trusting list order. An
+    // empty list just disarms — the Chat section's own empty state is correct.
     Connections {
         target: root.agent
         function onChatsChanged() {
@@ -147,21 +92,17 @@ PanelWindow {
             root._autoOpenArmed = false
             const chats = root.agent.chats || []
             if (chats.length === 0) return
-            // Every other reader of this same array in this panel
-            // (ChatShell.qml's/ProjectView.qml's own ChatRow) treats the
-            // wire format as Go-JSON-capitalised (`ID`, `Updated`, …) with
-            // a lowercase fallback — matched here rather than trusting
-            // this file's own header comment's lowercase paraphrase.
+            // The wire format is Go-JSON-capitalised (`ID`, `Updated`, …) with a
+            // lowercase fallback, matched here the same way every other reader in this
+            // panel does.
             const updatedOf = (c) => c.Updated || c.updated || ""
             const mostRecent = chats.reduce((a, b) => (updatedOf(b) > updatedOf(a) ? b : a))
             root.agent.openSession(mostRecent.ID || mostRecent.id)
         }
     }
-    // The section tabs don't take keyboard focus on a mouse click (QML
-    // TapHandler never moves active focus), so switching sections while a
-    // field has focus destroys that field (the Loader swaps
-    // sourceComponent) with nothing left to reclaim it — same class of
-    // hazard as above.
+    // Section tabs take no keyboard focus on click (TapHandler never moves active
+    // focus), so switching sections destroys a focused field with nothing left to
+    // reclaim focus — same hazard as above.
     onSectionChanged: keyScope.forceActiveFocus()
 
     TextMetrics {
@@ -173,44 +114,20 @@ PanelWindow {
     readonly property real chWidth: chMetrics.width
     readonly property real gap: chWidth * Config.Appearance.space3
 
-    // The dock widens for the Memory-proposals section so the literal diffs
-    // have room (delta §3.7), capped. Sized off `root.width` (the layer
-    // surface spans the output) — a PanelWindow has no `parent`, so
-    // `parent.width` here is undefined and the dock collapses to zero.
-    //
-    // Full chat-panel rework 2026-09-15: baseWidth was sized (68ch) for a
-    // single conversation column — ChatShell.qml's new persistent ~26ch
-    // sidebar now shares that same width, which would have squeezed the
-    // actual conversation down to an uncomfortable ~40ch. Chat is the
-    // panel's primary, most space-hungry destination now, at least as
-    // much as Memory proposals — given the same wider cap.
+    // The dock widens for Status so literal diffs have room, capped. Sized off
+    // `root.width`, not `parent.width`: a PanelWindow has no parent, so the dock
+    // would collapse to zero. The cap suits Chat too, whose sidebar shares the
+    // same width.
     readonly property real baseWidth: Math.min(root.width * 0.62, chWidth * 92)
     readonly property real wideWidth: Math.min(root.width * 0.62, chWidth * 92)
     readonly property real targetWidth:
         (root.section === "status" && root.agent.totalPendingProposals > 0) ? wideWidth : baseWidth
 
-    // Style pass 2026-09-14 (docs/TODO.md's dim-coverage split): the chat
-    // panel's dim should not visually cover the status bar. Every dim
-    // surface in this shell is `WlrLayer.Overlay`, which Wayland's
-    // layer-shell protocol always stacks above the bar's own
-    // `WlrLayer.Top` regardless of anything drawn in QML — so a per-
-    // surface LAYER change was the wrong lever (same-layer stacking order
-    // between several Top-layer surfaces at once is not something this
-    // project can verify without a compositor, and getting it wrong risks
-    // this whole panel rendering under the bar, not just its dim). This
-    // needs no layer change at all: the scrim is a plain child Rectangle
-    // of this SAME Overlay-layer window, so simply not extending it into
-    // the bar's own screen strip (inset from the top by the bar's real
-    // published height, Services.BarMetrics — the same value `dock`'s own
-    // topMargin below already uses) leaves the bar visibly undimmed,
-    // with zero cross-layer risk.
-    //
-    // Interface rework Phase 4 (rework.md: the panel is "contained between
-    // the status bars"): Phase 2 added a bottom bar and Phase 3 published
-    // its real height as BarMetrics.bottomHeight for exactly this — the
-    // scrim used to run all the way to `parent.bottom`, dimming straight
-    // over the bottom bar. Inset from the bottom the same way it already
-    // is from the top.
+    // The dim must not cover either status bar. Every dim surface here is
+    // WlrLayer.Overlay, which layer-shell always stacks above the bar's Top layer,
+    // so changing layers is the wrong lever. Instead the scrim is a plain child of
+    // this same window, inset top and bottom by the bars' published heights
+    // (Services.BarMetrics), leaving both visibly undimmed with no cross-layer risk.
     Widgets.Scrim {
         anchors.top: parent.top
         anchors.topMargin: Services.BarMetrics.height
@@ -231,33 +148,18 @@ PanelWindow {
 
         MouseArea { anchors.fill: parent; onClicked: Services.AgentPanel.hide() }
 
-        // docs/TODO.md: "ESC ... should only close a panel if nothing is
-        // focused inside them." Mirrors Overview.qml's `grid` — an Item
-        // with `focus: root.shown` holds active focus by default (same
-        // implicit top-level FocusScope every other Keys.onEscapePressed
-        // handler in this repo already relies on, PanelWindow's
-        // contentItem), so Escape closes the panel when nothing else has
-        // claimed focus. A field that grabs focus (click, or TextInput's
-        // own activeFocusOnPress) naturally outranks this while it holds
-        // it; when it later blurs itself on Escape (Widgets/TextField.qml's
-        // `escaped()`, or Chat.qml's own `blurred()` for its raw
-        // TextInput), the section below reclaims focus here explicitly —
-        // QML does not hand focus back to a previous claimant on its own —
-        // so the NEXT Escape reaches this handler and closes the panel.
+        // Escape closes the panel only when nothing inside holds focus. An Item with
+        // `focus: root.shown` holds active focus by default, so Escape reaches here.
+        // A field that grabs focus outranks it; when that field blurs itself on Escape
+        // the section reclaims focus explicitly — QML does not hand it back on its own
+        // — so the next Escape closes the panel.
         Item {
             id: keyScope
             anchors.fill: parent
             focus: root.shown
-            // Style pass 2026-09-15: ChatShell→ProjectView and the Coding
-            // sessions tab's own transcript view each have a "‹ Back"
-            // button and their own local navigation state, but no
-            // keyboard equivalent — Escape skipped straight past that
-            // state to closing the WHOLE panel, discarding the user's
-            // place instead of backing out one level at a time the way
-            // Escape conventionally does. `hasBack`/`goBack()` are an
-            // opt-in contract (undefined on Chat/MemoryProposals, which
-            // have no such state) checked here before falling through to
-            // the original close-the-panel behaviour.
+            // `hasBack`/`goBack()` are an opt-in contract (undefined on sections with no
+            // local navigation). Checked before falling through to closing the panel, so
+            // Escape backs out one level at a time instead of discarding the user's place.
             Keys.onEscapePressed: {
                 if (sectionLoader.item && sectionLoader.item.hasBack === true)
                     sectionLoader.item.goBack()
@@ -273,10 +175,6 @@ PanelWindow {
             // all four sides — below the bar and off the three screen edges.
             anchors.topMargin: Services.BarMetrics.height + Config.Appearance.panelGap
             anchors.bottom: parent.bottom
-            // Interface rework Phase 4: mirrors topMargin above — the dock
-            // used to only clear panelGap at the bottom, ignoring the
-            // Phase-2 bottom bar entirely (BarMetrics.bottomHeight did not
-            // exist yet when this was first written).
             anchors.bottomMargin: Services.BarMetrics.bottomHeight + Config.Appearance.panelGap
             anchors.left: parent.left
             anchors.leftMargin: Config.Appearance.panelGap
@@ -301,16 +199,8 @@ PanelWindow {
                 anchors.fill: parent
                 radius: Config.Appearance.panelRadius
 
-                // --- header: horizontal section tabs -----------------
-                // 2026-09-19 (agent instruction: "move the main tabs in
-                // the header"). The three section switchers used to sit on
-                // a thin vertical rail down the dock's left edge (icon-only
-                // squares, indicator on the rail's inner edge); they are
-                // now the panel's top header strip — glyph + label, laid
-                // out horizontally with the shared tab grammar's default
-                // bottom-edge indicator, the same "you are here" read as
-                // Panels/Sidebar's own tab strip. What used to be the
-                // rail's ~44px-wide column becomes content space again.
+                // Header: horizontal section tabs, glyph + label, with the shared tab
+                // grammar's bottom-edge indicator.
                 Item {
                     id: header
                     anchors { top: parent.top; left: parent.left; right: parent.right }
@@ -322,17 +212,6 @@ PanelWindow {
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: root.chWidth * Config.Appearance.space1
 
-                        // Full chat-panel rework 2026-09-15: "Dashboard" is
-                        // gone as its own destination — Modules.ChatShell
-                        // folds it into a persistent sidebar next to the
-                        // active chat instead, the same layout every
-                        // mainstream chat app uses, so there is nothing
-                        // left to separately navigate to.
-                        // Interface rework Phase 4: "memory" renamed to
-                        // "status" — Modules.MemoryProposals.qml (component
-                        // id kept as `statusComp` below, file itself
-                        // unchanged) now opens with a system-status-overview
-                        // section above its existing proposals list.
                         Repeater {
                             model: [
                                 { key: "chat", glyph: "▷", label: "Chat" },
@@ -360,19 +239,9 @@ PanelWindow {
                         }
                     }
 
-                    // Interface rework Phase 4 (rework.md: "in the top right
-                    // corner it has a small settings button to open the
-                    // settings panel"). Was a TabButton pinned to the BOTTOM
-                    // of the nav rail, then a corner icon floating above the
-                    // content row; it now shares the header strip's right
-                    // end, level with the tabs, and stays reachable from
-                    // every section because a section's own header content
-                    // (Chat's rename/new controls, Coding sessions'/Status's
-                    // Refresh) starts below the strip's separator.
-                    // rework-issues.md item 6: "the same should be applied
-                    // to the settings icon in the chat panel" — a plain
-                    // Widgets.IconButton (opacity-on-hover, no background/
-                    // border/padding), not a SmallButton.
+                    // Shares the header strip's right end so it stays reachable from every
+                    // section — a section's own header content starts below the strip separator.
+                    // A plain Widgets.IconButton (opacity on hover, no background or border).
                     Widgets.IconButton {
                         id: panelSettingsBtn
                         anchors.right: parent.right
@@ -408,10 +277,8 @@ PanelWindow {
                     }
                     Component { id: chatComp;   Modules.ChatShell { onRequestSection: (s) => root.section = s; onBlurred: keyScope.forceActiveFocus() } }
                     Component { id: codeComp;   Modules.CodingSessions {} }
-                    // File kept as MemoryProposals.qml (its own header
-                    // comment explains the additive status-overview
-                    // section) — only the section key/string and this
-                    // Component's id changed to "status".
+                    // Still MemoryProposals.qml: only the section key and this Component's id
+                    // changed to "status"; the file opens with a status overview above its list.
                     Component { id: statusComp; Modules.MemoryProposals {} }
                 }
             }
