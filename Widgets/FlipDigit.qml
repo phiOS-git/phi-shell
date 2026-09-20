@@ -2,27 +2,10 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// A single character cell that plays a split-flap style flip whenever its own
-// `value` changes — each cell flips independently and only when the character
-// it shows actually changes, not the whole clock re-flipping every second.
-// Bar/modules/Clock.qml is the live caller, at `showCard: false`. The cell is
-// two INDEPENDENT pieces, each clipped to exactly half the cell's height, both
-// reading the SAME `_shown` character: `topFlap` which is the only thing that
-// ever moves, and `bottomStatic` (never has a transform applied to it at all).
-// The static half being pixel-still for the whole flip — rather than the whole
-// glyph squashing together as one unit — is what makes this read as a flip
-// rather than a slot-machine reel: there has to be a genuinely motionless
-// anchor for the eye to read the moving half against. Deliberately not a true
-// two-piece split-flap — the bottom stays static by design, folding only from
-// the top. Technique: `topFlap` squashes to near-zero vertical scale via a
-// plain `Scale` transform — a `Scale` rather than an X-axis `Rotation`, since
-// without an explicit perspective matrix the two project identically — then,
-// at the fully-squashed midpoint, `_shown` advances to the new value, then
-// unsquashes. Motion category B throughout, split into two legs — TOTAL flip
-// duration is one category-B duration, not two. `cardBorder` is the static
-// outer frame; `seamLine` is a thin static line at the centerline where the
-// two halves meet — the visible seam a real split-flap card has between its
-// two physical pieces, gated to `showCard`.
+// Split-flap style flip per character change (not whole clock re-flip).
+// Two pieces (topFlap/bottomStatic), topFlap squashes to zero scale on category-B,
+// advancing character at midpoint. Motionless anchor reads as flip not reel.
+// cardBorder: outer frame; seamLine: thin centerline seam.
 
 Item {
     id: root
@@ -31,25 +14,15 @@ Item {
     property color textColor: Config.Appearance.textPrimary
     property int sizeStep: 4
     property bool mono: true
-    // The calendar clock shows each digit as a bordered card. The status- bar
-    // clock (Bar/modules/Clock.qml) is an isle-size glyph — fontSize0 no dice,
-    // no case — where a 13px card per digit would dwarf the rest of the bar.
-    // `showCard: false` drops the frame and the seam line, and the padding
-    // they justified, so the cell measures exactly its digit.
+    // Calendar clock shows bordered card; status bar is isle-size glyph (no card).
+    // showCard: false drops frame/seam/padding.
     property bool showCard: true
 
     readonly property real _fontSize: WidgetStates.fontPixelSize(Config.Appearance, root.sizeStep)
     readonly property string _fontFamily: root.mono ? Config.Appearance.fontMono : Config.Appearance.fontUi
 
-    // Card padding for `cardBorder`/`seamLine` — same chToPixels(space- token,
-    // chWidth) pattern Widgets/Panel.qml and Widgets/Segment.qml use, so the
-    // outline reads as a card around the digit instead of hugging its glyph
-    // edges. `fontSize1`, not `root._fontSize`: measured against the same
-    // fixed `fontSize1` every other ch-reference consumer uses, not whatever
-    // size this widget itself happens to render at, so the `space-N` token resolves
-    // to one consistent physical size everywhere in the shell. Measuring
-    // against this cell's own (much larger, sizeStep 4) font would have
-    // inflated `space1` well past what a thin border needs.
+    // Card padding via chToPixels against fontSize1 (not self-size) so space-N
+    // resolves to consistent physical size, not inflated by cell's sizeStep 4.
     TextMetrics {
         id: chMetrics
         font.family: Config.Appearance.fontMono

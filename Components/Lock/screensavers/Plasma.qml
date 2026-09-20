@@ -1,25 +1,10 @@
 import QtQuick
 import qs.Config as Config
 
-// The classic demoscene/XScreenSaver "plasma" effect: a smoothly shifting
-// colour field from three overlaid sine waves, no image data, no shader.
-// Coarser grid than Starfield's per-point rects (32x18 filled cells instead of
-// ~140 points) — plasma reads as a field, not discrete points and a per-pixel
-// canvas would cost far more per frame for no visible gain at lock-screen
-// viewing distance. Same contract every other effect
-// (LavaLamp/MatrixRain/Starfield) follows: `running`/`intensity` properties, a
-// Timer at `Config.Appearance.motionCTypeStep` driving `requestPaint()`,
-// colour from Config.Appearance tokens only — here `surface1` → `accent` →
-// `info`, the same accent/info pairing LavaLamp uses for its blobs. Two
-// OPTIONAL inputs. (1) The password-validation pulse: Lock.qml calls
-// `triggerValidation(success)` after every completed password attempt; an
-// effect may react or ignore it entirely — effects that never declare the
-// function are simply never called. (2) The bound lock/auth state below
-// (`validating`/`validationProgress`, `lockedOut`/`lockoutProgress`) wired
-// from Lock.qml on the active effect. This effect answers all of them: a
-// travelling wave in the outcome's colour band, a breathing lift while
-// verifying, and a draining error cast during the lockout cooldown (see
-// onPaint).
+// Classic demoscene plasma: smoothly shifting colour field from three sine waves.
+// Coarser grid (32×18 cells, not ~140 points like Starfield). Colour: surface1→
+// accent→info. Auth reactions: travelling wave in colour band, breathing lift
+// (validating), draining error cast (lockout).
 
 Item {
     id: root
@@ -27,21 +12,11 @@ Item {
     property bool running: true
     property real intensity: 0.85
     property real speed: 1.0
-    // Multiplier on the grid resolution (>1 = finer detail, more cells more
-    // fill cost per frame; <1 = coarser, cheaper). 1.0 keeps the original
-    // fixed 32×18 grid.
+    // Grid resolution multiplier (>1 finer/costlier, <1 coarser/cheaper).
     property real resolution: 1.0
-    // --- lock/auth state (bound by Lock.qml on the active effect) -------
-    // Read-only reaction inputs for the auth flow, wired straight from
-    // the lock surface: `validating` is true while a submitted password
-    // is being verified (~2s of PAM on this machine) and
-    // `validationProgress` pulses 0→1 in step with the field's own pulse;
-    // `lockedOut` covers the post-threshold cooldown, `lockoutProgress`
-    // draining 1→0 with the countdown (the "N s" the field shows). An
-    // effect reacts to these or ignores them; never writes. This effect
-    // answers: a soft lift toward `info` that breathes with the field's
-    // pulse while verifying, and a cast toward `error` that fades as the
-    // cooldown drains (see onPaint).
+    // --- lock/auth state (bound by Lock.qml) -------
+    // Read-only from lock surface: validating/validationProgress pulse with
+    // verification; lockedOut/lockoutProgress drain with cooldown.
     property bool validating: false
     property real validationProgress: 0
     property bool lockedOut: false

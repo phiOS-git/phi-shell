@@ -6,12 +6,8 @@ import qs.Widgets as Widgets
 import "../../Bar/glyphs.js" as Glyphs
 import "." as Local
 
-// Bar/modules/StatusMenu.qml's own card: profile row, power actions real MPRIS
-// media controls, compact system toggles, and the tiling-mode grid. No
-// avatar-picture or per-session-length data source exists anywhere in this
-// codebase — `_profileName` below and "session time"
-// (Services.SystemInfo.uptime, the same figure General's own "System" card
-// shows) are both real, just not what the original request assumed existed.
+// StatusMenu card: profile, power actions, MPRIS, system toggles, tiling grid.
+// No avatar/session-length; profileName (USER) and uptime real.
 
 Widgets.StaggerReveal {
     id: root
@@ -26,10 +22,8 @@ Widgets.StaggerReveal {
 
     readonly property string _profileName: Quickshell.env("USER") || "user"
 
-    // Session-local only — no native Hyprland concept exists for four of these
-    // six (only Tile/dwindle-master and Floating are real; the Grid's Column
-    // further down documents this for whoever reaches it next). Selecting a
-    // non-real one only highlights the button.
+    // Session-local only. Hyprland real: Tile/dwindle-master and Floating.
+    // Non-real selection highlights button only.
     property string _tilingMode: "tile"
     function _applyTilingMode(id) {
         root._tilingMode = id
