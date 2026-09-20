@@ -13,11 +13,7 @@ Singleton {
     readonly property int historyLimit: 200
     readonly property var active: server.trackedNotifications
 
-    // activeCount recomputes off the model's own insert/remove signals rather
-    // than a binding on `active.values.length` read from a distant consumer
-    // (e.g. the bar badge) — that indirection has been unreliable on this
-    // Quickshell/Hyprland stack. clearAll() additionally zeroes it immediately
-    // rather than waiting on either mechanism.
+    // activeCount recomputes on insert/remove (binding unreliable). clearAll() zeros.
     property int activeCount: root.active ? root.active.values.length : 0
     Connections {
         target: root.active
@@ -30,16 +26,10 @@ Singleton {
     property var toastQueue: []    // pending Notification objects awaiting a toast
     property var activeToast: null // the one currently shown, or null
 
-    // Fired once per recorded, non-muted notification (DND or not) so
-    // Bar/modules/Notifications.qml can blink its bell. `entry` is the same
-    // object just pushed to `history`.
+    // Fired once per recorded (non-muted): Bar bell blinks.
     signal arrived(var entry)
 
-    // Preferences (notification-prefs.json). Sound is OFF by default — the
-    // default `soundName` resolves to a freedesktop sound theme file only
-    // present if sound-theme-freedesktop is installed; `soundName` may be an
-    // absolute path. `retentionDays` prunes history older than that on load
-    // and hourly.
+    // Preferences (notification-prefs.json). Sound OFF by default.
     property int retentionDays: 7
     property bool soundEnabled: false
     property string soundName: "message"   // freedesktop theme name, or an absolute path
@@ -55,8 +45,7 @@ Singleton {
     function setSoundName(s) { root.soundName = String(s || "").trim(); root._persistPrefs() }
     function setSoundVolume(n) { root.soundVolume = Math.max(0, Math.min(100, Math.round(n))); root._persistPrefs() }
 
-    // Resolve soundName to a filesystem path: an absolute path as-is, else a
-    // freedesktop sound-theme basename.
+    // soundName to path: absolute as-is, else freedesktop theme basename.
     function _soundPath() {
         var n = root.soundName
         if (n.length === 0) return ""
@@ -64,18 +53,14 @@ Singleton {
         return "/usr/share/sounds/freedesktop/stereo/" + n + ".oga"
     }
 
-    // Play the notification sound via pw-play. Overlapping calls are dropped
-    // rather than queued — a burst of notifications should not stack beeps.
-    // `force` lets the settings "Test sound" button play it even while
-    // soundEnabled is false.
+    // Play via pw-play: overlap dropped. force lets Test button play.
     function playSound(force) {
         if (!force && !root.soundEnabled) return
         if (soundProc.running) return
         var path = root._soundPath()
         if (path.length === 0) { root.soundError = "no sound file configured"; return }
         root.soundError = ""
-        // --volume= (not "--volume 0.75"): pw-play's long option takes the
-        // value glued on. 0.00-1.00 linear.
+        // --volume= glued on (not separate arg). 0.00-1.00 linear.
         soundProc.command = ["pw-play", "--volume=" + (root.soundVolume / 100).toFixed(2), path]
         soundProc.running = true
     }
@@ -109,10 +94,7 @@ Singleton {
         for (var i = 0; i < live.length; i++) {
             try { live[i].dismiss() } catch (e) { live[i].tracked = false }
         }
-        // The user just explicitly cleared everything — the badge goes dark
-        // now, not whenever the server's own async close round-trip updates
-        // the model. Harmless if dismiss() leaves something tracked for a
-        // moment: the Connections sets it right back.
+        // Badge goes dark immediately (async update may lag).
         root.activeCount = 0
     }
     function clearApp(appName) {
@@ -128,11 +110,7 @@ Singleton {
         })
         root._persist()
     }
-    // For a group within the date-grouped overlay: an app sub-group or a whole
-    // date group is a SUBSET of history, not "everything from this app"
-    // (clearApp's scope) — clearApp would wrongly wipe that app's entries in
-    // every other date bucket too. Deletes exactly the entries passed, matched
-    // the same composite key as clearEntry.
+    // Deletes exactly passed entries (composite key match like clearEntry).
     function clearEntries(entries) {
         if (!entries || entries.length === 0) return
         const keySet = entries.map((e) => e.timestamp + "|" + e.summary + "|" + e.appName)
@@ -142,8 +120,7 @@ Singleton {
         root._persist()
     }
 
-    // Drop history entries older than retentionDays. retentionDays === 0 means
-    // "keep forever".
+    // Drop entries older than retentionDays (0 = keep forever).
     function _pruneOld() {
         if (root.retentionDays <= 0) return
         var cutoff = Date.now() - root.retentionDays * 24 * 60 * 60 * 1000
@@ -155,22 +132,16 @@ Singleton {
     }
 
     Timer {
-        interval: 60 * 60 * 1000   // hourly — retention is measured in days
+        interval: 60 * 60 * 1000   // hourly
         running: true
         repeat: true
         onTriggered: root._pruneOld()
     }
 
-    // Per-app rules: { "<appName>": { mute, hide, priority } }. mute —
-    // recorded in history, no toast (and no Chroma blink) hide — fully
-    // suppressed: not tracked, not recorded, not shown priority — still toasts
-    // even while DND is on Stored as one JSON object at
-    // Config.Paths.notificationRulesFile — a collection, not a `phi state`
-    // scalar.
+    // Per-app rules: {appName: {mute, hide, priority}}. Stored at notificationRulesFile.
     property var rules: ({})
 
-    // The apps the picker offers: every app seen in history plus every app
-    // that already has a rule. Derived, not separately persisted.
+    // Apps picker: history + rule apps. Derived, not persisted.
     readonly property var knownApps: {
         var set = ({})
         for (var i = 0; i < root.history.length; i++) {
@@ -194,7 +165,7 @@ Singleton {
         for (var a in root.rules) next[a] = Object.assign({}, root.rules[a])
         if (!next[appName]) next[appName] = ({})
         next[appName][key] = !!val
-        // Drop an all-false rule so the file stays clean.
+        // Drop all-false rules (keep file clean).
         var r = next[appName]
         if (!r.mute && !r.hide && !r.priority) delete next[appName]
         root.rules = next
@@ -202,19 +173,14 @@ Singleton {
     }
 
     function toggleDnd() {
-        // Any manual flip — on or off — cancels a pending timed session, so the
-        // stale durationTimer from an earlier "30 min" click can't silently
-        // re-disable DND out from under a session just started fresh.
+        // Manual flip cancels pending timed session.
         durationTimer.stop()
         root.dnd = !root.dnd
         root.dndEndsAt = 0
         Config.Settings.set("toggle.dnd", root.dnd ? "true" : "false")
     }
 
-    // The duration form of DND. Not persisted across a restart — only the
-    // plain on/off toggle is a defined phi-state key, and a countdown that
-    // silently resumed after a crash would be a worse surprise than losing it
-    // on restart.
+    // Duration DND (not persisted). Only toggle is phi-state key.
     function dndFor(minutes) {
         root.toggleDnd()
         if (root.dnd) {
@@ -223,9 +189,7 @@ Singleton {
         }
     }
 
-    // `dndEndsAt` (0 = off, or on indefinitely) plus `dndRemainingLabel` give
-    // both Settings and the panel toggle a live "time left" readout for a
-    // timed DND session.
+    // dndEndsAt + dndRemainingLabel for live "time left" readout.
     property real dndEndsAt: 0
     property real _dndNow: Date.now()
     Timer {
@@ -257,8 +221,7 @@ Singleton {
     }
 
     function _pushHistory(entry) {
-        // No manual `root.historyChanged()` call: QML already auto- generates
-        // one for `property var history`, fired by this assignment.
+        // QML auto-generates historyChanged on assignment.
         root.history = [entry].concat(root.history).slice(0, root.historyLimit)
         _persist()
     }
@@ -276,24 +239,17 @@ Singleton {
 
     Timer {
         id: durationTimer
-        // Named restartFor, not restart: Timer already has a built-in
-        // restart() invokable using the current interval — a same-named
-        // function would shadow it and recurse into itself.
+        // Named restartFor (not restart) to avoid shadowing Timer builtin.
         function restartFor(minutes) {
             this.interval = minutes * 60 * 1000
             this.restart()
         }
-        // Routes through toggleDnd() — persisted `toggle.dnd` key never
-        // disagrees with the live flag — a direct assignment left the key
-        // "true" forever after a timed-DND expiry, and a later shell start
-        // would read it back and resume DND as on with no timer running.
+        // Routes through toggleDnd() to sync persisted toggle.dnd key.
         onTriggered: if (root.dnd) root.toggleDnd()
     }
 
     Component.onCompleted: {
-        // Config.Settings.get shells out and returns asynchronously; dnd stays
-        // false until it resolves. An unwanted toast in that window is a
-        // cosmetic gap, not a correctness one.
+        // Settings.get async; dnd stays false until resolved (cosmetic gap).
         Config.Settings.get("toggle.dnd", (value, exitCode) => {
             if (value === "true") root.dnd = true
         })
@@ -314,8 +270,7 @@ Singleton {
         persistenceSupported: false
 
         onNotification: (notification) => {
-            // `hide` suppresses completely: never tracked, so it never enters
-            // history, and the server drops it on its own timeout.
+            // hide suppresses: never tracked, never in history.
             const rule = root.ruleFor(notification.appName)
             if (rule.hide) return
 
@@ -333,26 +288,20 @@ Singleton {
             }
             root._pushHistory(entry)
 
-            // The bar bell blinks for every recorded, non-muted notification —
-            // DND or not.
+            // Bar bell blinks for every recorded non-muted notification.
             if (!rule.mute) root.arrived(entry)
 
-            // A toast shows when notifications are not silenced — DND off, or
-            // the app is marked priority — and the app is not muted.
+            // Toast shows when not silenced (DND off or priority) and not muted.
             const allowToast = (!root.dnd || rule.priority) && !rule.mute
             if (allowToast) {
                 root.toastQueue = root.toastQueue.concat([notification])
                 root._advanceQueue()
-                // No-op unless the Chroma "notifications" integration is
-                // enabled and the keyboard is on.
+                // Chroma notification blink (if enabled).
                 Services.Chroma.notifyBlink()
                 root.playSound(false)
             }
 
-            // Every tracked notification gets a bounded lifetime, DND or not —
-            // a DND-silenced notification never becomes a toast, so nothing
-            // else would call expire() on it, and it would stay tracked for
-            // the rest of the session.
+            // Every tracked notification expires (DND-silenced never toasts).
             const timeoutMs = notification.expireTimeout > 0 ? notification.expireTimeout : 8000
             expireTimerComponent.createObject(root, { targetNotification: notification, delay: timeoutMs })
 
@@ -367,9 +316,7 @@ Singleton {
                 root.history = next
                 root._persist()
 
-                // Release the object back to the server once its closure is
-                // recorded, so trackedNotifications (re-exported as `active`)
-                // only ever holds notifications genuinely still open.
+                // Release to server; active holds only open notifications.
                 notification.tracked = false
 
                 if (root.activeToast === notification) {
@@ -381,12 +328,7 @@ Singleton {
         }
     }
 
-    // One-shot: calls expire() once per notification, whether or not it ever
-    // shown as a toast, then destroys itself. expire() (not dismiss()) matches
-    // the Notification API's own "dismiss with timeout hint" semantics and
-    // triggers the real `closed` signal (is what actually untracks the
-    // notification). expire() on an already-closed notification is assumed to
-    // be a safe no-op — unverified on real hardware.
+    // One-shot: calls expire() per notification (matches API semantics).
     property Component expireTimerComponent: Component {
         Timer {
             id: expireTimer
