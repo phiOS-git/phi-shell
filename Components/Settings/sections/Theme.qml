@@ -496,10 +496,9 @@ Column {
 
     // A tile-shaped loading placeholder for the wallpaper grids: the same
     // quiet "breathe" (motion category A) Widgets/Skeleton.qml uses, filling
-    // whichever tile it sits on, so the thumbnail still decoding — or a
-    // dynamic.heic preview still converting — reads as "loading" rather than a
-    // blank white box. `visible` gates it; once hidden the breathe animation
-    // stops with it.
+    // whichever tile it sits on, so a thumbnail still decoding or a .heic
+    // preview still converting reads as "loading", not a blank box. `visible`
+    // gates it, and the animation stops when it hides.
     component WallpaperTileSkeleton: Rectangle {
         id: wts
         anchors.fill: parent
@@ -1143,11 +1142,10 @@ Column {
             visible: Config.LockPrefs.effect === "lava"
             title: "Lava lamp"
             description: "More blobs read as a denser, busier field. Wobble scales how much each blob squashes/stretches and drifts sideways as it rises."
-            // The default compact layout right-aligns a content-sized control
-            // slot, sized to fit ONE small control. This row's slot instead
-            // holds a whole Column of label+field pairs (Blob count, Wobble)
-            // (needs the full-width `wide` layout or it overflows past the
-            // dialog's own right edge).
+            // The default compact layout right-aligns a content-sized slot
+            // sized for ONE small control. This row's slot holds a whole
+            // Column of label+field pairs (Blob count, Wobble), so it needs
+            // the full-width `wide` layout or it overflows the dialog's edge.
             wide: true
             Column {
                 width: parent.width
@@ -1391,11 +1389,10 @@ Column {
         Modules.SettingsRow {
             wide: true
             title: "Live preview"
-            // Empty while live — otherwise it stays stacked the canvas
-            // alongside the group's own title/caption and the Show/Hide
-            // button, crowding a comparatively small preview area. The
-            // explanatory sentence only earns its keep while there's nothing
-            // else to look at yet.
+            // Empty while live: otherwise it stays stacked alongside the
+            // canvas, the group's title/caption and the Show/Hide button,
+            // crowding a small preview area. The explanatory sentence only
+            // earns its keep while there is nothing else to look at.
             description: screensaverPreviewGroup.previewLive
                 ? ""
                 : "Hidden by default — some effects are expensive to render continuously. Pick a different effect above, or show it manually."
