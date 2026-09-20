@@ -4,12 +4,8 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "." as Local
 
-// The agent panel's ProjectView section (project detail). Name, description,
-// instruction list, context files (materiali/) folders of interest (read-only
-// real dirs), default personality, project chats. the six section headers are
-// `kind: "title"` (DemiBold ink), matching every other panel heading; the
-// three add-a-path rows use Widgets/TextField; micro-gaps are derived tokens
-// (`tightGap`), no literal `spacing: 2`.
+// Project detail: name, description, instructions, context files, personality,
+// chats. Section headers as kind:"title". Add-a-path rows use TextField.
 
 Item {
     id: root
@@ -18,8 +14,7 @@ Item {
 
     signal back()
     signal startChat()
-    // the Escape task — re-emitted up to Dashboard, then AgentPanel's
-    // keyScope; see Widgets/TextField.qml's `escaped()`.
+    // Escape signal; re-emitted up to AgentPanel's keyScope.
     signal blurred()
 
     // AgentPanel.qml's own keyScope contract. Always true while this view is

@@ -2,25 +2,9 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// Same dumb/reusable icon family as the rest of Widgets/*Icon
-// Bar/modules/Notifications.qml owns the Services/Notifications.qml reads. The
-// animation IS the glyph moving, rather than an overlay drawn on top of it: a
-// flash overlay added as a Rectangle child after Widgets/Segment.qml's own
-// internal `layout` Item paints on top of the glyph and partially obscures it.
-// Rendering through `iconDelegate` instead removes that whole overlay
-// mechanism. `dnd` crossfades between the bell and bell-slashed glyphs (two
-// Nerd Font shapes, same verified-against-glyphnames.json rune each already
-// was) plus a small scale pop on the transition — a bare crossfade alone is
-// the thing the user explicitly said isn't enough for the brightness icon; DND
-// is a genuine binary rune swap with no continuous quantity to interpolate the
-// way brightness/volume/battery have, so the pop is what keeps it from reading
-// as flat. `hasPending` fades a small badge dot in and out (no continuous
-// breathing — this is a static "something is waiting" state, not an ongoing
-// process like charging/connecting, so it does not belong to category A the
-// way those do; a fourth continuously- pulsing bar icon alongside
-// battery/wifi/bluetooth would be noise, not polish). `arrived` swings the
-// whole glyph — a short, damped rotation oscillation, once per call, category
-// B timing per leg.
+// Reusable icon. Animation: glyph moves (flash overlay drawn after layout).
+// dnd: crossfade bell/bell-slashed + scale pop. hasPending: badge dot fade
+// (static state, not continuous). arrived: glyph swing rotation (category B).
 
 Item {
     id: root
