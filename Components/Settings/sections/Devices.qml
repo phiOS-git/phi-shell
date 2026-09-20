@@ -5,23 +5,10 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../modules" as Modules
 
-// Groups: Audio output, Audio input, Monitors, Pointer, Battery, Chroma.
-// The bar popout is the one place lock/suspend/hibernate/logout/reboot/
-// shutdown live — no duplicate "Power" group here.
-// Audio device SELECTION is real: Services/AudioBridge.qml exposes the
-// sink/source node lists and writes Pipewire's
-// preferredDefaultAudioSink/Source. Monitors and Pointer stay read-only
-// monitor config is runtime state, not editable from here, and pointer
-// sensitivity lives in hyprland.lua.
-// Chroma (razer only, Config.Capabilities.chroma):
-// - Lighting on/off + static colour.
-// - Per-key colours: a Widgets/KeyboardMap grid sized from the device's
-// own matrix; click a cell, pick a colour, solid only — no animation.
-// - Integrations: battery (power-key colour from the charge level)
-// notifications (function-row blink on arrival, not in DND), neovim
-// (mode tint via an nvim autocmd → `qs ipc call chroma nvimMode`).
-// Each has an accordion of its own settings. See Services/Chroma.qml
-// for the single-compositor architecture and the DBus names.
+// Groups: Audio output/input, Monitors, Pointer, Battery, Chroma. (Power
+// group lives in bar popout only.) Audio device selection is real (Pipewire
+// sink/source). Monitors/Pointer read-only. Chroma (razer): lighting on/off,
+// static color, per-key grid, integrations (battery, notifications, neovim).
 
 Column {
     id: root
@@ -39,7 +26,7 @@ Column {
 
     function _pct(v) { return Math.round(v * 100) + "%" }
 
-    // --- one audio-device list (sink or source) ------------------------
+    // Audio device list (sink or source).
     component DeviceList: Column {
         id: dl
         property var devices: []

@@ -11,17 +11,11 @@ Item {
     readonly property var agent: Services.Agent
 
     signal requestSection(string s)
-    // the Escape task — Widgets/TextField.qml's own `escaped()`; re-emitted
-    // from every field in the sidebar and from the embedded Chat/ProjectView,
-    // so AgentPanel's fallback key handler can reclaim focus and make a second
-    // Escape close the whole panel.
+    // Escape signal; re-emitted from sidebar and Chat/ProjectView fields.
     signal blurred()
 
     property string selectedProject: ""
-    // (Requested: "a toggleable sidebar with projects and chat list").
-    // Session-only view state — collapses the sidebar's WIDTH to zero rather
-    // than unloading it, so no scroll position/search text is lost across a
-    // toggle. See `sidebar`'s own Behavior and `sidebarToggle` below.
+    // Session-only toggle: collapses sidebar width to zero (preserves scroll).
     property bool sidebarCollapsed: false
     readonly property bool hasBack: root.selectedProject.length > 0
     function goBack() {
@@ -60,8 +54,7 @@ Item {
 
             Flickable {
                 anchors.fill: parent
-                // Avoids a negative-width Flickable once `sidebar` reaches
-                // zero — the margin has nothing left to carve out of.
+                // Avoid negative-width Flickable when sidebar reaches zero.
                 anchors.rightMargin: root.sidebarCollapsed ? 0 : root.gap
                 contentWidth: width
                 contentHeight: sideCol.implicitHeight
@@ -72,24 +65,14 @@ Item {
                     width: parent.width
                     spacing: root.gap
 
-                    // new chat / new project — the two primary actions, always
-                    // at the very top above search: this is a sidebar you
-                    // start a new thing from at least as often as you search
-                    // it.
+                    // New chat / project: primary actions at top (used as often as search).
                     Row {
                         width: parent.width
                         spacing: root.tightGap
                         Widgets.StyledButton {
                             width: (parent.width - parent.spacing) / 2
                             label: "New chat"
-                            // once a project had been used (ProjectView's own
-                            // "Use + chat"), nothing ever cleared it again —
-                            // this button used to call newSession() alone,
-                            // which resets the visible chat but leaves the
-                            // agent silently scoped to the old project
-                            // forever. leaveProject() (Services/Agent.qml,
-                            // added alongside this) is a no-op when no project
-                            // is active, so this is safe either way.
+                            // leaveProject() clears stale project scope; no-op if none active.
                             onClicked: {
                                 root.selectedProject = ""
                                 if (root.agent.activeProject.length > 0) root.agent.leaveProject()
@@ -140,9 +123,7 @@ Item {
                         Timer { id: searchDebounce; interval: 220; onTriggered: root.agent.search(searchInput.text) }
 
                         Widgets.StyledText { visible: root.agent.searching; kind: "label"; sizeStep: 0; text: "searching…" }
-                        // a query with zero hits used to render nothing at all
-                        // — indistinguishable from the search not having run
-                        // yet. sizeStep 0 wraps a long query.
+                        // Show "no matches" to distinguish from search not run yet.
                         Widgets.StyledText {
                             visible: !root.agent.searching && searchInput.text.length > 0
                                 && (root.agent.searchResults.Groups || []).length === 0
@@ -178,11 +159,7 @@ Item {
                         }
                     }
 
-                    // Search results replace the lists below while active (the
-                    // same "search surfaces, filters everything else out of
-                    // the way" behaviour every list-with-search in this shell
-                    // already uses) rather than stacking a second copy of the
-                    // same chats underneath its own results.
+                    // Search results replace lists while active (filter behavior).
                     Column {
                         width: parent.width
                         spacing: root.gap
@@ -279,26 +256,9 @@ Item {
         }
     }
 
-    // (Requested: "a toggleable sidebar"). A sibling of the Row above rather
-    // than a child of it — a Row forcibly positions every direct child along
-    // its own flow axis — so it tracks `sidebar`'s own moving right edge from
-    // outside the Row via `mapToItem` instead of a raw cross-hierarchy anchor
-    // (the same technique, and the same reasoning, as Chat.qml's own
-    // personaCard: no anchor-direction risk to get wrong between items that
-    // are not strict siblings). Stays reachable at any width, sidebar fully
-    // expanded or fully collapsed to zero. (agent instruction: "in the chat
-    // view make the dashboard toggleable with an icon"): SmallButton carrying
-    // a text "‹"/"›" chevron label; now the same bare Widgets.IconButton
-    // grammar this shell's other minor always-visible controls use
-    // (BarPopout's media/ network rows, AgentPanel's settings corner icon),
-    // MDI's page-layout-with-left-sidebar pictogram
-    // (nf-md-page_layout_sidebar_left Glyphs.dashboard — verified against
-    // nerd-fonts' glyphnames.json, not recalled from memory). The one glyph
-    // serves both states, coloured the way BarPopout's shuffle button shows
-    // its own on/off: accent while the dashboard is visible, muted while
-    // collapsed. Keeps an explicit chWidth-sized square hit box around the
-    // bare glyph — the same comfort floor the nav squares got and the reason
-    // the old control floored height at controlHeight.
+    // Sibling of Row (not child, so it can track sidebar's edge via mapToItem).
+    // Stays reachable at any width. IconButton with dashboard glyph (MDI icon),
+    // colored accent (visible) or muted (collapsed). chWidth-sized square hit box.
     Widgets.IconButton {
         id: sidebarToggle
         readonly property point _anchor: sidebar.mapToItem(root, sidebar.width, 0)
@@ -314,9 +274,7 @@ Item {
         onActivated: root.sidebarCollapsed = !root.sidebarCollapsed
     }
 
-    // the star glyph only ever DISPLAYED pin state before that pass; Pin/Close
-    // are real Services.Agent calls now. `open()` is gone — selecting a chat
-    // navigates anywhere, the main pane just updates in place.
+    // Pin/Close are real Services.Agent calls; open() is gone.
     component ChatRow: Row {
         id: chatRow
         property var rec

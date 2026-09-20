@@ -1,22 +1,11 @@
 import QtQuick
 import qs.Config as Config
 
-// A Reynolds flocking simulation (separation + alignment + cohesion, the
-// textbook "boids" algorithm), drawn as small triangle-arrow heads oriented
-// along each boid's own heading, coloured by its current speed. Toroidal
-// wraparound at the edges (same choice Lock/Starfield.qml's own points make)
-// rather than a bounce or an avoid-the-edge steering force — simpler, and a
-// screensaver background never needs the flock to visibly "notice" the screen
-// edge. Neighbour distance is computed toroidally too (the nearest copy across
-// a wrapped edge, not the raw straight-line distance) so the flock reads as
-// one continuous group across the seam. No persistent-trail buffer: this
-// effect's Canvas is composited over the real lock-screen wallpaper, not a
-// solid background, so the classic "fade the previous frame toward black"
-// trail trick would fade toward black specifically, not toward transparency —
-// visibly wrong on a light wallpaper. Left out rather than shipped wrong.
-// Colour: tokens only — every boid eases between `info` (slow) and `accent`
-// (near top speed), the same accent/info pairing every other effect in this
-// file uses for its own two-colour drift.
+// Reynolds flocking (separation + alignment + cohesion) as triangle-arrows
+// colored by speed. Toroidal wraparound (same as Starfield). Neighbor distance
+// computed toroidally (continuous group across seam). No persistent trail
+// (would fade toward black on light wallpaper). Colors: info (slow) to accent
+// (top speed), same pairing as other effects.
 
 Item {
     id: root
@@ -24,30 +13,20 @@ Item {
     property bool running: true
     property real intensity: 0.85
     property real speed: 1.0
-    // --- lock/auth state (bound by Lock.qml on the active effect) -------
-    // Read-only reaction inputs for the auth flow, wired straight from
-    // the lock surface: `validating` is true while a submitted password
-    // is being verified (~2s of PAM on this machine) and
-    // `validationProgress` pulses 0→1 in step with the field's own pulse;
-    // `lockedOut` covers the post-threshold cooldown, `lockoutProgress`
-    // draining 1→0 with the countdown (the "N s" the field shows). An
-    // effect reacts to these or ignores them; never writes. This effect
-    // answers: a full-surface cast toward `info` while verifying, and
-    // toward `error` that fades as the lockout drains (see onPaint).
+    // --- lock/auth state (bound by Lock.qml) -------
+    // Read-only auth reaction inputs: validating (password verification),
+    // validationProgress (0→1 pulse), lockedOut (cooldown), lockoutProgress (1→0).
+    // Effect answers: full-surface cast toward info (verifying) or error (lockout).
     property bool validating: false
     property real validationProgress: 0
     property bool lockedOut: false
     property real lockoutProgress: 0
 
     // --- preview features ------------------------------------------------
-    // The auth reactions this effect implements, for the settings
-    // gallery's per-feature test buttons (Settings/sections/Theme.qml
-    // maps these ids to labels and triggers).
+    // Auth reactions for settings gallery test buttons.
     readonly property var features: ["verification", "lockout"]
 
-    // The one exposed knob; the three Reynolds rule weights stay fixed tuned
-    // constants, the same way LavaLamp's own morph amplitude is folded into
-    // its one "wobble" multiplier rather than each exposed separately.
+    // One exposed knob; Reynolds weights are tuned constants (like LavaLamp's wobble).
     property int boidCount: 40
 
     property var boids: []
@@ -58,19 +37,9 @@ Item {
 
     function _rand(a, b) { return a + Math.random() * (b - a) }
 
-    // Unlike every sibling effect (fractional 0..1 coordinates, immune to not
-    // knowing a real width/height yet), boids are seeded directly in pixel
-    // space, since neighbour-distance rules are naturally expressed in fixed
-    // pixel radii, not screen fractions. That makes seed timing actually
-    // matter: `_seededWithRealSize` tracks whether the LAST seed() call had a
-    // real (nonzero) size to work with, so a `boidCount` change or
-    // Component.onCompleted firing before layout has resolved a width/height
-    // (a real, if narrow, possibility for a freshly Loader-instantiated Item)
-    // doesn't permanently strand every boid clustered near the origin — the
-    // guard below re-seeds again the moment a real size actually shows up,
-    // rather than relying on `boids.length === 0` (which a degenerate
-    // zero-size seed already falsifies, since it does still populate the
-    // array, just with useless positions).
+    // Boids seeded in pixel space (neighbor rules use pixel radii). Tracks
+    // whether last seed() had real size; re-seeds when size appears to avoid
+    // boids stranded at origin (can't rely on boids.length === 0 alone).
     property bool _seededWithRealSize: false
     function seed() {
         var out = []

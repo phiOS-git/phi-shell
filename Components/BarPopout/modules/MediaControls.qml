@@ -5,20 +5,10 @@ import qs.Widgets as Widgets
 import "../../Bar/glyphs.js" as Glyphs
 import "../../../Widgets/WidgetStates.js" as WidgetStates
 
-// The media controls body shared by BarPopout/modules/Media.qml (the full
-// popout card) and BarPopout/modules/Status.qml's media section — the same
-// inner section in both cards so future layout changes happen here once. Reads
-// the active MPRIS player from Services.Mpris; `active` is driven by the
-// consuming card so the one-second progress timer and the marquee drift only
-// run while the card is actually on screen. The MPRIS source (identity) line
-// is clickable and focuses the player's own window: it scans
-// Services.HyprlandBridge.toplevels for a window whose app id matches the
-// player's desktopEntry (then identity) and dispatches the proven
-// `hl.dsp.focus({ window = "address:..." })` — the same path
-// Bar/modules/WindowList.qml uses. Players expose no window handle over MPRIS,
-// only a desktop-entry name, so this is best effort: a player whose window
-// class differs from its desktop entry (rare) is simply not found, and the
-// fallback is MPRIS's own raise() when the player implements it.
+// Media controls shared by Media.qml and Status.qml's media section. Reads
+// active MPRIS player; `active` gates progress timer and marquee drift. Source
+// line clickable, focuses player window by app id match (desktop entry or
+// identity). Best effort; fallback is MPRIS raise().
 
 Column {
     id: root
@@ -52,9 +42,7 @@ Column {
         if (values) {
             for (let i = 0; i < values.length; i++) {
                 const t = values[i]
-                // HyprlandToplevel has no wmClass — the real app id is one
-                // level down, `.wayland.appId` (see WindowList.qml's own
-                // `_wmClass`). Title is the secondary match source.
+                // Real app id is .wayland.appId; title is secondary match source.
                 const cls = String((t.wayland && t.wayland.appId) || t.title || "").toLowerCase()
                 if (cls.length === 0) continue
                 for (let j = 0; j < needles.length; j++) {
@@ -69,15 +57,13 @@ Column {
                 }
             }
         }
-        // No window matched the identity — the few players that implement
-        // MPRIS's own raise can still come forward.
+        // No window match; fallback to MPRIS raise().
         if (p.canRaise) p.raise()
     }
 
     // --- identity / track info ------------------------------------------
 
-    // The source is clickable — the click target is the whole label row; hover
-    // brightens the text so the line reads as actionable.
+    // Source row clickable; hover brightens text to show it's actionable.
     Item {
         width: parent.width
         implicitHeight: sourceLine.implicitHeight
