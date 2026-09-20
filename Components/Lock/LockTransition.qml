@@ -2,63 +2,36 @@ import QtQuick
 import qs.Config as Config
 
 // The single owner of every lock/unlock animation on the lock surface.
-// Lock.qml keeps ALL the layout; this file keeps ONLY the movement, so the
-// transition can be reworked without touching the content:
-// - the whole-surface envelope (this component's own `opacity`)
-// - the per-element cascade (`targets` lists the content blocks; each
-// fades in a little after the previous one, with a small upward rise)
-// - the low-power bypass (`animated: false` collapses reveal/conceal to
-// an instant snap — Lock.qml binds it to
-// Services.PowerBridge.batterySaverActive, the same read-side gate the
-// screensaver itself is suppressed under)
-// - the completion event Lock.qml's security-critical unlock path listens
-// to: `concealFinished` fires exactly once per conceal (or instantly
-// when animation is disabled). It is the only trigger that clears
-// `locked` — nothing in this file ever touches PAM or `root.locked`.
-// Why the two directions read so differently:
-// - reveal (locking) is ceremonial: the envelope takes the long category-C
-// time the old plain fade already used (motionCScramble), while the
-// elements cascade in during it on the quick category-B
-// duration/curve, each one `staggerStep` after the previous — the
-// "inner elements appear with different timings" part of the design.
-// - conceal (unlocking) is a vanish: elements leave in reverse order on
-// category B, then the envelope closes on category B too. Leaving a
-// locked screen should feel quick, not ceremonious.
-// The per-element rise is a `transform: Translate`, never a `y` animation:
-// a positioner (the centred Column Lock.qml declares) authoritatively owns
-// `y`, and a second animator fighting it is exactly the conflict
-// Widgets/StaggerReveal.qml documents for why IT stays opacity-only. A
-// translate renders the same visual without touching geometry, so the rise
-// is safe here; it is appended to any transform the target already had (the
-// password panel's error shake), never replacing it.
-// `staggerStep` is a per-child DELAY on top of the shared category-B
-// animation — the same convention Widgets/StaggerReveal.qml's own
-// `staggerStep` documents (a delay, not a second timing system), so it is
-// not a new design-token-sized number, and it scales with the mono `ch` of
-// the surface (via the caller-provided chWidth) rather than hardcoding a
-// size.
+// Lock.qml keeps ALL the layout;
+// this file keeps ONLY the movement, — transition can be reworked without touching the content: - the whole-surface envelope - the per-element cascade - the low-power bypass - the completion event Lock.qml's security-critical unlock path listens to: `concealFinished` fires exactly once per conceal.
+// It is the only trigger that clears `locked` — nothing in this file ever touches PAM or `root.locked`.
+// Why the two directions read so differently: - reveal (locking) is ceremonial: the envelope takes the long category-C time the old plain fade already used (motionCScramble), while the elements cascade in during it on the quick category-B duration/curve, each one `staggerStep` after the previous — the "inner elements appear with different timings" part of the design.
+// - conceal (unlocking) is a vanish: elements leave in reverse order on category B, then the envelope closes on category B too.
+// Leaving a locked screen should feel quick, not ceremonious.
+// The per-element rise is a `transform: Translate`, never a `y` animation: a positioner authoritatively owns `y`, and a second animator fighting it is exactly the conflict Widgets/StaggerReveal.qml documents for why IT stays opacity-only.
+// A translate renders the same visual without touching geometry, — rise is safe;
+// it is appended to any transform the target already had, never replacing it.
+// `staggerStep` is a per-child DELAY on top of the shared category-B animation — the same convention Widgets/StaggerReveal.qml's own `staggerStep` documents, so it is not a new design-token-sized number, and it scales with the mono `ch` of the surface rather than hardcoding a size.
 
 Item {
     id: root
 
     default property alias content: contentSlot.data
 
-    // The elements to cascade, in reveal order (Lock.qml passes the
-    // centred column's blocks). Each gets its own category-B opacity fade
-    // and a small rise; conceal plays the same list in reverse.
+    // The elements to cascade, in reveal order.
+    // Each gets its own category-B opacity fade and a small rise;
+    // conceal plays the same list in reverse.
     property var targets: []
-    // The surface's mono-cell width in pixels — the rise length is derived
-    // from it (0 = no rise at all) so no size is hardcoded here.
+    // The surface's mono-cell width in pixels — the rise length is derived from it (0 = no rise at all) so no size is hardcoded.
     property real chWidth: 0
     // False in low power mode: reveal/conceal become an instant snap.
     property bool animated: true
-    // True once a reveal has completed. Lock.qml's safety timer reads this
-    // to detect a reveal that never ran and snap the screen visible.
+    // True once a reveal has completed.
+    // Lock.qml's safety timer reads this to detect a reveal that never ran and snap the screen visible.
     property bool revealed: false
 
-    // Emitted exactly once when a conceal's animation (or its instant
-    // low-power equivalent) has fully finished. Lock.qml listens to this;
-    // it is the single place `locked` is cleared.
+    // Emitted exactly once when a conceal's animation has fully finished.
+    // Lock.qml listens to this; it is the single place `locked` is cleared.
     signal concealFinished()
 
     readonly property real rise: root.chWidth > 0 ? root.chWidth * 0.5 : 0
@@ -95,26 +68,13 @@ Item {
             duration: root.elementDuration
             easing.type: Easing.OutQuad
         }
-        // Completion hook on the SEQUENCE, deliberately not on the child
-        // fade: when a SequentialAnimation ends naturally it suppresses
-        // its current (last) child's `finished` signal (verified against
-        // the Qt 6.11 animation runtime — the sequence's own `finished`
-        // fires, the inner NumberAnimation's does not), so an
-        // `onFinished` on `concealFade` would silently never run and
-        // Lock.qml's unlock would never see `concealFinished`. The
-        // sequence's `finished` fires exactly on natural completion and
-        // never on an external `stop()`, so it is the reliable, no-extra-
-        // fire hook for "the conceal has fully closed".
+        // Completion hook on the SEQUENCE, deliberately not on the child fade: when a SequentialAnimation ends naturally it suppresses its current (last) child's `finished` signal, so an `onFinished` on `concealFade` would silently never run and Lock.qml's unlock would never see `concealFinished`.
+        // The sequence's `finished` fires exactly on natural completion and never on an external `stop()`, so it is the reliable, no-extra- fire hook for "the conceal has fully closed".
         onFinished: root.concealFinished()
     }
 
-    // --- per-element cascade -------------------------------------------
-    // One persistent { anim, translate } pair per target index, created
-    // once and reused on every reveal/conceal — the same lazy
-    // Qt.createQmlObject pattern Widgets/StaggerReveal.qml already proves
-    // out. A creation failure (should not happen for these two plain
-    // types) just leaves that element static — fails open onto "no
-    // stagger", never onto a broken lock screen.
+    // --- per-element cascade ------------------------------------------- One persistent { anim, translate } pair per target index, created once and reused on every reveal/conceal — the same lazy Qt.createQmlObject pattern Widgets/StaggerReveal.qml already proves out.
+    // A creation failure just leaves that element static — fails open onto "no stagger", never onto a broken lock screen.
     property var _anims: []
 
     function _ensureTarget(child, index) {
@@ -122,9 +82,7 @@ Item {
         try {
             var translate = Qt.createQmlObject(
                 'import QtQuick; Translate { }', child, "LockTransition")
-            // Append, never replace: the password panel already owns a
-            // Translate for its error shake, and a second translate
-            // composes additively with it.
+            // Append, never replace: the password panel already owns a Translate for its error shake, and a second translate composes additively with it.
             child.transform = (child.transform || []).concat([translate])
             var seq = Qt.createQmlObject(
                 'import QtQuick; SequentialAnimation { PauseAnimation {}; ParallelAnimation { NumberAnimation { property: "opacity" } NumberAnimation { property: "y" } } }',
@@ -139,8 +97,7 @@ Item {
     function _drive(child, index, toOpacity, toY, delay) {
         var entry = root._ensureTarget(child, index)
         if (!entry) {
-            // Fails open: the element snaps to its destination instead of
-            // being stranded invisible mid-conceal.
+            // Fails open: the element snaps to its destination instead of being stranded invisible mid-conceal.
             child.opacity = toOpacity
             return
         }
@@ -164,8 +121,7 @@ Item {
         seq.restart()
     }
 
-    // jump everything to a finished state without animation (the
-    // low-power path, and Lock.qml's reveal safety net)
+    // jump everything to a finished state without animation
     function snap(show) {
         root.opacity = show ? 1 : 0
         var n = root.targets.length
@@ -211,9 +167,7 @@ Item {
         concealEnvelope.stop()
         if (!root.animated) {
             root.snap(false)
-            // Still emit the completion event — Lock.qml's unlock depends
-            // on it — deferred so it lands after any signal handler
-            // currently in flight.
+            // Still emit the completion event — Lock.qml's unlock depends on it — deferred so it lands after any signal handler currently in flight.
             Qt.callLater(function () { root.concealFinished() })
             return
         }
