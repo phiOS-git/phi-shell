@@ -9,31 +9,27 @@ import qs.Services as Services
 // Writes directly to the org.razer session-bus DBus service via
 // `busctl`/Quickshell.Io — no razer-cli, no polychromatic, no Quickshell
 // DBus client type exists for this.
-//
 // NAMES TO CONFIRM ON HARDWARE. Every interface/method string below is a
 // named constant precisely so a correction after
-//     busctl --user introspect org.razer /org/razer/device/<serial>
+// busctl --user introspect org.razer /org/razer/device/<serial>
 // is a one-line edit, not a hunt. Taken from the openrazer daemon source
 // and python-openrazer's advanced-matrix path, which the user has
-// confirmed works end to end on this Razer Blade — but UNVERIFIED from
+// confirmed works end to end on this Razer Blade — but from
 // this file's own side: no org.razer service is reachable from this
 // machine, so this file has never actually run.
-//
 // ARCHITECTURE. Five things want to drive one keyboard: the static base
 // colour, the per-key override map, the battery power-key indicator, the
 // notification blink, and the neovim mode tint. They are NOT five
 // writers — every one only sets state, a single _render() composes the
 // current state into one frame, and a single Process pushes it. That's
-// what makes "blink then restore" automatic: the blink flag flips,
-// _render() runs, the timer clears the flag, _render() runs again —
+// what makes "blink then restore" automatic: the blink flag flips
+// _render() runs, the timer clears the flag, _render() runs again
 // rather than a second code path that has to remember what was underneath.
-//
 // A frame is either one setStatic (no per-key content) or N setKeyRow
 // calls plus one setCustom. All of it goes out as ONE
 // `sh -c "busctl … && busctl … && …"`: assigning Process.command in a loop
 // would clobber each call before it ran (Quickshell doesn't queue command
 // reassignments).
-//
 // Panel: Settings/sections/Devices.qml. Storage: the two scalars that
 // already have `phi state` keys stay there (toggle.chroma, chroma.color).
 // The open-ended data — the per-key map and integration config — is one

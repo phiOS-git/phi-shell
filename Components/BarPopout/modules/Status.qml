@@ -6,7 +6,7 @@ import qs.Widgets as Widgets
 import "../../Bar/glyphs.js" as Glyphs
 import "." as Local
 
-// Bar/modules/StatusMenu.qml's own card: profile row, power actions,
+// Bar/modules/StatusMenu.qml's own card: profile row, power actions
 // real MPRIS media controls, compact system toggles, and the tiling-mode
 // grid. No avatar-picture or per-session-length data source exists
 // anywhere in this codebase — `_profileName` below and "session time"
@@ -104,7 +104,6 @@ Widgets.StaggerReveal {
                 // card — so the six read as bare power icons in outlined
                 // slots; the glyphs stay uniformly textPrimary, differing
                 // by shape (powerActions.glyph) alone until hovered.
-                //
                 // Plain Item, not Widgets.Panel, on purpose: Panel routes
                 // declared children into its padded contentItem, and
                 // pointer handlers only receive hover/click along the hit
@@ -156,7 +155,7 @@ Widgets.StaggerReveal {
     Widgets.OverlaySection {
         width: parent.width
         visible: Services.Mpris.active !== null
-        // The same controls body as the dedicated Media popout —
+        // The same controls body as the dedicated Media popout
         // Local.MediaControls (this directory's shared section) is the
         // one place the track info, progress and transport live, so
         // the two cards can't drift apart. No own title: the section is
@@ -243,7 +242,7 @@ Widgets.StaggerReveal {
             }
 
             // Five real states across five sensor icons, distributed
-            // evenly — hand-drawn Canvas icons (Widgets/TrueToneIcon,
+            // evenly — hand-drawn Canvas icons (Widgets/TrueToneIcon
             // StayAwakeIcon, MicrophoneIcon, CameraIcon), same convention
             // as every other icon in this shell with no reliable font
             // glyph, so each toggle gets a real per-state shape rather
@@ -318,7 +317,7 @@ Widgets.StaggerReveal {
                 }
 
                 // Microphone — three real states marked by shape (Widgets/
-                // MicrophoneIcon.qml: muted strikes the capsule through,
+                // MicrophoneIcon.qml: muted strikes the capsule through
                 // in-use fills it solid) as well as colour.
                 Item {
                     id: micBtn

@@ -11,7 +11,6 @@ import "WidgetStates.js" as WidgetStates
 // precedence over a bare focus state. The row has one leading slot: it
 // shows ">" while focused, else the row's own `glyph` if it has one, else
 // nothing — never both, so the glyph never appears as ambient decoration.
-//
 // `thin` (opt-in, default false — plain text, a highlighter pill, no
 // resting box) is a distinct compact style for a status-bar-overlay device
 // list (Widgets/WifiNetworkList.qml and similar), set explicitly only at
@@ -66,9 +65,9 @@ Item {
         && (root.resolvedState === "default" || root.resolvedState === "disabled")
         ? 0.7 : 1.0
 
-    // When the row background inverts (the "active"/selected state,
+    // When the row background inverts (the "active"/selected state
     // surfaceColors() → bg: contrast), the label, value and leading glyph
-    // must invert with it or the row reads as invisible same-on-same —
+    // must invert with it or the row reads as invisible same-on-same
     // Segment and StyledButton already recolour their own content this
     // way. `labelColor` tracks the resolved fg in every state (which is
     // the ordinary full-contrast ink except when inverted or invalid);
@@ -94,7 +93,7 @@ Item {
     readonly property real chWidth: chMetrics.width
     readonly property real inset: WidgetStates.chToPixels(Config.Appearance.space2, chWidth)
     readonly property real gap: WidgetStates.chToPixels(Config.Appearance.space1, chWidth)
-    // The `thin` highlight's own small overshoot past the text it hugs —
+    // The `thin` highlight's own small overshoot past the text it hugs
     // same proportion Launcher.qml's own result-row highlight uses
     // (`hpad: root.chWidth * 0.6`), not this row's `inset` above.
     readonly property real hpad: root.chWidth * 0.6

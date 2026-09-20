@@ -2,10 +2,9 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// Same dumb/reusable Canvas-icon family as SunMoonIcon and VolumeIcon —
+// Same dumb/reusable Canvas-icon family as SunMoonIcon and VolumeIcon
 // every value is external, Bar/modules/Battery.qml owns the
 // Services/PowerBridge.qml reads.
-//
 // A classic pill-outline battery body (fixed silhouette, stroked) with an
 // animated horizontal fill — `level` (0..1) drives the fill's width, not
 // a stepped 0/25/50/75/100 swap, so it slides smoothly as the real
@@ -14,11 +13,10 @@ import "WidgetStates.js" as WidgetStates
 // low/anomaly threshold to recolour only the fill and not the outline can
 // pass two different values — Bar/modules/Battery.qml itself passes the
 // same `root.contentColor` for both, matching the "tone recolours the
-// whole glyph" convention every other icon in this bar already follows,
+// whole glyph" convention every other icon in this bar already follows
 // but the split stays available here rather than assumed away.
-//
 // `chargingAmount` (0..1, not a bool) drives a small bolt glyph that
-// breathes in and out continuously while charging — motion category A,
+// breathes in and out continuously while charging — motion category A
 // the right category for an ONGOING state rather than a discrete
 // transition: charging persists for as long as the cable is in, so a
 // linear breathing loop fits, not category B.
@@ -31,8 +29,8 @@ Item {
     property int sizeStep: 2
     property real level: 1.0        // 0..1, the caller wraps Behavior (category B)
     property real chargingAmount: 0.0 // 0..1: >0 means "charging", drives the bolt's breathing
-    // A shape difference (hatching, drawn below), not just a colour —
-    // `tone` alone is the same mechanism every other anomaly (low charge,
+    // A shape difference (hatching, drawn below), not just a colour
+    // `tone` alone is the same mechanism every other anomaly (low charge
     // high discharge rate) already uses for a completely different
     // meaning, so a colour-only cue here would be easy to confuse with
     // those. 0..1, category B (a discrete on/off, not an ongoing ambient
@@ -57,7 +55,7 @@ Item {
     // The breathing loop itself — category A, continuous, only running
     // while actually charging (chargingAmount > 0). `pulseLevel` is a
     // plain 0..1 SequentialAnimation-driven value; the Canvas just reads
-    // it. Not underscore-prefixed like this file's other internals,
+    // it. Not underscore-prefixed like this file's other internals
     // deliberately: it needs its own `onPulseLevelChanged` repaint
     // trigger below, and QML's auto-generated handler name for a
     // leading-underscore property is ambiguous enough to just avoid.
@@ -128,7 +126,7 @@ Item {
                 // saverAmount rises, so the FULL-ALPHA hatch stripes drawn
                 // next actually show up against it. `ink`/`fill` are the
                 // same colour here (the caller passes root.contentColor for
-                // both) — a hatch stroked in `ink` on top of an unfaded,
+                // both) — a hatch stroked in `ink` on top of an unfaded
                 // same-colour, fully-opaque fill would be invisible, drawn
                 // in the exact colour of the pixels beneath it. Contrast
                 // comes from ALPHA, not hue, so it works regardless of
@@ -144,9 +142,9 @@ Item {
             // now-faded fill above, clipped to the SAME rounded-rect +
             // current fill width. A texture/shape difference, not just
             // another colour, so it survives being tiny (a handful of
-            // extra hue values can look near-identical at bar-icon size,
+            // extra hue values can look near-identical at bar-icon size
             // especially against `tone`'s existing anomaly colours;
-            // stripes stay legible at any size since they just get denser,
+            // stripes stay legible at any size since they just get denser
             // never vanish into a single flat colour).
             if (fillW > 0.5 && root.saverAmount > 0.001) {
                 ctx.save()

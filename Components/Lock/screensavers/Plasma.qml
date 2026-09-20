@@ -4,21 +4,19 @@ import qs.Config as Config
 // The classic demoscene/XScreenSaver "plasma" effect: a smoothly shifting
 // colour field from three overlaid sine waves, no image data, no shader.
 // Coarser grid than Starfield's per-point rects (32x18 filled cells
-// instead of ~140 points) — plasma reads as a field, not discrete points,
+// instead of ~140 points) — plasma reads as a field, not discrete points
 // and a per-pixel canvas would cost far more per frame for no visible
 // gain at lock-screen viewing distance.
-//
 // Same contract every other effect (LavaLamp/MatrixRain/Starfield)
 // follows: `running`/`intensity` properties, a Timer at
 // `Config.Appearance.motionCTypeStep` driving `requestPaint()`, colour
 // from Config.Appearance tokens only — here `surface1` → `accent` →
 // `info`, the same accent/info pairing LavaLamp uses for its blobs.
-//
 // Two OPTIONAL inputs. (1) The password-validation pulse: Lock.qml calls
 // `triggerValidation(success)` after every completed password attempt; an
 // effect may react or ignore it entirely — effects that never declare the
 // function are simply never called. (2) The bound lock/auth state below
-// (`validating`/`validationProgress`, `lockedOut`/`lockoutProgress`),
+// (`validating`/`validationProgress`, `lockedOut`/`lockoutProgress`)
 // wired from Lock.qml on the active effect. This effect answers all of
 // them: a travelling wave in the outcome's colour band, a breathing lift
 // while verifying, and a draining error cast during the lockout cooldown
@@ -30,7 +28,7 @@ Item {
     property bool running: true
     property real intensity: 0.85
     property real speed: 1.0
-    // Multiplier on the grid resolution (>1 = finer detail, more cells,
+    // Multiplier on the grid resolution (>1 = finer detail, more cells
     // more fill cost per frame; <1 = coarser, cheaper). 1.0 keeps the
     // original fixed 32×18 grid.
     property real resolution: 1.0
@@ -146,9 +144,9 @@ Item {
                     }
                     // Ongoing-auth reactions (the bound state above):
                     // - while `validating`, a neutral lift toward `info`
-                    //   that breathes in step with the field's border pulse;
+                    // that breathes in step with the field's border pulse;
                     // - while `lockedOut`, a steady cast toward `error` that
-                    //   fades as the countdown drains (lockoutProgress 1→0).
+                    // fades as the countdown drains (lockoutProgress 1→0).
                     // Both are pure mix-ins at the very end, same as the
                     // wave. They can't overlap — respond() is guarded by
                     // `!lockedOut` — but the `else if` keeps it explicit.

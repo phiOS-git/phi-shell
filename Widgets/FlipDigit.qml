@@ -7,9 +7,8 @@ import "WidgetStates.js" as WidgetStates
 // character it shows actually changes, not the whole clock re-flipping
 // every second. Bar/modules/Clock.qml is the live caller, at
 // `showCard: false`.
-//
 // The cell is two INDEPENDENT pieces, each clipped to exactly half the
-// cell's height, both reading the SAME `_shown` character: `topFlap`,
+// cell's height, both reading the SAME `_shown` character: `topFlap`
 // which is the only thing that ever moves (it folds down toward the
 // centerline, then unfolds back up), and `bottomStatic`, which never has a
 // transform applied to it at all. The static half being pixel-still for
@@ -17,12 +16,10 @@ import "WidgetStates.js" as WidgetStates
 // unit — is what makes this read as a flip rather than a slot-machine reel:
 // there has to be a genuinely motionless anchor for the eye to read the
 // moving half against.
-//
 // Deliberately not a true two-piece split-flap (a physical card that also
 // visibly unfolds INTO the bottom half, replacing it with motion rather
 // than an instant swap) — the bottom stays static by design, folding only
 // from the top.
-//
 // Technique: `topFlap` squashes to near-zero vertical scale via a plain
 // `Scale` transform — a `Scale` rather than an X-axis `Rotation`, since
 // without an explicit perspective matrix the two project identically here
@@ -44,7 +41,7 @@ Item {
     property int sizeStep: 4
     property bool mono: true
     // The calendar clock shows each digit as a bordered card. The status-
-    // bar clock (Bar/modules/Clock.qml) is an isle-size glyph — fontSize0,
+    // bar clock (Bar/modules/Clock.qml) is an isle-size glyph — fontSize0
     // no dice, no case — where a 13px card per digit would dwarf the rest
     // of the bar. `showCard: false` drops the frame and the seam line, and
     // the padding they justified, so the cell measures exactly its digit.
@@ -179,7 +176,7 @@ Item {
         visible: root.showCard
     }
 
-    // The seam between the two physical halves of a real split-flap card —
+    // The seam between the two physical halves of a real split-flap card
     // static, at the centerline, gated to `showCard` for the same reason
     // `cardBorder` is (no room for it at the bar clock's tiny sizeStep 0).
     Rectangle {

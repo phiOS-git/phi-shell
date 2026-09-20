@@ -5,34 +5,29 @@ import qs.Config as Config
 // binding drives (height 0 <-> content height, one fade). This is the
 // NESTED case: a container that is already revealing itself (a Panel/
 // Popover fading in via its own `Behavior on opacity`) whose CHILDREN
-// should not all snap in at once the instant the container finishes —
-// each direct child fades in a few milliseconds after the previous one,
+// should not all snap in at once the instant the container finishes
+// each direct child fades in a few milliseconds after the previous one
 // in declaration order. Deliberately opacity-only, no slide — see
 // `_animate()`'s own comment for the mechanical reason a per-child
 // position slide is not safe to add.
-//
 // Usage — a settings-style column of rows inside an already-fading-in
 // Panel (direct children, same convention Widgets/Reveal itself already
 // uses — no wrapping Column needed, StaggerReveal IS the column):
-//
-//   Panel {
-//       visible: someOverlay.open
-//       // (Panel's own `Behavior on opacity` above is the OUTER fade.)
-//
-//       StaggerReveal {
-//           shown: someOverlay.open
-//           anchors.fill: parent
-//
-//           StyledText { text: "first row" }
-//           StyledText { text: "second row" }
-//           StyledText { text: "third row" }
-//       }
-//   }
-//
-// Every DIRECT child above gets tagged in declaration order and faded in,
+// Panel {
+// visible: someOverlay.open
+// // (Panel's own `Behavior on opacity` above is the OUTER fade.)
+// StaggerReveal {
+// shown: someOverlay.open
+// anchors.fill: parent
+// StyledText { text: "first row" }
+// StyledText { text: "second row" }
+// StyledText { text: "third row" }
+// }
+// }
+// Every DIRECT child above gets tagged in declaration order and faded in
 // `staggerStep` milliseconds after the previous one. Same category-B
 // duration/curve every widget in this shell already uses for its own
-// opacity Behavior (Config.Appearance.motionBDuration/motionBCurve) —
+// opacity Behavior (Config.Appearance.motionBDuration/motionBCurve)
 // `staggerStep` is the only new number, and it is a per-child DELAY on top
 // of that shared animation, not a second timing system.
 
@@ -67,7 +62,7 @@ Column {
     // per-child animation objects live in THIS widget's own `_anims` (a
     // plain JS array, which really can grow arbitrary indices) rather than
     // attached to the child itself. `Qt.createQmlObject`'s second argument
-    // (the object's new parent, for ownership/context only) is `root`,
+    // (the object's new parent, for ownership/context only) is `root`
     // not `child` — nothing about owning the animation requires the child
     // to be its QML parent.
     property var _anims: []
@@ -80,14 +75,13 @@ Column {
     // creation failure (should not happen for a plain NumberAnimation, but
     // nothing here is worth a hard crash for) just leaves that child
     // static — fails open onto "no stagger", never onto a broken panel.
-    //
     // Opacity only, deliberately no position slide: `Column` itself
     // authoritatively assigns every child's `y` on each relayout (that is
     // the whole point of a positioner) — a second, independent animation
     // also driving `y` would fight that assignment instead of cooperating
     // with it, unlike QtQuick's own built-in positioner `add`/`move`
-    // transitions (which are for children actually being inserted/removed,
-    // not for an existing, statically-declared child toggling visibility —
+    // transitions (which are for children actually being inserted/removed
+    // not for an existing, statically-declared child toggling visibility
     // not what `shown` does here). Fading is the one channel free to
     // animate without that conflict.
     function _animate(child, index) {
@@ -96,7 +90,7 @@ Column {
                 // Plain `NumberAnimation`/`PropertyAnimation` has no
                 // `delay` property in QtQuick. A `PauseAnimation` ahead of
                 // the real `NumberAnimation` inside a `SequentialAnimation`
-                // is QtQuick's actual mechanism for "wait, then animate" —
+                // is QtQuick's actual mechanism for "wait, then animate"
                 // `animations` is `SequentialAnimation`'s default list
                 // property, so the two children are reachable by index
                 // with no need for `id`s inside the dynamically-created

@@ -10,19 +10,17 @@ import "../../../Widgets/WidgetStates.js" as WidgetStates
 // component: this repository reaches every reusable visual piece through a
 // directory import (Widgets/, Bar/modules/), and has no precedent for the
 // "component Name: Type {}" inline feature.
-//
 // The two roles read as a conversation, not a stack of identical boxes:
-//   - a small mono role label ("you" / "agent") above the bubble,
-//   - the user's bubble is right-aligned and capped short of full width;
-//     the agent's is left-aligned and full width for long tool output / code,
-//   - the user's bubble is the full B&W inversion (opposite block, main
-//     text); the agent's is a quiet card — a recessed surface with a
-//     hairline, NOT the heavy opposite-coloured Panel border every agent
-//     line used to carry (panels-ux-rework: the user's "very default-looking"
-//     was, on the agent side, a wall of identical hard-framed boxes).
-// Both still live entirely in the B&W grammar — no accent, no second hue,
+// - a small mono role label ("you" / "agent") above the bubble
+// - the user's bubble is right-aligned and capped short of full width;
+// the agent's is left-aligned and full width for long tool output / code
+// - the user's bubble is the full B&W inversion (opposite block, main
+// text); the agent's is a quiet card — a recessed surface with a
+// hairline, NOT the heavy opposite-coloured Panel border every agent
+// line used to carry (panels-ux-rework: the user's "very default-looking"
+// was, on the agent side, a wall of identical hard-framed boxes).
+// Both still live entirely in the B&W grammar — no accent, no second hue
 // every colour from Config.Appearance.
-//
 // A third role, "error" (out-of-plan: a turn that fails upstream — a
 // billing/auth/rate-limit rejection from the provider — used to come back
 // from opencode with an empty parts array and Services/Agent.qml simply
@@ -32,27 +30,25 @@ import "../../../Widgets/WidgetStates.js" as WidgetStates
 // bubble), but its border/text use Config.Appearance.error/errorText, the
 // same invalid-state tokens Widgets.StyledText's own `invalid` prop already
 // draws from (WidgetStates.js contentColor) — no new colour invented.
-//
 // Referenced by id (root.text / root.mine) from the nested StyledText, not
 // a bare `text` (StyledText owns its own `text`) or `parent` — the same
 // indirection Panels/tabs/Notifications.qml documents.
-//
 // Critical self-review pass 2026-09-15 (no user report — looking for real
 // chat-UX gaps rather than waiting to be told about them): two were found.
 // Neither needed a new dependency:
-//   - Markdown rendering. An agent reply routinely contains **bold**,
-//     `code`, fenced blocks, lists — none of it rendered, all shown as
-//     literal punctuation. `Text.MarkdownText` is a real, stable QtQuick
-//     textFormat mode (Qt 5.14+, no external module), applied to the
-//     agent/error bubble only — the user's own bubble stays plain text,
-//     matching every mainstream chat app's own convention that what YOU
-//     typed displays as typed, not reinterpreted.
-//   - No way to copy a reply out of the panel at all: StyledText is a
-//     bare `Text`, not selectable, and nothing here ever wrote to the
-//     system clipboard. Added a hover-revealed copy button using the
-//     exact `wl-copy` invocation this shell already uses elsewhere
-//     (Screenshot/ColorPicker.qml, Launcher/Launcher.qml) — not a new
-//     clipboard mechanism, the same one.
+// - Markdown rendering. An agent reply routinely contains **bold**
+// `code`, fenced blocks, lists — none of it rendered, all shown as
+// literal punctuation. `Text.MarkdownText` is a real, stable QtQuick
+// textFormat mode (Qt 5.14+, no external module), applied to the
+// agent/error bubble only — the user's own bubble stays plain text
+// matching every mainstream chat app's own convention that what YOU
+// typed displays as typed, not reinterpreted.
+// - No way to copy a reply out of the panel at all: StyledText is a
+// bare `Text`, not selectable, and nothing here ever wrote to the
+// system clipboard. Added a hover-revealed copy button using the
+// exact `wl-copy` invocation this shell already uses elsewhere
+// (Screenshot/ColorPicker.qml, Launcher/Launcher.qml) — not a new
+// clipboard mechanism, the same one.
 
 Item {
     id: root
@@ -113,7 +109,7 @@ Item {
                 anchors.margins: root._pad
                 wrapMode: Text.Wrap
                 text: root.text
-                // Agent/error replies render as markdown (bold, code,
+                // Agent/error replies render as markdown (bold, code
                 // lists, fenced blocks) — Qt's own textFormat mode, no
                 // external dependency. The user's own bubble stays plain
                 // text: what you typed displays as typed, not
@@ -134,7 +130,7 @@ Item {
             // the exact same clipboard mechanism this shell already uses
             // (Screenshot/ColorPicker.qml, Launcher/Launcher.qml), not a
             // new one. Hand-rolled rather than Widgets.SmallButton: that
-            // widget's `label` renders through its own fontUi StyledText,
+            // widget's `label` renders through its own fontUi StyledText
             // not the fontSymbol icon font Widgets/StyledIcon.qml uses
             // (its own header: mixing a glyph into a text font risks a
             // missing-glyph box) — same small square-icon-button shape
@@ -149,7 +145,7 @@ Item {
                 width: WidgetStates.controlHeight(Config.Appearance, copyChWidth)
                 height: width
                 radius: Config.Appearance.radiusSmall
-                // Opaque even at rest (matching the bubble's own colour,
+                // Opaque even at rest (matching the bubble's own colour
                 // not "transparent") so the icon never sits on top of
                 // wrapped text bleeding through underneath it while
                 // fading in.

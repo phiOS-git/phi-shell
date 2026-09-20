@@ -1,34 +1,30 @@
 import QtQuick
 import qs.Config as Config
 
-// A lava-lamp field for the lock screen background: slow blobs that rise,
+// A lava-lamp field for the lock screen background: slow blobs that rise
 // fall and merge, with the colour drifting between two tokens. Written
 // from scratch in a Canvas — no extra package.
-//
 // Not true metaballs (a per-pixel threshold Canvas 2D can't do cheaply):
-// each blob is a soft radial gradient drawn with `lighter` compositing,
+// each blob is a soft radial gradient drawn with `lighter` compositing
 // so overlapping blobs bloom into one shape the way lamp wax does.
-//
 // Real physical cues a rigid circle can't give:
-//   - each blob is drawn as an ELLIPSE that slowly stretches/squashes on
-//     two independent, out-of-phase sine waves (`morphPhase`/`morph2Phase`)
-//     — a perfect circle never wobbles, wax does. Drawn via
-//     save()/translate()/scale()/arc()/restore() rather than
-//     ctx.ellipse(), the combination this file (and every sibling effect)
-//     already relies on elsewhere.
-//   - each blob's RADIUS breathes with its own vertical position — bigger
-//     near the bottom (`_heatFactor`, simulating the heat source), smaller
-//     near the top (cooling, contracting).
-//   - each blob carries its own colour-phase OFFSET, not one shared
-//     global phase — the field drifts as independent floating masses,
-//     not one wash shifting hue in lockstep.
-//   - blob count and wobble amplitude are real, caller-settable
-//     properties (`blobCount`, `wobble`), exposed by Settings/sections/
-//     Theme.qml's "Lava lamp" accordion.
-//
+// - each blob is drawn as an ELLIPSE that slowly stretches/squashes on
+// two independent, out-of-phase sine waves (`morphPhase`/`morph2Phase`)
+// — a perfect circle never wobbles, wax does. Drawn via
+// save()/translate()/scale()/arc()/restore() rather than
+// ctx.ellipse(), the combination this file (and every sibling effect)
+// already relies on elsewhere.
+// - each blob's RADIUS breathes with its own vertical position — bigger
+// near the bottom (`_heatFactor`, simulating the heat source), smaller
+// near the top (cooling, contracting).
+// - each blob carries its own colour-phase OFFSET, not one shared
+// global phase — the field drifts as independent floating masses
+// not one wash shifting hue in lockstep.
+// - blob count and wobble amplitude are real, caller-settable
+// properties (`blobCount`, `wobble`), exposed by Settings/sections/
+// Theme.qml's "Lava lamp" accordion.
 // Screensaver animation, an exception confined to the lock surface and
 // stopped on conceal (`running`, cleared by Lock.qml).
-//
 // Colour: tokens only. The wax colour eases between `accent` and `info`
 // on a slow cycle — the two-colour grammar's accent plus one semantic
 // hue, nothing literal.
@@ -43,7 +39,7 @@ Item {
     property real intensity: 0.28
     // A plain multiplier on every per-tick motion delta below, not a
     // second timer interval: changing `interval` instead would also
-    // change how often the colour phase and gradient repaint happen,
+    // change how often the colour phase and gradient repaint happen
     // coupling "how fast it moves" to "how smooth it looks" for no reason.
     property real speed: 1.0
     // --- lock/auth state (bound by Lock.qml on the active effect) -------
@@ -163,7 +159,7 @@ Item {
                 var heatFactor = 0.82 + 0.36 * root._clamp01(blob.y)
                 var baseR = blob.r * unit * heatFactor
 
-                // Elliptical squash/stretch on two independent sines —
+                // Elliptical squash/stretch on two independent sines
                 // never a perfect circle, never symmetric with itself
                 // (the two axes are out of phase), the actual "wobbling
                 // mass" cue a rigid circle can't give no matter how it

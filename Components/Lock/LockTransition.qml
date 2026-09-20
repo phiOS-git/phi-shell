@@ -4,29 +4,26 @@ import qs.Config as Config
 // The single owner of every lock/unlock animation on the lock surface.
 // Lock.qml keeps ALL the layout; this file keeps ONLY the movement, so the
 // transition can be reworked without touching the content:
-//
-//   - the whole-surface envelope (this component's own `opacity`),
-//   - the per-element cascade (`targets` lists the content blocks; each
-//     fades in a little after the previous one, with a small upward rise),
-//   - the low-power bypass (`animated: false` collapses reveal/conceal to
-//     an instant snap — Lock.qml binds it to
-//     Services.PowerBridge.batterySaverActive, the same read-side gate the
-//     screensaver itself is suppressed under),
-//   - the completion event Lock.qml's security-critical unlock path listens
-//     to: `concealFinished` fires exactly once per conceal (or instantly
-//     when animation is disabled). It is the only trigger that clears
-//     `locked` — nothing in this file ever touches PAM or `root.locked`.
-//
+// - the whole-surface envelope (this component's own `opacity`)
+// - the per-element cascade (`targets` lists the content blocks; each
+// fades in a little after the previous one, with a small upward rise)
+// - the low-power bypass (`animated: false` collapses reveal/conceal to
+// an instant snap — Lock.qml binds it to
+// Services.PowerBridge.batterySaverActive, the same read-side gate the
+// screensaver itself is suppressed under)
+// - the completion event Lock.qml's security-critical unlock path listens
+// to: `concealFinished` fires exactly once per conceal (or instantly
+// when animation is disabled). It is the only trigger that clears
+// `locked` — nothing in this file ever touches PAM or `root.locked`.
 // Why the two directions read so differently:
-//   - reveal (locking) is ceremonial: the envelope takes the long category-C
-//     time the old plain fade already used (motionCScramble), while the
-//     elements cascade in during it on the quick category-B
-//     duration/curve, each one `staggerStep` after the previous — the
-//     "inner elements appear with different timings" part of the design.
-//   - conceal (unlocking) is a vanish: elements leave in reverse order on
-//     category B, then the envelope closes on category B too. Leaving a
-//     locked screen should feel quick, not ceremonious.
-//
+// - reveal (locking) is ceremonial: the envelope takes the long category-C
+// time the old plain fade already used (motionCScramble), while the
+// elements cascade in during it on the quick category-B
+// duration/curve, each one `staggerStep` after the previous — the
+// "inner elements appear with different timings" part of the design.
+// - conceal (unlocking) is a vanish: elements leave in reverse order on
+// category B, then the envelope closes on category B too. Leaving a
+// locked screen should feel quick, not ceremonious.
 // The per-element rise is a `transform: Translate`, never a `y` animation:
 // a positioner (the centred Column Lock.qml declares) authoritatively owns
 // `y`, and a second animator fighting it is exactly the conflict
@@ -34,7 +31,6 @@ import qs.Config as Config
 // translate renders the same visual without touching geometry, so the rise
 // is safe here; it is appended to any transform the target already had (the
 // password panel's error shake), never replacing it.
-//
 // `staggerStep` is a per-child DELAY on top of the shared category-B
 // animation — the same convention Widgets/StaggerReveal.qml's own
 // `staggerStep` documents (a delay, not a second timing system), so it is

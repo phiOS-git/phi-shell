@@ -7,12 +7,10 @@ import qs.Widgets as Widgets
 
 // Native background layer inside the shell — no hyprpaper, no swww.
 // Per-screen instance.
-//
 // WlrLayershell.layer = WlrLayer.Background, guarded and set from
-// Component.onCompleted. `Quickshell.Wayland` imported directly here —
+// Component.onCompleted. `Quickshell.Wayland` imported directly here
 // this surface's whole reason to exist IS setting its own layer, the same
 // narrow exception Components/Lock/Lock.qml and Components/Bar/Bar.qml carry.
-//
 // The wallpaper is composited from up to three layers: a solid colour
 // that is always the base, an optional generated texture overlay, and an
 // optional image with a fit mode. All state lives in
@@ -97,7 +95,7 @@ PanelWindow {
         }
 
         // Layer 3: the wallpaper image, crossfaded on change.
-        // Two stacked Images: `wallCur` paints the current displayImage,
+        // Two stacked Images: `wallCur` paints the current displayImage
         // `wallPrev` keeps the outgoing one underneath while the new source
         // loads and fades in (asynchronous loading means the new texture is
         // not ready the moment the fade starts). wallPrev's source is not a

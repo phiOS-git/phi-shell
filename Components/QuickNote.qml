@@ -9,11 +9,10 @@ import qs.Widgets as Widgets
 // clicking the bottom right corner a quick floating editor window
 // appears ... Positioning the mouse in the corner should have show a
 // small transition (inspired by macos corner note)." Services/
-// QuickNote.qml owns the text/persistence; this file is presentation —
+// QuickNote.qml owns the text/persistence; this file is presentation
 // a small always-present corner tab that grows on hover (the "small
 // transition"), and expands into a full editor on click.
-//
-// Anchored bottom-right with content-sized implicitWidth/implicitHeight,
+// Anchored bottom-right with content-sized implicitWidth/implicitHeight
 // not a full-screen transparent surface — copied directly from
 // Notifications/Toast.qml, the only other small, non-blocking corner
 // surface in this repo. That choice matters here specifically: a
@@ -24,12 +23,10 @@ import qs.Widgets as Widgets
 // the corner tab (or the editor, once open) avoids that by construction
 // — no click-outside-to-close handler is needed either, since clicking
 // anywhere outside this small window never reaches it at all.
-//
-// exclusiveZone: 0 (Toast's own choice, not -1): this is an ambient,
+// exclusiveZone: 0 (Toast's own choice, not -1): this is an ambient
 // on-demand utility, not a blocking modal — it reserves no space and
 // does not dim/cover anything else, so it sits outside the still-open
 // "dim coverage split" TODO entirely.
-//
 // Single instance on screens[0], not per-screen: same reasoning as every
 // other focused/toggled (not ambient-per-monitor) surface in this repo
 // (Sidebar, Settings, the Dialogs/ family) — one note, not one per
@@ -77,14 +74,13 @@ PanelWindow {
         NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
     }
 
-    // Only take real keyboard focus while the editor is actually open —
+    // Only take real keyboard focus while the editor is actually open
     // the corner tab, like Toast, must never steal focus from whatever
     // the user is doing (WlrKeyboardFocus defaults to None already).
     // Reactive, unlike Services/LayerFocus.qml's one-shot
     // Component.onCompleted shape — this window is a single, permanently-
     // alive instance whose focus need toggles over its lifetime, not a
     // surface created fresh each time it's shown.
-    //
     // Also seeds the editor's text on every open — imperatively, not a
     // one-way `text:` binding, which QML would silently break the first
     // time the user types (the same controlled-component reasoning
@@ -139,7 +135,7 @@ PanelWindow {
     // The editor itself — a Widgets.Panel matching every other card
     // surface in this repo. Fade lives on this wrapper Item, not on the
     // Panel directly: Widgets/Panel.qml's own root already binds its own
-    // `opacity` internally (WidgetStates.opacityFor(resolvedState)) —
+    // `opacity` internally (WidgetStates.opacityFor(resolvedState))
     // assigning `opacity:`/`visible:` on the Panel instance itself would
     // silently replace that binding rather than compose with it. Same
     // fadeRoot-wraps-the-Panel shape as Dialogs/ConfirmDialog.qml and
