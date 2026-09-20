@@ -3,25 +3,9 @@ import QtQml
 import Quickshell
 import qs.Services as Services
 
-// Owns the Settings panel's shown state plus everything needed to summon
-// it AND navigate it from outside, so any surface can reach a specific
-// control in-process:
-// - the Super+S bind (through the IpcHandler in Settings/Settings.qml)
-// - the bar volume/brightness card's "settings" button
-// - every bar-overlay "Show in settings" button
-// - `qs ipc call settings reveal <option-id>` from a system overlay
-// - Settings' own close button / Esc / click-outside
-// Two navigation targets, both consumed and cleared by Settings/Settings.qml:
-// pendingSection — a sections.json `type` (or title) to select on open.
-// pendingReveal — a Settings/options.js option id ("theme.colors.accent").
-// Its section is the part before the first "." so nothing
-// has to look the mapping up. Settings.qml scrolls the
-// content pane to the SettingsRow that registered this id
-// and pulses it; if that section is still loading when the
-// request lands, the row's own registration retries it.
-// `query` is the live search string, published here rather than kept private
-// to Settings.qml so a SettingsRow deep inside a section's Loader can bind
-// its own `highlighted` state to it without reaching back up the tree.
+// Owns Settings panel state and navigation. Navigation targets: pendingSection
+// (sections.json type) and pendingReveal (options.js id). Query published for
+// SettingsRow highlight binding without tree climbing.
 
 Singleton {
     id: root
@@ -31,32 +15,25 @@ Singleton {
     property string pendingSection: ""
     property string pendingReveal: ""
 
-    // Live search text from the panel's search field. "" when the panel is
-    // closed or the field is empty.
+    // Live search text; "" when panel closed or field empty.
     property string query: ""
 
-    // A SettingsRow can mark itself `advanced: true`; it then stays out of the
-    // way (visible: false, no layout space) until this is on — see
-    // SettingsRow.qml's own `visible` binding. Session-only, not a `phi state`
-    // key, so it defaults off each time the shell starts.
+    // SettingsRow `advanced` gate; session-only, defaults off per shell start.
     property bool showAdvanced: false
     function setShowAdvanced(v) { root.showAdvanced = v }
 
-    // Reactive on `shown` rather than added to each setter individually so it
-    // covers every entry point below (show, openSection, reveal) the same way.
+    // On shown, hide other overlays uniformly across all entry points.
     onShownChanged: if (root.shown) {
         Services.AgentPanel.hide()
         Services.BarPopout.hide()
         Services.HyprlandBridge.leaveReservedWorkspace()
     }
 
-    // id -> the SettingsRow item currently registered for it (only rows in the
-    // loaded section are present). Not reactive on purpose: consumers read it
-    // transiently during a reveal, they do not bind to it.
+    // id -> SettingsRow item (loaded section only). Read transiently, not bound.
     property var _rows: ({})
 
-    // Emitted whenever a row (re)registers, so Settings.qml can complete a
-    // reveal that arrived before its section finished loading.
+    // Emitted when row registers; lets Settings.qml complete reveals before
+    // section loads.
     signal rowRegistered(string id)
 
     function show() { root.shown = true }
@@ -74,7 +51,7 @@ Singleton {
         root.shown = true
     }
 
-    // Open the panel (if needed) at a specific option and pulse it.
+    // Open panel at specific option and pulse it.
     function reveal(id) {
         var oid = id || ""
         root.pendingReveal = oid
