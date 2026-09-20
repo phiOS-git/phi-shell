@@ -7,43 +7,6 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// A screen-magnifier loupe: a circular, glass-edged lens centred ON the
-// pointer, showing the area under it magnified. Super+Z toggles it
-// (Services/Magnifier owns the state); hyprland.lua binds the zoom /
-// lens-size steppers.
-//
-// FREEZE-ON-STOP. A lens centred on the pointer and fed a *live*
-// wlr-screencopy stream is mathematically self-referential — the capture
-// region under the pointer is exactly this overlay's own transparent hole,
-// so each live frame would magnify the previous magnified frame and the
-// view collapses within a few frames. So the feed is NOT live: it is a
-// still that is recaptured (ScreencopyView.captureFrame) whenever the
-// pointer settles, with the magnified layer hidden for the grab so the
-// capture never contains the loupe. While the pointer moves, the last
-// still is panned under the circle — stale but centred and smooth; a slow
-// keep-fresh recapture runs while the pointer is parked.
-//
-// The pointer itself is never magnified: `paintCursor: false` keeps it
-// out of the capture, and the compositor still draws the real hardware
-// cursor on top of this overlay at its true position — so it "rests on
-// top of" the lens with no glyph of our own to draw.
-//
-// The circle is a real mask (QtQuick.Effects MultiEffect, maskSource a
-// round Rectangle), not an opaque bezel disc. The glass edge is a plain
-// Canvas (createRadialGradient, the same primitive Spotlight.qml uses): an
-// inner shadow falloff + a crisp rim. True optical refraction would need a
-// fragment shader; this falloff approximates it.
-//
-// Cursor tracking is the same `hyprctl cursorpos` poll Spotlight.qml uses;
-// the lens position eases toward each sample on a SpringAnimation for a
-// "liquid" trailing + settle feel.
-//
-// Not verifiable without a compositor — flagged for the screenshot pass:
-// whether `captureFrame()` + the hide/grab timing is blink-free enough,
-// `mask: Region {}` click-through, and the recapture cadence. (That
-// ScreencopyView honours the explicit scaled width/height — the zoom — is
-// confirmed from its source: the buffer is painted scaled to the item's
-// boundingRect.)
 
 PanelWindow {
     id: root
@@ -67,25 +30,25 @@ PanelWindow {
     property bool _settled: false
     property double _lastCaptureMs: 0
 
-    // Smoothed position — the circle, the magnified image and the bezel
-    // all derive from this, so they move as one rather than the rim
-    // drifting apart from the lens on a separate Behavior.
+    // Smoothed position — the circle, the magnified image and the bezel all derive
+    // from this, so they move as one rather than the rim drifting apart from the
+    // lens on a separate Behavior.
     property real viewX: cursorX
     property real viewY: cursorY
-    // Disabled until the first real sample so the loupe appears AT the
-    // pointer rather than flying in from the screen centre; springy after.
+    // Disabled until the first real sample so the loupe appears AT the pointer
+    // rather than flying in from the screen centre; springy after.
     Behavior on viewX { enabled: root.hasPosition; SpringAnimation { spring: 3.4; damping: 0.34; mass: 1.1; epsilon: 0.25 } }
     Behavior on viewY { enabled: root.hasPosition; SpringAnimation { spring: 3.4; damping: 0.34; mass: 1.1; epsilon: 0.25 } }
 
     anchors { top: true; bottom: true; left: true; right: true }
-    // Anchored on all four edges, this must ignore other layers' exclusive
-    // zones so local (0,0) is the true screen origin the cursor maths uses
+    // Anchored on all four edges, this must ignore other layers' exclusive zones
+    // so local (0,0) is the true screen origin the cursor maths uses
     // (Spotlight.qml's own note).
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
-    // Empty input region: the loupe never intercepts a click or a scroll —
-    // those reach the app underneath; its controls come through
-    // hyprland.lua binds. Flagged: not verified on a compositor from here.
+    // Empty input region: the loupe never intercepts a click or a scroll — those
+    // reach the app underneath; its controls come through hyprland.lua binds.
+    // Flagged: not verified on a compositor from here.
     mask: Region {}
     visible: fade.opacity > 0
 
@@ -103,8 +66,8 @@ PanelWindow {
             root._capturing = false
         }
     }
-    // A zoom / size change invalidates the current still; _settled = false
-    // makes the next stationary tick refresh it.
+    // A zoom / size change invalidates the current still; _settled = false makes
+    // the next stationary tick refresh it.
     onZoomChanged: { bezel.requestPaint(); root._settled = false }
     onLensSizeChanged: { bezel.requestPaint(); root._settled = false }
 
@@ -135,8 +98,8 @@ PanelWindow {
         onExited: cursorProbe.running = false
         stdout: StdioCollector {
             onStreamFinished: {
-                // "x, y" — Hyprland src/ipc/s1/Commands.cpp format string,
-                // the same parse Spotlight.qml uses.
+                // "x, y" — Hyprland src/ipc/s1/Commands.cpp format string, the same parse
+                // Spotlight.qml uses.
                 const parts = this.text.trim().split(",")
                 if (parts.length !== 2) return
                 const x = parseFloat(parts[0])
@@ -145,8 +108,8 @@ PanelWindow {
                 root.cursorX = x - root.screen.x
                 root.cursorY = y - root.screen.y
                 if (!root.hasPosition) {
-                    // cursorX/Y are already set above, with the Behavior
-                    // still disabled — viewX/Y snap to the pointer here.
+                    // cursorX/Y are already set above, with the Behavior still disabled — viewX/Y
+                    // snap to the pointer here.
                     root.hasPosition = true
                     root._recapture()
                 }
@@ -155,8 +118,8 @@ PanelWindow {
         }
     }
 
-    // Decide, each sample, whether the pointer has settled and the still
-    // needs refreshing.
+    // Decide, each sample, whether the pointer has settled and the still needs
+    // refreshing.
     function _tick() {
         const dx = root.cursorX - root.prevSampleX
         const dy = root.cursorY - root.prevSampleY
@@ -184,9 +147,9 @@ PanelWindow {
                 scv.captureFrame()
                 grabDone.restart()
             } else {
-                // Older Quickshell without captureFrame: fall back to a
-                // live feed. Centred + live is self-referential (see the
-                // header) — the screenshot pass then picks another mode.
+                // Older Quickshell without captureFrame: fall back to a live feed. Centred +
+                // live is self-referential (see the header) — the screenshot pass then picks
+                // another mode.
                 console.warn("phi-shell: ScreencopyView.captureFrame() missing — magnifier falling back to a live feed")
                 scv.live = true
                 root._capturing = false
@@ -228,21 +191,18 @@ PanelWindow {
 
             readonly property bool _feedShown: root._ready && !root._capturing
 
-            // The magnified still, rendered to a texture and masked to a
-            // circle by the MultiEffect below (no opaque frame — the mask
-            // is what makes it round).
+            // The magnified still, rendered to a texture and masked to a circle by the
+            // MultiEffect below (no opaque frame — the mask is what makes it round).
             Item {
                 id: feedClip
                 anchors.fill: parent
-                // Hidden source, NO layer: MultiEffect feeds a hidden source
-                // through its internal ShaderEffectSource proxy, which
-                // renders hidden sources into the input texture (Qt's
-                // documented invisible-source pattern; Qt's own MultiEffect
-                // baseline tests use a hidden source exactly like this). A
-                // `layer.enabled: true` source is read straight from the
-                // item's own layer texture instead — and a hidden item's
-                // layer never carries the dynamic screencopy content, so
-                // the effect input stayed empty: that was the blank lens.
+                // Hidden source, NO layer: MultiEffect feeds a hidden source through its
+                // internal ShaderEffectSource proxy, which renders hidden sources into the
+                // input texture (Qt's documented invisible-source pattern; Qt's own
+                // MultiEffect baseline tests use a hidden source exactly like this). A
+                // `layer.enabled: true` source is read straight from the item's own layer
+                // texture instead — and a hidden item's layer never carries the dynamic
+                // screencopy content, so the effect input stayed empty: that the blank lens.
                 visible: false
 
                 ScreencopyView {
@@ -250,16 +210,13 @@ PanelWindow {
                     captureSource: root.screen
                     live: false
                     paintCursor: false
-                    // `width`/`height` here ARE the magnification:
-                    // ScreencopyView paints each captured buffer scaled to
-                    // fill its own boundingRect (WlBufferQSGDisplayNode
-                    // .setRect), so a screen.width * zoom wide item paints
-                    // every screen pixel zoom × zoom — a plain lens window
-                    // of it then shows zoom×.
+                    // `width`/`height` here ARE the magnification: ScreencopyView paints each
+                    // captured buffer scaled to fill its own boundingRect (WlBufferQSGDisplayNode
+                    // .setRect), so a screen.width * zoom wide item paints every screen pixel zoom
+                    // × zoom — a plain lens window of it then shows zoom×.
                     width: root.screen.width * root.zoom
                     height: root.screen.height * root.zoom
-                    // Pan so (viewX, viewY) in screen space lands at the
-                    // lens centre.
+                    // Pan so (viewX, viewY) in screen space lands at the lens centre.
                     x: root.lensSize / 2 - root.viewX * root.zoom
                     y: root.lensSize / 2 - root.viewY * root.zoom
                 }
@@ -270,9 +227,8 @@ PanelWindow {
                 anchors.fill: parent
                 radius: width / 2
                 visible: false
-                // A hidden-but-layered item is the maskSource shape Qt's own
-                // MultiEffect baseline tests use; the effect samples the
-                // layer texture for the mask alpha.
+                // A hidden-but-layered item is the maskSource shape Qt's own MultiEffect
+                // baseline tests use; the effect samples the layer texture for the mask alpha.
                 layer.enabled: true
             }
 
@@ -284,8 +240,8 @@ PanelWindow {
                 visible: lens._feedShown
             }
 
-            // While a fresh grab is in flight the magnified layer is
-            // hidden; show a faint hint the loupe is still there.
+            // While a fresh grab is in flight the magnified layer is hidden; show a faint
+            // hint the loupe is still there.
             Rectangle {
                 anchors.fill: parent
                 radius: width / 2
@@ -306,8 +262,8 @@ PanelWindow {
                     const opp = Config.Appearance.colorOpposite
                     const scrim = Config.Appearance.overlayScrim
 
-                    // 1. glass edge — the light falloff a real lens rim has,
-                    //    darkening toward the edge (approximates refraction).
+                    // 1. glass edge — the light falloff a real lens rim has, darkening toward the
+                    // edge (approximates refraction).
                     const sh = ctx.createRadialGradient(c, c, rLens * 0.62, c, c, rLens)
                     sh.addColorStop(0, Qt.rgba(scrim.r, scrim.g, scrim.b, 0))
                     sh.addColorStop(0.8, Qt.rgba(scrim.r, scrim.g, scrim.b, 0))
