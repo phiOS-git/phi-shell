@@ -15,13 +15,11 @@ import "../glyphs.js" as Glyphs
 // with the "media" key, same click-to-toggle shape as the volume/network
 // buttons); a right click plays/pauses the active player directly — the
 // one touch that shouldn't need a card open.
-//
 // The secondary action sits on a SECOND TapHandler, the same "add the
 // button the other never claimed" pattern
 // Components/BarPopout/modules/Clipboard.qml uses: Segment's own internal
 // TapHandler claims only the left button, so the two never contest for the
 // same pointer button.
-//
 // Touch is a separate case. Qt's TapHandler ignores `acceptedButtons` for
 // touch events entirely (the button check in its Released branch is
 // `isTouch || …`), so a touchscreen tap was landing on the right-button

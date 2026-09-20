@@ -6,18 +6,16 @@ import Quickshell.Services.Pipewire
 // Config/ allowed to touch this service surface. Every bar module and the
 // Devices settings section reads this, never Quickshell.Services.Pipewire
 // directly.
-//
 // The C++ class behind a pipewire node is `PwNodeIface`, but it registers
 // under `QML_NAMED_ELEMENT(PwNode)` — the QML-facing name is `PwNode`, not
 // the C++ class name (a real-hardware run caught this mismatch, "PwNodeIface
 // is not a type"). A `PwNode`'s `audio` property is non-null based on
-// whether the node handles audio at all, but the values INSIDE it (volume,
-// muted) are only valid once the node is bound via PwObjectTracker —
+// whether the node handles audio at all, but the values INSIDE it (volume
+// muted) are only valid once the node is bound via PwObjectTracker
 // unbound objects have limited information access. Every node this file
 // hands out for selection is tracked below for exactly that reason;
 // `defaultAudioSink.ready` / a listed node's `.ready` reports whether the
 // binding has completed.
-//
 // preferredDefaultAudioSink / preferredDefaultAudioSource are writable
 // PwNode references on the Pipewire singleton — assigning one is how the
 // shell changes the system default, with no `wpctl` shell-out. Unverified
@@ -113,7 +111,7 @@ Singleton {
         if (n !== null) Pipewire.preferredDefaultAudioSource = n
     }
 
-    // Binds the default sink/source AND every node offered for selection,
+    // Binds the default sink/source AND every node offered for selection
     // so `.description` / `.ready` on a listed node is real rather than the
     // unbound placeholder. An array literal re-evaluates when any of its
     // inputs change (a device plugged in, the default switched), so the

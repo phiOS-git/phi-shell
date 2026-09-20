@@ -8,33 +8,28 @@ import qs.Config as Config
 // Rectangle properties would be a silent trap the day this shell runs
 // against an older Qt. This component avoids the question entirely with a
 // technique that has worked since Canvas existed (Qt 5).
-//
 // Technique: draws one continuous rounded-rect path on a QtQuick `Canvas`
 // (the standard HTML5-2D-context arcTo() recipe for a per-corner rounded
-// rect — a straight `lineTo` into each corner, then `arcTo` around it),
+// rect — a straight `lineTo` into each corner, then `arcTo` around it)
 // fills it, and strokes it for the border, inset by half the stroke width
 // so the stroke sits fully inside the item's bounds (matching how
 // `Rectangle.border` itself insets, not a centred stroke). Each radius is
 // clamped to half of whichever side it sits on, so two large radii on a
 // small box never overlap into a bowtie.
-//
 // Usage — a box rounded radiusSmall on its top-left corner (the corner
 // nearest its parent icon) and radiusLarge everywhere else:
-//
-//   AsymmetricPanel {
-//       anchors.fill: parent
-//       color: Config.Appearance.surface1
-//       borderColor: Config.Appearance.border
-//       borderWidth: Config.Appearance.borderWidthStrong
-//       radiusTopLeft: Config.Appearance.radiusSmall
-//       radiusTopRight: Config.Appearance.radiusLarge
-//       radiusBottomLeft: Config.Appearance.radiusLarge
-//       radiusBottomRight: Config.Appearance.radiusLarge
-//
-//       StyledText { text: "content sits in the default slot, unclipped —
-//                            same as Widgets/Panel's own content Item" }
-//   }
-//
+// AsymmetricPanel {
+// anchors.fill: parent
+// color: Config.Appearance.surface1
+// borderColor: Config.Appearance.border
+// borderWidth: Config.Appearance.borderWidthStrong
+// radiusTopLeft: Config.Appearance.radiusSmall
+// radiusTopRight: Config.Appearance.radiusLarge
+// radiusBottomLeft: Config.Appearance.radiusLarge
+// radiusBottomRight: Config.Appearance.radiusLarge
+// StyledText { text: "content sits in the default slot, unclipped
+// same as Widgets/Panel's own content Item" }
+// }
 // Widgets/Panel.qml uses this internally only when its four corner
 // properties actually differ (see its own `_asymmetric` guard) — every
 // Panel with a plain uniform radius keeps the cheaper native `Rectangle`

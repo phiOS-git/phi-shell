@@ -5,12 +5,10 @@ import qs.Config as Config
 // does not fit its width. Category D (ambient) motion: a slow continuous
 // drift, never triggered by a user event, so it can never be "a heavy
 // effect on a frequent event".
-//
 // First consumer: the shared media controls section
 // (Components/BarPopout/modules/MediaControls.qml) for its track-title and
 // artist lines. The owning card gates `running` on its own on-screen
 // state, so the drift never ticks while a card is closed.
-//
 // The cycle is deterministic and timer-driven (not a `running`-bound
 // SequentialAnimation, whose resume-after-interrupt would restart a
 // re-opened card mid-scroll): a short leading hold — the "starts after a
@@ -21,7 +19,6 @@ import qs.Config as Config
 // long one drift at the same visual pace), then a short end hold with the
 // whole text visible before the loop restarts. A text that fits is never
 // animated: static, left-aligned, unclipped-look.
-//
 // TODO: unverified at real frame timing — a long title should hold, drift
 // once, hold at the end, loop; a short title must stay put.
 

@@ -6,7 +6,6 @@ import qs.Services as Services
 // Settings/sections/Connectivity.qml's Wi-Fi group — one implementation
 // so the list/connect logic exists in one place, shareable with any future
 // caller that needs the same UI.
-//
 // `active` controls when a scan is triggered: Settings' Connectivity
 // section only exists while it's the loaded section (Settings/Settings.qml's
 // Loader), so the default `true` fires a scan exactly once per visit
@@ -14,7 +13,6 @@ import qs.Services as Services
 // binding instead should pass `active` explicitly, tied to its own
 // visibility — otherwise `Component.onCompleted` fires once at shell
 // startup regardless of whether that surface is ever opened.
-//
 // Services/WifiBridge.qml owns the scan/connect state and every nmcli call
 // (the fenced service-surface rule, phi-shell/CLAUDE.md). Tapping a row
 // that is already connected does nothing. Tapping an open or already-
@@ -129,7 +127,7 @@ Item {
                         : (modelData.secured
                             ? ("Secured · " + modelData.signal + "%")
                             : ("Open · " + modelData.signal + "%")))
-                // `enabled` reflects whether a tap actually does anything —
+                // `enabled` reflects whether a tap actually does anything
                 // ListRow's own disabled dimming and hover/cursor handlers
                 // key off `enabled`, so a secured-never-joined or
                 // already-connected row reads as inert instead of looking

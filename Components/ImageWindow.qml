@@ -7,7 +7,6 @@ import qs.Widgets as Widgets
 // One delegate per open image, created/destroyed by a `Variants` block in
 // shell.qml over Services.ImageWindows.windows — this file owns no list
 // of its own siblings, only its own single entry's `id`/`path`.
-//
 // Built on Quickshell's real `FloatingWindow` type — a genuine
 // xdg-toplevel, NOT a WlrLayer.* layer-shell surface like every other
 // floating-looking thing in this shell. This is the deliberate fix for an
@@ -17,9 +16,8 @@ import qs.Widgets as Widgets
 // window" once Hyprland's rule matching caught up to it. This surface has
 // no second process at all — it's created, owned and destroyed by
 // phi-shell itself, the same way every other dialog/overlay here is.
-//
 // `fullscreen` and `startSystemMove()` below are FloatingWindow's own
-// real, native members (the real xdg_toplevel interactive-move request),
+// real, native members (the real xdg_toplevel interactive-move request)
 // not a hand-rolled resize-to-screen-bounds simulation — a layer-shell
 // PanelWindow genuinely has neither.
 
@@ -64,7 +62,7 @@ FloatingWindow {
     // Widgets/Panel is the one surface primitive every container in this
     // shell composes, so this surface is built from it rather than a
     // hand-rolled Rectangle. A 4px border was the original ask, but no
-    // border-WIDTH-role token is actually 4px (border-width is 2px,
+    // border-WIDTH-role token is actually 4px (border-width is 2px
     // border-width-strong is 1px — radius-large is 4px, but that's a
     // corner-radius role, not a stroke width, so reusing it here would be
     // picking a same-numbered token from the wrong grammar). Left on

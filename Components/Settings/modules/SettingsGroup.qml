@@ -9,14 +9,12 @@ import "./options.js" as Options
 // describes), a full-width hairline, then the rows stacked flush with no
 // gap (each Modules.SettingsRow draws its own top hairline after the first). A
 // flat shade fill (no border) separates one group from the next.
-//
 // Settings-panel structure, not a general widget, so it lives here with
 // Modules.SettingsRow and assumes its children stack with no gap.
-//
 // A group may carry its own `optionId` (a Settings/options.js catalogue
-// entry): it then registers with Services/SettingsPanel like a Modules.SettingsRow,
+// entry): it then registers with Services/SettingsPanel like a Modules.SettingsRow
 // so `reveal("connectivity.bluetooth")` or a search selection scrolls the
-// content pane to the whole group and pulses it — for a section (General,
+// content pane to the whole group and pulses it — for a section (General
 // the package lists) whose "options" are groups, not individual rows.
 
 Item {
@@ -36,14 +34,14 @@ Item {
     // "this feature doesn't exist" rather than "this machine doesn't have
     // it"). A capability-gated group sets `disabled` instead of `visible`:
     // the title, caption and rule stay put, `disabledReason` explains why
-    // in place of the rows, and the rows themselves stay in the tree —
-    // dimmed to WidgetStates.INACTIVE_OPACITY, the same "same weight,
-    // reduced opacity" affordance every disabled control already uses —
+    // in place of the rows, and the rows themselves stay in the tree
+    // dimmed to WidgetStates.INACTIVE_OPACITY, the same "same weight
+    // reduced opacity" affordance every disabled control already uses
     // rather than being torn down and losing scroll/search position.
     property bool disabled: false
     property string disabledReason: ""
     // Same "advanced" gate Modules.SettingsRow.qml carries, at whole-group
-    // granularity — for a group that is entirely power-user detail,
+    // granularity — for a group that is entirely power-user detail
     // rather than one row inside an otherwise-ordinary group. Hidden
     // unless Services.SettingsPanel.showAdvanced, unless a live search
     // already matches the group.
@@ -163,7 +161,7 @@ Item {
         width: parent.width
         implicitHeight: root.preview ? body.implicitHeight + _previewPad * 2 : body.implicitHeight
         enabled: !root.disabled
-        // Mirrors Widgets/WidgetStates.js's own INACTIVE_OPACITY —
+        // Mirrors Widgets/WidgetStates.js's own INACTIVE_OPACITY
         // duplicated here rather than importing that file, since every
         // existing importer of it is a sibling inside Widgets/ itself and
         // this is the one Settings-panel structural file outside it.

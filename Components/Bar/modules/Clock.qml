@@ -6,11 +6,9 @@ import qs.Widgets as Widgets
 
 // Just the system clock: a click toggles the small calendar panel through
 // Services/Calendar.qml, which owns its shown state.
-//
 // `screen` is required for API uniformity with every other module type
 // Bar.qml's registry can load, even though a clock has no per-monitor
 // behaviour of its own to use it for.
-//
 // The digits are Widgets.FlipDigit cells, the same ones the calendar
 // overlay uses, injected through Segment's `labelDelegate` slot (the
 // label-side mirror of `iconDelegate`) so the existing Segment button
@@ -18,7 +16,6 @@ import qs.Widgets as Widgets
 // `showCard: false` — at the status-bar's isle sizeStep 0 each digit is a
 // plain glyph, the bordered "card" version stays on the calendar clock
 // where it shows at sizeStep 4.
-//
 // Format (12/24-hour, seconds, date) is Config/ClockPrefs.qml, edited
 // from Settings/sections/Theme.qml's "Clock" group. The seconds/AM-PM
 // cells and the date text collapse out of the Row entirely (not just

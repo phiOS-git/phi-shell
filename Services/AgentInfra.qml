@@ -8,16 +8,13 @@ import Quickshell.Io
 // AiAgent.qml: the state of the phi-agent systemd user units, and the
 // values in the broker/engine config files a user would want to check
 // without opening a terminal.
-//
 // Kept out of Services/Agent.qml on purpose — that file is the one client
 // point for the running A1 opencode service; nothing here is a call to
 // opencode, it's `systemctl` and plain file reads.
-//
 // The unit state and the broker meter are genuinely runtime. broker.json /
 // opencode.json / the whitelist are versioned config, surfaced here
-// READ-ONLY as a readout with the file path, never an edit control —
+// READ-ONLY as a readout with the file path, never an edit control
 // editing them from a panel would fight `git pull`.
-//
 // Same shape as Services/SystemInfo.qml: one `sh -c` script emitting
 // tagged lines, parsed once.
 

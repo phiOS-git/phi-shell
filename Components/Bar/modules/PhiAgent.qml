@@ -4,16 +4,13 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// `processing` is bound to Services/Agent.qml (the one client point) —
+// `processing` is bound to Services/Agent.qml (the one client point)
 // true while an A1 turn is in flight, false otherwise.
-//
 // Segment's `active` state (full bg/fg inversion to accent) is used
 // here, not `tone` (a text-colour-only semantic highlight) — this is the
 // one bar module that needs the stronger, Tier-1 accent treatment.
-//
 // Label, not glyph: U+03A6 (Φ, uppercase) renders through the general UI
 // text font via StyledText, not the icon-only symbol font via StyledIcon.
-//
 // A slow, continuous opacity breathe. Applied to this wrapper Item, not
 // to the Segment directly: Segment already owns its own internal
 // `opacity` binding (WidgetStates.opacityFor, for its disabled/loading
@@ -35,7 +32,7 @@ Item {
     // state — same path as the Super+P bind and the Settings button.
     // `active` still tracks `processing` only: a panel-open state is
     // deliberately NOT reflected here (the panel being on screen is its
-    // own feedback). Handler on the inner Segment, not the wrapper Item —
+    // own feedback). Handler on the inner Segment, not the wrapper Item
     // the wrapper exists only to host the opacity breathe (see the note
     // above on why an external opacity animation on Segment would sever
     // its internal binding).
@@ -43,7 +40,7 @@ Item {
         id: segment
         anchors.fill: parent
         label: "Φ"
-        // Segment defaults every bar button's text to sizeStep 0 —
+        // Segment defaults every bar button's text to sizeStep 0
         // correct for a multi-character label, but a lone glyph character
         // reads visually lighter than this bar's Canvas-drawn icons at
         // that same nominal size. One step up brings its apparent weight

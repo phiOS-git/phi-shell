@@ -8,14 +8,12 @@ import qs.Services as Services
 // Shared wallpaper state — a per-screen Components/Background.qml surface
 // can't own its own IPC or state without colliding across instances (same
 // split as Services/Spotlight.qml).
-//
-// The wallpaper is composited from up to three layers: a solid `color`,
+// The wallpaper is composited from up to three layers: a solid `color`
 // an optional procedural `texture` overlay (generated once by `phi
 // wallpaper texture` and cached), and an optional `image` with a fit
 // `mode`. Every value is persisted through `phi state`.
-//
 // setX() updates the reactive property synchronously (the surface
-// repaints at once) and fires `phi state set` underneath fire-and-forget,
+// repaints at once) and fires `phi state set` underneath fire-and-forget
 // purely for persistence.
 
 Singleton {
@@ -34,7 +32,7 @@ Singleton {
     property string texturePath: ""       // cached PNG, "" until generated
 
     // Every image in the wallpaper folder, grouped for the settings picker:
-    // [{ name, images: [absolute paths] }] — one section per subfolder,
+    // [{ name, images: [absolute paths] }] — one section per subfolder
     // loose files under "General". A subfolder is how a set of static
     // wallpapers is organised; the picker renders the sections as
     // collapsible accordions so a closed group costs nothing while the
@@ -58,7 +56,7 @@ Singleton {
     // it is that service's current entry, otherwise the user's manually
     // picked static image. One source of truth, so the surface, the
     // texture-applies check and the settings all agree on what is shown.
-    // Falls back to the static pick whenever the dynamic entry is empty —
+    // Falls back to the static pick whenever the dynamic entry is empty
     // before its first probe resolves, and whenever the active folder has
     // no matching image — so the wallpaper never blanks for a feature.
     readonly property string displayImage: Services.DynamicWallpaper.activeNow
@@ -67,8 +65,8 @@ Singleton {
         : root.image
 
     // The texture only means anything when there is no image, or the image
-    // does not fully cover the solid colour (contain / repeat leave gaps,
-    // where the colour + texture show through). Judged on `displayImage` —
+    // does not fully cover the solid colour (contain / repeat leave gaps
+    // where the colour + texture show through). Judged on `displayImage`
     // the image actually shown — not the static pick, so a covering
     // dynamic image suppresses the grain exactly like a static one.
     readonly property bool textureApplies: root.displayImage.length === 0

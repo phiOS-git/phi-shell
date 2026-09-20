@@ -4,20 +4,17 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// An animated icon with scrolling text; full detail lives in the sidebar,
+// An animated icon with scrolling text; full detail lives in the sidebar
 // not here. Not a stack of toast cards: exactly one shown at a time, from
 // Services.Notifications' own queue, so a burst of notifications reads as
 // a sequence rather than a pile of overlapping boxes.
-//
 // One instance per screen (shell.qml's Variants, same pattern as Bar):
 // every monitor shows the same toast, mirroring how the bar repeats per
 // screen.
-//
 // Anchored bottom-right, not top where the bar lives: Bar.qml computes
 // its own height from tokens with no property another file can read, so
 // anchoring a second layer-shell surface directly below it would either
 // duplicate that formula or risk overlap — bottom-right sidesteps that.
-//
 // The show/hide transition is near-instant, no organic easing, via the
 // same Behavior-on-opacity idiom every Widgets/ surface uses. The marquee
 // scroll inside is a different thing — continuous motion for as long as
@@ -63,7 +60,7 @@ PanelWindow {
     // PanelWindow has no `opacity` property — a `PanelWindow { opacity:
     // ... }` binding still compiles as a dynamic property rather than
     // failing, so this is easy to miss until something tries to animate
-    // it. The fade lives on `fadeRoot` below instead — a plain Item,
+    // it. The fade lives on `fadeRoot` below instead — a plain Item
     // which does have a real, animatable opacity — and `visible` stays
     // true until that fade-out finishes, so the window doesn't vanish
     // mid-animation the way it would if `visible` just followed
