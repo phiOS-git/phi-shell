@@ -5,13 +5,8 @@ import qs.Widgets as Widgets
 import "../../Bar/glyphs.js" as Glyphs
 import "../../../Widgets/Format.js" as Format
 
-// Folds Wifi.qml/Ethernet.qml's own content into one card, plus
-// Tailscale/VPN/Firewall — Bar/modules/Network.qml only ever opens "network"
-// so those standalone keys are unreachable from any bar icon (kept
-// dormant, not deleted). Each sub-section gets its own settings deep-link
-// since this merges four independent Settings destinations into one card — the
-// shared card header's settings icon (Header.qml) only covers a single-topic
-// card.
+// Merges WiFi/Ethernet/Tailscale/VPN/Firewall into one card (Bar/Network
+// only opens "network"). Each sub-section has own settings deep-link.
 
 Widgets.StaggerReveal {
     id: root
@@ -29,9 +24,7 @@ Widgets.StaggerReveal {
         Services.BarPopout.hide()
     }
 
-    // --- ethernet OR wifi — ethernet wins if present, the same policy
-    // Bar/modules/Network.qml's own bar icon already uses, so the overlay
-    // never disagrees with the icon that opened it.
+    // Ethernet OR wifi (ethernet wins if present); same policy as bar icon.
     Widgets.OverlaySection {
         width: parent.width
 
@@ -40,8 +33,7 @@ Widgets.StaggerReveal {
             spacing: root.chWidth * Config.Appearance.space1
             visible: Services.EthernetBridge.present
 
-            // No settings deep-link — no `connectivity.ethernet` section
-            // exists yet in Settings/sections/Connectivity.qml.
+            // No settings deep-link yet (connectivity.ethernet not in Settings).
             Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Ethernet" }
             Widgets.ListRow {
                 thin: true
@@ -106,11 +98,7 @@ Widgets.StaggerReveal {
                     Widgets.StyledText { kind: "label"; sizeStep: 0
                         text: "ping " + (Services.NetStats.pingMs >= 0 ? Services.NetStats.pingMs + " ms" : "—") }
                 }
-                // A real active-speedtest trigger (Services/SpeedTest.qml
-                // speedtest-cli), kept separate from the passive live-rate
-                // graph above (Services.NetStats) — a real bandwidth test
-                // actually saturates the link for a few seconds, so it only
-                // runs on demand, never polled.
+                // Active speed test (on-demand, not polled; saturates link).
                 Row {
                     width: parent.width
                     spacing: root.chWidth * Config.Appearance.space2
@@ -165,9 +153,7 @@ Widgets.StaggerReveal {
             checked: Services.Tailscale.connected
             onToggled: (v) => v ? Services.Tailscale.up() : Services.Tailscale.down()
         }
-        // Plain label+value text, not a ListRow — this row has no interaction
-        // wired behind it, it's just status text (a ListRow is always
-        // interactive: hover state, pointer cursor, selection).
+        // Plain label+value text (status only, no interaction).
         Item {
             width: parent.width
             visible: Services.Tailscale.connected
@@ -191,10 +177,7 @@ Widgets.StaggerReveal {
         }
     }
 
-    // --- VPN (WireGuard) ----------------------------------------------
-    // A generic master switch (reflects/drives Services.Vpn.anyUp) plus a
-    // tap-to-toggle ListRow per tunnel — the same select-one-of-several
-    // shape the Wi-Fi and Bluetooth device lists both already use.
+    // VPN (WireGuard): master switch + tap-to-toggle row per tunnel.
     Widgets.OverlaySection {
         width: parent.width
         Item {
