@@ -4,15 +4,10 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Networking
 
-// Thin wrapper over Quickshell.Networking — the one file outside Config/
-// allowed to touch this service surface. `Networking` is the
-// NetworkManager-backed singleton, `Networking.devices` an
-// ObjectModel<NetworkDevice> with a `type` of Wifi or Wired. This wraps NOT
-// "the network module" (that's Tailscale, a separate CLI-driven concept) but
-// specifically the local Wi-Fi radio. A NetworkDevice's own `networks` model
-// holds every network it has seen; the connected one (if any) is found by its
-// `connected` flag, not assumed to be index 0 — `Network.name` is that
-// network's SSID, not the device's own name.
+// Thin Quickshell.Networking wrapper (only file outside Config/ allowed to
+// touch this API). `Networking` is NetworkManager-backed singleton. Wraps the
+// local Wi-Fi radio (not Tailscale network module). NetworkDevice.networks
+// holds every seen network; connected one found by `connected` flag, not index 0.
 
 Singleton {
     id: root
@@ -21,18 +16,11 @@ Singleton {
     readonly property bool present: root.device !== null
     readonly property bool connected: root.present && root.device.connected
     readonly property string ssid: _connectedSsid()
-    // `NetworkDevice.state` carries a real Connecting value distinct from
-    // Connected/Disconnected — genuine device state, not a fabricated
-    // "searching" flag. Signal STRENGTH is not exposed anywhere in this
-    // Quickshell version's Network API, so Bar/modules/Wifi.qml's icon
-    // deliberately doesn't attempt a strength gauge it has no data for.
+    // NetworkDevice.state has real Connecting value (not fabricated). Signal
+    // strength not exposed in Quickshell API, so Wifi icon doesn't attempt it.
     readonly property bool connecting: root.present && root.device.state === ConnectionState.Connecting
 
-    // No Quickshell.Networking property exposes the radio on/off state
-    // directly — `nmcli radio wifi` is the documented NetworkManager CLI query
-    // for it (nmcli is already a hard dependency of this file's own
-    // scan/connect calls below), polled the same lightweight way
-    // Services/Tailscale.qml polls its own state.
+    // No API property for radio on/off; use `nmcli radio wifi` (hard dependency).
     property bool radioEnabled: true
     function refreshRadio() { radioProbe.running = true }
     function setRadioEnabled(v) {
@@ -79,24 +67,13 @@ Singleton {
     }
 
     // --- available-network scan + connect ---------------------------------
-    // A Network exposes name/device/connected/known/state only — no signal
-    // strength, no security type. `nmcli` is the only source for either
-    // the same tool the pre-existing "Manage networks…" button already
-    // shells out to via `nmtui`.
-    // Terse mode (`-t -e yes`) escapes literal `:` and `\` inside a field
-    // with a backslash — `_splitTerseLine()` undoes that rather than a
-    // naive `.split(":")`, since an SSID can itself contain a colon.
-    // SECURITY: deliberately no way to connect to a new secured network
-    // from here. `nmcli device wifi connect <ssid> password <pw>` puts the
-    // password on the process argv, world-readable via /proc/<pid>/cmdline
-    // to any local user for the life of the call. nmcli's only argv-free
-    // mechanism (`passwd-file`) needs `nmcli connection up`, which first
-    // needs a `connection add` carrying the right `wifi-sec.*` fields for
-    // whichever security type the network uses — not safely buildable
-    // without hardware to verify against. Connecting to an already-known
-    // or open network needs no secret, so that path is safe and built
-    // below; a new secured network still routes to "Manage networks…" →
-    // `nmtui`, which already has a real password prompt.
+    // Network exposes name/device/connected/known/state only. nmcli is the
+    // only source for signal strength and security. Terse mode (`-t -e yes`)
+    // escapes `:` and `\`; _splitTerseLine() undoes that, not naive .split().
+    // SECURITY: no way to connect to new secured network. `nmcli device wifi
+    // connect <ssid> password <pw>` exposes password on argv (world-readable
+    // /proc/<pid>/cmdline). Only safe paths: already-known or open network.
+    // New secured networks route to "Manage networks…" → nmtui.
     property var scannedNetworks: [] // [{ssid, signal, secured, known, connected}, ...], connected-first then by signal
     property bool scanning: false
     property bool busy: false
@@ -131,11 +108,8 @@ Singleton {
         return false
     }
 
-    // `nmcli device wifi rescan` returns as soon as the scan is REQUESTED not
-    // once results are ready — a fixed delay before reading the list back is a
-    // real approximation (this project has no way to observe NetworkManager's
-    // actual scan-complete signal without a real D-Bus binding this codebase
-    // doesn't have), not a measured constant.
+    // nmcli rescan returns as soon as scan is REQUESTED, not when ready.
+    // Fixed delay before reading list back is an approximation (no D-Bus signal).
     function rescan() {
         if (!root.present) return
         root.scanning = true
@@ -182,9 +156,7 @@ Singleton {
                     const entry = { ssid: ssid, signal: signal, secured: secured, connected: connected, known: root._isKnownSsid(ssid) }
                     let idx = -1
                     for (let j = 0; j < list.length; j++) { if (list[j].ssid === ssid) { idx = j; break } }
-                    // De-duplicate by SSID (multiple access points/BSSIDs e.g.
-                    // a mesh, can share one) — keep the strongest signal seen,
-                    // or whichever row nmcli marks connected.
+                    // De-duplicate by SSID (mesh/multiple APs); keep strongest signal.
                     if (idx === -1) list.push(entry)
                     else if (connected || signal > list[idx].signal) list[idx] = entry
                 }
@@ -195,9 +167,8 @@ Singleton {
                 root.scannedNetworks = list
             }
         }
-        // Without this, a bad field name or a `nmcli` too old to run this
-        // exact command would leave `scannedNetworks` silently empty forever,
-        // with no visible sign anything went wrong.
+        // Catch bad field names or old nmcli that would silently leave
+        // scannedNetworks empty with no error visible.
         stderr: StdioCollector {
             onStreamFinished: {
                 const t = this.text.trim()
@@ -206,10 +177,8 @@ Singleton {
         }
     }
 
-    // Only for a network with no secret to supply: already-known (nmcli reuses
-    // its saved profile) or genuinely open. A secured, not-yet- known network
-    // is deliberately NOT reachable through this function see the header
-    // comment above for why.
+    // Only for networks with no secret: already-known (nmcli reuses saved
+    // profile) or open. New secured networks deliberately NOT reachable here.
     function connectToKnownNetwork(ssid) {
         if (!root.present || root.busy) return
         root.busy = true
@@ -220,13 +189,9 @@ Singleton {
 
     Process {
         id: connectProc
-        // Deliberately independent of the stderr collector below (same shape
-        // as Services/Vpn.qml's own actionProc) rather than branching on
-        // exitCode here: the two handlers' relative firing order is not
-        // guaranteed, so reading connectError from within onExited to decide a
-        // fallback message would be a race. If nmcli fails with no stderr text
-        // at all, connectError stays empty and only `busy` going false signals
-        // the attempt ended an accepted, narrow gap, not a silent hang.
+        // Independent of stderr (not branching on exitCode due to race on
+        // handler firing order). If nmcli fails with no stderr, connectError
+        // stays empty; only `busy` going false signals end.
         onExited: {
             connectProc.running = false
             root.busy = false

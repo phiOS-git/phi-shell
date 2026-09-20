@@ -2,22 +2,12 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// Same dumb/reusable Canvas-icon family as SunMoonIcon and VolumeIcon every
-// value is external, Bar/modules/Battery.qml owns the Services/PowerBridge.qml
-// reads. A classic pill-outline battery body (fixed silhouette, stroked) with
-// an animated horizontal fill — `level` (0..1) drives the fill's width, not a
-// stepped 0/25/50/75/100 swap, so it slides smoothly as the real percentage
-// changes. `fillColor` is a distinct property from `iconColor` (not just a
-// convenience duplicate) since a caller that DOES want the low/anomaly
-// threshold to recolour only the fill and not the outline can pass two
-// different values — Bar/modules/Battery.qml itself passes the same
-// `root.contentColor` for both, matching the "tone recolours the whole glyph"
-// convention every other icon in this bar already follows but the split stays
-// available here rather than assumed away. `chargingAmount` (0..1, not a bool)
-// drives a small bolt glyph that breathes in and out continuously while
-// charging — motion category A the right category for an ONGOING state rather
-// than a discrete transition: charging persists for as long as the cable is
-// in, so a linear breathing loop fits, not category B.
+// Canvas-icon like SunMoonIcon and VolumeIcon. Pill-outline battery body
+// (stroked, fixed silhouette) with animated horizontal fill. `level` (0..1)
+// drives fill width smoothly (not stepped 0/25/50/75/100). `fillColor` and
+// `iconColor` are distinct so callers can recolor only the fill, though
+// Battery.qml passes both the same value. `chargingAmount` (0..1) drives a
+// breathing bolt glyph (motion category A for ongoing state, not discrete).
 
 Item {
     id: root
@@ -25,15 +15,10 @@ Item {
     property color iconColor: "white"
     property color fillColor: "white"
     property int sizeStep: 2
-    property real level: 1.0        // 0..1, the caller wraps Behavior (category B)
-    property real chargingAmount: 0.0 // 0..1: >0 means "charging", drives the bolt's breathing
-    // A shape difference (hatching, drawn below), not just a colour `tone`
-    // alone is the same mechanism every other anomaly (low charge high
-    // discharge rate) already uses for a completely different meaning, so a
-    // colour-only cue here would be easy to confuse with those. 0..1, category
-    // B (a discrete on/off, not an ongoing ambient state the way charging is)
-    // — the caller wraps it in a Behavior the same way it already does for
-    // `level`/`chargingAmount`.
+    property real level: 1.0        // 0..1; caller wraps Behavior (category B)
+    property real chargingAmount: 0.0 // 0..1; >0 means charging; drives bolt breathing
+    // Hatching shape difference, not just color tone (which other anomalies
+    // use with different meaning). Category B (discrete on/off), caller wraps in Behavior.
     property real saverAmount: 0.0
 
     readonly property real _boxSize: WidgetStates.drawnIconBoxSize(Config.Appearance, root.sizeStep)
@@ -50,22 +35,13 @@ Item {
     onChargingAmountChanged: canvas.requestPaint()
     onSaverAmountChanged: canvas.requestPaint()
 
-    // The breathing loop itself — category A, continuous, only running while
-    // actually charging (chargingAmount > 0). `pulseLevel` is a plain 0..1
-    // SequentialAnimation-driven value; the Canvas just reads it. Not
-    // underscore-prefixed like this file's other internals deliberately: it
-    // needs its own `onPulseLevelChanged` repaint trigger below, and QML's
-    // auto-generated handler name for a leading-underscore property is
-    // ambiguous enough to just avoid.
+    // Breathing loop: category A, continuous, only while charging. pulseLevel
+    // is 0..1 SequentialAnimation-driven; not underscore-prefixed to avoid
+    // ambiguous QML handler names for the onPulseLevelChanged repaint trigger.
     property real pulseLevel: 0.35
-    // Read Config.Appearance.motionAEasing (a string token) rather than
-    // hardcoding Easing.Linear — the same string-to-enum mapping
-    // Config/Appearance.qml's own motionBEasingType already applies for
-    // category B, just inlined here since no motionAEasingType equivalent
-    // exists yet. A plain `property`, not on the animation itself:
-    // `SequentialAnimation`/`NumberAnimation` are not Items and do not
-    // reliably expose a QML `parent` property the way visual items do, so this
-    // lives on `root` instead and both children reference it by id.
+    // Read motionAEasing string token (no motionAEasingType enum exists yet).
+    // Plain property, not on animation, since SequentialAnimation/NumberAnimation
+    // don't reliably expose QML `parent` like visual items do.
     readonly property int _chargeEasing: Config.Appearance.motionAEasing === "linear" ? Easing.Linear : Easing.OutQuad
 
     SequentialAnimation on pulseLevel {
@@ -88,8 +64,7 @@ Item {
             const ink = Qt.rgba(root.iconColor.r, root.iconColor.g, root.iconColor.b, 1)
             const fill = Qt.rgba(root.fillColor.r, root.fillColor.g, root.fillColor.b, 1)
 
-            // Body: rounded-rect cell (0.08..0.82 in x) + a small nub
-            // (0.82..0.90) — the conventional horizontal battery shape.
+            // Body: rounded-rect cell + small nub (conventional battery shape).
             const bodyX = 0.08 * b, bodyY = 0.28 * b
             const bodyW = 0.74 * b, bodyH = 0.44 * b
             const radius = 0.06 * b
@@ -104,10 +79,8 @@ Item {
             ctx.fillStyle = ink
             ctx.fillRect(bodyX + bodyW, bodyY + bodyH * 0.28, 0.06 * b, bodyH * 0.44)
 
-            // Fill — clipped to the body's rounded-rect interior, width
-            // proportional to `_level`, animated by the caller's Behavior on
-            // `level`. Inset from the outline by half its stroke width so the
-            // fill never overlaps the stroke itself.
+            // Fill clipped to body interior, width proportional to _level.
+            // Inset from outline by half stroke width.
             const inset = lw * 0.5 + b * 0.02
             const innerX = bodyX + inset
             const innerY = bodyY + inset
@@ -119,15 +92,9 @@ Item {
                 ctx.save()
                 _roundRectPath(ctx, innerX, innerY, innerW, innerH, Math.max(0, radius - inset))
                 ctx.clip()
-                // Battery-saver: the base fill fades toward translucent as
-                // saverAmount rises, so the FULL-ALPHA hatch stripes drawn
-                // next actually show up against it. `ink`/`fill` are the same
-                // colour here (the caller passes root.contentColor for both) —
-                // a hatch stroked in `ink` on top of an unfaded same-colour,
-                // fully-opaque fill would be invisible, drawn in the exact
-                // colour of the pixels beneath it. Contrast comes from ALPHA,
-                // not hue, so it works regardless of which tone colour is
-                // active.
+                // Battery-saver: base fill fades to translucent so hatch stripes
+                // show. Contrast from ALPHA (ink/fill are same color), works with
+                // any tone color.
                 ctx.globalAlpha = 1 - root.saverAmount * 0.65
                 ctx.fillStyle = fill
                 ctx.fillRect(innerX, innerY, fillW, innerH)
@@ -135,13 +102,9 @@ Item {
                 ctx.restore()
             }
 
-            // Battery-saver hatching — diagonal stripes drawn over the
-            // now-faded fill above, clipped to the SAME rounded-rect + current
-            // fill width. A texture/shape difference, not just another colour,
-            // so it survives being tiny (a handful of extra hue values can
-            // look near-identical at bar-icon size especially against `tone`'s
-            // existing anomaly colours; stripes stay legible at any size since
-            // they just get denser never vanish into a single flat colour).
+            // Battery-saver hatching: diagonal stripes over faded fill, clipped
+            // to rounded-rect + current width. Texture difference survives tiny
+            // sizes better than color-only anomaly cues.
             if (fillW > 0.5 && root.saverAmount > 0.001) {
                 ctx.save()
                 _roundRectPath(ctx, innerX, innerY, fillW, innerH, Math.max(0, radius - inset))
@@ -160,8 +123,7 @@ Item {
                 ctx.restore()
             }
 
-            // Charging bolt — a small zigzag, opacity breathing via
-            // `pulseLevel` while charging, invisible otherwise.
+            // Charging bolt: small zigzag, opacity breathing via pulseLevel.
             if (root.chargingAmount > 0.001) {
                 ctx.globalAlpha = root.chargingAmount * root.pulseLevel
                 ctx.fillStyle = ink

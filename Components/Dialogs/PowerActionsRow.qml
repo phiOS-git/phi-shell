@@ -5,40 +5,15 @@ import qs.Widgets as Widgets
 import "../Bar/glyphs.js" as Glyphs
 import "../../Widgets/WidgetStates.js" as WidgetStates
 
-// A horizontal row of icon+label power-action pills. Hover fills each
-// pill with its action's own semantic tone — shutdown error-red
-// logout/reboot warn-amber, suspend info-blue, lock/hibernate accent
-// and the glyph and label flip to that tone's paired text token
-// (errorText, warnText, …) so they stay readable on the fill. At rest the
-// pill is a bare icon+label in textMuted; the keyboard-focus pill keeps
-// its full accent fill with accentText glyph so the selection stays
-// readable. Hover is therefore a background effect, not a glyph recolor:
-// the colour identity belongs to the pill, not to each icon. This file is
-// presentation and action-dispatch only.
-// Shared by both surfaces that offer power actions, so they can't
-// visually disagree about what one action looks like:
-// - Components/Dialogs/PowerMenu.qml (SUPER+L, before locking)
-// includes "lock".
-// - Components/Lock/Lock.qml (already locked, no authentication
-// required to use this row) — omits "lock", since locking an
-// already-locked screen is meaningless.
-// Confirmation for reboot/shutdown goes through the same
-// Services.ConfirmDialog step both callers already used before this
-// component existed (Services.PowerActions.needsConfirm()) — `onChosen`
-// below only decides whether to interpose that step, never bypasses it.
-// The accent fill IS the real keyboard-focus state, not a separate
-// static "default/primary" marker independent of Tab focus (`active:
-// pill.keyboardFocus` below, short-circuiting WidgetStates.resolve() past
-// its own separate `focus` case entirely) — a Tab-selected pill gets the
-// full accent fill rather than just a border ring. `focusFirst()` lets
-// the caller select the first pill the moment the surface appears, so
-// something is always visibly selected without waiting for a first Tab
-// press.
-// This row stays plain `activeFocusOnTab: true` for every caller: Lock.qml
-// briefly removed these pills from the tab chain to fix a Tab-focus trap
-// but that made the row keyboard-unreachable — the actual fix lives in
-// Lock.qml's own password field instead (it opts into the tab chain too
-// closing the loop field → pills → back to field).
+// Row of icon+label power-action pills. Hover fills with semantic tone
+// (shutdown red, logout/reboot amber, suspend blue, lock/hibernate accent)
+// and flips glyph/label to that tone's text token. At rest: bare icon+label
+// in textMuted; keyboard-focus pill keeps full accent fill. Shared by
+// PowerMenu (includes "lock") and Lock screen (omits "lock"). Confirmation
+// via Services.ConfirmDialog. Keyboard-focus is the real accent fill state
+// (via `active: pill.keyboardFocus`), not a separate marker. `focusFirst()`
+// preselects the first pill on open. Stays in tab chain everywhere — actual
+// Tab-focus trap fix is in Lock.qml's password field, not here.
 
 Row {
     id: root
@@ -46,12 +21,8 @@ Row {
     property var actions: []
     signal chosen(string action)
 
-    // Selects the first pill — call this once, when the surface that hosts
-    // this row actually becomes visible. Component.onCompleted alone would not
-    // do this: the host window is created once and only ever shown/hidden via
-    // opacity, so this component's own Component.onCompleted fires exactly
-    // once, on the very first open of the whole session, never again on a
-    // later reopen.
+    // Select the first pill on surface visibility. Component.onCompleted fires
+    // only on first session open, not on later reopens (window shown via opacity).
     function focusFirst() {
         if (pillRepeater.count > 0) pillRepeater.itemAt(0).forceActiveFocus()
     }
@@ -79,12 +50,9 @@ Row {
         return ""
     }
 
-    // One semantic tone per action, from this shell's existing tone palette
-    // (rule 6: design tokens are the only source of colour) — read by each
-    // pill as its HOVER background, so a shutdown action always hovers
-    // error-red no matter which surface hosts this row (PowerMenu, Lock
-    // screen). `_toneTextFor()` (below) is the paired text token that reads
-    // against that fill.
+    // Semantic tone per action (design tokens only). Read as pill's hover
+    // background — shutdown always hovers error-red regardless of surface.
+    // Paired with _toneTextFor() for text on that fill.
     function _toneFor(action) {
         switch (action) {
         case "lock": return Config.Appearance.accent
@@ -97,10 +65,8 @@ Row {
         return Config.Appearance.textMuted
     }
 
-    // The text token paired with the tone above (the *Text companion of each
-    // semantic colour, ThemeOverrides-aware) — what the glyph and label flip
-    // to while the pill is hovered, so they stay readable on the tone fill
-    // instead of carrying the tone themselves.
+    // Text token paired with tone above (*Text companion); glyph and label flip
+    // to this while hovered, staying readable on the tone fill.
     function _toneTextFor(action) {
         switch (action) {
         case "lock": return Config.Appearance.accentText
@@ -125,12 +91,8 @@ Row {
             readonly property bool pressed: tapHandler.pressed
             readonly property bool keyboardFocus: activeFocus
 
-            // `keyboardFocus: false` here is deliberate: resolve()'s own
-            // precedence would otherwise route a focused pill to its "focus"
-            // case (a border-ring look, one rung below "active") — passing it
-            // as `active` directly is what gives a Tab-selected pill the full
-            // accent fill rather than just a ring (see this file's own
-            // header).
+            // keyboardFocus: false forces focused pill to full accent fill via
+            // `active`, not resolve()'s focus case (border-ring only).
             readonly property string resolvedState: WidgetStates.resolve({
                 enabled: true, hovered: pill.hovered, pressed: pill.pressed,
                 active: pill.keyboardFocus, keyboardFocus: false,
@@ -138,14 +100,9 @@ Row {
             })
             readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState, "powerPill")
 
-            // The action's semantic tone is a HOVER background, not a resting
-            // glyph colour: on hover the whole pill fills with the tone
-            // (shutdown red, logout/reboot amber, suspend blue lock/hibernate
-            // accent) and the glyph and label flip to that tone's paired text
-            // token, so the identity is carried by the pill, not by a static
-            // icon fill. Rest stays neutral (`stateColors.fg`: textMuted); the
-            // keyboard-focus pill keeps the accent fill and accentText glyph,
-            // and an invalid pill keeps the error state's fg.
+            // Tone is hover background, not resting glyph color. On hover, pill
+            // fills with tone and glyph/label flip to that tone's text token.
+            // Rest stays neutral (textMuted); keyboard-focus keeps accent fill.
             readonly property color pillBg: pill.resolvedState === "hover"
                 ? root._toneFor(pill.modelData)
                 : pill.stateColors.bg
