@@ -5,38 +5,22 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// Native background layer inside the shell — no hyprpaper, no swww. Per-screen
-// instance. WlrLayershell.layer = WlrLayer.Background, guarded and set from
-// Component.onCompleted. `Quickshell.Wayland` imported directly here this
-// surface's whole reason to exist IS setting its own layer, the same narrow
-// exception Components/Lock/Lock.qml and Components/Bar/Bar.qml carry. The
-// wallpaper is composited from up to three layers: a solid colour that is
-// always the base, an optional generated texture overlay, and an optional
-// image with a fit mode. All state lives in Services/Background.qml (a
-// per-screen surface can't own it). The image is driven by
-// `Services.Background.displayImage`: the dynamic wallpaper entry when
-// Services/DynamicWallpaper is active (most specific match for the current
-// daytime / season / weather), otherwise the user's manually picked static
-// image. It crossfades between the two on any change using two stacked Images
-// — wallPrev (the outgoing texture) and wallCur (the incoming one) — each with
-// the same motionB duration and curve the rest of the shell uses. Referenced
-// from $XDG_DATA_HOME/phi/wallpapers/ (the copy the settings Theme section
-// makes), never the path the user picked.
+// Native background layer (no hyprpaper/swww). Per-screen. Composited from
+// three layers: solid base, optional texture, optional image with fit mode.
+// State in Services/Background.qml. Image driven by displayImage (dynamic or
+// static user pick), crossfades on change via two stacked Images (wallPrev/Cur).
+// Uses motionB crossfade like rest of shell.
 
 PanelWindow {
     id: root
 
     anchors { top: true; bottom: true; left: true; right: true }
     exclusiveZone: -1
-    // The window's own colour is the solid wallpaper base — so even before any
-    // Image paints (async load) the right colour is already there.
+    // Window colour is solid wallpaper base (ready before async image load).
     color: Services.Background.color.length > 0
         ? Services.Background.color : Config.Appearance.background
 
-    // This is the single largest painted area on screen, so it crossfades a
-    // theme-variant switch the same way every restyled widget does
-    // (Widgets/Panel.qml etc., same motionB tokens) rather than snapping
-    // instantly while everything else fades.
+    // Largest painted area; crossfades theme switch like other widgets (motionB).
     Behavior on color {
         ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
     }
@@ -46,16 +30,9 @@ PanelWindow {
         anchors.fill: parent
         clip: true
 
-        // Background is the one surface that sits on the wallpaper at the very
-        // bottom of the Wayland layer stack — a right-click that reaches this
-        // TapHandler means nothing else (a real window, a panel) ever
-        // intercepted it, so this is the natural place for the "empty desktop"
-        // menu. Each entry launches the real thing this shell already uses
-        // elsewhere for it: run mirrors Bar/ modules/Runner.qml's own
-        // self-directed launcher-toggle IPC call; terminal/files/browser
-        // launch kitty/thunar/librewolf directly (execDetached), the same way
-        // other call sites in this repo already do for kitty; settings calls
-        // Services.SettingsPanel.show().
+        // Right-click on empty desktop: run mirrors launcher IPC; terminal/files/
+        // browser use execDetached (kitty/thunar/librewolf); settings calls
+        // SettingsPanel.show().
         TapHandler {
             acceptedButtons: Qt.RightButton
             onTapped: desktopContextMenu.open(content, [
@@ -77,9 +54,7 @@ PanelWindow {
             ])
         }
 
-        // Layer 2: procedural texture overlay, tiled. Alpha is baked in by
-        // `phi wallpaper texture`, so plain opacity-1 compositing — no blend
-        // mode, no shader.
+        // Layer 2: procedural texture, tiled. Alpha baked in, plain compositing.
         Image {
             anchors.fill: parent
             visible: Services.Background.texture.length > 0
@@ -92,14 +67,9 @@ PanelWindow {
             cache: false
         }
 
-        // Layer 3: the wallpaper image, crossfaded on change. Two stacked
-        // Images: `wallCur` paints the current displayImage `wallPrev` keeps
-        // the outgoing one underneath while the new source loads and fades in
-        // (asynchronous loading means the new texture is not ready the moment
-        // the fade starts). wallPrev's source is not a binding: _swapImage()
-        // copies the outgoing texture into it (no reload needed) and clears it
-        // once the crossfade lands, so memory stays at the current image plus
-        // one in-flight one.
+        // Layer 3: wallpaper image, crossfaded. wallCur is current, wallPrev holds
+        // outgoing while new loads (async). Not a binding: _swapImage() copies
+        // outgoing to wallPrev, clears on crossfade end.
         Image {
             id: wallPrev
             anchors.fill: parent
@@ -111,11 +81,8 @@ PanelWindow {
             scale: root._imageScale
         }
 
-        // The front image. Driven by _swapImage() rather than a plain source
-        // binding — the crossfade needs the OLD source captured before the new
-        // one lands, which a binding cannot guarantee. Default opacity 1: the
-        // first image appears instantly (nothing to crossfade from); only
-        // later changes animate.
+        // Front image. Driven by _swapImage() not binding (crossfade needs old
+        // source captured first). Default opacity 1: first appears instantly.
         Image {
             id: wallCur
             anchors.fill: parent
@@ -130,11 +97,8 @@ PanelWindow {
     }
 
     // --- wallpaper image crossfade ------------------------------------
-    // `_wanted` mirrors Services.Background.displayImage so a change is
-    // observable here; _swapImage() turns it into the two-Image swap above.
-    // Same motionB crossfade every restyled widget uses; a wallpaper switch
-    // (dynamic transition, folder pick, battery-saver pause/resume, manual
-    // static pick) therefore slides rather than snaps.
+    // _wanted mirrors displayImage; _swapImage() turns it into two-Image swap.
+    // motionB crossfade like other widgets.
     property string _wanted: Services.Background.displayImage
     property string _applied: ""
     on_WantedChanged: root._swapImage()
@@ -147,9 +111,8 @@ PanelWindow {
         default: return Image.PreserveAspectCrop   // cover
         }
     }
-    // Scale applies to contain and repeat only (disabled for cover / stretch,
-    // which already fill). For contain it zooms into the fitted image; for
-    // repeat it resizes the tiled plane.
+    // Scale for contain/repeat only (cover/stretch fill already). Contain: zoom
+    // fitted; repeat: resize tiled plane.
     readonly property real _imageScale: (Services.Background.mode === "contain" || Services.Background.mode === "repeat")
         ? Math.max(0.1, Services.Background.scale) : 1.0
 
@@ -158,13 +121,10 @@ PanelWindow {
         if (want === root._applied) return
         const first = root._applied.length === 0
         const clearing = want.length === 0
-        // Whatever the outcome, the outgoing texture stays visible under
-        // wallCur: for a swap it is the image being faded out from under the
-        // new one; for a clearing it is the image fading away entirely.
+        // Outgoing texture stays under wallCur: fades out (swap) or away (clear).
         if (!first) wallPrev.source = wallCur.source
         if (clearing) {
-            // No new texture: fade the old one out over motionB, then drop
-            // both sources (onFinished), ready for a fresh first-load.
+            // No new texture: fade out, drop both sources (onFinished).
             root._applied = want
             wallCur.opacity = 1
             imageCrossfade.to = 0
@@ -173,16 +133,14 @@ PanelWindow {
         }
         wallCur.source = "file://" + want
         if (first) {
-            // Nothing to crossfade from — appear at once. Stop any in-flight
-            // fade first (a rapid on→off→on leaves one running).
+            // Nothing to crossfade from: appear at once, stop any in-flight fade.
             imageCrossfade.stop()
             wallPrev.source = ""
             wallCur.opacity = 1
             root._applied = want
             return
         }
-        // Real swap: new source is already queued into wallCur, the old one
-        // held underneath in wallPrev — fade the new one in.
+        // Real swap: new source in wallCur, old underneath in wallPrev — fade in.
         root._applied = want
         wallCur.opacity = 0
         imageCrossfade.to = 1
@@ -199,7 +157,7 @@ PanelWindow {
         easing.bezierCurve: Config.Appearance.motionBCurve
         onFinished: {
             if (imageCrossfade.to === 0) {
-                // image removed — free both textures, reset for the next load
+                // Image removed: free both textures, reset for next load.
                 wallCur.source = ""
                 wallCur.opacity = 1
             }
@@ -212,8 +170,7 @@ PanelWindow {
         root._swapImage()
     }
 
-    // A real Quickshell PopupWindow (Widgets/ContextMenu.qml), not a plain
-    // in-content Item.
+    // Real PopupWindow, not in-content Item.
     Widgets.ContextMenu {
         id: desktopContextMenu
     }
