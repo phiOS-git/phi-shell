@@ -10,12 +10,19 @@ Item {
 
     property bool active: false
 
-    // Real screen size (card is smaller); preview overlay needs it for clamping.
+    // The real screen size, handed down by Components/BarPopout/ BarPopout.qml
+    // — this item's own width/height is just the card, not the screen, and the
+    // preview overlay needs the real thing to clamp against.
     required property real screenWidth
     required property real screenHeight
-    // Popout card Item: root's absolute position offset by Panel padding.
+    // A reference to the popout's own card Item — this card sits INSET inside
+    // it by Widgets/Panel.qml's own padding, so root's own absolute position
+    // is not the card's visible left edge. See _updatePreviewPosition.
     required property Item dockItem
-    // Height budget (not content-capped): clipboard always wants scrollable area.
+    // The pre-computed, padding-already-subtracted height budget this card may
+    // grow into — unlike Modules/Notifications.qml this is not content-capped,
+    // it always fills the budget: a clipboard history always wants a real
+    // scrollable area, not a shrink-to-fit card.
     property real availableHeight: 0
 
     width: parent ? parent.width : 0
@@ -25,15 +32,22 @@ Item {
     property string query: ""
     property int highlightedIndex: 0
 
-    // --- hold/hover preview: overlay with full entry + info on dwell.
-    // Dwell mechanism with two triggers (not press-and-hold). Cannot suppress
-    // tap-on-release after longPress without hardware verification.
+    // --- hold/hover preview: an overlay with the complete entry and extra information when the selection is held for a while.
+    // Read as one dwell mechanism with two triggers, not a press-and-hold gesture: "the selection" is highlightedIndex, and a long-press deliberately not built instead.
+    // TapHandler's own tapped() signal still fires on release even after longPressed() has already fired for the same press, so suppressing that correctly needs an interaction this file cannot verify without hardware, where the existing tap-to-copy-and-close is exactly the wrong thing to risk breaking.
     property string hoverTargetId: ""
     property bool previewVisible: false
 
-    // Screen-space position read before preview shows. Overlay child of root:
-    // x/y root-relative. previewTargetX/previewRootY = root absolute position.
-    // entryCard delegates register by id (Repeater split across pinned/rest).
+    // Screen-space position, read once right before the preview becomes
+    // visible. The preview overlay stays a plain child of root, so its own x/y
+    // are still interpreted relative to root, not the screen — previewTargetX/
+    // previewRootY are root's OWN absolute position, kept alongside the target
+    // card's, so the overlay's clamped-to-the-screen x/y can be computed in
+    // absolute terms and then converted back to root-relative by subtracting
+    // these. entryCard delegates register themselves by id as they're
+    // created/destroyed (id -> Item), since a Repeater split across two
+    // sections (pinned/rest) has no single flat index this file can look an id
+    // up by directly.
     property var _cardItems: ({})
     property real previewTargetX: 0    // root's own absolute X
     property real previewRootY: 0      // root's own absolute Y
@@ -41,7 +55,10 @@ Item {
     property real previewTargetTop: 0    // the dwelled card's absolute top Y
     property real previewTargetBottom: 0 // the dwelled card's absolute bottom Y
 
-    // Preview target on dwell: hovered card or keyboard selection (no flicker).
+    // Whichever entry the preview should show once its dwell elapses: the
+    // hovered card while the mouse is over one, else the keyboard selection —
+    // so leaving a card that happens to be the highlighted one keeps the same
+    // preview up with no flicker.
     readonly property string dwellTargetId: root.hoverTargetId.length > 0
         ? root.hoverTargetId
         : (root.navList[root.highlightedIndex] ? root.navList[root.highlightedIndex].id : "")
@@ -52,11 +69,13 @@ Item {
         preview._relayout()
     }
 
-    // Details row relayout on pin/truncate flags; panel fits its own row.
+    // The details row's source text changes with the pin/truncate flags once
+    // the full text has been read — re-measure — panel always fits its own
+    // row.
     onPreviewPinnedChanged: preview._relayout()
     onPreviewTruncatedChanged: preview._relayout()
 
-    // No standard dwell length; flagged as cheap to veto.
+    // No document names an exact dwell length; flagged as cheap to veto.
     property int previewDelay: 700
 
     Timer {
@@ -69,9 +88,14 @@ Item {
         }
     }
 
-    // One-shot read when preview shows. previewTargetX = dockItem absolute
-    // (not root, offset by Panel padding). previewRootY = root absolute Y.
-    // Missing card keeps previous target.
+    // One-shot read at the moment the preview is about to show. previewTargetX
+    // reads dockItem's own absolute left edge, NOT root's own — root sits
+    // inset inside the dock by Widgets/Panel.qml's own padding, so
+    // root.mapToItem would land the preview overlapping the dock's left border
+    // by about one padding's worth instead of sitting beside it. previewRootY
+    // is still root's own absolute Y: the preview panel stays root's own child
+    // (see), so ITS y needs converting relative to root, not dock. A missing
+    // card leaves the previous target in place rather than snapping to (0,0).
     function _updatePreviewPosition() {
         root.previewRootY = root.mapToItem(null, 0, 0).y
         root.previewTargetX = root.dockItem.mapToItem(null, 0, 0).x
@@ -93,8 +117,12 @@ Item {
     readonly property bool previewPinned: root.previewEntryData !== null
         && Services.Clipboard.isPinned(root.previewEntryData.id)
 
-    // Full text on disk. Read imperatively (not binding): FileView content
-    // not guaranteed trackable. Capped (raw wl-paste dumps hang Text).
+    // The full text is on disk, not in Services.Clipboard.entries. Read
+    // imperatively in onLoaded, not a declarative binding on
+    // previewFile.text() — a FileView's loaded content is not confirmed to be
+    // a trackable binding dependency. Capped: these are raw wl-paste dumps,
+    // and an unbounded paste landing in a Text item is a hang, not a cosmetic
+    // overflow.
     readonly property int previewMaxChars: 4000
     property string previewFullText: ""
     property bool previewTruncated: false
@@ -125,18 +153,26 @@ Item {
     readonly property real chWidth: chMetrics.width
     readonly property real gap: chWidth * Config.Appearance.space1
 
-    // Reset selection on every open (onActiveChanged covers reopens).
+    // This card is never destroyed/recreated once created. Reset the current
+    // selection every time it's actually opened, starting back from the top —
+    // Component.onCompleted alone would only do this the first time ever;
+    // onActiveChanged covers every later reopen.
     function reset() {
         Services.Clipboard.refresh()
         root.query = ""
         field.text = ""
         root.highlightedIndex = 0
         list.contentY = 0
-        // Preview has own visible state; explicit reset (not dwellTargetId).
+        // The preview has visible state of its own (the hold/hover overlay) —
+        // the exact bug class the comment this function describes, so it gets
+        // the same explicit reset rather than trusting dwellTargetId to happen
+        // to change on its own.
         root.hoverTargetId = ""
         root.previewVisible = false
         previewDwell.stop()
-        // Deferred: keyboard grab and active state can race (like Launcher).
+        // Deferred: the window's Wayland keyboard grab and this card becoming
+        // active can race — callLater runs after both settle, the same reason
+        // Launcher focuses its field from an event rather than inline.
         Qt.callLater(function() { field.forceActiveFocus() })
     }
 
@@ -183,7 +219,11 @@ Item {
         else Services.Clipboard.pin(e.id)
     }
 
-    // Single delete: established low-stakes shape. No confirmation (bulk has it).
+    // A single-item delete, same low-stakes shape "Clear this key"
+    // (Settings/sections/Devices.qml) already established for one small,
+    // easily-noticed-if-wrong item — no confirmation dialog, unlike a bulk
+    // "Clear all". Wires the existing Widgets/ContextMenu.qml. Item shape is
+    // that widget's own real API ({label, onActivated}), not invented.
     function _clipboardMenuItems(entry) {
         const pinned = Services.Clipboard.isPinned(entry.id)
         return [
@@ -327,20 +367,37 @@ Item {
         }
     }
 
-    // Hold/hover preview overlay: later sibling of Flickable (paints on top).
-    // x/y computed absolute, converted to root-relative by subtracting root pos.
+    // The hold/hover preview overlay itself — a later sibling of the
+    // Flickable, so it paints on top of (not clipped by) the list. Still a
+    // plain child of root, so its x/y are computed in ABSOLUTE screen terms,
+    // then converted back to root-relative by subtracting root's own absolute
+    // position (previewTargetX/previewRootY) — _updatePreviewPosition.
     Widgets.Panel {
         id: preview
 
-        // Panel size: axes hug content, uniform padding. Separation via
-        // doubled spacing. Sizing IMPERATIVE (bindings on children unsafe).
+        // The panel's size caps: both axes hug the content, floored and capped
+        // but never inflated by a minimum-height floor — the same uniform
+        // padding wraps the content on every side, so the bottom never reads as a
+        // larger padding than the top. The separation between the content and
+        // the details row is previewCol's own doubled spacing, not a padding
+        // asymmetry. Sizing is IMPERATIVE (_relayout), not a declarative
+        // binding: the panel must read its own descendants' measurements, and
+        // a binding on preview that refers to a child object can evaluate
+        // before that child exists — QML then drops the binding silently and
+        // the size never updates. An imperative pass that only runs once the
+        // whole subtree exists is deterministic.
         readonly property real _maxWidth: 600
         readonly property real _maxHeight: 300
-        // Computed image box from _relayout; children read these properties.
+        // Current computed image box, written by _relayout — plain properties
+        // — children's own bindings can follow.
         property real _imageBoxW: 0
         property real _imageBoxH: 0
 
-        // Text width estimate (Image entries sized by natural size, not "[image]").
+        // Text content width estimate — measured off the same text the content
+        // Text renders. Image entries are sized by the image's own natural
+        // size in _relayout, never through this text measurement: "[image]" is
+        // short, so measuring it would squeeze the panel to the minimum width
+        // no matter how wide the actual preview is.
         TextMetrics {
             id: previewTextMetrics
             font.family: Config.Appearance.fontMono
@@ -348,8 +405,15 @@ Item {
             text: root.previewFullText.length > 0 ? root.previewFullText : "(empty)"
         }
 
-        // Widest row is details (time+source): 360px floor prevents collapse.
-        // Read imperatively to always reflect current entry.
+        // The widest single-line row in the panel is the details line (time
+        // left, source right) — measured as one concatenated string in the
+        // same label font the row itself renders, so the short- content entry still
+        // opens wide enough to fit its own date/source without overflowing. A
+        // flat 360px floor sits underneath the measurement: the width must
+        // never collapse back to the content width again, even for the brief
+        // moment before the row has been measured — short pastes open a real
+        // panel, not a content-hugging strip. Read imperatively by _relayout
+        // on every entry change, so it always reflects the current entry.
         TextMetrics {
             id: detailsMetrics
             font.family: Config.Appearance.fontUi
@@ -360,11 +424,16 @@ Item {
                 + (root.previewTruncated ? " · truncated" : "")
         }
 
-        // Recompute panel size and image box on open/input change.
+        // Recompute the panel size and the image box. Called whenever the
+        // preview opens or one of its inputs changes.
         function _relayout() {
             const pad2 = preview.padding * 2
 
-            // Fixed rows (placeholder, half-gap, doubled gap, details).
+            // The fixed rows the image cannot claim: the placeholder line, its
+            // own half-gap inside the content column, the doubled column gap
+            // it, and the details row. Measured at the same moment the box is
+            // computed, so the box and the panel height can never disagree about
+            // what the layout needs.
             const fixedH = entryText.implicitHeight + root.gap / 2
                 + previewCol.spacing + previewDetailsRow.implicitHeight
 
@@ -373,8 +442,18 @@ Item {
             let boxW = 0
             let boxH = 0
             if (root.previewIsImage && iw > 0 && ih > 0) {
-                // Fill panel width, derive height from aspect. Cap height at
-                // budget and shrink width proportionally.
+                // The exact rule: fill the panel's content width and derive
+                // the height from the source's aspect;
+                const fitH = Math.max(120, preview._maxHeight - pad2 - fixedH)
+                const capW = preview._maxWidth - pad2
+                const floorW = Math.max(360, detailsMetrics.width + pad2) - pad2
+                boxW = Math.min(capW, Math.max(floorW, iw))
+                boxH = boxW * ih / iw
+                // ...and when that height would exceed the height budget, cap
+                // the height at the budget and shrink the width by the same
+                // ratio — the box always matches the source aspect, so there
+                // is never empty space around the image, and never an image
+                // taller than the panel can hold.
                 if (boxH > fitH) {
                     boxH = fitH
                     boxW = boxH * iw / ih
@@ -387,7 +466,10 @@ Item {
             const minW = Math.max(360, detailsMetrics.width + pad2)
             preview.width = Math.min(preview._maxWidth, Math.max(minW, contentW + pad2))
 
-            // Panel height: images explicit sum, text implicit height.
+            // Panel height: for images, the explicit sum of the box and the
+            // fixed rows — never the positioner's cached implicitHeight (can
+            // lag the imperative box write by a layout pass). For text, the
+            // column's implicit height as before, untouched.
             const contentH = root.previewIsImage
                 ? entryText.implicitHeight + root.gap / 2 + preview._imageBoxH
                     + previewCol.spacing + previewDetailsRow.implicitHeight
@@ -397,7 +479,9 @@ Item {
 
         Component.onCompleted: preview._relayout()
         radius: Config.Appearance.radiusLarge
-        // Hard guarantee: nothing spills during image load.
+        // Hard guarantee behind the sizing: even on a transient frame during
+        // an image load, nothing in this panel can visibly spill past its own
+        // edges.
         clip: true
         visible: opacity > 0
         opacity: (root.previewVisible && root.previewEntryData !== null) ? 1 : 0
@@ -405,10 +489,18 @@ Item {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
-        // panelGap + space1 between preview and dock.
+        // `panelGap` plus one real spacing unit (`space1`) between the
+        // preview's right edge and the dock's left edge — real breathing room
+        // between two independent floating surfaces.
         readonly property real _gapX: Config.Appearance.panelGap + root.chWidth * Config.Appearance.space1
-        // Absolute screen coordinates: left of previewTargetX. Flip to fit.
-        // Clamped inside panelGap bounds.
+        // Desired position in ABSOLUTE screen coordinates: just to the left of
+        // root's own current left edge (previewTargetX), aligned with
+        // whichever edge actually has more screen room to grow into — the same
+        // "flip to the side that fits" rule a tooltip or context menu already
+        // uses. Both axes independently clamped inside [panelGap, screen edge
+        // - own size - panelGap] so neither can push the panel off-screen.
+        // Converted to root-relative x/y by subtracting root's own absolute
+        // position.
         readonly property real _spaceAbove: root.previewTargetTop
         readonly property real _spaceBelow: root.screenHeight - root.previewTargetBottom
         readonly property bool _alignBottom: preview._spaceBelow < preview._spaceAbove
@@ -425,10 +517,18 @@ Item {
         x: preview._absX - root.previewTargetX
         y: preview._absY - root.previewRootY
 
-        // No click-swallower: MouseArea would consume hover (flicker loop).
-        // Stray clicks are smaller problem; Panel paints opaquely.
+        // No click-swallower: a MouseArea would consume hover, so every card
+        // the overlay covers would stop reporting HoverHandler.hovered the
+        // moment it appears — clearing hoverTargetId (hides the overlay)
+        // (makes the card hoverable again) (can re-show it: a flicker loop
+        // centred on exactly where the feature is used). A stray click landing
+        // on a covered card instead is the smaller problem, and this Panel
+        // already paints opaquely over it.
 
-        // Two Columns: gap grows, not every line-doubled separation.
+        // Content (text/image) and the trailing time/source row are two
+        // separate Columns so only the gap between the two grows, not every
+        // line — doubled — separation between the content and the details row
+        // does the visual work padding would otherwise fake.
         Column {
             id: previewCol
             width: parent.width
@@ -451,7 +551,8 @@ Item {
                         : (root.previewFullText.length > 0 ? root.previewFullText : "(empty)")
                 }
 
-                // Transparent wrapper: image centered, height from _relayout box.
+                // A transparent wrapper — image can sit centred in the content
+                // column: its height tracks the box written by _relayout.
                 Item {
                     width: parent.width
                     height: preview._imageBoxH
@@ -460,7 +561,11 @@ Item {
                     Image {
                         id: entryPreview
                         anchors.centerIn: parent
-                        // Box aspect-matched; PreserveAspectCrop no letterbox.
+                        // Box is the aspect-matched size computed by
+                        // preview._relayout; PreserveAspectCrop paints every
+                        // pixel of that box — with a matching aspect it never
+                        // actually crops, but it leaves no hairline letterbox
+                        // gap.
                         width: preview._imageBoxW
                         height: preview._imageBoxH
                         fillMode: Image.PreserveAspectCrop
@@ -474,7 +579,8 @@ Item {
                 }
             }
 
-            // Timestamp left, source right, spread across row.
+            // The timestamp sits at the left edge and the source at the right,
+            // spread across the row instead of chained together.
             Item {
                 id: previewDetailsRow
                 width: parent.width
@@ -506,15 +612,18 @@ Item {
     Component {
         id: entryCard
 
-        // Flat row: hover wash, full-invert selection (like ListRow).
-        // At rest = dock background (ambient, not card).
+        // A flat row: no border, no persistent fill, a hover wash and a
+        // full-invert selection — the same recipe Widgets/ListRow already uses
+        // everywhere else a list of things lives in this shell. At rest its
+        // background matches the dock's own panelBackground exactly, so it
+        // reads as ambient, not as a card.
         Item {
             id: card
             required property var modelData
             required property int index
 
             readonly property int flatIndex: {
-                // Position in navList: pinned first.
+                // this delegate's position in navList: pinned come first
                 const inPinned = Services.Clipboard.isPinned(card.modelData.id)
                 return inPinned ? card.index : root.pinned.length + card.index
             }
@@ -527,9 +636,18 @@ Item {
                 : Config.Appearance.colorOpposite
             readonly property real padding: root.gap
 
-            // Register into root._cardItems by id. Unregister on destruction
-            // only if still the current one (fast refresh safety). Capture id to
-            // property (onDestruction footgun).
+            // Registers this delegate into root._cardItems — preview overlay's
+            // _updatePreviewPosition can find this card's Item by id and read
+            // its real screen position — a Repeater's own model index isn't
+            // enough, since pinned/rest are two separate Repeaters.
+            // Unregisters itself on destruction, but only if it is still the
+            // one on file for this id — a fast list refresh recreating this
+            // exact id under a different delegate instance could otherwise
+            // have the NEW registration wiped by the OLD instance's own
+            // belated destruction. The id is captured into its own property
+            // rather than read from card.modelData directly in each handler:
+            // modelData on an already-destroyed Repeater delegate is a known
+            // QML footgun, so onDestruction must not touch it at all.
             readonly property string _cardId: card.modelData.id
             Component.onCompleted: root._cardItems[card._cardId] = card
             Component.onDestruction: {
@@ -560,7 +678,9 @@ Item {
                     width: parent.width
                     spacing: root.gap / 2
 
-                    // Single line, no time (hover overlay shows time).
+                    // Reduced to a single line with trimming (ellipsis) and no
+                    // time in the list — the hover overlay shows the time
+                    // (fmtTimeFull).
                     Widgets.StyledText {
                         width: parent.width - pinBtn.width - root.chWidth
                         mono: !card.isImage
@@ -575,7 +695,7 @@ Item {
                     }
                 }
 
-                // Pin control (top-right).
+                // Pin control, top-right corner.
                 Widgets.StyledText {
                     id: pinBtn
                     anchors.top: parent.top
@@ -603,7 +723,10 @@ Item {
                 }
             }
 
-            // Second independent TapHandler: restore = left, this = right.
+            // A second, independent TapHandler rather than branching inside
+            // the one: PointerHandler's own default acceptedButtons is
+            // Qt.LeftButton, so the restore handler never reacts to a right-click —
+            // this one just adds the button the other never claimed.
             TapHandler {
                 acceptedButtons: Qt.RightButton
                 onTapped: {
@@ -612,20 +735,30 @@ Item {
                 }
             }
 
-            // Drives root.hoverTargetId (preview trigger). Hover wash, pointer.
+            // Drives root.hoverTargetId for the preview overlay (see the top
+            // of this file) — does not itself show anything, purely observes
+            // hover state, so it composes with the TapHandlers without
+            // contest. Also drives the card's own hover wash now that it is a
+            // flat row, and the pointer affordance every clickable row in this
+            // shell carries.
             HoverHandler {
                 id: hover
                 cursorShape: Qt.PointingHandCursor
                 onHoveredChanged: {
                     if (hover.hovered) root.hoverTargetId = card.modelData.id
-                    // Only clear if this card still owns it (fast move safety).
+                    // Only clear if this card is still the one that set it — a
+                    // fast pointer move onto a neighbouring card may have
+                    // already claimed hoverTargetId for itself by the time
+                    // this card's own hover-out arrives.
                     else if (root.hoverTargetId === card.modelData.id) root.hoverTargetId = ""
                 }
             }
         }
     }
 
-    // PopupWindow (not in-panel Item): z-order independent.
+    // A real Quickshell PopupWindow, not a plain in-panel Item — its own
+    // z-order relative to this card's own entries is not a concern, unlike
+    // every other floating overlay in this file (the preview).
     Widgets.ContextMenu {
         id: clipboardContextMenu
     }
