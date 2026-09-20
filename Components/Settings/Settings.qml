@@ -8,18 +8,9 @@ import qs.Widgets as Widgets
 import "./sections" as Sections
 import "./modules/options.js" as Options
 
-// The settings panel. Section content is data-driven from sections.json adding
-// a section is a one-file registry change, not a code change (same pattern as
-// Bar.qml's modules.json). Left-hand vertical section list (rather than a
-// horizontal tab strip) since the section count doesn't fit one row at any
-// reasonable width. Every section reads Config.Settings (phi state) or a
-// Services/ bridge none write into a repository path. Search HIGHLIGHTS
-// matches rather than filtering the section list, so nothing already open ever
-// disappears. Enter acts on the top-ranked result from Settings/options.js: a
-// whole section selects it, a specific option reveals it (select the section,
-// scroll to the row, pulse it). The same reveal path is exposed over IPC (`qs
-// ipc call settings reveal <id>`) for a "Show in settings" button elsewhere in
-// the shell. Bound to Super+S in dotfiles.
+// Settings panel. Sections data-driven from sections.json (add section = one
+// registry change). Left-hand vertical list. Search highlights (not filters).
+// Enter acts on top-ranked option (section select or reveal). Reveal via IPC.
 
 PanelWindow {
     id: root
@@ -40,8 +31,7 @@ PanelWindow {
         Qt.callLater(function () { searchField.forceActiveFocus() })
     }
 
-    // A caller can ask for a specific section (bar cards, overlay "Show in
-    // settings" buttons). Matched by sections.json `type` or title.
+    // Caller can request section (matched by type or title).
     function _applyPendingSection() {
         var name = Services.SettingsPanel.pendingSection
         if (!name || name.length === 0) return

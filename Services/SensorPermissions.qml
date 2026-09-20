@@ -3,29 +3,12 @@ import Quickshell
 import Quickshell.Io
 import qs.Services as Services
 
-// UI and interactions only — the real detection/enforcement mechanism is
-// separate future work, not a gap in this file. On a traditional
-// (non-sandboxed) Linux desktop there is no OS mechanism to block an
-// ordinary app from opening a camera/mic device before it happens; that
-// needs Flatpak + xdg-desktop-portal, which this system uses neither of.
-// A real implementation would be a reactive detect-then-kill loop
-// (Pipewire capture-stream nodes for the microphone — Services/
-// AudioBridge.qml's `micInUse` already has the mechanism — and
-// /proc/*/fd scanning for /dev/video* for the camera, no precedent yet)
-// not true prior restraint. What's below is honest about which parts are
-// real:
-// - `activeUsers` is always `[]` — nothing populates it yet.
-// - `requestPermission(appId, appName, sensor)` is real (sets
-// `pendingPrompt`, the dialog responds to it) but nothing calls it
-// automatically — Settings' own "send a test prompt" control is the
-// only caller today, clearly labelled as a UI preview.
-// - `killApp(pid)` really does send SIGTERM — inert in practice only
-// because `activeUsers` is always empty, not because the call is fake.
-// `rules` (persisted always/never decisions) and `micEnabled`/
-// `cameraEnabled` (the master per-sensor killswitches) are genuinely
-// real: `micEnabled` bridges to Services.AudioBridge's real input-mute
-// state; `cameraEnabled` is a session-local flag — no camera device
-// backend exists yet to actually gate.
+// UI and interactions only; real detection/enforcement is future work. No OS
+// mechanism on unsandboxed Linux (needs Flatpak+xdg-desktop-portal).
+// activeUsers always empty; requestPermission() real but not auto-called.
+// killApp() sends SIGTERM but inert (activeUsers empty). rules, micEnabled,
+// cameraEnabled are real (micEnabled bridges AudioBridge mute; cameraEnabled
+// is session-local, no backend yet).
 
 Singleton {
     id: root

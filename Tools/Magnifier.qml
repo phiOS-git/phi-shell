@@ -30,13 +30,10 @@ PanelWindow {
     property bool _settled: false
     property double _lastCaptureMs: 0
 
-    // Smoothed position — the circle, the magnified image and the bezel all
-    // derive from this, so they move as one rather than the rim drifting apart
-    // from the lens on a separate Behavior.
+    // Smoothed position (circle, image, bezel derive from this). Disabled until
+    // first sample so loupe appears at pointer, not flying in from center.
     property real viewX: cursorX
     property real viewY: cursorY
-    // Disabled until the first real sample — loupe appears AT the pointer
-    // rather than flying in from the screen centre; springy after.
     Behavior on viewX { enabled: root.hasPosition; SpringAnimation { spring: 3.4; damping: 0.34; mass: 1.1; epsilon: 0.25 } }
     Behavior on viewY { enabled: root.hasPosition; SpringAnimation { spring: 3.4; damping: 0.34; mass: 1.1; epsilon: 0.25 } }
 

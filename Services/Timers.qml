@@ -4,33 +4,18 @@ import Quickshell
 import Quickshell.Io
 import qs.Config as Config
 
-// Timer and alarm state and firing live here, not in `phi` itself: a
-// timer/alarm can only fire from something that keeps running, and `phi` is a
-// fresh, one-shot process on every invocation. `phi` only gains a runner
-// provider (internal/query/timer.go) that hands the shell a plain `qs ipc call
-// timer ...` command to run, the same shape SystemActionsProvider already uses
-// for its own shell-owned actions. Timers (relative, "5 minutes from now") and
-// alarms (absolute wall-clock time, optionally repeating on specific weekdays)
-// share one `items` list and one firing/ringtone/overlay mechanism rather than
-// two independent subsystems. Persisted as one JSON object at
-// Config.Paths.timersFile — a collection plus its own small ringtone-prefs
-// object, same combined shape Services/Chroma.qml uses for chroma.json. Not
-// `phi state` (its closed scalar-key set has no room for an open-ended list of
-// items).
+// Timer and alarm state live here (phi is one-shot). Timers (relative) and
+// alarms (absolute wall-clock, repeating) share one items list and firing
+// mechanism. Persisted as JSON at timersFile (collection + ringtone-prefs).
 
 Singleton {
     id: root
 
-    // { id, kind: "timer" | "alarm", label, targetMs, repeatDays: [] }
-    // repeatDays: weekday numbers (0=Sun..6=Sat) an alarm repeats on; empty
-    // means "fire once, whichever day that next is" (a plain timer's
-    // repeatDays is always empty — it never reschedules).
+    // { id, kind: "timer"|"alarm", label, targetMs, repeatDays: [] }
+    // repeatDays: weekday numbers (0=Sun..6=Sat); empty = fire once.
     property var items: []
 
-    // Ringtone. Defaults to "message", the same default
-    // Services/Notifications.qml already ships and confirmed present not a
-    // nicer-sounding but unverified name, since a silent alarm is the worst
-    // failure this feature could have.
+    // Ringtone (default "message", verified present to avoid silent alarm).
     property string soundName: "message"
     property int soundVolume: 100
     property string soundError: ""

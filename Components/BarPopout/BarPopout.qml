@@ -5,17 +5,9 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "modules" as Modules
 
-// The small card that drops below the bar button that opened it — one shared
-// Widgets.PopoutSurface, one section per `which` key (Modules/). Right-isle
-// keys track the button's right edge; the one left-isle key ("power") tracks
-// its left edge instead, via Services.BarPopout's own anchorEdge (right-edge
-// alignment would push a card opened from near the screen's left edge almost
-// entirely off-screen). Every Modules/ section stays instantiated for the
-// shell's whole session — never Loader-swapped — so each keeps its own local
-// state (Modules/Status.qml's tiling-mode highlight, live countdowns) across
-// close/reopen exactly as a user would expect; `active` only drives
-// `visible`/`shown`, which a QtQuick Column already excludes from layout when
-// false.
+// Card drops below bar button. Right-isle keys track button's right edge;
+// left-isle ("power") tracks left (avoid off-screen). Modules/ sections stay
+// instantiated (keep local state like tiling highlight) across close/reopen.
 
 Widgets.PopoutSurface {
     id: root
@@ -36,10 +28,7 @@ Widgets.PopoutSurface {
     anchorEdge: Services.BarPopout.anchorEdge
     cardX: root.anchorEdge === "left" ? Services.BarPopout.anchorLeftX : Services.BarPopout.anchorRightX
 
-    // notifications/clipboard are the two wide, tall exceptions to the
-    // standard chWidth-based card: notifications' history can run long
-    // clipboard's search results always want a real scrollable area, so both
-    // size off the screen instead of a fixed character count.
+    // notifications/clipboard are wide exceptions (scrollable). Size off screen.
     readonly property bool _wideCard: root.which === "notifications" || root.which === "clipboard"
     cardWidth: root._wideCard
         ? Math.min(root.width * 0.32, root.chWidth * 46)
