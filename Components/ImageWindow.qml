@@ -4,21 +4,10 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// One delegate per open image, created/destroyed by a `Variants` block in
-// shell.qml over Services.ImageWindows.windows — this file owns no list of its
-// own siblings, only its own single entry's `id`/`path`. Built on Quickshell's
-// real `FloatingWindow` type — a genuine xdg-toplevel, NOT a WlrLayer.*
-// layer-shell surface like every other floating-looking thing in this shell.
-// This is the deliberate fix for an old bug where images closed/lost focus
-// unexpectedly: the previous approach was a bare external `imv` process
-// matched after the fact by a Hyprland window rule, so the window only became
-// "the right kind of window" once Hyprland's rule matching caught up to it.
-// This surface has no second process at all — it's created, owned and
-// destroyed by phi-shell itself, the same way every other dialog/overlay here
-// is. `fullscreen` and `startSystemMove()` below are FloatingWindow's own
-// real, native members (the real xdg_toplevel interactive-move request) not a
-// hand-rolled resize-to-screen-bounds simulation — a layer-shell PanelWindow
-// genuinely has neither.
+// One delegate per open image. Built on FloatingWindow, a genuine xdg-toplevel
+// (not layer-shell), so the compositor controls the window lifecycle and
+// provides native interactive-move, unlike a hand-tracked drag or external
+// process matched by Hyprland rule.
 
 FloatingWindow {
     id: root
@@ -31,18 +20,14 @@ FloatingWindow {
         return parts.length > 0 ? parts[parts.length - 1] : root.path
     }
 
-    // Title carries a stable, greppable prefix ahead of the filename, for a
-    // Hyprland window rule to match on if float behavior ever needs one —
-    // FloatingWindow exposes no settable app-id of its own.
+    // Stable prefix for Hyprland rules; FloatingWindow has no settable app-id.
     title: "phios-image — " + root.filename
 
     visible: true
     color: Config.Appearance.background
 
-    // A fixed, comfortable default — a multiple of the monospace cell width,
-    // not a bare pixel literal, matching this repo's own idiom for a size with
-    // no design-token role. Not sized to the image's own native resolution:
-    // PreserveAspectFit below already fits any image into this frame.
+    // Fixed default: multiple of monospace cell, not a bare pixel. Not sized
+    // to image resolution; PreserveAspectFit fits any image into this frame.
     width: root.defaultWidth
     height: root.defaultHeight
 
@@ -57,14 +42,8 @@ FloatingWindow {
     readonly property real defaultWidth: root.chWidth * 64
     readonly property real defaultHeight: root.chWidth * 44
 
-    // Widgets/Panel is the one surface primitive every container in this shell
-    // composes, so this surface is built from it rather than a hand-rolled
-    // Rectangle. A 4px border was the original ask, but no border-WIDTH-role
-    // token is actually 4px (border-width is 2px border-width-strong is 1px —
-    // radius-large is 4px, but that's a corner-radius role, not a stroke
-    // width, so reusing it here would be picking a same-numbered token from
-    // the wrong grammar). Left on Panel's own default (borderWidthStrong)
-    // rather than hardcoding a bare "4" — a real, flagged design-token gap.
+    // Panel used here for consistency; border left at default (borderWidthStrong)
+    // since no border-width token is exactly 4px.
     Widgets.Panel {
         id: chrome
         anchors.fill: parent
@@ -87,9 +66,8 @@ FloatingWindow {
                 cache: false
             }
 
-            // Double-click toggles fullscreen — on the image area, not the
-            // draggable strip below, where a double-click landing on a plain
-            // click-drag surface would be ambiguous.
+            // Double-click toggles fullscreen; placed on image, not the draggable
+            // strip below, to avoid ambiguity on a click-drag surface.
             MouseArea {
                 anchors.fill: parent
                 onDoubleClicked: root.fullscreen = !root.fullscreen
@@ -135,10 +113,8 @@ FloatingWindow {
                 }
             }
 
-            // `startSystemMove()` is FloatingWindow's own real member (the
-            // genuine Wayland xdg_toplevel interactive-move request), not a
-            // hand-tracked x/y drag. Excludes the close glyph's own hit area
-            // so the two controls don't fight over the same press.
+            // startSystemMove: native xdg_toplevel request, not hand-tracked drag.
+            // Excludes close glyph to avoid control fight.
             MouseArea {
                 anchors.left: parent.left
                 anchors.right: closeGlyph.left
@@ -151,9 +127,7 @@ FloatingWindow {
         }
     }
 
-    // The compositor's own close request (e.g. a "kill active window" keybind)
-    // — WindowInterface's real `closed` signal, not a made-up one. Removes
-    // this entry from the shared model, which is what actually destroys this
-    // delegate (Variants, shell.qml).
+    // Compositor close request (native signal). Removes entry from model,
+    // which destroys the delegate.
     onClosed: Services.ImageWindows.close(root.imageId)
 }

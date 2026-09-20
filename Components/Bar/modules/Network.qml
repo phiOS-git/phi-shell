@@ -5,23 +5,10 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../glyphs.js" as Glyphs
 
-// Bottom-bar right isle: a single consolidated network module covering
-// wifi/ethernet as one main glyph plus per-status Tailscale, VPN and
-// firewall badges, rather than a separate module per connection type.
-// Connection-type policy: ethernet wins over Wi-Fi whenever a wired NIC
-// exists at all (present, not necessarily connected) — a desktop with
-// both reads its wired port as "the real connection"; Wi-Fi's own on/
-// searching/off states only apply when there is no wired NIC.
-// NOT built — no real data source anywhere in this codebase:
-// - a genuine "connected but no internet" reachability check (X-overlay)
-// - a genuine Wi-Fi-radio-disabled vs. simply-disconnected distinction
-// (Services/WifiBridge.qml exposes `present`/`connected`/`connecting`
-// only, no radio-enabled flag)
-// Both fall back to the same plain "off" reading (the resting, low-opacity
-// Wi-Fi fan) rather than a fabricated distinct icon state.
-// Reuses the shared "network" bar-popout key rather than inventing a new
-// one. The "wifi"/"ethernet" popout keys and Bar/modules/{Network,Wifi
-// Ethernet}.qml are left untouched but reachable from a bar icon.
+// Bottom-bar network module: wifi/ethernet main glyph plus Tailscale/VPN/
+// firewall badges. Ethernet wins over Wi-Fi when a wired NIC exists.
+// No radio-disabled vs disconnected distinction (data not available);
+// both read as off via the resting Wi-Fi fan.
 
 Widgets.Segment {
     id: root
@@ -38,7 +25,6 @@ Widgets.Segment {
     readonly property bool vpnUp: Services.Vpn.anyUp
     readonly property bool fwUp: Services.Firewall.enabled
 
-    // See the file header's own "Connection-type policy" note.
     readonly property bool usingEthernet: root.ethPresent
     readonly property bool anyConnected: root.usingEthernet ? root.ethConnected : root.wifiConnected
 
@@ -122,21 +108,9 @@ Widgets.Segment {
     Component.onCompleted: root._sync()
 
     iconDelegate: Component {
-        // `pivot` packs the three status badges (Tailscale, VPN, firewall) to
-        // the LEFT of the main glyph. Each badge exists only while its own
-        // option is up — no fixed reservation — so the badge Row re-flows as
-        // states change and `implicitWidth` follows it: the group grows from
-        // the left edge while the main glyph stays pinned to the right and
-        // never shifts. Every gap — badge-to-badge and badge-to-main — is the
-        // same `_badgeGap`, so when several badges are up the icons read as
-        // one evenly-spaced set. `width: implicitWidth` is required, not a
-        // nicety: Segment loads this delegate through a plain Loader that only
-        // imposes a size on the loaded item when the Loader itself has an
-        // explicit size (qquickloader.cpp's setInitialState/_q_updateSize, and
-        // Segment's `customIcon` Loader never sets one). An Item's `width`
-        // defaults to 0, which would collapse every `anchors.left/right`
-        // inside this root onto a single point — the jam the old fixed
-        // reservation was masking.
+        // Pivot packs badges left of main glyph; group grows left, main pinned
+        // right. Loader does not impose size, so width: implicitWidth is
+        // required to avoid collapsing anchors onto a point.
         Item {
             id: pivot
             width: implicitWidth
@@ -145,10 +119,7 @@ Widgets.Segment {
                 + (badges.implicitWidth > 0 ? pivot._badgeGap : 0)
             implicitHeight: Math.max(ethIcon.implicitHeight, badges.implicitHeight)
 
-            // The three status badges, left to right in the order the
-            // Connectivity settings section lists them. Each is `visible` only
-            // while active (so the Row drops it and spacing re-flows) and
-            // fades in through its own amount.
+            // Status badges: each visible while active, fades via amount.
             Row {
                 id: badges
                 anchors.left: parent.left
@@ -202,11 +173,7 @@ Widgets.Segment {
                 }
             }
 
-            // Primary glyph: the ethernet plug when a wired NIC exists at all;
-            // otherwise the Wi-Fi fan (its own connecting-pulse included) —
-            // off and no-radio both read through that same fan at low resting
-            // opacity, see the file header's "NOT built" note on why there's
-            // no separate disabled-vs-off glyph.
+            // Primary glyph: ethernet plug if NIC exists, else Wi-Fi fan.
             Widgets.EthernetIcon {
                 id: ethIcon
                 visible: root.usingEthernet
