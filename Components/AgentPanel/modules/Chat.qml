@@ -11,10 +11,7 @@ Item {
     readonly property var infra: Services.AgentInfra
     property string personality: ""
 
-    // Out-of-plan: the "Agent offline" state one sentence covering five
-    // different real causes. AgentInfra already polls every one of those facts
-    // for the Settings section — reuse it — panel says which one is actually
-    // true instead of leaving the user to guess.
+    // Out-of-plan: one sentence covering five causes. AgentInfra polls all;
     function _unit(name) {
         for (const u of root.infra.units) if (u.name === name) return u
         return null
@@ -37,9 +34,7 @@ Item {
     }
 
     signal requestSection(string s)
-    // the Escape task — Widgets/TextField.qml's own `escaped()` for the
-    // general shape; `field` is a raw TextInput (not that widget) so it
-    // re-implements the same blur-then-signal locally.
+    // Escape task: raw TextInput re-implements TextField.escaped() locally.
     signal blurred()
 
     TextMetrics { id: ch; font.family: Config.Appearance.fontMono; font.pixelSize: Config.Appearance.fontSize1; text: "0" }
@@ -47,27 +42,20 @@ Item {
     readonly property real gap: chWidth * Config.Appearance.space2
 
     property bool personaOpen: false
-    // Services/Agent.qml's setChatTitle(id, title) fully built, never-called
-    // capability — no rename control existed anywhere in this panel.
-    // Session-only view state, the same shape personaOpen already is.
+    // setChatTitle() never had UI. Session-only view state (like personaOpen).
     property bool renamingTitle: false
 
     Component.onCompleted: { agent.refreshSessions(); agent.refreshAllProposals() }
 
-    // Mirror the transcript into the project folder when a turn finishes, so
-    // the dashboard and `phi agent search` can see it.
+    // Mirror transcript on turn finish for dashboard and search.
     Connections {
         target: agent
         function onProcessingChanged() { if (!agent.processing) agent.syncCurrentTranscript() }
-        // doSend() clears the composer the instant send() is called, before it
-        // is known whether a lazily-created session succeeded. Restore the
-        // exact text if it did not, rather than letting it vanish.
+        // doSend() clears before send() result; restore if it failed.
         function onSendFailed(text) { field.text = text }
     }
 
-    // `raw: true` returns the actual stored title; the default reformats
-    // opencode's own raw-ISO-timestamp default title for display comment has
-    // the full reasoning).
+    // raw=true: stored title; default reformats for display.
     function currentTitle(raw) {
         for (var i = 0; i < agent.sessions.length; i++)
             if (agent.sessions[i].id === agent.currentSessionId)
@@ -84,17 +72,13 @@ Item {
         Widgets.StyledText { kind: "title"; text: "Agent offline" }
         Widgets.Panel {
             width: parent.width
-            // panels-ux-rework: these agent-panel cards had no height at all —
-            // the frame collapsed to a hairline and the content spilled out of
-            // it. Height now tracks the content like every other Widgets.Panel
-            // in the shell.
+            // Height now tracks content (was hairline collapse).
             height: offlineCol.implicitHeight + padding * 2
             Column {
                 id: offlineCol
                 width: parent.width
                 spacing: root.chWidth * Config.Appearance.space1
-                // Out-of-plan: one static sentence regardless of which of
-                // several real causes applied — root.offlineDiagnosis().
+                // One sentence covers multiple causes (detailed in offlineDiagnosis).
                 Repeater {
                     model: root.offlineDiagnosis()
                     delegate: Widgets.StyledText {
@@ -150,13 +134,7 @@ Item {
                     }
                     onEscaped: root.renamingTitle = false
                 }
-                // Services/Agent.qml's own setChatTitle(id, title) had no UI
-                // path to it anywhere in this panel at all. Only offered once
-                // a real session exists nothing to rename in the "new chat"
-                // state. A plain SmallButton, not wrapped: Row already skips
-                // an invisible child when laying out, and `renameBtn.width`
-                // reads the same either way visibility does not zero a Item's
-                // width.
+                // Rename only with real session. SmallButton (Row skips invisible).
                 Widgets.SmallButton {
                     id: renameBtn
                     anchors.verticalCenter: parent.verticalCenter
@@ -164,13 +142,7 @@ Item {
                     label: root.renamingTitle ? "Cancel" : "Rename"
                     onClicked: {
                         if (root.renamingTitle) { root.renamingTitle = false; return }
-                        // The RAW title, not the reformatted display string —
-                        // pre-filling the synthetic "New chat · 14 Sep, 15:27"
-                        // text would let it get saved back as a real,
-                        // permanent title the next time this is committed.
-                        // Still opencode's own raw-timestamp default at this
-                        // point, so start the field empty instead prompting a
-                        // real title rather than proposing a bad one.
+                        // Use raw title (not synthetic). Empty if raw timestamp.
                         const raw = root.currentTitle(true)
                         renameField.text = /^New session - /.test(raw) ? "" : raw
                         root.renamingTitle = true
@@ -245,12 +217,7 @@ Item {
                         active: root.personaOpen
                         onClicked: root.personaOpen = !root.personaOpen
                     }
-                    // a plain `TextInput` cannot wrap or hold a second line at
-                    // all — a real limitation for anything longer than one
-                    // short sentence, and out of step with every mainstream
-                    // chat composer's own Enter-sends / Shift+Enter-newline
-                    // convention. `TextEdit` grows with its content instead of
-                    // clipping or forcing one line.
+                    // TextInput cannot wrap. TextEdit grows with content.
                     Flickable {
                         id: fieldScroll
                         readonly property real _lineHeight: Config.Appearance.fontSize1 * 1.4
@@ -271,10 +238,7 @@ Item {
                             font.pixelSize: Config.Appearance.fontSize1
                             color: Config.Appearance.textPrimary
                             selectByMouse: true
-                            // Enter sends; Shift+Enter inserts a real newline
-                            // — TextEdit's own default behaviour for a bare
-                            // Enter so only the un-modified case needs
-                            // intercepting.
+                            // Enter sends (TextEdit default); Shift+Enter newline.
                             Keys.onPressed: (event) => {
                                 if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
                                     && !(event.modifiers & Qt.ShiftModifier)) {
@@ -290,9 +254,7 @@ Item {
                         id: sendBtn
                         anchors.verticalCenter: parent.verticalCenter
                         label: "Send"
-                        // Matches doSend()'s own guard — a spinner instead of
-                        // a button that visually invites a click doing nothing
-                        // while a turn is already in flight.
+                        // Matches doSend() guard (spinner not clickable button).
                         loading: root.agent.processing
                         onClicked: root.doSend()
                     }
@@ -309,17 +271,7 @@ Item {
             contentWidth: width
             contentHeight: messages.implicitHeight
             clip: true
-            // the previous version force-scrolled to the bottom on EVERY
-            // content-height change, unconditionally — scrolling up to reread
-            // earlier history got yanked straight back down the instant the
-            // next streamed token/message grew the transcript, the exact "stop
-            // stealing my scroll position" complaint every real chat app
-            // (Slack, Discord, ChatGPT) has already had to fix. Now only
-            // autoscrolls if the user already at (or within ~2 lines of) the
-            // bottom BEFORE this change — `_prevContentHeight` is the previous
-            // height, captured deliberately instead of comparing against
-            // `contentHeight`'s own new value which would always read "not at
-            // the bottom" right after growing.
+            // Autoscroll only if user at bottom (prevent scroll-stealing).
             property real _prevContentHeight: 0
             onContentHeightChanged: {
                 const wasAtBottom = contentY + height >= _prevContentHeight - (root.chWidth * 2)
@@ -331,8 +283,7 @@ Item {
             Column {
                 id: messages
                 width: history.width
-                // Each bubble now carries its own role label, so the rows need less
-                // air between them than the old label-less stack.
+                // Bubbles have role labels; less air needed.
                 spacing: root.chWidth * Config.Appearance.space2
 
                 Repeater {
@@ -381,9 +332,7 @@ Item {
             }
         }
 
-        // Persona/personality picker popover. Positioned in `main`'s own
-        // coordinate space rather than a Quickshell PopupWindow — no
-        // cross-window anchor- direction risk to get wrong.
+        // Persona picker popover (in main space, not PopupWindow).
         Widgets.Panel {
             id: personaCard
             visible: root.personaOpen
@@ -411,19 +360,11 @@ Item {
                         onClicked: { root.personality = modelData; root.personaOpen = false }
                     }
                 }
-                // Full chat-panel rework : this used to route to the separate
-                // "dashboard" destination — user could click into a project to
-                // edit its personalities — that destination exists, so there
-                // is nowhere left to "navigate" to and this button is gone.
-                // Editing a personality is just clicking the project in the
-                // sidebar that's already on screen.
+                // Rework: dashboard gone, edit via sidebar instead.
             }
         }
 
-        // Click-outside-closes for the popover — same shape
-        // Dialogs/PowerMenu.qml's own fadeRoot MouseArea already uses. Below
-        // the popover in paint order but everything else in `main`, and only
-        // intercepts clicks while actually open.
+        // Click-outside-closes (like PowerMenu). Below popover, intercepts when open.
         MouseArea {
             anchors.fill: parent
             visible: root.personaOpen
@@ -432,15 +373,7 @@ Item {
         }
     }
 
-    // this the field UNCONDITIONALLY after calling agent.send() but
-    // Services.Agent.send() itself no-ops while a turn is already in flight
-    // (`if (sendProc.running...) return`, by design, correctly preventing a
-    // real double-send race at the backend). The UI side of that guard missing
-    // entirely: pressing Enter/Send while waiting for a reply silently ERASED
-    // whatever typed, with nothing actually sent — real, silent data loss, not
-    // just a missing loading indicator. Now a no-op the same way the backend
-    // already is: nothing is cleared, nothing is lost, and the message is
-    // still sitting there ready to send the moment the turn finishes.
+    // doSend() guard prevents data loss (was erasing text silently).
     function doSend() {
         if (root.agent.processing || field.text.trim().length === 0) return
         root.agent.send(field.text, root.personality)
