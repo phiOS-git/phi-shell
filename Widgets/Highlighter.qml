@@ -2,38 +2,29 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// A "highlighter marker" text effect: a genuine masked reveal, distinct
-// from Widgets/Segment.qml's own hover sweep (a plain Rectangle wash —
-// Segment can hold a Canvas `iconDelegate`, and duplicating + clipping a
-// second copy of an infinite-animation Canvas for every hover would double
-// that cost). This widget wraps plain text only, so a second `Text` layer
-// costs nothing: two identical Text items stacked (rest colour underneath,
-// highlight colour on top), the top one clipped to a window that
-// grows/shrinks across the text width instead of fading as a flat
-// crossfade.
+// Masked highlighter-marker reveal for plain text: two identical Text
+// layers stacked (rest colour under, highlight colour over), the top one
+// clipped to a window that grows across the text width.
 //
-// Passive, like Widgets/StyledText: does not own its own HoverHandler —
-// `hovered` is a plain property a parent drives (a ListRow, a search
-// result row, anything that already owns a larger hoverable area than
-// just this text). `trigger()` is the separate one-shot path for a
-// highlight not tied to hover at all (e.g. a search result arriving) — it
-// plays a quick full reveal and then closes the window from its LEFT edge
-// moving right, distinct from the plain hover-out motion (the window's
-// RIGHT edge simply retreating back where it came from).
+// Distinct from Widgets/Segment.qml's hover sweep, which is a flat
+// Rectangle wash — Segment can hold a Canvas iconDelegate, and clipping a
+// second copy of an infinite-animation Canvas per hover would double that
+// cost. Text-only here, so the second layer is free.
 //
-// Model: a revealed window [_revealLeft, _revealRight] (both 0..1,
-// fractions of the text's own width) marks which portion of the overlay
-// (highlight-coloured) text is visible through the clip. Plain hover only
-// ever moves `_revealRight` (0 at rest, 1 hovered) — `_revealLeft` stays
-// pinned at 0, so the window always grows from/shrinks back to the left
-// edge. `trigger()` additionally sweeps `_revealLeft` 0->1 once the window
-// is already fully open, eating the highlight away from the left — motion
-// the plain hover reverse does not produce on its own.
+// Passive, like Widgets/StyledText: owns no HoverHandler. `hovered` is
+// driven by whichever parent already owns the larger hoverable area.
 //
-// Motion category B throughout: hover and a one-shot flash are both
-// discrete, triggered state changes.
+// The revealed window is [_revealLeft, _revealRight], both 0..1 fractions
+// of the text width. Hover moves only `_revealRight` (0 at rest, 1
+// hovered), so the window always grows from and retreats to the left edge.
+// `trigger()` is the one-shot path, untied to hover: it opens fully, then
+// sweeps `_revealLeft` 0->1 to eat the highlight away from the left —
+// motion the plain hover reverse does not produce.
 //
-// No caller has been migrated to it yet.
+// Motion category B: hover and one-shot flash are both discrete.
+//
+// TODO: no caller migrated to it yet. Intended for the tag/status
+// highlight effects in docs/reworks/new-features.md.
 
 Item {
     id: root

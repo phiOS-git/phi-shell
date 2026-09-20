@@ -151,13 +151,6 @@ PanelWindow {
             case "bluetooth": return bluetoothComponent
             case "battery": return batteryComponent
             case "stats": return statsComponent
-            // case "power": return powerComponent
-            // case "activeWindow": return activeWindowComponent
-            // case "network": return networkComponent
-            // case "ethernet": return ethernetComponent
-            // case "wifi": return wifiComponent
-            // case "timer": return timerComponent
-            // case "stopwatch": return stopwatchComponent
             default:
             console.warn("phi-shell: Bar module type not recognized: " + type)
             return null
@@ -191,13 +184,6 @@ PanelWindow {
     Component { id: bluetoothComponent; Modules.Bluetooth { screen: bar.screen } }
     Component { id: batteryComponent; Modules.Battery { screen: bar.screen } }
     Component { id: statsComponent; Modules.Stats { screen: bar.screen } }
-    // Component { id: activeWindowComponent; Modules.ActiveWindow { screen: bar.screen } }
-    // Component { id: powerComponent; Modules.Power { screen: bar.screen } }
-    // Component { id: networkComponent; Modules.Network { screen: bar.screen } }
-    // Component { id: ethernetComponent; Modules.Ethernet { screen: bar.screen } }
-    // Component { id: wifiComponent; Modules.Wifi { screen: bar.screen } }
-    // Component { id: timerComponent; Modules.Timer { screen: bar.screen } }
-    // Component { id: stopwatchComponent; Modules.Stopwatch { screen: bar.screen } }
     
     FileView {
         id: registryFile

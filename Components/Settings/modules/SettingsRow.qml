@@ -26,7 +26,7 @@ import "./options.js" as Options
 // changing, or a `wide` control growing/shrinking slides rather than jumps.
 //
 // `pulse()` is the reveal's arrival flash — a short symmetric fade, never
-// ScrambleText/TypingText.
+// ScrambleText.
 
 Item {
     id: root

@@ -1,10 +1,9 @@
 import QtQuick
 import qs.Config as Config
 
-// Random letters that resolve into the final word — one of exactly two
-// motion-category-C effects this shell admits (see Widgets/TypingText.qml
-// for the other). Reusable so every category-C surface (unlock, first run)
-// reads from one component instead of a bespoke scramble loop per caller.
+// Random letters that resolve into the final word — the shell's
+// motion-category-C effect. Reusable so every category-C surface (unlock,
+// first run) reads from one component instead of a bespoke scramble loop.
 //
 // Resolves left-to-right over motionCScramble total, in steps of
 // motionCTypeStep — the OTHER category-C token, reused here as the frame

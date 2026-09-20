@@ -99,7 +99,7 @@ Widgets.StaggerReveal {
                 // colour identity the way the pill row does. At rest the
                 // tile is surface1-identical, ringed by a thin
                 // borderWidth outline in borderStrong — the same visible
-                // resting outline Radio and Checkbox draw; the plain
+                // resting outline; the plain
                 // `border` hairline was effectively invisible on the
                 // card — so the six read as bare power icons in outlined
                 // slots; the glyphs stay uniformly textPrimary, differing

@@ -22,9 +22,8 @@ import qs.Config as Config
 // whole text visible before the loop restarts. A text that fits is never
 // animated: static, left-aligned, unclipped-look.
 //
-// Unverified at real frame timing, like Widgets/TypingText.qml — flagged
-// for the screenshot pass (a very long title should hold, drift once,
-// hold at the end, loop; a short title must stay put).
+// TODO: unverified at real frame timing — a long title should hold, drift
+// once, hold at the end, loop; a short title must stay put.
 
 Item {
     id: root

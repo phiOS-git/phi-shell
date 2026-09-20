@@ -184,10 +184,7 @@ ShellRoot {
         screen: Quickshell.screens[0]
     }
 
-    // Dialogs - TODO: have a single overlay, handles multiple calls internally
-    // Components.DialogsOverlay {
-    //     screen: Quickshell.screens[0]
-    // }
+    // TODO: fold these into one overlay that multiplexes the dialogs.
     Components.ConfirmDialog {
         screen: Quickshell.screens[0]
     }

@@ -5,7 +5,7 @@ import "WidgetStates.js" as WidgetStates
 // Same dumb/reusable icon family as the rest of Widgets/*Icon —
 // Bar/modules/Clipboard.qml owns the Services/Clipboard.qml reads and calls
 // `arrived()` for the short scale pop on a new entry, same technique as
-// NotificationBellIcon's `dndPop` / NetworkIcon's `pop`.
+// NotificationBellIcon's `dndPop`.
 //
 // Kept as a real font-symbol glyph rather than hand-drawn: matching
 // Bar/glyphs.js's own glyph pixel-for-pixel by hand is unnecessary risk
