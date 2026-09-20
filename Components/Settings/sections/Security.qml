@@ -26,30 +26,30 @@ Column {
 
     Modules.SettingsGroup {
         title: "ClamAV"
-        caption: "Antivirus — not built yet (M6, S-65)."
-        Widgets.ListRow { width: parent.width; label: "Service status"; value: "not built yet (M6, S-65)" }
-        Widgets.ListRow { width: parent.width; label: "Signature freshness"; value: "not built yet (M6, S-65)" }
-        Widgets.ListRow { width: parent.width; label: "On-access scanning"; value: "not built yet (M6, S-65)" }
-        Widgets.ListRow { width: parent.width; label: "Quarantine"; value: "not built yet (M6, S-65)" }
+        caption: "Antivirus — not built yet."
+        Widgets.ListRow { width: parent.width; label: "Service status"; value: "not built yet" }
+        Widgets.ListRow { width: parent.width; label: "Signature freshness"; value: "not built yet" }
+        Widgets.ListRow { width: parent.width; label: "On-access scanning"; value: "not built yet" }
+        Widgets.ListRow { width: parent.width; label: "Quarantine"; value: "not built yet" }
     }
 
     Modules.SettingsGroup {
         title: "Face unlock"
-        caption: "Howdy is AUR/T4 only — excluded while Q-01 is deferred (master plan §3.3). A closed decision, not a gap."
+        caption: "Howdy is AUR-only, so it is excluded by the official-packages rule. A closed decision, not a gap."
         Widgets.ListRow {
             width: parent.width
             label: "Face unlock"
-            value: "disabled — AUR/T4 only (howdy), Q-01 deferred"
+            value: "disabled — AUR-only (howdy)"
         }
     }
 
     Modules.SettingsGroup {
         title: "Secrets"
-        caption: "Password manager not chosen yet — Q-F02 [HOLD] (§9.13)."
+        caption: "Password manager not chosen yet."
         Widgets.ListRow {
             width: parent.width
             label: "Password manager"
-            value: "not chosen yet — Q-F02 [HOLD] (§9.13)"
+            value: "not chosen yet"
         }
     }
 

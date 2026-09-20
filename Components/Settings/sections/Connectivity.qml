@@ -154,7 +154,7 @@ Column {
         title: "VPN — WireGuard"
         optionId: "connectivity.vpn"
         readonly property bool hasTunnels: Services.Vpn.tunnels.length > 0
-        caption: "up/down go through `sudo -n wg-quick` — never an endpoint or address is shown (ADR 067). Needs the sudoers drop-in profiles/desktop/system/etc/sudoers.d/49-phi-vpn installed (see profiles/desktop/manual.txt)."
+        caption: "up/down go through `sudo -n wg-quick` — never an endpoint or address is shown. Needs the sudoers drop-in profiles/desktop/system/etc/sudoers.d/49-phi-vpn installed (see profiles/desktop/manual.txt)."
 
         // The controls stay VISIBLE and DISABLED when there is nothing
         // yet, rather than the section collapsing to a single line of

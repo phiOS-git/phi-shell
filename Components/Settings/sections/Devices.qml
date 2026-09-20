@@ -198,7 +198,7 @@ Column {
     Modules.SettingsGroup {
         title: "Monitors"
         optionId: "devices.monitors"
-        caption: "Read-only — changing monitor layout or scale from here is not built yet (ADR 077 treats it as runtime state, not a panel-editable value)."
+        caption: "Read-only — changing monitor layout or scale from here is not built yet (it is runtime state, not a panel-editable value)."
 
         Repeater {
             model: Quickshell.screens
@@ -221,7 +221,7 @@ Column {
     Modules.SettingsGroup {
         title: "Pointer"
         optionId: "devices.pointer"
-        caption: "Mouse and trackpad sensitivity are set in hyprland.lua, not runtime state (§9.12 perimeter)."
+        caption: "Mouse and trackpad sensitivity are set in hyprland.lua, not runtime state."
 
         Modules.SettingsRow {
             title: "Mouse / trackpad sensitivity"

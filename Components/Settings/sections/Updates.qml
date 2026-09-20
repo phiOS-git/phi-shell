@@ -161,7 +161,7 @@ Column {
         ManagerBlock {
             title: "AUR (" + root._entriesFor("AUR").length + ")"
             entries: root._entriesFor("AUR")
-            placeholder: "Empty — Q-01 defers AUR entirely. A non-empty list here is a policy violation."
+            placeholder: "Empty — AUR packages are not allowed. A non-empty list here is a policy violation."
         }
         ManagerBlock {
             title: "npm (global)"

@@ -116,7 +116,7 @@ Item {
                 }
             }
 
-            Widgets.StyledText { kind: "label"; sizeStep: 0; text: "System prompt — replaces the engine default (§8.1)." }
+            Widgets.StyledText { kind: "label"; sizeStep: 0; text: "System prompt — replaces the engine default." }
             Widgets.Panel {
                 width: parent.width
                 height: Math.max(promptArea.implicitHeight + padding * 2, root.chWidth * 18)
