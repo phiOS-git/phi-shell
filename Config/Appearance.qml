@@ -46,8 +46,10 @@ Singleton {
     readonly property color info: _color(_tok("info", Colors.info))
     readonly property color infoText: _color(Colors.infoFg)
 
-    // --- phiOS style grammar ------------------------------------------- "main" (bg-0) and "opposite" (fg-0, its inverse) carry the whole shell.
-    // accent is fine detail only — titles, the focus ring, the Φ agent processing state — never a generic selected/active fill.
+    // --- phiOS style grammar -------------------------------------------
+    // "main" (bg-0) and "opposite" (fg-0, its inverse) carry the whole shell.
+    // accent is fine detail only — titles, the focus ring, the Φ agent
+    // processing state — never a generic selected/active fill.
     // Selection is a full inversion between main and opposite.
     readonly property color colorMain: root.background
     readonly property color colorOpposite: root.textPrimary
@@ -139,9 +141,13 @@ Singleton {
     readonly property int zTooltip: parseInt(Tokens.zTooltip)
     readonly property int zNotification: parseInt(Tokens.zNotification)
 
-    // --- Motion ------------------------------------------------------ Easing stays a string for categories A/C/D: mapping "linear"/ "ease-out" onto a QML Easing.Type enum needs the animation type in scope (belongs to the animating widget), not this singleton.
+    // --- Motion ------------------------------------------------------
+    // Easing stays a string for categories A/C/D: mapping "linear"/ "ease-out"
+    // onto a QML Easing.Type enum needs the animation type in scope (belongs
+    // to the animating widget), not this singleton.
     // Category B is the exception — every widget animates state transitions on it, so it's resolved once,.
-    // Durations and the category-B curve are per-user editable, merged over the generated token the same way the palette is.
+    // Durations and the category-B curve are per-user editable, merged over
+    // the generated token the same way the palette is.
     readonly property int motionAPeriod: _ms(_tok("motion-a-period", Tokens.motionAPeriod))
     readonly property string motionAEasing: Tokens.motionAEasing
     readonly property int motionBDuration: _ms(_tok("motion-b-duration", Tokens.motionBDuration))
@@ -164,7 +170,8 @@ Singleton {
     readonly property int motionDDuration: _ms(_tok("motion-d-duration", Tokens.motionDDuration))
 
     // --- Wallpaper textures -------------------------------------------- Catalogue is a design decision;
-    // falls back to the known set for the hot-reload window before `phi theme set` regenerates Tokens.qml with this key.
+    // falls back to the known set for the hot-reload window before `phi theme
+    // set` regenerates Tokens.qml with this key.
     readonly property var textureModes: {
         var s = String(Tokens.textureModes || "").trim()
         return s.length > 0 ? s.split(/\s+/) : ["grain", "noise", "paper", "leather", "rock", "fabric"]
@@ -176,7 +183,11 @@ Singleton {
 
     // --- helpers ------------------------------------------------------ parseFloat with a fallback.
     // A token string always carries its unit ("14px") and parseFloat stops there.
-    // `_pxOr`'s fallback covers the transient window after a token is added to design/tokens.*.sh but before `phi theme set` has regenerated Config/Tokens.qml — the read is `undefined`, and falling back to a value that DOES resolve is safer for one hot-reload than NaN propagating through layout math.
+    // `_pxOr`'s fallback covers the transient window after a token is added to
+    // design/tokens.*.sh but before `phi theme set` has regenerated
+    // Config/Tokens.qml — the read is `undefined`, and falling back to a value
+    // that DOES resolve is safer for one hot-reload than NaN propagating
+    // through layout math.
     function _pxOr(value, fallback) {
         var n = parseFloat(value)
         return isNaN(n) ? fallback : n

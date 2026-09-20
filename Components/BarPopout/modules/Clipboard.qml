@@ -32,9 +32,16 @@ Item {
     property string query: ""
     property int highlightedIndex: 0
 
-    // --- hold/hover preview: an overlay with the complete entry and extra information when the selection is held for a while.
-    // Read as one dwell mechanism with two triggers, not a press-and-hold gesture: "the selection" is highlightedIndex, and a long-press deliberately not built instead.
-    // TapHandler's own tapped() signal still fires on release even after longPressed() has already fired for the same press, so suppressing that correctly needs an interaction this file cannot verify without hardware, where the existing tap-to-copy-and-close is exactly the wrong thing to risk breaking.
+    // --- hold/hover preview: an overlay with the complete entry and extra
+    // information when the selection is held for a while.
+    // Read as one dwell mechanism with two triggers, not a press-and-hold
+    // gesture: "the selection" is highlightedIndex, and a long-press
+    // deliberately not built instead.
+    // TapHandler's own tapped() signal still fires on release even after
+    // longPressed() has already fired for the same press, so suppressing that
+    // correctly needs an interaction this file cannot verify without hardware,
+    // where the existing tap-to-copy-and-close is exactly the wrong thing to
+    // risk breaking.
     property string hoverTargetId: ""
     property bool previewVisible: false
 

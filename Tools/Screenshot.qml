@@ -10,7 +10,9 @@ import qs.Widgets as Widgets
 PanelWindow {
     id: root
 
-    // "idle" | "select-save" | "select-ocr" | "select-qr" — window and fullscreen capture need no selection state at all, see the two IPC functions.
+    // "idle" | "select-save" | "select-ocr" | "select-qr" — window and
+    // fullscreen capture need no selection state at all, see the two IPC
+    // functions.
     property string mode: "idle"
     property string resultText: ""
     property bool recording: false
@@ -232,10 +234,22 @@ PanelWindow {
         }
     }
 
-    // --- Capture -------------------------------------------------------- Every capture path funnels through _prepareCapture: grim reads whatever the compositor currently has composited, and this surface's OWN UI — the drag-select rectangle, or a leftover OCR/QR result panel from a previous capture the user never dismissed — is part of that composited output until the layer surface is actually unmapped.
-    // Spawning grim before hiding this surface would capture the selection rectangle into every area screenshot.
-    // Setting the hide-triggering properties is necessary but not sufficient — Qt Quick still has to render a frame without them and the compositor still has to composite and present it, neither of which happens synchronously with the property write — so `_prepareCapture` waits one category-B state-transition duration before actually invoking the capture.
-    // That interval is a reasoned default, not hardware-verified: if a capture is still occasionally tinted, this is the one thing to try raising.
+    // --- Capture --------------------------------------------------------
+    // Every capture path funnels through _prepareCapture: grim reads whatever
+    // the compositor currently has composited, and this surface's OWN UI — the
+    // drag-select rectangle, or a leftover OCR/QR result panel from a previous
+    // capture the user never dismissed — is part of that composited output
+    // until the layer surface is actually unmapped.
+    // Spawning grim before hiding this surface would capture the selection
+    // rectangle into every area screenshot.
+    // Setting the hide-triggering properties is necessary but not sufficient —
+    // Qt Quick still has to render a frame without them and the compositor
+    // still has to composite and present it, neither of which happens
+    // synchronously with the property write — so `_prepareCapture` waits one
+    // category-B state-transition duration before actually invoking the
+    // capture.
+    // That interval is a reasoned default, not hardware-verified: if a capture
+    // is still occasionally tinted, this is the one thing to try raising.
     function _prepareCapture(fn) {
         root.mode = "idle"
         // A stale, undismissed OCR/QR result panel is part of this surface's
@@ -409,8 +423,11 @@ PanelWindow {
         }
     }
 
-    // --- Recording -------------------------------------------------------- Scope: the focused output, full-frame — not an arbitrary region.
-    // wf-recorder's own -g flag accepts the same "X,Y WxH" geometry grim and slurp use, so an area-recording mode is a small addition once real usage asks for one;
+    // --- Recording --------------------------------------------------------
+    // Scope: the focused output, full-frame — not an arbitrary region.
+    // wf-recorder's own -g flag accepts the same "X,Y WxH" geometry grim and
+    // slurp use, so an area-recording mode is a small addition once real usage
+    // asks for one;
     // not built now.
     Process {
         id: recordProc

@@ -644,7 +644,9 @@ Column {
         }
     }
 
-    // --- Colours ------------------------------------------------------ Grouped by context, each a ColorGroup — a stable swatch grid plus one slide-open editor panel (see the component).
+    // --- Colours ------------------------------------------------------
+    // Grouped by context, each a ColorGroup — a stable swatch grid plus one
+    // slide-open editor panel (see the component).
     ColorGroup {
         title: "Colours — structure"
         caption: "Two structural colours (background, primary text) carry the whole shell; the surfaces step up from the background for stacked panels."
@@ -995,7 +997,8 @@ Column {
     }
 
     // --- Screen magnifier ------------------------------------ The loupe (Magnifier/Magnifier.qml).
-    // Runtime UI state stored through `phi state` by Services/Magnifier, same category as the spotlight size — not a design token.
+    // Runtime UI state stored through `phi state` by Services/Magnifier, same
+    // category as the spotlight size — not a design token.
     Modules.SettingsGroup {
         title: "Screen magnifier"
         Modules.SettingsRow {
@@ -1025,7 +1028,8 @@ Column {
         }
     }
 
-    // --- Clock --------------------------------------------------- Stored in Config/ClockPrefs.qml, read by Bar/modules/Clock.qml.
+    // --- Clock ---------------------------------------------------
+    // Stored in Config/ClockPrefs.qml, read by Bar/modules/Clock.qml.
     // Same shape and reasoning as the Lock screen group just.
     Modules.SettingsGroup {
         title: "Clock"
@@ -1068,7 +1072,8 @@ Column {
         }
     }
 
-    // --- Lock screen ----------------------------------------- The screensaver backdrop behind the lock screen.
+    // --- Lock screen -----------------------------------------
+    // The screensaver backdrop behind the lock screen.
     // Stored in Config/LockPrefs.qml ($XDG_STATE_HOME/phi/lock.json), read by Lock/Lock.qml.
     // Runtime UI state, not a design token — same category as the spotlight size.
     Modules.SettingsGroup {
@@ -1517,7 +1522,10 @@ Column {
         }
     }
 
-    // --- Wallpaper ------------------------------------------------ Three groups by context — the base layers, the image and how it fills the screen, and the dynamic rotation — so options that belong together sit together instead of being scattered down one long wall of rows.
+    // --- Wallpaper ------------------------------------------------
+    // Three groups by context — the base layers, the image and how it fills
+    // the screen, and the dynamic rotation — so options that belong together
+    // sit together instead of being scattered down one long wall of rows.
     Modules.SettingsGroup {
         title: "Wallpaper — base"
         caption: "The solid colour underneath the picture, with an optional grain."
@@ -1714,7 +1722,9 @@ Column {
         }
     }
 
-    // --- Dynamic wallpaper ---------------------------------------- Entries under wallpapers/dynamic/ that rotate the wallpaper by daytime, season and (future) weather.
+    // --- Dynamic wallpaper ----------------------------------------
+    // Entries under wallpapers/dynamic/ that rotate the wallpaper by daytime,
+    // season and (future) weather.
     // All state lives in Services/DynamicWallpaper.qml — this group only reads it and calls its setters.
     // While it is on, the image shown becomes the entry's most specific image for the current slot;
     // while off, or paused by battery saver, the static pick apply unchanged.

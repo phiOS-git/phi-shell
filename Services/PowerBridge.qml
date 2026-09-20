@@ -91,11 +91,16 @@ Singleton {
         }
     }
 
-    // --- charging sound -------------------------------------------------- On by default, unlike Services/Notifications.qml's own sound (off by default) — this fires once per plug-in event, and the user asked for it directly.
+    // --- charging sound --------------------------------------------------
+    // On by default, unlike Services/Notifications.qml's own sound (off by
+    // default) — this fires once per plug-in event, and the user asked for it
+    // directly.
     // "power-plug" is a real freedesktop sound-theme name.
     // Same name/volume convention as Services/Notifications.qml's sound.
     // Persisted as JSON, not `phi state` — this single `phi state` key before name/volume were added.
-    // _migrateFromPhiState() reads that old key exactly once, only when this JSON file has never been written, so an already-set "false" survives the switch instead of reverting to "true".
+    // _migrateFromPhiState() reads that old key exactly once, only when this
+    // JSON file has never been written, so an already-set "false" survives the
+    // switch instead of reverting to "true".
     property bool chargingSoundEnabled: true
     property string chargingSoundName: "power-plug"   // freedesktop theme name, or an absolute path
     property int chargingSoundVolume: 100               // 0-100
@@ -207,7 +212,10 @@ Singleton {
         }
     }
 
-    // --- low-battery full-screen alert ------------------------------------ Deliberately separate from lowPercentThreshold/anomaly — those already drive Bar/modules/Battery.qml's icon colour, a different, already-shipped surface with its own default.
+    // --- low-battery full-screen alert ------------------------------------
+    // Deliberately separate from lowPercentThreshold/anomaly — those already
+    // drive Bar/modules/Battery.qml's icon colour, a different,
+    // already-shipped surface with its own default.
     property real alertWarnThreshold: 0.15
     property real alertDangerThreshold: 0.05
 
@@ -277,11 +285,22 @@ Singleton {
         if (root.alertLevel === "none") root.dismissedLevel = "none"
     }
 
-    // --- battery saving mode ---------------------------------------------- Reuses lowPercentThreshold as the auto-enable threshold rather than a second field — only the automation on/off switch (batterySaverAuto) is meant to be user-configurable.
+    // --- battery saving mode ----------------------------------------------
+    // Reuses lowPercentThreshold as the auto-enable threshold rather than a
+    // second field — only the automation on/off switch (batterySaverAuto) is
+    // meant to be user-configurable.
     // Only batterySaverAuto is persisted.
-    // batterySaverActive and the charging-override flag are session-local, recomputed by _evaluateBatterySaver() on startup — a saved "was active" surviving a restart would fabricate a reason it on, when the real battery state at startup already answers that correctly.
-    // Brightness is capped at 40% (Services/Brightness.qml) and restored when saver turns off — never persisted, since brightness is expected-to-move hardware state.
-    // The lock screen's screensaver is suppressed as a read-side override rather than writing through Config.LockPrefs — writing would permanently overwrite the user's actual chosen effect if a restart landed while saver active.
+    // batterySaverActive and the charging-override flag are session-local,
+    // recomputed by _evaluateBatterySaver() on startup — a saved "was active"
+    // surviving a restart would fabricate a reason it on, when the real
+    // battery state at startup already answers that correctly.
+    // Brightness is capped at 40% (Services/Brightness.qml) and restored when
+    // saver turns off — never persisted, since brightness is expected-to-move
+    // hardware state.
+    // The lock screen's screensaver is suppressed as a read-side override
+    // rather than writing through Config.LockPrefs — writing would permanently
+    // overwrite the user's actual chosen effect if a restart landed while
+    // saver active.
     property bool batterySaverAuto: true
     property bool batterySaverActive: false
     property bool _saverOverrideWhileCharging: false

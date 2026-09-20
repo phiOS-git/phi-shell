@@ -52,7 +52,11 @@ PanelWindow {
     readonly property real editorWidth: chWidth * 42
     readonly property real editorHeight: chWidth * 26
 
-    // Gated on cardFade.visible (== shown || still fading out), not root.shown directly: shrinking the window the instant `shown` goes false would clip cardFade's own fade-out mid-animation, since the window's geometry and the card's opacity would then be animating in opposite directions at once.
+    // Gated on cardFade.visible (== shown || still fading out), not root.shown
+    // directly: shrinking the window the instant `shown` goes false would clip
+    // cardFade's own fade-out mid-animation, since the window's geometry and
+    // the card's opacity would then be animating in opposite directions at
+    // once.
     // Keeping the window editor-sized until the fade has actually finished avoids that.
     implicitWidth: cardFade.visible ? root.editorWidth : tab.width
     implicitHeight: cardFade.visible ? root.editorHeight : tab.height
@@ -120,8 +124,14 @@ PanelWindow {
     }
 
     // The editor itself — a Widgets.Panel matching every other card surface in this repo.
-    // Fade lives on this wrapper Item, not on the Panel directly: Widgets/Panel.qml's own root already binds its own `opacity` internally) assigning `opacity:`/`visible:` on the Panel instance itself would silently replace that binding rather than compose with it.
-    // Same fadeRoot-wraps-the-Panel shape as Dialogs/ConfirmDialog.qml and Dialogs/BatteryAlert.qml, and the same `shown || opacity > 0` visibility — fade-OUT actually renders instead of the Panel vanishing the instant `shown` flips false.
+    // Fade lives on this wrapper Item, not on the Panel directly:
+    // Widgets/Panel.qml's own root already binds its own `opacity` internally)
+    // assigning `opacity:`/`visible:` on the Panel instance itself would
+    // silently replace that binding rather than compose with it.
+    // Same fadeRoot-wraps-the-Panel shape as Dialogs/ConfirmDialog.qml and
+    // Dialogs/BatteryAlert.qml, and the same `shown || opacity > 0` visibility
+    // — fade-OUT actually renders instead of the Panel vanishing the instant
+    // `shown` flips false.
     Item {
         id: cardFade
         anchors.fill: parent
