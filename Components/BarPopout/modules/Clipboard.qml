@@ -32,16 +32,13 @@ Item {
     property string query: ""
     property int highlightedIndex: 0
 
-    // --- hold/hover preview: an overlay with the complete entry and extra
-    // information when the selection is held for a while.
-    // Read as one dwell mechanism with two triggers, not a press-and-hold
-    // gesture: "the selection" is highlightedIndex, and a long-press
-    // deliberately not built instead.
-    // TapHandler's own tapped() signal still fires on release even after
-    // longPressed() has already fired for the same press, so suppressing that
-    // correctly needs an interaction this file cannot verify without hardware,
-    // where the existing tap-to-copy-and-close is exactly the wrong thing to
-    // risk breaking.
+    // --- hold/hover preview -------------------------------------------
+    // An overlay showing the complete entry once a selection is dwelt on.
+    // One dwell mechanism with two triggers (hover and keyboard selection),
+    // not a press-and-hold gesture: TapHandler's tapped() still fires on
+    // release even after longPressed(), and suppressing that reliably cannot
+    // be verified without hardware — tap-to-copy-and-close is the wrong thing
+    // to risk breaking.
     property string hoverTargetId: ""
     property bool previewVisible: false
 
@@ -77,8 +74,7 @@ Item {
     }
 
     // The details row's source text changes with the pin/truncate flags once
-    // the full text has been read — re-measure — panel always fits its own
-    // row.
+    // the full text is read, so re-measure to keep the panel fitting its row.
     onPreviewPinnedChanged: preview._relayout()
     onPreviewTruncatedChanged: preview._relayout()
 
@@ -100,8 +96,8 @@ Item {
     // inset inside the dock by Widgets/Panel.qml's own padding, so
     // root.mapToItem would land the preview overlapping the dock's left border
     // by about one padding's worth instead of sitting beside it. previewRootY
-    // is still root's own absolute Y: the preview panel stays root's own child
-    // (see), so ITS y needs converting relative to root, not dock. A missing
+    // is still root's own absolute Y: the preview panel stays root's own child,
+    // so ITS y is converted relative to root, not the dock. A missing
     // card leaves the previous target in place rather than snapping to (0,0).
     function _updatePreviewPosition() {
         root.previewRootY = root.mapToItem(null, 0, 0).y
@@ -414,8 +410,8 @@ Item {
 
         // The widest single-line row in the panel is the details line (time
         // left, source right) — measured as one concatenated string in the
-        // same label font the row itself renders, so the short- content entry still
-        // opens wide enough to fit its own date/source without overflowing. A
+        // same label font the row itself renders, so even a short entry opens
+        // wide enough to fit its own date and source without overflowing. A
         // flat 360px floor sits underneath the measurement: the width must
         // never collapse back to the content width again, even for the brief
         // moment before the row has been measured — short pastes open a real
@@ -438,7 +434,7 @@ Item {
 
             // The fixed rows the image cannot claim: the placeholder line, its
             // own half-gap inside the content column, the doubled column gap
-            // it, and the details row. Measured at the same moment the box is
+            // above it, and the details row. Measured as the box is
             // computed, so the box and the panel height can never disagree about
             // what the layout needs.
             const fixedH = entryText.implicitHeight + root.gap / 2
@@ -525,17 +521,15 @@ Item {
         y: preview._absY - root.previewRootY
 
         // No click-swallower: a MouseArea would consume hover, so every card
-        // the overlay covers would stop reporting HoverHandler.hovered the
-        // moment it appears — clearing hoverTargetId (hides the overlay)
-        // (makes the card hoverable again) (can re-show it: a flicker loop
-        // centred on exactly where the feature is used). A stray click landing
-        // on a covered card instead is the smaller problem, and this Panel
-        // already paints opaquely over it.
+        // the overlay covers would stop reporting HoverHandler.hovered. That
+        // clears hoverTargetId, which hides the overlay, which makes the card
+        // hoverable again, which re-shows it — a flicker loop centred on
+        // exactly where the feature is used. A stray click on a covered card
+        // is the smaller problem, and this Panel already paints over it.
 
         // Content (text/image) and the trailing time/source row are two
-        // separate Columns so only the gap between the two grows, not every
-        // line — doubled — separation between the content and the details row
-        // does the visual work padding would otherwise fake.
+        // separate Columns so only the gap between them grows, not every line.
+        // That doubled separation does the visual work padding would fake.
         Column {
             id: previewCol
             width: parent.width
@@ -643,10 +637,10 @@ Item {
                 : Config.Appearance.colorOpposite
             readonly property real padding: root.gap
 
-            // Registers this delegate into root._cardItems — preview overlay's
-            // _updatePreviewPosition can find this card's Item by id and read
-            // its real screen position — a Repeater's own model index isn't
-            // enough, since pinned/rest are two separate Repeaters.
+            // Registers this delegate into root._cardItems so the preview's
+            // _updatePreviewPosition can find this card by id and read its real
+            // screen position: a Repeater's model index is not enough, since
+            // pinned and rest are two separate Repeaters.
             // Unregisters itself on destruction, but only if it is still the
             // one on file for this id — a fast list refresh recreating this
             // exact id under a different delegate instance could otherwise
@@ -730,10 +724,10 @@ Item {
                 }
             }
 
-            // A second, independent TapHandler rather than branching inside
-            // the one: PointerHandler's own default acceptedButtons is
-            // Qt.LeftButton, so the restore handler never reacts to a right-click —
-            // this one just adds the button the other never claimed.
+            // A second, independent TapHandler rather than branching inside the
+            // first: PointerHandler's default acceptedButtons is Qt.LeftButton,
+            // so the restore handler never sees a right-click. This one adds
+            // the button the other never claimed.
             TapHandler {
                 acceptedButtons: Qt.RightButton
                 onTapped: {

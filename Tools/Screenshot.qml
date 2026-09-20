@@ -10,32 +10,19 @@ import qs.Widgets as Widgets
 PanelWindow {
     id: root
 
-    // "idle" | "select-save" | "select-ocr" | "select-qr" — window and
-    // fullscreen capture need no selection state at all, see the two IPC
-    // functions.
+    // idle | select-save | select-ocr | select-qr (window/fullscreen need no selection).
     property string mode: "idle"
     property string resultText: ""
     property bool recording: false
 
     readonly property bool selecting: root.mode.startsWith("select-")
 
-    // Mirrors this surface's two state properties into the
-    // Services/ScreenshotState.qml singleton so surfaces outside this
-    // component tree can read them without reaching in.
-    // `onModeChanged`/`onRecordingChanged` fire for every real change; the
-    // merged Component.onCompleted pushes the initial values before any change
-    // happens.
+    // Mirror state to ScreenshotState singleton. Merge initial values in onCompleted.
     onModeChanged: Services.ScreenshotState.mode = root.mode
     onRecordingChanged: Services.ScreenshotState.recording = root.recording
 
     anchors { top: true; bottom: true; left: true; right: true }
-    // On the default Top layer, the bar's own exclusiveZone reduces this
-    // surface's available region to stop short of the bar strip — not a
-    // z-order occlusion, the region itself stops there, so neither the Scrim
-    // nor the selection MouseArea can reach it. Raising to WlrLayer.Overlay
-    // (below) paired with `exclusiveZone: -1` is the same fix
-    // Components/Overview.qml uses for the identical symptom, so the dim covers the
-    // status bar too.
+    // Raise to Overlay + exclusiveZone -1 (like Overview) to cover status bar.
     exclusiveZone: -1
     color: "transparent"
     visible: root.selecting || root.resultText.length > 0
@@ -47,9 +34,7 @@ PanelWindow {
         Services.ScreenshotState.recording = root.recording
     }
 
-    // Every other modal-style overlay in this shell wires Escape to
-    // cancel/close; without this, the only way to back out of a selection
-    // near-empty drag or actually completing a capture.
+    // Wire Escape to cancel/close (like other modals).
     Services.LayerFocus { target: root }
     Item {
         id: keyScope
@@ -73,12 +58,7 @@ PanelWindow {
         return base + "/Recordings"
     }
 
-    // Neither grim nor wf-recorder is expected to create a missing parent
-    // directory itself, so this ensures both output directories exist.
-    // running=false in onExited even though nothing ever re-triggers this one:
-    // Process.onFinished() calls startProcessIfReady() unconditionally on
-    // exit, so ANY Process left with running still true after it completes
-    // respawns itself forever.
+    // Ensure directories exist (grim/wf-recorder don't create parents).
     Process {
         id: ensureDirsProc
         command: ["sh", "-c", 'mkdir -p "$1" "$2"', "mkdir", root._picturesDir(), root._recordingsDir()]
@@ -98,11 +78,7 @@ PanelWindow {
     IpcHandler {
         target: "screenshot"
         function area(): void { root.mode = "select-save" }
-        // Window mode needs no selection overlay at all — the active window's
-        // geometry comes straight from `hyprctl activewindow -j` — so this
-        // calls the query directly rather than routing through `mode` and
-        // immediately resetting it again in the same tick (an earlier draft
-        // did and which this comment replaces).
+        // Window mode: query direct, no selection overlay needed.
         function window(): void { windowQueryComponent.createObject(root) }
         function fullscreen(): void { root._captureFullscreen() }
         function ocr(): void { root.mode = "select-ocr" }
