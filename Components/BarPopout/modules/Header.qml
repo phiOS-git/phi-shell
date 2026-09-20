@@ -3,13 +3,12 @@ import qs.Config as Config
 import qs.Widgets as Widgets
 import "../../Bar/glyphs.js" as Glyphs
 
-// The card's shared title row + divider, common to every "which" section
-// that has one — a few (e.g. "network"/"status") have no single-topic
-// title of their own and return "", which hides this row entirely rather
-// than leaving a blank gap. One settings-icon slot per
-// item 6 — a card that deep-links into more than one Settings destination
-// (the network card) keeps its own per-sub-section icons instead of using
-// this one.
+// The card's shared title row + divider, common to every "which" section that
+// has one — a few (e.g. "network"/"status") have no single-topic title of
+// their own and return "", which hides this row entirely rather than leaving a
+// blank gap. One settings-icon slot per item 6 — a card that deep-links into
+// more than one Settings destination (the network card) keeps its own
+// per-sub-section icons instead of using this one.
 
 Column {
     id: root

@@ -5,19 +5,18 @@ import Quickshell.Io
 import qs.Config as Config
 
 // Timer and alarm state and firing live here, not in `phi` itself: a
-// timer/alarm can only fire from something that keeps running, and `phi`
-// is a fresh, one-shot process on every invocation. `phi` only gains a
-// runner provider (internal/query/timer.go) that hands the shell a plain
-// `qs ipc call timer ...` command to run, the same shape
-// SystemActionsProvider already uses for its own shell-owned actions.
-// Timers (relative, "5 minutes from now") and alarms (absolute wall-clock
-// time, optionally repeating on specific weekdays) share one `items` list
-// and one firing/ringtone/overlay mechanism rather than two independent
-// subsystems.
-// Persisted as one JSON object at Config.Paths.timersFile — a collection
-// plus its own small ringtone-prefs object, same combined shape
-// Services/Chroma.qml uses for chroma.json. Not `phi state` (its closed
-// scalar-key set has no room for an open-ended list of items).
+// timer/alarm can only fire from something that keeps running, and `phi` is a
+// fresh, one-shot process on every invocation. `phi` only gains a runner
+// provider (internal/query/timer.go) that hands the shell a plain `qs ipc call
+// timer ...` command to run, the same shape SystemActionsProvider already uses
+// for its own shell-owned actions. Timers (relative, "5 minutes from now") and
+// alarms (absolute wall-clock time, optionally repeating on specific weekdays)
+// share one `items` list and one firing/ringtone/overlay mechanism rather than
+// two independent subsystems. Persisted as one JSON object at
+// Config.Paths.timersFile — a collection plus its own small ringtone-prefs
+// object, same combined shape Services/Chroma.qml uses for chroma.json. Not
+// `phi state` (its closed scalar-key set has no room for an open-ended list of
+// items).
 
 Singleton {
     id: root
@@ -29,17 +28,17 @@ Singleton {
     property var items: []
 
     // Ringtone. Defaults to "message", the same default
-    // Services/Notifications.qml already ships and confirmed present
-    // not a nicer-sounding but unverified name, since a silent alarm is
-    // the worst failure this feature could have.
+    // Services/Notifications.qml already ships and confirmed present not a
+    // nicer-sounding but unverified name, since a silent alarm is the worst
+    // failure this feature could have.
     property string soundName: "message"
     property int soundVolume: 100
     property string soundError: ""
 
     // Items currently firing, oldest first — the overlay shows firingIds[0]
     // and dismiss() advances the queue, so more than one due at once (e.g.
-    // after the machine was suspended through several alarm times) is
-    // handled one at a time rather than dropped or merged.
+    // after the machine was suspended through several alarm times) is handled
+    // one at a time rather than dropped or merged.
     property var firingIds: []
     readonly property bool alerting: root.firingIds.length > 0
     readonly property var firingItem: {
@@ -86,11 +85,11 @@ Singleton {
         root._persist()
     }
 
-    // Dismisses whichever item the overlay is currently showing
-    // (firingIds[0]) — a one-shot item is removed, a repeating alarm is
-    // rescheduled to its next real occurrence computed fresh from now (see
-    // _nextOccurrence's own header on why "fresh from now", not from the
-    // stale targetMs that just fired).
+    // Dismisses whichever item the overlay is currently showing (firingIds[0])
+    // — a one-shot item is removed, a repeating alarm is rescheduled to its
+    // next real occurrence computed fresh from now (see _nextOccurrence's own
+    // header on why "fresh from now", not from the stale targetMs that just
+    // fired).
     function dismiss() {
         if (root.firingIds.length === 0) return
         const id = root.firingIds[0]
@@ -129,13 +128,12 @@ Singleton {
     Timer { id: testStopTimer; interval: 2000; onTriggered: root._stopRingtone() }
 
     // The next epoch-ms at which (hour:minute) occurs, always computed from
-    // the REAL current time, never by walking forward from a
-    // computed (and possibly very stale, e.g. after the machine was
-    // suspended for days) targetMs — a bounded 7-day forward scan, so a
-    // long-suspended machine gets exactly the next real occurrence, not a
-    // backlog of every missed one stacked up one day at a time.
-    // repeatDays empty means "the next time this clock time occurs at
-    // all", today included if it hasn't passed yet.
+    // the REAL current time, never by walking forward from a computed (and
+    // possibly very stale, e.g. after the machine was suspended for days)
+    // targetMs — a bounded 7-day forward scan, so a long-suspended machine
+    // gets exactly the next real occurrence, not a backlog of every missed one
+    // stacked up one day at a time. repeatDays empty means "the next time this
+    // clock time occurs at all", today included if it hasn't passed yet.
     function _nextOccurrence(hour, minute, repeatDays) {
         const now = new Date()
         for (var addDays = 0; addDays <= 7; addDays++) {
@@ -206,9 +204,9 @@ Singleton {
         onExited: (exitCode) => {
             ringtoneProc.running = false
             if (exitCode !== 0) {
-                // Do not loop on a command that is failing every time
-                // the exact tight-respawn-loop class Services/Tailscale.qml's
-                // own header already documents for an unconditional re-arm.
+                // Do not loop on a command that is failing every time the
+                // exact tight-respawn-loop class Services/Tailscale.qml's own
+                // header already documents for an unconditional re-arm.
                 if (root.soundError.length === 0)
                     root.soundError = "pw-play exited " + exitCode + " (is " + root._soundPath() + " present? sound-theme-freedesktop may not be installed)"
                 root._ringtoneActive = false

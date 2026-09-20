@@ -49,7 +49,8 @@ ShellRoot {
         screen: Quickshell.screens[0]
     }
 
-    // FIXME: `Type Components.Settings unavailable` - `Type Sections.General unavailable`
+    // FIXME: `Type Components.Settings unavailable` - `Type Sections.General
+    // unavailable`
     Components.Settings {
         screen: Quickshell.screens[0]
     }
@@ -109,8 +110,8 @@ ShellRoot {
     }
 
     // Notifications and clipboard are BarPopout "which" cards now
-    // (Components/BarPopout/modules/{Notifications,Clipboard}.qml), not
-    // their own mounted surfaces.
+    // (Components/BarPopout/modules/{Notifications,Clipboard}.qml), not their
+    // own mounted surfaces.
     Components.BarPopout {
         screen: Quickshell.screens[0]
     }
@@ -206,9 +207,9 @@ ShellRoot {
 
         // QML singletons are lazy on first use — these four reads force
         // Clipboard/NightShift/Chroma/DynamicWallpaper to start at session
-        // start instead of whenever their settings section is opened for
-        // the first time. DynamicWallpaper in particular must arm its
-        // daytime boundary timer at boot, not when Settings opens.
+        // start instead of whenever their settings section is opened for the
+        // first time. DynamicWallpaper in particular must arm its daytime
+        // boundary timer at boot, not when Settings opens.
         Services.Clipboard.entries;
         Services.NightShift.enabled;
         Services.Chroma.enabled;

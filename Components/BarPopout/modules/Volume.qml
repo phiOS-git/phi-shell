@@ -4,8 +4,8 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 
 // The bar icon opens this for the full mixer; the volume KEYS get the
-// transient pill in Osd/Osd.qml instead. "Level" and "Output device" are
-// two distinct inner sections.
+// transient pill in Osd/Osd.qml instead. "Level" and "Output device" are two
+// distinct inner sections.
 
 Widgets.StaggerReveal {
     id: root

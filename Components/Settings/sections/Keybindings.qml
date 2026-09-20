@@ -5,15 +5,15 @@ import qs.Widgets as Widgets
 import "../modules" as Modules
 
 // A read-only reference view from `hyprctl binds -j`, via
-// Services/Keybinds.qml — no second place holding this data, and no
-// editing from this UI.
+// Services/Keybinds.qml — no second place holding this data, and no editing
+// from this UI.
 //
 // Bindings are grouped by context (Services.Keybinds.groups), one
-// Modules.SettingsGroup card per context, in the same order Cheatsheet uses — the
-// two surfaces render the same derivation. Search filters here rather
-// than highlighting: a reference list with 40+ rows is the one place in
-// the panel where filtering earns its keep, unlike the option rows,
-// which follow a highlight-not-filter rule.
+// Modules.SettingsGroup card per context, in the same order Cheatsheet uses —
+// the two surfaces render the same derivation. Search filters here rather than
+// highlighting: a reference list with 40+ rows is the one place in the panel
+// where filtering earns its keep, unlike the option rows, which follow a
+// highlight-not-filter rule.
 
 Column {
     id: root

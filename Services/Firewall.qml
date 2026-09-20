@@ -3,22 +3,20 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Inbound-firewall state for the Connectivity settings section.
-// CLI-driven, exactly like Services/Vpn.qml — `phi firewall` is the
-// control surface, this file only polls it and forwards the verbs, backed
-// by nftables directly (one `table inet phi`).
-// `status --json` reports enabled/preset/logging/allow-rules, plus a live
-// `enforced` probe (is the table actually loaded?) so a drift — a denied
-// sudo, a manual `nft flush` — is visible.
-// enable/disable/preset/allow/remove/log shell out to `phi firewall`
-// which runs `sudo -n nft` + `sudo -n tee /etc/nftables.conf`. That needs
-// the sudoers drop-in (profiles/desktop/system/etc/sudoers.d/49-phi-firewall);
-// a failure surfaces as `lastError`, never a silent no-op and never a GUI
-// polkit prompt.
-// SECURITY CONTRACT: `phi firewall` never emits one of the user's own
-// addresses. `blocked` reports only a dropped packet's own source and
-// destination port — a scanner's fields, requested explicitly by
-// refreshBlocked(), not polled.
+// Inbound-firewall state for the Connectivity settings section. CLI-driven,
+// exactly like Services/Vpn.qml — `phi firewall` is the control surface, this
+// file only polls it and forwards the verbs, backed by nftables directly (one
+// `table inet phi`). `status --json` reports
+// enabled/preset/logging/allow-rules, plus a live `enforced` probe (is the
+// table actually loaded?) so a drift — a denied sudo, a manual `nft flush` —
+// is visible. enable/disable/preset/allow/remove/log shell out to `phi
+// firewall` which runs `sudo -n nft` + `sudo -n tee /etc/nftables.conf`. That
+// needs the sudoers drop-in
+// (profiles/desktop/system/etc/sudoers.d/49-phi-firewall); a failure surfaces
+// as `lastError`, never a silent no-op and never a GUI polkit prompt. SECURITY
+// CONTRACT: `phi firewall` never emits one of the user's own addresses.
+// `blocked` reports only a dropped packet's own source and destination port —
+// a scanner's fields, requested explicitly by refreshBlocked(), not polled.
 
 Singleton {
     id: root
@@ -36,10 +34,9 @@ Singleton {
     readonly property var presetNames: ["home", "public", "paranoid"]
 
     // The config and the kernel disagree — a denied `sudo`, a manual `nft`
-    // edit, or a boot that loaded a stale /etc/nftables.conf. Both
-    // directions matter: "on but not loaded" leaves you unprotected, "off
-    // but still loaded" can lock a port shut with nothing in the UI to
-    // explain it.
+    // edit, or a boot that loaded a stale /etc/nftables.conf. Both directions
+    // matter: "on but not loaded" leaves you unprotected, "off but still
+    // loaded" can lock a port shut with nothing in the UI to explain it.
     readonly property bool drifted:
         (root.enabled && root.enforced === "no") ||
         (!root.enabled && root.enforced === "yes")

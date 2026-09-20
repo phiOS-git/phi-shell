@@ -3,27 +3,25 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// The agent panel's MemoryProposals section.
-// Pending proposals grouped by level (system / personality / project). Each
-// shows the LITERAL append-diff — never a summary (§8.6). The panel widens
-// for this section (AgentPanel.targetWidth).
-// (Requested: the panel's "status" tab is "a quick
-// overview of the system status (use icons and small texts) and the list
-// of memory proposal"): this file is now that whole tab, not just the
-// proposals half of it — Panels/AgentPanel.qml's rail renamed "Memory
-// proposals" to "Status" and retargeted its Loader here unchanged. The
-// proposals list below is untouched; only the `statusChips` section above
-// it is new, additive content. Deliberately reuses data this panel already
-// reads elsewhere rather than adding new backend plumbing: agent health
-// (Services.Agent.available, the same field Chat.qml's "Agent offline"
-// state already reads), the containment/broker infra unit list
-// (Services.AgentInfra.units, already read by CodingSessions.qml for its
-// own preflight banner), and the active project (Services.Agent.
-// activeProject). "Infra" is a coarse up/N-of-M count across every unit
-// AgentInfra already polls — CodingSessions.qml's own a2DownUnits() is
-// narrower on purpose (only the units A2 needs); this tab has no single
-// "which units matter" answer of its own, so it shows the whole set
-// AgentInfra already tracks rather than guessing a subset.
+// The agent panel's MemoryProposals section. Pending proposals grouped by
+// level (system / personality / project). Each shows the LITERAL append-diff,
+// never a summary. The panel widens for this section (AgentPanel.targetWidth).
+// (Requested: the panel's "status" tab is "a quick overview of the system
+// status (use icons and small texts) and the list of memory proposal"): this
+// file is now that whole tab, not just the proposals half of it —
+// Panels/AgentPanel.qml's rail renamed "Memory proposals" to "Status" and
+// retargeted its Loader here unchanged. The proposals list below is untouched;
+// only the `statusChips` section above it is new, additive content.
+// Deliberately reuses data this panel already reads elsewhere rather than
+// adding new backend plumbing: agent health (Services.Agent.available, the
+// same field Chat.qml's "Agent offline" state already reads), the
+// containment/broker infra unit list (Services.AgentInfra.units, already read
+// by CodingSessions.qml for its own preflight banner), and the active project
+// (Services.Agent. activeProject). "Infra" is a coarse up/N-of-M count across
+// every unit AgentInfra already polls — CodingSessions.qml's own a2DownUnits()
+// is narrower on purpose (only the units A2 needs); this tab has no single
+// "which units matter" answer of its own, so it shows the whole set AgentInfra
+// already tracks rather than guessing a subset.
 
 Item {
     id: root
@@ -37,13 +35,13 @@ Item {
     // key = level + " " + name -> { current, add }
     property var diffs: ({})
 
-    // (s4, the StaggerReveal cascade below): armed
-    // one tick after creation rather than starting true — StaggerReveal's
-    // own first `_animate()` call sets a child's opacity straight to its
-    // target with no animation the very first time it runs (it has no
-    // prior "hidden" state to animate FROM), so `shown` has to genuinely
-    // transition false→true for the cascade to actually play, the same
-    // `Qt.callLater` pattern Panels/AgentPanel.qml's own `_animReady` uses.
+    // (s4, the StaggerReveal cascade below): armed one tick after creation
+    // rather than starting true — StaggerReveal's own first `_animate()` call
+    // sets a child's opacity straight to its target with no animation the very
+    // first time it runs (it has no prior "hidden" state to animate FROM), so
+    // `shown` has to genuinely transition false→true for the cascade to
+    // actually play, the same `Qt.callLater` pattern Panels/AgentPanel.qml's
+    // own `_animReady` uses.
     property bool _revealArmed: false
 
     readonly property var statusChips: {
@@ -111,12 +109,11 @@ Item {
         contentHeight: col.implicitHeight
         clip: true
 
-        // (s4): the status chips row and the
-        // proposals list below cascade in together, same shallow stagger
-        // 's overlays already apply to their own lists
-        // (Panels/tabs/Clipboard.qml, Panels/tabs/Notifications.qml)
-        // StaggerReveal IS the column, no wrapping Column needed (see its
-        // own header comment).
+        // (s4): the status chips row and the proposals list below cascade in
+        // together, same shallow stagger 's overlays already apply to their
+        // own lists (Panels/tabs/Clipboard.qml, Panels/tabs/Notifications.qml)
+        // StaggerReveal IS the column, no wrapping Column needed (see its own
+        // header comment).
         Widgets.StaggerReveal {
             id: col
             shown: root._revealArmed

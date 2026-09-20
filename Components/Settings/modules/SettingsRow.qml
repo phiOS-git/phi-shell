@@ -32,16 +32,16 @@ Item {
     property string description: ""
     property bool resettable: false
     property bool wide: false
-    // The "advanced options" switch (Services.SettingsPanel.showAdvanced).
-    // A row marked advanced stays out of the layout — not merely dimmed
-    // until that's on, UNLESS a live search already matches it: searching
-    // for an advanced setting by name must still find it, the same
-    // "search surfaces, never hides" rule Options.matches()/`highlighted`
-    // applies everywhere else. Implemented as this root Item's own
-    // `visible` binding (below) — a caller that ALSO sets its own
-    // `visible:` on a row (a few do, e.g. Connectivity.qml's Tailscale
-    // rows) overrides that binding outright. A future row combining both
-    // needs to fold the caller's own condition into that binding by hand.
+    // The "advanced options" switch (Services.SettingsPanel.showAdvanced). A
+    // row marked advanced stays out of the layout — not merely dimmed until
+    // that's on, UNLESS a live search already matches it: searching for an
+    // advanced setting by name must still find it, the same "search surfaces,
+    // never hides" rule Options.matches()/`highlighted` applies everywhere
+    // else. Implemented as this root Item's own `visible` binding (below) — a
+    // caller that ALSO sets its own `visible:` on a row (a few do, e.g.
+    // Connectivity.qml's Tailscale rows) overrides that binding outright. A
+    // future row combining both needs to fold the caller's own condition into
+    // that binding by hand.
     property bool advanced: false
     signal reset()
 
@@ -58,7 +58,8 @@ Item {
     readonly property real _ch: chMetrics.width
     readonly property real _pad: Config.Appearance.space2 * _ch
     // A label sits directly above its description / reset — a half rhythm
-    // unit, the same derived micro-gap Modules.SettingsGroup's title block uses.
+    // unit, the same derived micro-gap Modules.SettingsGroup's title block
+    // uses.
     readonly property real _labelGap: Math.round(_ch * Config.Appearance.space1 * 0.5)
 
     readonly property bool highlighted: Services.SettingsPanel.shown
@@ -66,12 +67,12 @@ Item {
         && root.optionId.length > 0
         && Options.matches(root.optionId, Services.SettingsPanel.query)
 
-    // Accounts for advanced rows collapsing out of the layout ahead of it:
-    // the first VISIBLE sibling draws no leading hairline, not just the
-    // literal first child. Each `.visible` read inside this loop is a real
-    // binding dependency (QML tracks property reads made while evaluating
-    // a binding, loops included), so this stays correct as showAdvanced or
-    // a search match flips a sibling's visibility.
+    // Accounts for advanced rows collapsing out of the layout ahead of it: the
+    // first VISIBLE sibling draws no leading hairline, not just the literal
+    // first child. Each `.visible` read inside this loop is a real binding
+    // dependency (QML tracks property reads made while evaluating a binding,
+    // loops included), so this stays correct as showAdvanced or a search match
+    // flips a sibling's visibility.
     readonly property bool _first: {
         if (!parent) return true
         for (var i = 0; i < parent.children.length; i++) {
@@ -89,10 +90,10 @@ Item {
     implicitHeight: _bodyH + _pad * 2
 
     property bool _settled: false
-    // Eases the row's own height so a "reset" line, a changed description
-    // or a growing `wide` control slides in rather than snapping.
-    // `_settled` keeps the first layout (and section switches) instant
-    // only later height changes animate.
+    // Eases the row's own height so a "reset" line, a changed description or a
+    // growing `wide` control slides in rather than snapping. `_settled` keeps
+    // the first layout (and section switches) instant only later height
+    // changes animate.
     Behavior on implicitHeight {
         enabled: root._settled
         NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
@@ -164,8 +165,8 @@ Item {
         }
 
         // "reset" lives here, under the label, so it never displaces the
-        // control. Only present when the row is resettable — the row
-        // grows a line, the control doesn't move.
+        // control. Only present when the row is resettable — the row grows a
+        // line, the control doesn't move.
         Widgets.SmallButton {
             visible: root.resettable
             label: "reset"
@@ -175,8 +176,8 @@ Item {
 
     // Control slot. Content-sized and right-aligned by default; full-width
     // under the label when `wide`. Only `right` + `top` are anchored — the
-    // width is explicit either way, so nothing ever gets an `undefined`
-    // anchor or an `undefined` (→ NaN) width.
+    // width is explicit either way, so nothing ever gets an `undefined` anchor
+    // or an `undefined` (→ NaN) width.
     Item {
         id: slot
         anchors.right: parent.right

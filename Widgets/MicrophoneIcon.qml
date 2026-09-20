@@ -3,16 +3,16 @@ import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
 // Same hand-drawn-Canvas convention as every other icon in this directory
-// without reliable font coverage — see TrueToneIcon.qml for the full "why
-// not a font glyph" reasoning.
+// without reliable font coverage — see TrueToneIcon.qml for the full "why not
+// a font glyph" reasoning.
 //
-// The classic capsule-on-a-stand mic silhouette, in three states distinct
-// by SHAPE, not colour alone (the caller still tints `iconColor` per its
-// own state logic, but a colour-blind reading should not be the only cue):
-// "muted" draws a diagonal strike through the capsule (the universal
-// mic-off cue), "idle" is a plain hollow outline, "inUse" fills the capsule
-// solid — reads as "live" at a glance, the same outline-vs-filled language
-// TrueToneIcon's on/off uses.
+// The classic capsule-on-a-stand mic silhouette, in three states distinct by
+// SHAPE, not colour alone (the caller still tints `iconColor` per its own
+// state logic, but a colour-blind reading should not be the only cue): "muted"
+// draws a diagonal strike through the capsule (the universal mic-off cue),
+// "idle" is a plain hollow outline, "inUse" fills the capsule solid — reads as
+// "live" at a glance, the same outline-vs-filled language TrueToneIcon's
+// on/off uses.
 Item {
     id: root
 

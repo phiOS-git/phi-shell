@@ -8,15 +8,22 @@ import qs.Config as Config
 Singleton {
     id: root
 
-    // 30 days — a placeholder for "about a month", not a value fixed precisely anywhere.
+    // 30 days — a placeholder for "about a month", not a value fixed precisely
+    // anywhere.
     readonly property int ttlDays: 30
 
     property var entries: []  // [{id, mime, timestamp, preview}], newest first, rebuilt from disk on refresh()
     property var pinnedIds: [] // array of id strings, persisted to pins.json
 
-    // Per-user rules for what should never be saved.
-    // The capture script already excludes one thing before it ever touches disk (KeePassXC's MIME hint), but that's a single hardcoded case, not user-editable.
-    // Re-templating and restarting the long-lived `wl-paste --watch` process for a live rule change is real complexity a plain QML-side check avoids: checked once, the instant an entry is first observed as new, a match is deleted immediately via the same deleteEntry() a manual delete uses, so it never flashes into the visible list and never retroactively touches anything captured before the rule existed.
+    // Per-user rules for what should never be saved. The capture script
+    // already excludes one thing before it ever touches disk (KeePassXC's MIME
+    // hint), but that's a single hardcoded case, not user-editable.
+    // Re-templating and restarting the long-lived `wl-paste --watch` process
+    // for a live rule change is real complexity a plain QML-side check avoids:
+    // checked once, the instant an entry is first observed as new, a match is
+    // deleted immediately via the same deleteEntry() a manual delete uses, so
+    // it never flashes into the visible list and never retroactively touches
+    // anything captured before the rule existed.
     property bool excludeImages: false
     property var excludeRules: [] // lowercase substrings matched against preview text
 
@@ -45,8 +52,12 @@ Singleton {
         return false
     }
 
-    // Fired only from listProcess's onExited, and only when the new top-of-list id not already anywhere in the previous entries list — not just "differs from the old top", since a deletion promoting an existing entry to position 0 must not count as an arrival.
-    // Deliberately not fired on every refresh(): refresh() runs on shell startup and whenever the clipboard tab becomes visible, neither of which is a new capture.
+    // Fired only from listProcess's onExited, and only when the new
+    // top-of-list id not already anywhere in the previous entries list — not
+    // just "differs from the old top", since a deletion promoting an existing
+    // entry to position 0 must not count as an arrival. Deliberately not fired
+    // on every refresh(): refresh() runs on shell startup and whenever the
+    // clipboard tab becomes visible, neither of which is a new capture.
     signal arrived(var entry)
     property bool _everLoaded: false
 
@@ -74,9 +85,15 @@ Singleton {
         restoreComponent.createObject(root, { entryId: id, mime: mime })
     }
 
-    // Every one-shot Process in this file sets running: false in its own onExited before anything else: Process.onFinished() restarts automatically if `running` is still true when it exits, so without this a one-shot command would respawn itself forever the moment it first exits.
-    // `watcher` is the one Process meant to auto-restart this way if `wl-paste --watch` ever exits unexpectedly, so it alone never resets `running`.
-    // Every dynamically created Process destroys itself by its own explicit id, never `this`/`parent` — Process is not confirmed to be an Item, — bare `parent` reference isn't guaranteed usable.
+    // Every one-shot Process in this file sets running: false in its own
+    // onExited before anything else: Process.onFinished() restarts
+    // automatically if `running` is still true when it exits, so without this
+    // a one-shot command would respawn itself forever the moment it first
+    // exits. `watcher` is the one Process meant to auto-restart this way if
+    // `wl-paste --watch` ever exits unexpectedly, so it alone never resets
+    // `running`. Every dynamically created Process destroys itself by its own
+    // explicit id, never `this`/`parent` — Process is not confirmed to be an
+    // Item, so the bare `parent` reference isn't guaranteed usable.
     property Component restoreComponent: Component {
         Process {
             id: restoreProc
@@ -133,8 +150,9 @@ Singleton {
         }
     }
 
-    // The capture process. Runs once for the shell's whole lifetime;
-    // wl-paste re-invokes the inner `sh -c` script fresh for every clipboard change, so this single long-lived Process is enough.
+    // The capture process. Runs once for the shell's whole lifetime; wl-paste
+    // re-invokes the inner `sh -c` script fresh for every clipboard change, so
+    // this single long-lived Process is enough.
     Process {
         id: watcher
         command: ["wl-paste", "--watch", "sh", "-c", `
@@ -165,15 +183,23 @@ printf '%s' "$id" > "$dir/latest"
         onLoaded: root.refresh()
         onFileChanged: root.reload()
         onLoadFailed: (error) => {
-            // FileNotFound before the first clipboard change since install is expected: entries starts empty.
+            // FileNotFound before the first clipboard change since install is
+            // expected: entries starts empty.
         }
     }
     function reload() { latestFile.reload() }
 
-    // One shell loop reads every entry's mime AND a preview snippet in a single pass, emitting `id<TAB>mime<TAB>preview` — so `entries` carries a `preview` string the clipboard panel can filter and render synchronously, with no per-entry FileView.
-    // The snippet is the first 200 BYTES of the file (`head -c`), not the first LINE: a line-based read returns empty for anything copied with a leading newline regardless of how much content follows, and for one huge unbroken line it has to buffer the entire line before producing any output — measured at ~1.9s for a 50MB single line vs.
-    // ~10ms with `head -c`. `head -c` never depends on line structure.
-    // Embedded newlines/tabs/ NULs are folded to spaces (not stripped) — multi-line snippet still reads as one TSV row.
+    // One shell loop reads every entry's mime AND a preview snippet in a
+    // single pass, emitting `id<TAB>mime<TAB>preview` — so `entries` carries a
+    // `preview` string the clipboard panel can filter and render
+    // synchronously, with no per-entry FileView. The snippet is the first 200
+    // BYTES of the file (`head -c`), not the first LINE: a line-based read
+    // returns empty for anything copied with a leading newline regardless of
+    // how much content follows, and for one huge unbroken line it has to
+    // buffer the entire line before producing any output — measured at ~1.9s
+    // for a 50MB single line vs. ~10ms with `head -c`. `head -c` never depends
+    // on line structure. Embedded newlines/tabs/ NULs are folded to spaces
+    // (not stripped) — multi-line snippet still reads as one TSV row.
     Process {
         id: listProcess
         command: ["sh", "-c", `
@@ -202,8 +228,10 @@ done
                 }).filter((e) => e.id && e.id.length > 0)
                 next.sort((a, b) => b.timestamp - a.timestamp)
 
-                // Exclusion rules apply only to entries genuinely new.
-                // A match is deleted immediately and dropped from `next` before it's ever assigned to root.entries, so it never flashes into the visible list for even one frame.
+                // Exclusion rules apply only to entries genuinely new. A match
+                // is deleted immediately and dropped from `next` before it's
+                // ever assigned to root.entries, so it never flashes into the
+                // visible list for even one frame.
                 let filtered = next
                 if (root._everLoaded) {
                     const prevIdSet = root.entries.map((e) => e.id)
@@ -216,9 +244,13 @@ done
                     for (let i = 0; i < toDelete.length; i++) root.deleteEntry(toDelete[i])
                 }
 
-                // Empty entries are filtered out on every pass, not gated by _everLoaded the way exclusion rules are — "no empty entries" is a standing invariant, not a rule that should only act going forward, — stray empty entry from before this existed gets cleaned up too.
-                // `preview` is checked only for text — an image is never "empty" in this sense.
-                // Pinned entries are protected.
+                // Empty entries are filtered out on every pass, not gated by
+                // _everLoaded the way exclusion rules are — "no empty entries"
+                // is a standing invariant, not a rule that should only act
+                // going forward, so the stray empty entry from before this existed
+                // gets cleaned up too. `preview` is checked only for text — an
+                // image is never "empty" in this sense. Pinned entries are
+                // protected.
                 const emptyIds = filtered
                     .filter((e) => e.mime !== "image/png" && e.preview.trim().length === 0 && !root.isPinned(e.id))
                     .map((e) => e.id)
@@ -227,9 +259,12 @@ done
                     for (let i = 0; i < emptyIds.length; i++) root.deleteEntry(emptyIds[i])
                 }
 
-                // Duplicate entries are collapsed: the newest capture in each group is kept, every older duplicate is deleted outright so it stops occupying a TTL slot on disk.
-                // A pinned member of a group is kept instead.
-                // Images are exempt — two different screenshots can share the same 200-byte preview with genuinely different content.
+                // Duplicate entries are collapsed: the newest capture in each
+                // group is kept, every older duplicate is deleted outright so
+                // it stops occupying a TTL slot on disk. A pinned member of a
+                // group is kept instead. Images are exempt — two different
+                // screenshots can share the same 200-byte preview with
+                // genuinely different content.
                 const byValue = {}
                 for (let i = 0; i < filtered.length; i++) {
                     const e = filtered[i]
@@ -257,7 +292,8 @@ done
                     for (let i = 0; i < dupIds.length; i++) root.deleteEntry(dupIds[i])
                 }
 
-                // "Not already present anywhere in the old list", not "differs from the old top" — the `arrived` signal's own comment.
+                // "Not already present anywhere in the old list", not "differs
+                // from the old top" — the `arrived` signal's own comment.
                 if (root._everLoaded && filtered.length > 0) {
                     const prevIds = root.entries.map((e) => e.id)
                     if (prevIds.indexOf(filtered[0].id) === -1) root.arrived(filtered[0])
@@ -315,7 +351,9 @@ done
         }
     }
 
-    // Runs once shortly after startup and every six hours after that — frequent enough an entry never outlives ttlDays by more than that margin, infrequent enough it's not meaningful background load.
+    // Runs once shortly after startup and every six hours after that —
+    // frequent enough an entry never outlives ttlDays by more than that
+    // margin, infrequent enough it's not meaningful background load.
     Timer {
         interval: 6 * 60 * 60 * 1000
         running: true

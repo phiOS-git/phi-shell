@@ -4,15 +4,13 @@ import "WidgetStates.js" as WidgetStates
 
 // An HSV picker as a plain QtQuick Item: a saturation/value square, a hue
 // strip, a hex field and a preview swatch. Pure QtQuick — no
-// Qt5Compat.GraphicalEffects, no shader. Every gradient is a plain
-// `Gradient`; the colour maths goes through Qt's own `color` type
-// (`Qt.hsva`, `.hsvHue/.hsvSaturation/.hsvValue`), not a hand-rolled
-// conversion.
-// Not a floating Popover: the settings content pane is a clipped Flickable
-// so a floating child would be cut off. ColorField embeds this inline and
-// grows the row. Controlled: seed with setColor(hex); `picked(color)`
-// fires live during a drag, `committed(hex)` fires on drag release or
-// Enter in the hex field.
+// Qt5Compat.GraphicalEffects, no shader. Every gradient is a plain `Gradient`;
+// the colour maths goes through Qt's own `color` type (`Qt.hsva`,
+// `.hsvHue/.hsvSaturation/.hsvValue`), not a hand-rolled conversion. Not a
+// floating Popover: the settings content pane is a clipped Flickable so a
+// floating child would be cut off. ColorField embeds this inline and grows the
+// row. Controlled: seed with setColor(hex); `picked(color)` fires live during
+// a drag, `committed(hex)` fires on drag release or Enter in the hex field.
 
 Item {
     id: root
@@ -63,9 +61,9 @@ Item {
         hexField.text = root.hex()
     }
 
-    // The SV box and hue strip below are drag AND keyboard driven — each
-    // arrow press is one atomic commit, same shape as Widgets/Meter.qml's
-    // keyboard nudge.
+    // The SV box and hue strip below are drag AND keyboard driven — each arrow
+    // press is one atomic commit, same shape as Widgets/Meter.qml's keyboard
+    // nudge.
     property real keyStep: 0.02
     function _nudgeSV(dSat, dVal) {
         root._sat = Math.max(0, Math.min(1, root._sat + dSat))
@@ -91,8 +89,8 @@ Item {
             height: root.squareSize
 
             activeFocusOnTab: true
-            // Up/Down move value the same direction the visible handle
-            // moves (value increases toward the top, matching the y-flip
+            // Up/Down move value the same direction the visible handle moves
+            // (value increases toward the top, matching the y-flip
             // MouseArea.apply() below already uses).
             Keys.onLeftPressed: root._nudgeSV(-root.keyStep, 0)
             Keys.onRightPressed: root._nudgeSV(root.keyStep, 0)

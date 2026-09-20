@@ -1,13 +1,12 @@
 import QtQuick
 import qs.Config as Config
 
-// A click target that is an icon and nothing else — no background, no
-// border, no padded button frame. Deliberately NOT built on
-// Widgets/SmallButton (or any Segment/Panel-style control): those draw a
-// background/border and center their content inside their own padding,
-// which is exactly the "button" look this widget exists to avoid. A bare
-// StyledIcon plus a HoverHandler/TapHandler, opacity-only on hover, is the
-// whole widget.
+// A click target that is an icon and nothing else — no background, no border,
+// no padded button frame. Deliberately NOT built on Widgets/SmallButton (or
+// any Segment/Panel-style control): those draw a background/border and center
+// their content inside their own padding, which is exactly the "button" look
+// this widget exists to avoid. A bare StyledIcon plus a
+// HoverHandler/TapHandler, opacity-only on hover, is the whole widget.
 
 Item {
     id: root

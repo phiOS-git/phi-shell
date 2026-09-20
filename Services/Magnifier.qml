@@ -3,18 +3,17 @@ import QtQml
 import Quickshell
 import qs.Config as Config
 
-// Owns the screen-magnifier loupe's state: shown, zoom factor and lens
-// size, each persisted through Config/Settings (`phi state`) the same way
+// Owns the screen-magnifier loupe's state: shown, zoom factor and lens size,
+// each persisted through Config/Settings (`phi state`) the same way
 // Services/Spotlight owns its own `size`.
 //
 // The loupe is centred ON the pointer. A centred lens fed a *live*
-// wlr-screencopy stream is self-referential — the capture region under
-// the pointer is the lens's own hole — so Tools/Magnifier.qml doesn't use
-// a live feed: it recaptures a still (ScreencopyView.captureFrame)
-// whenever the pointer settles, with the magnified layer hidden for the
-// grab. A Hyprland compositor plugin (out of scope here) or a
-// screen-shader route would avoid this; the freeze-on-stop still is the
-// best a Quickshell overlay can do.
+// wlr-screencopy stream is self-referential — the capture region under the
+// pointer is the lens's own hole — so Tools/Magnifier.qml doesn't use a live
+// feed: it recaptures a still (ScreencopyView.captureFrame) whenever the
+// pointer settles, with the magnified layer hidden for the grab. A Hyprland
+// compositor plugin (out of scope here) or a screen-shader route would avoid
+// this; the freeze-on-stop still is the best a Quickshell overlay can do.
 
 Singleton {
     id: root
@@ -38,9 +37,9 @@ Singleton {
         Config.Settings.set("magnifier.size", "" + root.size)
     }
 
-    // Scroll-wheel steps (hyprland.lua binds these while the loupe is up).
-    // A step on a hidden loupe still adjusts the stored value so it opens
-    // where the user left it.
+    // Scroll-wheel steps (hyprland.lua binds these while the loupe is up). A
+    // step on a hidden loupe still adjusts the stored value so it opens where
+    // the user left it.
     function zoomIn() { root.setZoom(root.zoom + 0.5) }
     function zoomOut() { root.setZoom(root.zoom - 0.5) }
     function grow() { root.setSize(root.size + 40) }

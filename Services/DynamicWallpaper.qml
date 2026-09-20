@@ -28,8 +28,8 @@ import qs.Services as Services
 // optional it names matches. The most specific eligible entry wins
 // (season+weather > season > weather > bare daytime). With nothing eligible,
 // later slots are tried in day order (dawn → day → dusk → night), so a folder
-// holding only day.png and night.png shows day through the dawn hour. An
-// image naming a season or weather never matches a different value.
+// holding only day.png and night.png shows day through the dawn hour. An image
+// naming a season or weather never matches a different value.
 //
 // An entry may instead be a bare .heic/.heif sitting directly in
 // wallpapers/dynamic/ — it needs no folder, carrying its own whole-day
@@ -112,17 +112,18 @@ Singleton {
     // composes this with the static image.
     property string currentImage: ""
 
-    // Entries under wallpapers/dynamic/, refreshed on demand: a subfolder of state
-    // images (kind "folder", carrying absolute paths for the settings preview) or
-    // a single .heic/.heif file (kind "file", scheduling the day itself).
+    // Entries under wallpapers/dynamic/, refreshed on demand: a subfolder of
+    // state images (kind "folder", carrying absolute paths for the settings
+    // preview) or a single .heic/.heif file (kind "file", scheduling the day
+    // itself).
     property var available: []
     // Converted first-frame JPEG per bare .heic entry, for its settings
     // preview tile (Qt cannot decode HEIC, so previews point at these).
     property var previews: ({})
 
-    // While a timeline HEIF drives the folder these describe what is painted; they
-    // stay empty when the folder uses conventional names. Exposed for the settings
-    // "Now showing" row.
+    // While a timeline HEIF drives the folder these describe what is painted;
+    // they stay empty when the folder uses conventional names. Exposed for the
+    // settings "Now showing" row.
     property string solarFile: ""        // base name of the driving HEIF
     property int solarFrame: -1          // frame index currently painted
     property string solarTimeText: ""    // its mapped time, "HH:MM"
@@ -134,8 +135,8 @@ Singleton {
     readonly property bool activeNow: root.enabled
         && root.activeName.length > 0
         && !Services.PowerBridge.batterySaverActive
-    // True when the feature is armed but battery saver is hiding it — lets
-    // the settings panel distinguish "off" from "paused, will resume".
+    // True when the feature is armed but battery saver is hiding it — lets the
+    // settings panel distinguish "off" from "paused, will resume".
     readonly property bool pausedByLowPower: root.enabled
         && root.activeName.length > 0
         && Services.PowerBridge.batterySaverActive
@@ -143,9 +144,9 @@ Singleton {
     // --- vocabularies ----------------------------------------------------
     readonly property var _daytimes: ["dawn", "day", "dusk", "night"]
     readonly property var _seasons: ["spring", "summer", "autumn", "winter"]
-    // The closed set of weather tokens the filename parser recognises.
-    // Keeping TODO(weather): align this list with whatever the future
-    // weather source reports, or map its values onto these.
+    // The closed set of weather tokens the filename parser recognises. Keeping
+    // TODO(weather): align this list with whatever the future weather source
+    // reports, or map its values onto these.
     readonly property var _weathers: ["clear", "cloudy", "rain", "snow", "storm", "fog"]
 
     // --- settings API ----------------------------------------------------
@@ -201,16 +202,17 @@ Singleton {
             root.refresh()
         }
         onLoadFailed: function (error) {
-            // Normal before the feature has ever been used: every property keeps its
-            // default. The FileView fires once, so the startup dance runs here too.
+            // Normal before the feature has ever been used: every property
+            // keeps its default. The FileView fires once, so the startup dance
+            // runs here too.
             root._evaluate()
             root.refresh()
         }
     }
 
-    // Re-list entries and force a re-probe, so an image dropped into the active
-    // entry shows without waiting for the next boundary. The probe lives in
-    // listProc's completion so the entry kind is authoritative first.
+    // Re-list entries and force a re-probe, so an image dropped into the
+    // active entry shows without waiting for the next boundary. The probe
+    // lives in listProc's completion so the entry kind is authoritative first.
     function refresh() {
         root._lastKey = ""
         listProc.running = true
@@ -241,9 +243,9 @@ Singleton {
                 // the converter skips magick when the cache file exists.
                 for (var f = 0; f < entries.length; f++)
                     root.ensureFilePreview(entries[f].name)
-                // Re-probe the active entry now that its kind is
-                // authoritative (a probe that ran before the list resolved
-                // may have guessed wrong).
+                // Re-probe the active entry now that its kind is authoritative
+                // (a probe that ran before the list resolved may have guessed
+                // wrong).
                 if (root.enabled && root.activeName.length > 0) {
                     root._activeKind = root._resolveActiveKind(root.activeName)
                     root._probeActiveFolder()
@@ -252,10 +254,10 @@ Singleton {
         }
     }
 
-    // List the active folder's images, then resolve. One probe per evaluation, and
-    // the folder is hand-edited, so reading it fresh means edits show up with no
-    // file watcher. Each line is "mtime\tname\tsolar": mtime keys the render
-    // cache, `solar` flags an Apple dynamic-desktop HEIF.
+    // List the active folder's images, then resolve. One probe per evaluation,
+    // and the folder is hand-edited, so reading it fresh means edits show up
+    // with no file watcher. Each line is "mtime\tname\tsolar": mtime keys the
+    // render cache, `solar` flags an Apple dynamic-desktop HEIF.
     function _probeActiveFolder() {
         var dir = Config.Paths.dynamicWallpaperDir + "/" + root.activeName
         folderProc.command = ["sh", "-c",
@@ -274,10 +276,11 @@ Singleton {
                         var p = l.split("\t")
                         return { mtime: p[0] || "0", file: p[1] || "", solar: p[2] === "1" }
                     })
-                // A solar-carrying HEIF owns the folder, so conventional names are ignored
-                // while it is present. `_solarRejected` marks a flagged file whose map failed
-                // to parse (by name + mtime) so it degrades to the convention path instead of
-                // re-resolving forever.
+                // A solar-carrying HEIF owns the folder, so conventional names
+                // are ignored while it is present. `_solarRejected` marks a
+                // flagged file whose map failed to parse (by name + mtime) so
+                // it degrades to the convention path instead of re-resolving
+                // forever.
                 for (var f = 0; f < files.length; f++) {
                     if (files[f].solar
                         && !(root._solarRejected !== null
@@ -309,8 +312,8 @@ Singleton {
         return "0"
     }
 
-    // Full source path of a file inside the active entry: a folder entry
-    // joins the file under the folder; a bare .heic entry IS the file.
+    // Full source path of a file inside the active entry: a folder entry joins
+    // the file under the folder; a bare .heic entry IS the file.
     function _entryPath(file) {
         if (root._activeKind === "file") return Config.Paths.dynamicWallpaperDir + "/" + root.activeName
         return Config.Paths.dynamicWallpaperDir + "/" + root.activeName + "/" + file
@@ -322,11 +325,11 @@ Singleton {
         return /\.(heic|heif)$/i.test(name) ? "file" : "folder"
     }
 
-    // The map is an apple_desktop XMP plist inside the file, which plain sh cannot
-    // parse. python3 is an official Arch package present on every machine the
-    // shell runs on — the smallest sanctioned way to turn the map into "S z i" /
-    // "H minutes i" lines without touching pixels. The tag on the first line tells
-    // the collector which kind it is.
+    // The map is an apple_desktop XMP plist inside the file, which plain sh
+    // cannot parse. python3 is an official Arch package present on every
+    // machine the shell runs on — the smallest sanctioned way to turn the map
+    // into "S z i" / "H minutes i" lines without touching pixels. The tag on
+    // the first line tells the collector which kind it is.
     readonly property string _solarScript:
         "import base64,plistlib,re,sys\n"
         + "d=open(sys.argv[1],'rb').read()\n"
@@ -357,9 +360,9 @@ Singleton {
         onExited: solarProc.running = false
         stdout: StdioCollector {
             onStreamFinished: {
-                // Completion always serves the newest _solarTarget, so a
-                // stale run for a folder that was switched away is
-                // superseded rather than applied twice.
+                // Completion always serves the newest _solarTarget, so a stale
+                // run for a folder that was switched away is superseded rather
+                // than applied twice.
                 var target = root._solarTarget
                 if (!target) return
                 root._solarTarget = null
@@ -376,8 +379,9 @@ Singleton {
                     }
                 }
                 if (map.length < 2) {
-                    // The marked file carries no usable map: fold back to the convention path.
-                    // Rejected by name + mtime, so a replaced file is retried.
+                    // The marked file carries no usable map: fold back to the
+                    // convention path. Rejected by name + mtime, so a replaced
+                    // file is retried.
                     root._solarRejected = { name: target.file, mtime: target.mtime }
                     root._solarClear()
                     root._lastKey = ""
@@ -414,8 +418,9 @@ Singleton {
         return { i: best.i, z: best.z, minutes: Math.round(best.z / 360 * 1440) % 1440 }
     }
 
-    // Milliseconds to the next frame switch: the nearest midpoint ahead, or -1 for
-    // an empty map. Re-armed after every show so a frame lands on its exact minute.
+    // Milliseconds to the next frame switch: the nearest midpoint ahead, or -1
+    // for an empty map. Re-armed after every show so a frame lands on its
+    // exact minute.
     function _msToNextSolarBoundary(map, angle) {
         var zs = []
         for (var k = 0; k < map.length; k++) zs.push(map[k].z)
@@ -437,8 +442,9 @@ Singleton {
     }
 
     // h24 variant: each entry is the minute of day (0..1439) a frame starts,
-    // running until the next entry (the last window wraps past midnight). Plain
-    // interval lookup, and each future start is itself a boundary, not a midpoint.
+    // running until the next entry (the last window wraps past midnight).
+    // Plain interval lookup, and each future start is itself a boundary, not a
+    // midpoint.
     function _nowMinutes() {
         var d = new Date()
         return d.getHours() * 60 + d.getMinutes()
@@ -499,20 +505,20 @@ Singleton {
     property var _solarRejected: null
     property real _solarNextBoundary: -1
 
-    // Qt has no HEIC decoder, so a picked heic/heif is rendered with ImageMagick
-    // to a cached JPEG and the surface points at the cache file. The name keys on
-    // source mtime + frame index, so a replaced source or a different frame
-    // re-converts into a fresh file.
+    // Qt has no HEIC decoder, so a picked heic/heif is rendered with
+    // ImageMagick to a cached JPEG and the surface points at the cache file.
+    // The name keys on source mtime + frame index, so a replaced source or a
+    // different frame re-converts into a fresh file.
     //
     // Latest-wins for the shown frame: one conversion at a time, `_heicWanted`
-    // holding the newest request, so a rapid frame change replaces the pending one
-    // rather than queueing both. Previews (frame 0 for settings tiles) are less
-    // urgent and go through `_heicQueue` in order.
+    // holding the newest request, so a rapid frame change replaces the pending
+    // one rather than queueing both. Previews (frame 0 for settings tiles) are
+    // less urgent and go through `_heicQueue` in order.
     //
     // The sh wrapper echoes the cache path it wrote as its only stdout so the
     // collector can confirm which job finished. That finish arrives before
-    // `exited` (Quickshell nulls the process first), which is why this Process has
-    // no `onExited: running = false` — it would kill the next conversion.
+    // `exited` (Quickshell nulls the process first), which is why this Process
+    // has no `onExited: running = false` — it would kill the next conversion.
     property var _heicWanted: null
     property var _heicQueue: []
     property var _heicCurrent: null
@@ -571,8 +577,9 @@ Singleton {
         id: heicProc
         stdout: StdioCollector {
             onStreamFinished: {
-                // Apply only the conversion that finished: a render reaches currentImage only
-                // while it still belongs to the active entry; a preview lands in `previews`.
+                // Apply only the conversion that finished: a render reaches
+                // currentImage only while it still belongs to the active
+                // entry; a preview lands in `previews`.
                 var cache = this.text.trim()
                 var job = root._heicCurrent
                 if (cache.length > 0 && job !== null) {
@@ -653,14 +660,14 @@ Singleton {
         var dusk = ((root.duskHour % 24) + 24) % 24 * 3600
         if (root._inWindow(now, dawn, dawn + tl)) return "dawn"
         if (root._inWindow(now, dusk, dusk + tl)) return "dusk"
-        // Night is the wrap-aware complement of the two transition windows
-        // and the day hours: from when dusk ends up to when dawn begins.
+        // Night is the wrap-aware complement of the two transition windows and
+        // the day hours: from when dusk ends up to when dawn begins.
         if (root._inWindow(now, dusk + tl, dawn)) return "night"
         return "day"
     }
 
-    // Seconds to the next daytime boundary. Whole hours plus fixed windows give
-    // four: dawn start/end and dusk start/end. Distinct from NightShift's
+    // Seconds to the next daytime boundary. Whole hours plus fixed windows
+    // give four: dawn start/end and dusk start/end. Distinct from NightShift's
     // minute-granularity polling because this changes an image.
     function _msToNextBoundary() {
         var d = new Date()
@@ -681,8 +688,8 @@ Singleton {
 
     // --- evaluation ----------------------------------------------------------
     function _evaluate() {
-        // Always re-arm first: on/off, hour changes and solar map picks
-        // shift the next event even when the current image doesn't change.
+        // Always re-arm first: on/off, hour changes and solar map picks shift
+        // the next event even when the current image doesn't change.
         if (!root.enabled || root.activeName.length === 0 || Services.PowerBridge.batterySaverActive) {
             boundaryTimer.stop()
         } else if (root._solarNextBoundary >= 0 && root.solarFile.length > 0) {
@@ -698,9 +705,10 @@ Singleton {
         root.currentSeason = root._seasonOf(new Date().getMonth())
         root.currentWeather = root._weather()
 
-        // Deduplicate: nothing to redo unless the deciding inputs changed. For solar
-        // folders that input is the frame the map picks for right now, computed from
-        // the cached map, so a midpoint step provokes a probe on its own.
+        // Deduplicate: nothing to redo unless the deciding inputs changed. For
+        // solar folders that input is the frame the map picks for right now,
+        // computed from the cached map, so a midpoint step provokes a probe on
+        // its own.
         var solarKey = ""
         if (root.solarFile.length > 0 && root._solarMap.length >= 2) {
             var sp = root.solarKind === "h24"
@@ -736,9 +744,9 @@ Singleton {
         function onBatterySaverActiveChanged() { root._evaluate() }
     }
 
-    // Coarse safety net: suspend/resume, timer drift, folder edits made
-    // while the shell ran. No-op unless the deciding inputs actually
-    // changed (see _evaluate's dedupe above).
+    // Coarse safety net: suspend/resume, timer drift, folder edits made while
+    // the shell ran. No-op unless the deciding inputs actually changed (see
+    // _evaluate's dedupe above).
     Timer {
         id: safetyTimer
         interval: 60000
@@ -748,13 +756,13 @@ Singleton {
     }
 
     // TODO(weather): returns "" — no weather source exists. phi has no weather
-    // command and QML has no sanctioned fetch, so this belongs in the phi CLI or a
-    // small daemon, not here. When one lands, return its condition normalized to
-    // one of `_weathers`.
+    // command and QML has no sanctioned fetch, so this belongs in the phi CLI
+    // or a small daemon, not here. When one lands, return its condition
+    // normalized to one of `_weathers`.
     function _weather() { return "" }
 
-    // Northern-hemisphere meteorological quarters; month is getMonth() (0-11). All
-    // three machines are northern and there is no location source, so the
+    // Northern-hemisphere meteorological quarters; month is getMonth() (0-11).
+    // All three machines are northern and there is no location source, so the
     // assumption is documented rather than hidden.
     function _seasonOf(month) {
         if (month === 11 || month <= 1) return "winter"

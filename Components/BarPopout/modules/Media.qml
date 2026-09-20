@@ -4,12 +4,12 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "." as Local
 
-// The Media popout — a thin wrapper around the shared MediaControls
-// section. The card header (BarPopout's own `Modules.Header`, keyed to
-// "Media" by Services/BarPopout.qml) sits above this in the shell's
-// shared PopoutSurface, so this file needs no title of its own — just
-// the controls themselves. `active` is driven by the popout key so the
-// one-second progress timer only runs while this card is visible.
+// The Media popout — a thin wrapper around the shared MediaControls section.
+// The card header (BarPopout's own `Modules.Header`, keyed to "Media" by
+// Services/BarPopout.qml) sits above this in the shell's shared PopoutSurface,
+// so this file needs no title of its own — just the controls themselves.
+// `active` is driven by the popout key so the one-second progress timer only
+// runs while this card is visible.
 
 Widgets.StaggerReveal {
     id: root

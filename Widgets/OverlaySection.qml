@@ -2,17 +2,17 @@ import QtQuick
 import qs.Config as Config
 
 // A status-bar overlay's own shell matches the bar's background
-// (Widgets/Panel.qml's `bgColorOverride`); this is the card that gives
-// each of its logically distinct inner groups (the network overlay's
+// (Widgets/Panel.qml's `bgColorOverride`); this is the card that gives each of
+// its logically distinct inner groups (the network overlay's
 // "Ethernet"/"Tailscale"/"VPN" blocks, the stats overlay's "Network"/
-// "Disk"/"Usage"/"CPU" blocks, …) a background of its own again, so the
-// shell doesn't read as one flat, undifferentiated surface.
+// "Disk"/"Usage"/"CPU" blocks, …) a background of its own again, so the shell
+// doesn't read as one flat, undifferentiated surface.
 //
-// A thin, static grouping container, not a general widget: no hover/
-// active states, no border — just the same `surface1` fill Widgets/Panel
-// resolves to at rest, reused directly rather than through Panel itself
-// since every call site here wants a content-based implicit size, which
-// Panel deliberately does not guess. Same Item+inset-Column shape
+// A thin, static grouping container, not a general widget: no hover/ active
+// states, no border — just the same `surface1` fill Widgets/Panel resolves to
+// at rest, reused directly rather than through Panel itself since every call
+// site here wants a content-based implicit size, which Panel deliberately does
+// not guess. Same Item+inset-Column shape
 // Settings/sections/Local.SettingsGroup.qml uses for the identical "recessed
 // group on top of a shaded parent" problem one level up.
 

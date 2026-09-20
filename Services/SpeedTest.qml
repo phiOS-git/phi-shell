@@ -3,10 +3,10 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// `speedtest-cli` (extra, an official-repo package) run once on demand,
-// never polled — unlike Services/NetStats.qml's live passive graph, a
-// real bandwidth test is expensive and intrusive (it saturates the link
-// for a few seconds), so this only runs when the user presses the button.
+// `speedtest-cli` (extra, an official-repo package) run once on demand, never
+// polled — unlike Services/NetStats.qml's live passive graph, a real bandwidth
+// test is expensive and intrusive (it saturates the link for a few seconds),
+// so this only runs when the user presses the button.
 //
 // `--simple` output is three fixed lines:
 //   Ping: 20.123 ms

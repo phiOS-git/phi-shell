@@ -123,8 +123,8 @@ Column {
                 Widgets.StyledText {
                     anchors.verticalCenter: parent.verticalCenter
                     mono: true
-                    // Fixed width so the button cluster doesn't shuffle
-                    // as the reading changes width.
+                    // Fixed width so the button cluster doesn't shuffle as the
+                    // reading changes width.
                     horizontalAlignment: Text.AlignHCenter
                     width: 5 * root.chWidth
                     text: Services.AudioBridge.ready ? root._pct(Services.AudioBridge.volume) : "—"
@@ -134,8 +134,8 @@ Column {
                     onClicked: Services.AudioBridge.setVolume(Services.AudioBridge.volume + 0.1)
                 }
                 Widgets.StyledButton {
-                    // Constant label + `active` so the width never
-                    // changes on toggle.
+                    // Constant label + `active` so the width never changes on
+                    // toggle.
                     label: "Mute"
                     active: Services.AudioBridge.muted
                     onClicked: Services.AudioBridge.toggleMute()
@@ -298,9 +298,9 @@ Column {
         }
 
         // Components/Dialogs/BatteryAlert.qml is the presentation
-        // Services/PowerBridge.qml owns the two thresholds (0..1
-        // fractions internally, shown here as whole percent to match
-        // every other percent the user sees).
+        // Services/PowerBridge.qml owns the two thresholds (0..1 fractions
+        // internally, shown here as whole percent to match every other percent
+        // the user sees).
         Modules.SettingsRow {
             title: "Warn threshold"
             description: "A full-screen alert appears when the battery drops below this level while unplugged."
@@ -335,10 +335,10 @@ Column {
             }
         }
 
-        // Reuses lowPercentThreshold (the bar-anomaly 20% default)
-        // rather than a second, separate percentage — only the
-        // automation switch is settable here. The manual on/off switch
-        // lives on the battery bar overlay instead, not duplicated here.
+        // Reuses lowPercentThreshold (the bar-anomaly 20% default) rather than
+        // a second, separate percentage — only the automation switch is
+        // settable here. The manual on/off switch lives on the battery bar
+        // overlay instead, not duplicated here.
         Modules.SettingsRow {
             title: "Battery saver"
             description: "Automatically turns on below " + Math.round(Services.PowerBridge.lowPercentThreshold * 100)

@@ -3,17 +3,15 @@ import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
 // A visual cubic-bezier editor with a live preview: a unit square with the
-// curve drawn on it, two draggable control-point handles, and a marker
-// that loops across on the current curve so the feel is visible while
-// editing.
-// Pure QtQuick — the curve is a Canvas path, the preview a plain
-// NumberAnimation with easing.type Easing.Bezier (core Qt Quick, stable).
-// Each handle's pixel position is the source of truth while dragging; x1/y1
-// (x2/y2) are derived from it and clamped to 0..1 (Qt needs a monotonic-x
-// curve; no overshoot handles ). When not dragging, the handle
-// follows the property (external setCurve, a reset).
-// Controlled: seed with setCurve(x1,y1,x2,y2). `changed(...)` fires live
-// during a drag, `committed(...)` on release.
+// curve drawn on it, two draggable control-point handles, and a marker that
+// loops across on the current curve so the feel is visible while editing. Pure
+// QtQuick — the curve is a Canvas path, the preview a plain NumberAnimation
+// with easing.type Easing.Bezier (core Qt Quick, stable). Each handle's pixel
+// position is the source of truth while dragging; x1/y1 (x2/y2) are derived
+// from it and clamped to 0..1 (Qt needs a monotonic-x curve; no overshoot
+// handles ). When not dragging, the handle follows the property (external
+// setCurve, a reset). Controlled: seed with setCurve(x1,y1,x2,y2).
+// `changed(...)` fires live during a drag, `committed(...)` on release.
 
 Item {
     id: root
@@ -49,10 +47,10 @@ Item {
     function _clamp01(v) { return Math.max(0, Math.min(1, v)) }
     function curveArray() { return [root.x1, root.y1, root.x2, root.y2, 1, 1] }
 
-    // A fraction of the unit square per arrow press. Each press is one
-    // atomic commit (no "drag" concept applies to a single key press), so
-    // it fires `changed` then `committed` immediately, same shape
-    // Widgets/Meter.qml's own keyboard nudge uses.
+    // A fraction of the unit square per arrow press. Each press is one atomic
+    // commit (no "drag" concept applies to a single key press), so it fires
+    // `changed` then `committed` immediately, same shape Widgets/Meter.qml's
+    // own keyboard nudge uses.
     property real keyStep: 0.02
     function _nudgeP1(dx, dy) {
         root.x1 = root._clamp01(root.x1 + dx)
@@ -128,10 +126,10 @@ Item {
                 onXChanged: if (drag1.drag.active) root._readP1()
                 onYChanged: if (drag1.drag.active) root._readP1()
 
-                // Arrow keys nudge it directly; note the y-axis flip
-                // matches the canvas's own (screen y grows downward, curve
-                // y grows upward, same as `_readP1`/`onPaint` above already
-                // account for).
+                // Arrow keys nudge it directly; note the y-axis flip matches
+                // the canvas's own (screen y grows downward, curve y grows
+                // upward, same as `_readP1`/`onPaint` above already account
+                // for).
                 activeFocusOnTab: true
                 Keys.onLeftPressed: root._nudgeP1(-root.keyStep, 0)
                 Keys.onRightPressed: root._nudgeP1(root.keyStep, 0)

@@ -12,27 +12,26 @@ import "../Dialogs" as Dialogs
 
 // The lock surface. The session-stays-locked guarantee comes from the
 // ext-session-lock PROTOCOL, not this file: if WlSessionLock dies or
-// Quickshell exits without clearing `locked`, a conformant compositor
-// leaves the output locked and painted. Never substitute a fullscreen
-// window for it.
+// Quickshell exits without clearing `locked`, a conformant compositor leaves
+// the output locked and painted. Never substitute a fullscreen window for it.
 //
-// The PamContext.completed handler below is the only security-critical
-// code in this shell. PamResult has four values; exactly one branch
-// unlocks (Success), the default covers Failed/Error/MaxTries and
-// anything unanticipated. Ambiguous is not authenticated. Unlocking has
-// no IPC path — `locked` is cleared only from that Success branch.
-// Locking does have one, which is harmless.
+// The PamContext.completed handler below is the only security-critical code in
+// this shell. PamResult has four values; exactly one branch unlocks (Success),
+// the default covers Failed/Error/MaxTries and anything unanticipated.
+// Ambiguous is not authenticated. Unlocking has no IPC path — `locked` is
+// cleared only from that Success branch. Locking does have one, which is
+// harmless.
 //
-// PamContext is declared once, outside `surface`: WlSessionLock
-// instantiates `surface` per screen, so declaring it inside would open a
-// concurrent PAM conversation per monitor. WlSessionLock's default
-// property `surface` is a singular QQmlComponent, not a list, so every
-// other child must be assigned to a named property or it competes for
-// that slot — that once broke `ipc call lock lock`.
+// PamContext is declared once, outside `surface`: WlSessionLock instantiates
+// `surface` per screen, so declaring it inside would open a concurrent PAM
+// conversation per monitor. WlSessionLock's default property `surface` is a
+// singular QQmlComponent, not a list, so every other child must be assigned to
+// a named property or it competes for that slot — that once broke `ipc call
+// lock lock`.
 //
-// /etc/pam.d/phi-shell-lock is /etc material this repo never applies.
-// Until the user installs it, PamContext.start() fails with StartFailed,
-// another non-Success case: fail-closed holds even before setup.
+// /etc/pam.d/phi-shell-lock is /etc material this repo never applies. Until
+// the user installs it, PamContext.start() fails with StartFailed, another
+// non-Success case: fail-closed holds even before setup.
 
 WlSessionLock {
     id: root
@@ -54,8 +53,8 @@ WlSessionLock {
     property bool lockedOut: false
     property int lockoutRemaining: 0
     // 1 → 0 as the lockout cooldown drains, fed by the 1s countdown below —
-    // the timer made arithmetic, so the field's drain bar and any
-    // screensaver reaction can draw the countdown without knowing PAM.
+    // the timer made arithmetic, so the field's drain bar and any screensaver
+    // reaction can draw the countdown without knowing PAM.
     readonly property real lockoutProgress: root.lockoutSeconds > 0
         ? root.lockoutRemaining / root.lockoutSeconds : 0
 
@@ -93,18 +92,19 @@ WlSessionLock {
         config: "phi-shell-lock"
     }
 
-    // Emitted for every completed attempt, success or failure, so a screensaver
-    // that opts in (Plasma's validation wave) can react to either. Paints only,
-    // but emitted at the handshake boundary so the receiver sees the true result.
+    // Emitted for every completed attempt, success or failure, so a
+    // screensaver that opts in (Plasma's validation wave) can react to either.
+    // Paints only, but emitted at the handshake boundary so the receiver sees
+    // the true result.
     signal validationAttempt(bool success)
 
     // The user's name, from the environment (the same USER env read
-    // BarPopout's status card already makes) — never a hardcoded account
-    // name or a literal "user".
+    // BarPopout's status card already makes) — never a hardcoded account name
+    // or a literal "user".
     readonly property string user: Quickshell.env("USER") || "there"
-    // Time-of-day greeting, bracketed by the lock hit at the hour. The
-    // locked screen only ever re-evaluates this on the per-second clock
-    // tick, and the wording only visibly changes at a bracket boundary.
+    // Time-of-day greeting, bracketed by the lock hit at the hour. The locked
+    // screen only ever re-evaluates this on the per-second clock tick, and the
+    // wording only visibly changes at a bracket boundary.
     function greetingFor(now) {
         var h = now.getHours()
         if (h >= 5 && h < 12) return "Good morning"
@@ -113,16 +113,16 @@ WlSessionLock {
         return "Good night"
     }
 
-    // Notifications that arrived while this lock has been active, newest first,
-    // capped. Source and time only — no summary or body, so a peek at a locked
-    // screen leaks nothing. Fed by the `arrived` signal, which carries its own
-    // timestamp; no live Notification object is retained.
+    // Notifications that arrived while this lock has been active, newest
+    // first, capped. Source and time only — no summary or body, so a peek at a
+    // locked screen leaks nothing. Fed by the `arrived` signal, which carries
+    // its own timestamp; no live Notification object is retained.
     property var lockNotifications: []
     readonly property int lockNotificationsMax: 4
     property real lockStartedAt: 0
     // Property-assigned child, NOT a bare positional one: WlSessionLock's
-    // singular `surface` default property would otherwise claim it — the
-    // exact failure the header above documents.
+    // singular `surface` default property would otherwise claim it — the exact
+    // failure the header above documents.
     property Connections notificationsConnection: Connections {
         target: Services.Notifications
         function onArrived(entry) {
@@ -138,17 +138,17 @@ WlSessionLock {
     Component.onCompleted: {
         root.pam.completed.connect((result) => {
             // The PAM conversation has ended — whatever the outcome, the
-            // validating state must clear; only success/failure branches
-            // below decide what comes next.
+            // validating state must clear; only success/failure branches below
+            // decide what comes next.
             root.validating = false
-            // Broadcast the outcome first — the screensaver pulse needs
-            // the raw result, and nothing about the unlock below depends
-            // on it. See the `validationAttempt` property comment.
+            // Broadcast the outcome first — the screensaver pulse needs the
+            // raw result, and nothing about the unlock below depends on it.
+            // See the `validationAttempt` property comment.
             root.validationAttempt(result === PamResult.Success)
             if (result === PamResult.Success) {
-                // Starts the conceal; LockTransition's conceal-finished handler clears
-                // `root.locked`. See the `authenticated` comment for why unlock is routed
-                // through the animation.
+                // Starts the conceal; LockTransition's conceal-finished
+                // handler clears `root.locked`. See the `authenticated`
+                // comment for why unlock is routed through the animation.
                 root.authenticated = true
                 return
             }
@@ -157,21 +157,22 @@ WlSessionLock {
             if (root.attempts >= root.lockoutThreshold) {
                 root.lockedOut = true
                 root.lockoutRemaining = root.lockoutSeconds
-                // No retryTimer restart here — a fresh PAM conversation
-                // only starts again once the countdown above reaches zero.
+                // No retryTimer restart here — a fresh PAM conversation only
+                // starts again once the countdown above reaches zero.
             } else if (root.locked) {
                 root.retryTimer.restart()
             }
         })
-        // Without this retry a start-time failure (StartFailed — e.g. the pam.d
-        // file not installed) is terminal: PamContext never fires `completed`, so
-        // `retryTimer` never restarts and nothing recovers. Retrying picks up a fix
-        // applied from outside.
+        // Without this retry a start-time failure (StartFailed — e.g. the
+        // pam.d file not installed) is terminal: PamContext never fires
+        // `completed`, so `retryTimer` never restarts and nothing recovers.
+        // Retrying picks up a fix applied from outside.
         //
-        // Deliberately a separate, slower timer than `retryTimer` (600ms, for a
-        // human retyping): an unattended config fault would otherwise call
-        // pam.start() every 600ms forever, and pam_faillock-style modules count
-        // start attempts — turning a config mistake into a locked account.
+        // Deliberately a separate, slower timer than `retryTimer` (600ms, for
+        // a human retyping): an unattended config fault would otherwise call
+        // pam.start() every 600ms forever, and pam_faillock-style modules
+        // count start attempts — turning a config mistake into a locked
+        // account.
         root.pam.error.connect((err) => {
             root.validating = false
             root.errorText = PamError.toString(err)
@@ -184,15 +185,15 @@ WlSessionLock {
         onTriggered: if (root.locked) root.pam.start()
     }
 
-    // See the `error.connect` comment above for why this is separate
-    // from, and much slower than, `retryTimer`.
+    // See the `error.connect` comment above for why this is separate from, and
+    // much slower than, `retryTimer`.
     property Timer errorRetryTimer: Timer {
         interval: 5000
         onTriggered: if (root.locked) root.pam.start()
     }
 
-    // Locking only. See this file's own header for why unlocking has no
-    // IPC counterpart.
+    // Locking only. See this file's own header for why unlocking has no IPC
+    // counterpart.
     property IpcHandler lockIpc: IpcHandler {
         target: "lock"
         function lock(): void {
@@ -201,8 +202,8 @@ WlSessionLock {
             root.validating = false
             root.lockedOut = false
             root.lockoutRemaining = 0
-            // A fresh timestamp and an empty list: the notification area
-            // only ever shows what arrived since THIS lock began.
+            // A fresh timestamp and an empty list: the notification area only
+            // ever shows what arrived since THIS lock began.
             root.lockStartedAt = Date.now()
             root.lockNotifications = []
             // Per-lock reset — see the `authenticated` property comment for
@@ -210,8 +211,8 @@ WlSessionLock {
             root.authenticated = false
             root.locked = true
             // Services/LockState.qml's own header on why the matching
-            // false-write lives in the LockTransition conceal-finished
-            // handler below, not here.
+            // false-write lives in the LockTransition conceal-finished handler
+            // below, not here.
             Services.LockState.locked = true
             root.pam.start()
         }
@@ -227,22 +228,22 @@ WlSessionLock {
         // surface exists. One per screen; only one is input-focused at a time.
         Component.onCompleted: {
             passwordField.forceActiveFocus()
-            // The reveal is deferred one turn (Qt.callLater) so the surface
-            // is mapped when the animation starts. Without it the transition ran
+            // The reveal is deferred one turn (Qt.callLater) so the surface is
+            // mapped when the animation starts. Without it the transition ran
             // off-screen and read as instant.
             Qt.callLater(function () { transition.reveal() })
         }
 
-        // Forwards a completed attempt's outcome to the active screensaver if it
-        // opted into the validation contract (only Plasma declares it).
+        // Forwards a completed attempt's outcome to the active screensaver if
+        // it opted into the validation contract (only Plasma declares it).
         function _pulseScreensaver(success) {
             var fx = effectLoader.item
             if (fx && typeof fx.triggerValidation === "function") fx.triggerValidation(success)
         }
 
-        // Plain system actions — none touch PAM or `root.locked`, so this does not
-        // weaken the security path: a locked screen that reboots is locked until the
-        // reboot happens. Reboot/shutdown still confirm first.
+        // Plain system actions — none touch PAM or `root.locked`, so this does
+        // not weaken the security path: a locked screen that reboots is locked
+        // until the reboot happens. Reboot/shutdown still confirm first.
         function choosePower(action) {
             if (Services.PowerActions.needsConfirm(action)) {
                 Services.ConfirmDialog.open({
@@ -264,9 +265,8 @@ WlSessionLock {
         }
         readonly property real chWidth: chMetrics.width
 
-        // One mono cell at the password field's own size — the block
-        // caret below is exactly this wide and tall, the fixed-cell
-        // terminal cursor.
+        // One mono cell at the password field's own size — the block caret
+        // below is exactly this wide and tall, the fixed-cell terminal cursor.
         TextMetrics {
             id: fieldCell
             font.family: Config.Appearance.fontMono
@@ -274,8 +274,9 @@ WlSessionLock {
             text: "0"
         }
 
-        // Block-caret blink: hard on/off at half the tracking period, only while the
-        // field has focus. Paused during `validating`, when the caret pulses instead.
+        // Block-caret blink: hard on/off at half the tracking period, only
+        // while the field has focus. Paused during `validating`, when the
+        // caret pulses instead.
         QtObject { id: caret; property bool on: true }
         Timer {
             id: caretBlink
@@ -285,9 +286,10 @@ WlSessionLock {
             onTriggered: caret.on = !caret.on
         }
 
-        // Validation pulse: soft in/out on the field border while `validating`. The
-        // ~2s PAM wait must read as processing, not a dead screen. Category A;
-        // suppressed under battery saver, though the static "Verifying…" stays.
+        // Validation pulse: soft in/out on the field border while
+        // `validating`. The ~2s PAM wait must read as processing, not a dead
+        // screen. Category A; suppressed under battery saver, though the
+        // static "Verifying…" stays.
         property real validationPulse: 0.0
         SequentialAnimation on validationPulse {
             running: root.validating && !Services.PowerBridge.batterySaverActive
@@ -304,27 +306,30 @@ WlSessionLock {
             }
         }
 
-        // The content fades in on appear and back out on successful unlock. The
-        // surface's own opaque `color` never animates — ext-session-lock requires a
-        // locked output to stay painted — so this inner layer carries the whole
-        // transition. The movement lives in LockTransition.qml; this file only wires
-        // reveal, conceal, and the conceal-finished clear of `locked`.
+        // The content fades in on appear and back out on successful unlock.
+        // The surface's own opaque `color` never animates — ext-session-lock
+        // requires a locked output to stay painted — so this inner layer
+        // carries the whole transition. The movement lives in
+        // LockTransition.qml; this file only wires reveal, conceal, and the
+        // conceal-finished clear of `locked`.
         LockLocal.LockTransition {
             id: transition
             anchors.fill: parent
-            // Blocks of the centred column in reveal order; each owns an opacity and
-            // small-rise cascade on category B over the envelope. The notification area
-            // is deliberately excluded — it is empty at reveal and appears on its own.
+            // Blocks of the centred column in reveal order; each owns an
+            // opacity and small-rise cascade on category B over the envelope.
+            // The notification area is deliberately excluded — it is empty at
+            // reveal and appears on its own.
             targets: [greetingText, clockText, dateText, statusBlock, passwordPanel, errorText, powerBlock]
-            // Same read-side gate the screensaver Loader below is
-            // suppressed under: while the system is in low-power mode
-            // every lock/unlock movement collapses to an instant snap.
+            // Same read-side gate the screensaver Loader below is suppressed
+            // under: while the system is in low-power mode every lock/unlock
+            // movement collapses to an instant snap.
             animated: !Services.PowerBridge.batterySaverActive
 
-            // Screensaver backdrop, behind everything; the effect is chosen in Settings
-            // → Theme via Config.LockPrefs. Every effect exposes `running`, bound here so
-            // it freezes when the conceal starts. Suppressed under battery saver as a
-            // READ-SIDE override only — the user's stored choice is never rewritten.
+            // Screensaver backdrop, behind everything; the effect is chosen in
+            // Settings → Theme via Config.LockPrefs. Every effect exposes
+            // `running`, bound here so it freezes when the conceal starts.
+            // Suppressed under battery saver as a READ-SIDE override only —
+            // the user's stored choice is never rewritten.
             Loader {
                 id: effectLoader
                 anchors.fill: parent
@@ -344,17 +349,19 @@ WlSessionLock {
                 onLoaded: if (item) item.running = Qt.binding(function () { return !root.authenticated })
             }
 
-            // `overlayScrim`, not the `Strong` variant: at that weight it crushed every
-            // screensaver to nothing (most already draw at low intensity). Sits above the
-            // screensaver (z: -1) and below the readable content, so clock/field/pills
-            // keep full contrast while the backdrop reads calmer.
+            // `overlayScrim`, not the `Strong` variant: at that weight it
+            // crushed every screensaver to nothing (most already draw at low
+            // intensity). Sits above the screensaver (z: -1) and below the
+            // readable content, so clock/field/pills keep full contrast while
+            // the backdrop reads calmer.
             Rectangle {
                 anchors.fill: parent
                 color: Config.Appearance.overlayScrim
             }
-            // speed is shared across effects; intensityFor(key) and paramFor(key, name,
-            // default) are per-effect. Each default matches that effect's own file-level
-            // default, so an untouched key renders identically.
+            // speed is shared across effects; intensityFor(key) and
+            // paramFor(key, name, default) are per-effect. Each default
+            // matches that effect's own file-level default, so an untouched
+            // key renders identically.
             Component { id: lavaFx; Screensavers.LavaLamp {
                 speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("lava")
                 blobCount: Config.LockPrefs.paramFor("lava", "blobCount", 9)
@@ -394,9 +401,10 @@ WlSessionLock {
                 lockedOut: root.lockedOut; lockoutProgress: root.lockoutProgress
             } }
 
-            // New-notification area: entries since this lock began, source and time only,
-            // in the same mono grammar as the bar's history rows. Anchored to the top on
-            // purpose so the centred auth column never shifts.
+            // New-notification area: entries since this lock began, source and
+            // time only, in the same mono grammar as the bar's history rows.
+            // Anchored to the top on purpose so the centred auth column never
+            // shifts.
             Item {
                 id: notificationBlock
                 anchors.top: parent.top
@@ -406,8 +414,8 @@ WlSessionLock {
                 height: notificationColumn.implicitHeight + notificationPanel.padding * 2
                 opacity: root.lockNotifications.length > 0 ? 1 : 0
                 visible: opacity > 0
-                // Appears (and disappears) with a quick category-B fade —
-                // a state transition, not a motion category-A pulse.
+                // Appears (and disappears) with a quick category-B fade — a
+                // state transition, not a motion category-A pulse.
                 Behavior on opacity {
                     NumberAnimation {
                         duration: Config.Appearance.motionBDuration
@@ -419,8 +427,8 @@ WlSessionLock {
                 Widgets.Panel {
                     id: notificationPanel
                     anchors.fill: parent
-                    // Same low-contrast terminal edge as the password
-                    // field — a subtle surface, not a loud card.
+                    // Same low-contrast terminal edge as the password field —
+                    // a subtle surface, not a loud card.
                     radius: Config.Appearance.radiusSmall
                     borderColorOverride: Config.Appearance.border
                     borderWidthOverride: Config.Appearance.borderWidth
@@ -473,14 +481,15 @@ WlSessionLock {
                     anchors.horizontalCenter: parent.horizontalCenter
                     kind: "label"
                     mono: true
-                    // Time-of-day greeting (by hour bracket) + the user's
-                    // name — both derived at runtime, never hardcoded.
+                    // Time-of-day greeting (by hour bracket) + the user's name
+                    // — both derived at runtime, never hardcoded.
                     text: root.greetingFor(clockTick.now) + ", " + root.user
                 }
                 Widgets.ScrambleText {
                     id: clockText
-                    // Resolves once when the surface first appears — a rare event. Subsequent
-                    // per-second ticks just update the text, never re-scrambling.
+                    // Resolves once when the surface first appears — a rare
+                    // event. Subsequent per-second ticks just update the text,
+                    // never re-scrambling.
                     anchors.horizontalCenter: parent.horizontalCenter
                     sizeStep: 6
                     mono: true
@@ -507,13 +516,15 @@ WlSessionLock {
                         Widgets.BatteryIcon {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: Services.PowerBridge.present
-                            // Light text on the lock's dark scrim — the opposite-contrast token.
+                            // Light text on the lock's dark scrim — the
+                            // opposite-contrast token.
                             iconColor: Config.Appearance.colorOpposite
                             fillColor: Config.Appearance.colorOpposite
                             level: Services.PowerBridge.percentage
                             chargingAmount: Services.PowerBridge.discharging ? 0 : 1
-                            // The saver hatch: the state that collapses the transition and suppresses the
-                            // screensaver, so the icon explains why the background went still.
+                            // The saver hatch: the state that collapses the
+                            // transition and suppresses the screensaver, so
+                            // the icon explains why the background went still.
                             saverAmount: Services.PowerBridge.batterySaverActive ? 1 : 0
                             sizeStep: 2
                             Behavior on level {
@@ -550,10 +561,12 @@ WlSessionLock {
                     // A terminal input has a hard edge, not a rounded card —
                     // the sharpest radius the grammar carries.
                     radius: Config.Appearance.radiusSmall
-                    // Panel's default border is loud, like a settings card — wrong here, where
-                    // nothing else is boxed. Softened to the low-contrast border pair. `invalid`
-                    // is untouched, so a real error stays full strength. While `validating` the
-                    // override lerps border→borderStrong on the category-A pulse.
+                    // Panel's default border is loud, like a settings card —
+                    // wrong here, where nothing else is boxed. Softened to the
+                    // low-contrast border pair. `invalid` is untouched, so a
+                    // real error stays full strength. While `validating` the
+                    // override lerps border→borderStrong on the category-A
+                    // pulse.
                     borderColorOverride: root.validating
                         ? Qt.rgba(
                             Config.Appearance.border.r
@@ -566,10 +579,11 @@ WlSessionLock {
                                 + (Config.Appearance.borderStrong.a - Config.Appearance.border.a) * validationPulse)
                         : Config.Appearance.border
                     borderWidthOverride: Config.Appearance.borderWidth
-                    // invalid alone suffices: WidgetStates.resolve() already ranks invalid over
-                    // loading, so adding `loading` would be a silent no-op. Gated on
-                    // `!validating` so the previous attempt's stale error does not paint the
-                    // field red while a new attempt is still being verified.
+                    // invalid alone suffices: WidgetStates.resolve() already
+                    // ranks invalid over loading, so adding `loading` would be
+                    // a silent no-op. Gated on `!validating` so the previous
+                    // attempt's stale error does not paint the field red while
+                    // a new attempt is still being verified.
                     invalid: (root.errorText.length > 0 || root.lockedOut) && !root.validating
 
                     // A short, deliberate shake on every failed attempt,
@@ -593,17 +607,22 @@ WlSessionLock {
                         id: passwordField
                         width: parent.width
                         enabled: !root.lockedOut
-                        // Editing is blocked for the verification only, caret and border pulsing in
-                        // step. Typing into an already-submitted password is noise, and the ~2s wait
-                        // is long enough that accepting edits would read as broken. Scoped to
-                        // `validating` alone, never to PAM's conversational state.
+                        // Editing is blocked for the verification only, caret
+                        // and border pulsing in step. Typing into an
+                        // already-submitted password is noise, and the ~2s
+                        // wait is long enough that accepting edits would read
+                        // as broken. Scoped to `validating` alone, never to
+                        // PAM's conversational state.
                         readOnly: root.validating
-                        // A closed tab loop: the field opts into the tab chain, so Tab cycles field →
-                        // pills → field (QtQuick wraps within a FocusScope). Every stop stays
-                        // reachable; dropping the power row from the chain would strand it.
+                        // A closed tab loop: the field opts into the tab
+                        // chain, so Tab cycles field → pills → field (QtQuick
+                        // wraps within a FocusScope). Every stop stays
+                        // reachable; dropping the power row from the chain
+                        // would strand it.
                         activeFocusOnTab: true
-                        // Old-terminal input: mono role, solid block caret, `*` masking — the same
-                        // bullet the Plymouth prompt draws, so both auth surfaces read as one.
+                        // Old-terminal input: mono role, solid block caret,
+                        // `*` masking — the same bullet the Plymouth prompt
+                        // draws, so both auth surfaces read as one.
                         font.family: Config.Appearance.fontMono
                         font.pixelSize: Config.Appearance.fontSize2
                         color: passwordPanel.contentColor
@@ -613,8 +632,10 @@ WlSessionLock {
                             width: fieldCell.width
                             height: fieldCell.height
                             color: passwordPanel.contentColor
-                            // While `validating` the blink pauses and the caret pulses 0.35→1 with the
-                            // border, putting the verification inside the field, not only on its edge.
+                            // While `validating` the blink pauses and the
+                            // caret pulses 0.35→1 with the border, putting the
+                            // verification inside the field, not only on its
+                            // edge.
                             opacity: root.validating ? 0.35 + 0.65 * validationPulse : 1.0
                             visible: passwordField.activeFocus && (root.validating || caret.on)
                         }
@@ -623,15 +644,19 @@ WlSessionLock {
                             if (passwordField.activeFocus)
                                 caretBlink.restart()
                         }
-                        // `root.pam.` explicitly: this object lives inside `surface: Component`,
-                        // instantiated per screen, so it crosses a Component boundary where a bare
-                        // `pam` would be ambiguous.
+                        // `root.pam.` explicitly: this object lives inside
+                        // `surface: Component`, instantiated per screen, so it
+                        // crosses a Component boundary where a bare `pam`
+                        // would be ambiguous.
                         echoMode: root.pam.responseVisible ? TextInput.Normal : TextInput.Password
-                        // Deliberately NOT `enabled: root.pam.responseRequired`. Gating usability on
-                        // PAM's conversation state makes "PAM hasn't asked yet" and "PAM can never
-                        // start" look identical — a dead field either way. The field always accepts
-                        // typing; Keys.onReturnPressed guards the thing that matters, never
-                        // forwarding a response PAM did not ask for.
+                        // Deliberately NOT `enabled:
+                        // root.pam.responseRequired`. Gating usability on
+                        // PAM's conversation state makes "PAM hasn't asked
+                        // yet" and "PAM can never start" look identical — a
+                        // dead field either way. The field always accepts
+                        // typing; Keys.onReturnPressed guards the thing that
+                        // matters, never forwarding a response PAM did not ask
+                        // for.
 
                         Keys.onReturnPressed: {
                             if (!root.lockedOut && root.pam.responseRequired) {
@@ -646,10 +671,10 @@ WlSessionLock {
                     }
                 }
 
-                // Lockout drain: while `lockedOut` a hairline under the field drains 1→0 with
-                // the 1s countdown, error colour at reduced alpha, each tick eased on category
-                // B so it reads continuous. Sits between field and error line and never moves
-                // the field.
+                // Lockout drain: while `lockedOut` a hairline under the field
+                // drains 1→0 with the 1s countdown, error colour at reduced
+                // alpha, each tick eased on category B so it reads continuous.
+                // Sits between field and error line and never moves the field.
                 Item {
                     id: lockoutBar
                     width: passwordPanel.width
@@ -676,9 +701,10 @@ WlSessionLock {
                 Widgets.StyledText {
                     id: errorText
                     anchors.horizontalCenter: parent.horizontalCenter
-                    // While `validating` this line is the wait's static label — a neutral
-                    // "Verifying…" replacing the previous attempt's stale error, which neither
-                    // lingers in red nor vanishes mid-wait.
+                    // While `validating` this line is the wait's static label
+                    // — a neutral "Verifying…" replacing the previous
+                    // attempt's stale error, which neither lingers in red nor
+                    // vanishes mid-wait.
                     tone: root.validating ? "" : "error"
                     invalid: (root.errorText.length > 0 || root.lockedOut) && !root.validating
                     text: root.validating
@@ -688,8 +714,9 @@ WlSessionLock {
                             : (root.errorText.length > 0 ? root.errorText : (root.pam.message.length > 0 ? root.pam.message : " ")))
                 }
 
-                // The pill row shared with Dialogs/PowerMenu.qml, minus "lock" — locking an
-                // already-locked screen is meaningless. No action is primary, so pills stay bare.
+                // The pill row shared with Dialogs/PowerMenu.qml, minus "lock"
+                // — locking an already-locked screen is meaningless. No action
+                // is primary, so pills stay bare.
                 Item {
                     id: powerBlock
                     width: parent.width
@@ -698,8 +725,9 @@ WlSessionLock {
                     Dialogs.PowerActionsRow {
                         id: powerRow
                         anchors.horizontalCenter: parent.horizontalCenter
-                        // Left tab-reachable: the closed loop described on passwordField is what keeps
-                        // this safe, not removing the row from the chain.
+                        // Left tab-reachable: the closed loop described on
+                        // passwordField is what keeps this safe, not removing
+                        // the row from the chain.
                         actions: ["logout", "suspend", "hibernate", "reboot", "shutdown"]
                         onChosen: (action) => surface.choosePower(action)
                     }
@@ -717,8 +745,8 @@ WlSessionLock {
                 }
             }
 
-            // Safety: if the deferred reveal never runs, do not leave a
-            // locked screen with invisible (but focus-holding) content.
+            // Safety: if the deferred reveal never runs, do not leave a locked
+            // screen with invisible (but focus-holding) content.
             Timer {
                 interval: 1200
                 running: true
@@ -726,9 +754,9 @@ WlSessionLock {
             }
         }
 
-        // Wiring for the transition LockTransition.qml owns: the conceal starts only
-        // from authenticated → Success, and its finished handler is the one place
-        // `locked` is cleared.
+        // Wiring for the transition LockTransition.qml owns: the conceal
+        // starts only from authenticated → Success, and its finished handler
+        // is the one place `locked` is cleared.
         Connections {
             target: root
             function onAuthenticatedChanged() {

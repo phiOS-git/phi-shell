@@ -4,19 +4,17 @@ import "WidgetStates.js" as WidgetStates
 
 // Same family as Widgets/SunMoonIcon: a dumb, reusable, Canvas-drawn icon
 // driven entirely by external properties, no Services/ reads of its own
-// Bar/modules/Volume.qml owns the state.
-// A speaker body (fixed silhouette) + up to three sound-wave arcs whose
-// combined extent is a smooth, continuous function of `level` (0..1)
-// not a stepped 0/1/2/3-arc swap — `_waveExtent = level * 3` and each
-// arc's own opacity is `clamp(_waveExtent - i, 0, 1)`, so an arc fades in
-// gradually as the level crosses its threshold rather than popping in at
-// full opacity. `muted` fades a diagonal slash in/out on its own
-// Behavior-driven opacity rather than a hard show/hide, so toggling mute
-// reads as a real transition, not a flicker.
-// Motion category: B (state transition — the same reasoning
-// Widgets/SunMoonIcon.qml documents in full: category C is restricted to
-// two named effects, category D forbids animation by default). Both
-// `level` and `mutedAmount` are expected to arrive pre-wrapped in a
+// Bar/modules/Volume.qml owns the state. A speaker body (fixed silhouette) +
+// up to three sound-wave arcs whose combined extent is a smooth, continuous
+// function of `level` (0..1) not a stepped 0/1/2/3-arc swap — `_waveExtent =
+// level * 3` and each arc's own opacity is `clamp(_waveExtent - i, 0, 1)`, so
+// an arc fades in gradually as the level crosses its threshold rather than
+// popping in at full opacity. `muted` fades a diagonal slash in/out on its own
+// Behavior-driven opacity rather than a hard show/hide, so toggling mute reads
+// as a real transition, not a flicker. Motion category: B (state transition —
+// the same reasoning Widgets/SunMoonIcon.qml documents in full: category C is
+// restricted to two named effects, category D forbids animation by default).
+// Both `level` and `mutedAmount` are expected to arrive pre-wrapped in a
 // category-B Behavior at the call site, same contract as SunMoonIcon's
 // `dayness` — see that file for why a Behavior-driven property reliably
 // repaints every frame here too.
@@ -27,12 +25,11 @@ Item {
     property color iconColor: "white"
     property int sizeStep: 2
     // 0..1, clamped by the caller (Bar/modules/Volume.qml maps
-    // Services.AudioBridge.volume, which can exceed 1.0 past the 100%
-    // cap fix — clamped to 1 here too, defensively, not just at the
-    // call site).
+    // Services.AudioBridge.volume, which can exceed 1.0 past the 100% cap fix
+    // — clamped to 1 here too, defensively, not just at the call site).
     property real level: 0.5
-    // 0..1 — a float, not a bool, so the slash can fade rather than snap;
-    // the caller wraps a `muted` bool into this with its own Behavior.
+    // 0..1 — a float, not a bool, so the slash can fade rather than snap; the
+    // caller wraps a `muted` bool into this with its own Behavior.
     property real mutedAmount: 0.0
 
     readonly property real _boxSize: WidgetStates.drawnIconBoxSize(Config.Appearance, root.sizeStep)
@@ -74,9 +71,9 @@ Item {
             ctx.closePath()
             ctx.fill()
 
-            // Sound waves — up to three concentric arcs opening to the
-            // right of the cone's mouth, opacity fading in per-arc as
-            // `_waveExtent` crosses each one's threshold.
+            // Sound waves — up to three concentric arcs opening to the right
+            // of the cone's mouth, opacity fading in per-arc as `_waveExtent`
+            // crosses each one's threshold.
             const apexX = 0.54 * b
             const apexY = 0.5 * b
             const lw = Math.max(1, b * 0.07)
@@ -93,8 +90,8 @@ Item {
             ctx.globalAlpha = 1
 
             // Mute slash — a diagonal stroke through the whole icon
-            // opacity-only (no length/position animation): simplest thing
-            // that still reads as a real fade rather than a snap.
+            // opacity-only (no length/position animation): simplest thing that
+            // still reads as a real fade rather than a snap.
             if (root.mutedAmount > 0.001) {
                 ctx.globalAlpha = root.mutedAmount
                 ctx.lineWidth = Math.max(1, b * 0.09)

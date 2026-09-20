@@ -14,8 +14,8 @@ Column {
     spacing: root.chWidth * Config.Appearance.space1
     visible: root.active
 
-    // Only ticks while this card is on screen AND actually running — a
-    // paused stopwatch's own value is already static.
+    // Only ticks while this card is on screen AND actually running — a paused
+    // stopwatch's own value is already static.
     property real _now: Date.now()
     Timer {
         interval: 1000

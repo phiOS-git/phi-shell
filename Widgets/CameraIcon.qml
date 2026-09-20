@@ -3,8 +3,8 @@ import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
 // Same hand-drawn-Canvas convention and three-state shape language as
-// MicrophoneIcon.qml's sibling icon — see TrueToneIcon.qml for the full
-// "why not a font glyph" reasoning.
+// MicrophoneIcon.qml's sibling icon — see TrueToneIcon.qml for the full "why
+// not a font glyph" reasoning.
 //
 // A simple camera-body-plus-lens silhouette: "disabled" strikes it through,
 // "enabled" is a hollow outline, "inUse" fills the lens solid.

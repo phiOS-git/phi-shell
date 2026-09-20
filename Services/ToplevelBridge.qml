@@ -7,9 +7,9 @@ import Quickshell.Wayland
 // (Components/Overview.qml, ...) reads this, never Quickshell.Wayland
 // directly.
 //
-// wlr-foreign-toplevel-management (cross-compositor), not
-// Quickshell.Hyprland: real activate()/close() methods on each Toplevel,
-// instead of a hand-rolled hyprctl dispatch string.
+// wlr-foreign-toplevel-management (cross-compositor), not Quickshell.Hyprland:
+// real activate()/close() methods on each Toplevel, instead of a hand-rolled
+// hyprctl dispatch string.
 
 Singleton {
     id: root

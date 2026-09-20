@@ -17,11 +17,15 @@ Singleton {
     readonly property real timeToEmpty: root.present ? root.device.timeToEmpty : 0
     readonly property real timeToFull: root.present ? root.device.timeToFull : 0
 
-    // healthSupported is false on hardware/firmware that never reports a capacity baseline — the settings panel then shows "not reported", never a fabricated number.
+    // healthSupported is false on hardware/firmware that never reports a
+    // capacity baseline — the settings panel then shows "not reported", never
+    // a fabricated number.
     readonly property real healthPercentage: root.present ? root.device.healthPercentage : 0
     readonly property bool healthSupported: root.present && root.device.healthSupported
 
-    // No UPowerDevice property covers cycle count, so it's read directly via `upower -i` — "unknown" when the line is absent (most laptops) rather than assuming a sentinel value means something specific.
+    // No UPowerDevice property covers cycle count, so it's read directly via
+    // `upower -i` — "unknown" when the line is absent (most laptops) rather
+    // than assuming a sentinel value means something specific.
     property string chargeCycles: "unknown"
 
     function refreshCycles() { cyclesProbe.running = true }
@@ -73,14 +77,16 @@ Singleton {
     }
 
     Timer {
-        // How often to resample for the rate estimate — a functional constant, not a design-token value.
+        // How often to resample for the rate estimate — a functional constant,
+        // not a design-token value.
         interval: 60000
         running: root.present
         repeat: true
         triggeredOnStart: true
         onTriggered: {
             const next = root.samples.concat([{ t: Date.now(), pct: root.percentage }])
-            // Keep ~10 minutes of history — enough for a stable estimate without growing unbounded.
+            // Keep ~10 minutes of history — enough for a stable estimate
+            // without growing unbounded.
             root.samples = next.slice(Math.max(0, next.length - 10))
         }
     }
@@ -111,8 +117,11 @@ Singleton {
         }, null, 2))
     }
 
-    // Only reached from soundPrefsFile.onLoadFailed, so this never overwrites a real preference.
-    // Config.Settings.get shells out, — user could open Settings and flip the toggle before this callback lands — _soundPrefsWritten means that fresh write always wins over a migration that started first but finished second.
+    // Only reached from soundPrefsFile.onLoadFailed, so this never overwrites
+    // a real preference. Config.Settings.get shells out, so the user could open
+    // Settings and flip the toggle before this callback lands —
+    // _soundPrefsWritten means that fresh write always wins over a migration
+    // that started first but finished second.
     function _migrateFromPhiState() {
         Config.Settings.get("power.chargingSound", (v, code) => {
             if (v === "false" && !root._soundPrefsWritten) {
@@ -148,9 +157,13 @@ Singleton {
         onLoadFailed: (error) => root._migrateFromPhiState()
     }
 
-    // Plugged-in is detected as a discharging→not-discharging transition, not a raw device.state read.
-    // _chargeSoundInit skips the first change so it never fires a spurious sound at startup.
-    // The root.present check matters because `discharging` already includes it — a device re-enumerating around suspend/resume looks like a discharging→false transition, and without this check that would play the sound on resume with no charger involved.
+    // Plugged-in is detected as a discharging→not-discharging transition, not
+    // a raw device.state read. _chargeSoundInit skips the first change so it
+    // never fires a spurious sound at startup. The root.present check matters
+    // because `discharging` already includes it — a device re-enumerating
+    // around suspend/resume looks like a discharging→false transition, and
+    // without this check that would play the sound on resume with no charger
+    // involved.
     onDischargingChanged: {
         if (!root._chargeSoundInit) {
             root._chargeSoundInit = true
@@ -163,7 +176,9 @@ Singleton {
     }
     onPercentageChanged: root._evaluateBatterySaver()
 
-    // Resolve chargingSoundName to a filesystem path: an absolute path as is, else a freedesktop sound-theme basename — same convention Services/Notifications.qml's own `_soundPath()` uses.
+    // Resolve chargingSoundName to a filesystem path: an absolute path as is,
+    // else a freedesktop sound-theme basename — same convention
+    // Services/Notifications.qml's own `_soundPath()` uses.
     function _chargingSoundPath() {
         var n = root.chargingSoundName
         if (n.length === 0) return ""
@@ -171,7 +186,8 @@ Singleton {
         return "/usr/share/sounds/freedesktop/stereo/" + n + ".oga"
     }
 
-    // `force` lets the settings "Test sound" button play it even while chargingSoundEnabled is false.
+    // `force` lets the settings "Test sound" button play it even while
+    // chargingSoundEnabled is false.
     function playChargingSound(force) {
         if (!force && !root.chargingSoundEnabled) return
         if (chargeSoundProc.running) return
@@ -222,18 +238,20 @@ Singleton {
                 console.warn("phi-shell: battery-alert.json failed to parse, ignoring: " + e)
             }
         }
-        // No migration needed — this is a net-new preference, never a `phi state` scalar key.
-        // Absence just means the defaults stand.
+        // No migration needed — this is a net-new preference, never a `phi
+        // state` scalar key. Absence just means the defaults stand.
     }
 
-    // Lets Settings exercise the alert without draining the battery;
-    // cleared the moment the alert is dismissed.
+    // Lets Settings exercise the alert without draining the battery; cleared
+    // the moment the alert is dismissed.
     property string testOverrideLevel: "none" // "none" | "warn" | "danger"
     function testAlert(level) { root.dismissedLevel = "none"; root.testOverrideLevel = level }
 
     function _rank(level) { return level === "danger" ? 2 : (level === "warn" ? 1 : 0) }
 
-    // Explicitly gated on Config.Capabilities.battery (mini has none) so this dialog can never fire on a battery-less machine even though it's instantiated unconditionally in shell.qml.
+    // Explicitly gated on Config.Capabilities.battery (mini has none) so this
+    // dialog can never fire on a battery-less machine even though it's
+    // instantiated unconditionally in shell.qml.
     readonly property string alertLevel: {
         if (root.testOverrideLevel !== "none") return root.testOverrideLevel
         if (!Config.Capabilities.battery || !root.present || !root.discharging) return "none"
@@ -243,8 +261,10 @@ Singleton {
     }
 
     // Highest severity already dismissed for the current low-battery episode.
-    // Compared by rank, not equality, so an escalation (warn → danger) re-opens the alert even if warn already dismissed, but recovering (danger → warn) stays quiet.
-    // Resets to "none" once the real level does, — next episode starts fresh.
+    // Compared by rank, not equality, so an escalation (warn → danger)
+    // re-opens the alert even if warn already dismissed, but recovering
+    // (danger → warn) stays quiet. Resets to "none" once the real level does,
+    // — next episode starts fresh.
     property string dismissedLevel: "none"
     readonly property bool alertShown: root._rank(root.alertLevel) > root._rank(root.dismissedLevel)
 
@@ -265,9 +285,12 @@ Singleton {
     property bool batterySaverAuto: true
     property bool batterySaverActive: false
     property bool _saverOverrideWhileCharging: false
-    // Without this, turning saver off manually while still discharging and at/under lowPercentThreshold would be undone by the very next battery update (finds the same conditions true and flips it back on).
-    // Holds until either a fresh charge cycle ends this discharge session, or the battery drops far enough to cross the warn threshold.
-    // Session-local, not persisted — a fresh startup re-decides from the real battery state.
+    // Without this, turning saver off manually while still discharging and
+    // at/under lowPercentThreshold would be undone by the very next battery
+    // update (finds the same conditions true and flips it back on). Holds
+    // until either a fresh charge cycle ends this discharge session, or the
+    // battery drops far enough to cross the warn threshold. Session-local, not
+    // persisted — a fresh startup re-decides from the real battery state.
     property bool _saverSuppressedByUser: false
     property int _brightnessBeforeSaver: -1
     property int _brightnessCapSetTo: -1
@@ -278,13 +301,16 @@ Singleton {
         root._evaluateBatterySaver()
     }
 
-    // The manual switch — for a future battery-saver toggle UI;
-    // nothing calls this yet. Nothing assigns batterySaverActive directly.
+    // The manual switch — for a future battery-saver toggle UI; nothing calls
+    // this yet. Nothing assigns batterySaverActive directly.
     function setBatterySaverActive(b) {
         b = !!b
         if (b && !root.discharging) root._saverOverrideWhileCharging = true
         if (!b) root._saverOverrideWhileCharging = false
-        // Reuses alertWarnThreshold as "another threshold": if the user turns saver off while still at/under lowPercentThreshold, the suppression holds until either a fresh charge cycle ends this discharge session, or the battery crosses the more urgent warn threshold.
+        // Reuses alertWarnThreshold as "another threshold": if the user turns
+        // saver off while still at/under lowPercentThreshold, the suppression
+        // holds until either a fresh charge cycle ends this discharge session,
+        // or the battery crosses the more urgent warn threshold.
         if (!b && root.discharging && root.percentage <= root.lowPercentThreshold)
             root._saverSuppressedByUser = true
         if (b) root._saverSuppressedByUser = false
@@ -301,7 +327,9 @@ Singleton {
                 Services.Brightness.set(root._brightnessCapSetTo)
             }
         } else {
-            // Restore only if nothing has touched brightness since saver capped it — the user may have deliberately changed it while saver active, and that choice must win.
+            // Restore only if nothing has touched brightness since saver
+            // capped it — the user may have deliberately changed it while
+            // saver active, and that choice must win.
             if (root._brightnessBeforeSaver >= 0 && Services.Brightness.present
                     && Services.Brightness.percent === root._brightnessCapSetTo)
                 Services.Brightness.set(root._brightnessBeforeSaver)
@@ -310,14 +338,19 @@ Singleton {
         }
     }
 
-    // Auto-ON only while discharging and at/under the threshold;
-    // auto-OFF only once plugged in and over the threshold, unless this activation itself a manual override made while charging — cleared the moment a real discharge cycle starts, — exemption only ever protects the charging session it set during.
+    // Auto-ON only while discharging and at/under the threshold; auto-OFF only
+    // once plugged in and over the threshold, unless this activation itself a
+    // manual override made while charging — cleared the moment a real
+    // discharge cycle starts, so the exemption only ever protects the charging
+    // session it set during.
     function _evaluateBatterySaver() {
         if (!root.present) return
         if (!root.discharging) {
             if (root.batterySaverActive && root.percentage > root.lowPercentThreshold && !root._saverOverrideWhileCharging)
                 root._applyBatterySaver(false)
-            // A fresh charge ends the discharge session the suppression scoped to — next time it drops under lowPercentThreshold counts as a new episode.
+            // A fresh charge ends the discharge session the suppression scoped
+            // to — next time it drops under lowPercentThreshold counts as a
+            // new episode.
             root._saverSuppressedByUser = false
             return
         }
@@ -329,7 +362,8 @@ Singleton {
             root._applyBatterySaver(true)
     }
 
-    // No _written guard like soundPrefsFile — no migration path exists for this preference, so there's nothing for a guard to arbitrate.
+    // No _written guard like soundPrefsFile — no migration path exists for
+    // this preference, so there's nothing for a guard to arbitrate.
     function _persistBatterySaverPrefs() {
         batterySaverPrefsFile.setText(JSON.stringify({ auto: root.batterySaverAuto }, null, 2))
     }

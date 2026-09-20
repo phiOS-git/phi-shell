@@ -4,18 +4,16 @@ import "WidgetStates.js" as WidgetStates
 
 // Same dumb/reusable Canvas-icon family as WifiIcon/SunMoonIcon/VolumeIcon/
 // BatteryIcon — Bar/modules/Ethernet.qml owns the Services/EthernetBridge.qml
-// reads.
-// Hand-drawn, not a font-symbol lookup — this project never guesses an
-// unverified Nerd Font codepoint, having shipped a wrong one before. A
-// plain RJ45 plug silhouette — a body, a retention clip on top, four
-// contact pins on the bottom — using only rectangles, so there is no
-// curve-fitting to get subtly wrong.
-// Only a connect/disconnect fade (`connectAmount`, category B, Behavior-
-// wrapped by the caller like WifiIcon's own), no separate "searching"
-// pulse: unlike Wi-Fi, Quickshell's NetworkDevice gives no confirmed
-// meaningfully-different transitional state for a wired link worth
-// animating — a plain resting-opacity fade is the honest amount of
-// animation to build on what is actually known.
+// reads. Hand-drawn, not a font-symbol lookup — this project never guesses an
+// unverified Nerd Font codepoint, having shipped a wrong one before. A plain
+// RJ45 plug silhouette — a body, a retention clip on top, four contact pins on
+// the bottom — using only rectangles, so there is no curve-fitting to get
+// subtly wrong. Only a connect/disconnect fade (`connectAmount`, category B,
+// Behavior- wrapped by the caller like WifiIcon's own), no separate
+// "searching" pulse: unlike Wi-Fi, Quickshell's NetworkDevice gives no
+// confirmed meaningfully-different transitional state for a wired link worth
+// animating — a plain resting-opacity fade is the honest amount of animation
+// to build on what is actually known.
 
 Item {
     id: root
@@ -30,9 +28,9 @@ Item {
     width: _boxSize
     height: _boxSize
 
-    // Same "recognisable but clearly inactive" resting opacity WifiIcon
-    // uses, not fully invisible — a disconnected plug icon should still
-    // read as "the ethernet icon, off" at a glance.
+    // Same "recognisable but clearly inactive" resting opacity WifiIcon uses,
+    // not fully invisible — a disconnected plug icon should still read as "the
+    // ethernet icon, off" at a glance.
     readonly property real _restingOpacity: 0.28 + 0.72 * Math.max(0, Math.min(1, root.connectAmount))
 
     onIconColorChanged: canvas.requestPaint()
@@ -52,8 +50,8 @@ Item {
             ctx.globalAlpha = root._restingOpacity
 
             // Plug body. bodyY is offset so the silhouette (clip top to pin
-            // bottom) sits centred in the box rather than crowded toward
-            // the top.
+            // bottom) sits centred in the box rather than crowded toward the
+            // top.
             const bodyX = 0.28 * b
             const bodyY = 0.28 * b
             const bodyW = 0.44 * b

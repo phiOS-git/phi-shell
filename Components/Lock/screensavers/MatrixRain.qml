@@ -1,31 +1,29 @@
 import QtQuick
 import qs.Config as Config
 
-// A falling-glyph field for the lock screen background, with a slowly
-// drifting brightness band. Written from scratch in a Canvas — no
-// external tool or package.
-// Screensaver animation, an exception confined to the lock screen and
-// stopped the moment the surface begins to conceal (`running` is cleared
-// by Lock.qml), so it never animates over a live desktop.
-// Colour: design tokens only, and the two-colour B&W grammar holds — the
-// trail runs fg-3 → fg-2, the leading glyph and any glyph inside the
-// drifting band lift toward `accent`. No literal colour, and no green.
-// Charset: ASCII plus Greek (φ Φ λ π Σ …). Source Code Pro covers both.
-// NOT katakana — phiOS ships noto-fonts as Greek + Latin only, so
-// katakana would render as tofu.
-// (no compositor here): Canvas throughput at this cell count
-// and whether QQuickContext2D.fillStyle takes a `color` object directly.
-// `cell` and the frame interval are the two dials if it needs to be lighter.
+// A falling-glyph field for the lock screen background, with a slowly drifting
+// brightness band. Written from scratch in a Canvas — no external tool or
+// package. Screensaver animation, an exception confined to the lock screen and
+// stopped the moment the surface begins to conceal (`running` is cleared by
+// Lock.qml), so it never animates over a live desktop. Colour: design tokens
+// only, and the two-colour B&W grammar holds — the trail runs fg-3 → fg-2, the
+// leading glyph and any glyph inside the drifting band lift toward `accent`.
+// No literal colour, and no green. Charset: ASCII plus Greek (φ Φ λ π Σ …).
+// Source Code Pro covers both. NOT katakana — phiOS ships noto-fonts as Greek
+// + Latin only, so katakana would render as tofu. (no compositor here): Canvas
+// throughput at this cell count and whether QQuickContext2D.fillStyle takes a
+// `color` object directly. `cell` and the frame interval are the two dials if
+// it needs to be lighter.
 
 Item {
     id: root
 
-    // Lock.qml clears this to freeze and blank the field for the conceal
-    // fade (nothing to animate once we are on the way out).
+    // Lock.qml clears this to freeze and blank the field for the conceal fade
+    // (nothing to animate once we are on the way out).
     property bool running: true
 
-    // Overall wash. Kept low so the clock and the password field layered
-    // on top stay legible; the head glyphs still punch through it.
+    // Overall wash. Kept low so the clock and the password field layered on
+    // top stay legible; the head glyphs still punch through it.
     property real intensity: 0.18
     property real speed: 1.0
     // --- lock/auth state (bound by Lock.qml on the active effect) -------
@@ -49,8 +47,8 @@ Item {
     // maps these ids to labels and triggers).
     readonly property var features: ["verification", "lockout"]
 
-    // Multiplier on the column density, inverse on the cell size (>1 =
-    // smaller cells = more columns = denser rain; <1 = sparser).
+    // Multiplier on the column density, inverse on the cell size (>1 = smaller
+    // cells = more columns = denser rain; <1 = sparser).
     property real density: 1.0
 
     readonly property string glyphs:
@@ -58,10 +56,10 @@ Item {
         "<>[]{}()/\\|=+-*#%&$@?!;:~^" +
         "αβγδεζηθλμνξπρστφχψωΦΛΣΠΩ"
 
-    // Deliberately looser than one text cell — a touch of air between
-    // columns keeps the glyph count (and the fill cost) sane on a large
-    // display without the rain reading as sparse. `density` scales this
-    // inversely, clamped so it can never collapse to (or below) zero.
+    // Deliberately looser than one text cell — a touch of air between columns
+    // keeps the glyph count (and the fill cost) sane on a large display
+    // without the rain reading as sparse. `density` scales this inversely,
+    // clamped so it can never collapse to (or below) zero.
     readonly property real cell: Math.round(Config.Appearance.fontSize3 * 1.2 / Math.max(0.35, root.density))
     readonly property int columnCount: Math.max(1, Math.floor(width / cell))
     readonly property int rowCount: Math.max(1, Math.ceil(height / cell) + 2)
@@ -92,9 +90,9 @@ Item {
     Component.onCompleted: reseed()
 
     Timer {
-        // Two character-steps per frame (~20 fps): fast enough for the
-        // fall to read as fluid, half the fill cost of one step per
-        // frame. Reuses the motion constant Widgets/ScrambleText also uses.
+        // Two character-steps per frame (~20 fps): fast enough for the fall to
+        // read as fluid, half the fill cost of one step per frame. Reuses the
+        // motion constant Widgets/ScrambleText also uses.
         interval: Config.Appearance.motionCTypeStep * 2
         running: root.running && root.visible && root.width > 0 && root.height > 0
         repeat: true
@@ -175,9 +173,8 @@ Item {
             // Auth reactions (the bound state above): a full-surface cast
             // toward `info` that breathes with the field's pulse while
             // `validating`, and toward `error` that fades as the lockout
-            // countdown drains. The two can't overlap — respond() is
-            // guarded by `!lockedOut` — but the `else if` keeps it
-            // explicit.
+            // countdown drains. The two can't overlap — respond() is guarded
+            // by `!lockedOut` — but the `else if` keeps it explicit.
             if (root.validating && root.validationProgress > 0.001) {
                 var lift = Config.Appearance.info
                 ctx.fillStyle = Qt.rgba(lift.r, lift.g, lift.b,

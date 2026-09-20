@@ -2,16 +2,16 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// A single glyph from the icon-only symbol font, never a text font —
-// mixing an icon glyph into a text font risks a "missing glyph" box the
-// moment fontconfig's fallback chain does not carry it. Same colour and
-// opacity treatment as StyledText, through the same shared functions, so
-// an icon and its neighbouring label never disagree about what "muted" or
-// "disabled" looks like.
+// A single glyph from the icon-only symbol font, never a text font — mixing an
+// icon glyph into a text font risks a "missing glyph" box the moment
+// fontconfig's fallback chain does not carry it. Same colour and opacity
+// treatment as StyledText, through the same shared functions, so an icon and
+// its neighbouring label never disagree about what "muted" or "disabled" looks
+// like.
 //
-// The ">" active-input-point glyph is deliberately not a named property
-// here — that would let every widget in this directory render it, when
-// ListRow is the one place it belongs.
+// The ">" active-input-point glyph is deliberately not a named property here —
+// that would let every widget in this directory render it, when ListRow is the
+// one place it belongs.
 
 Text {
     id: root

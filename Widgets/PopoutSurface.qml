@@ -3,18 +3,17 @@ import Quickshell
 import qs.Config as Config
 import qs.Services as Services
 
-// The structural shell every small corner overlay in this shell is built
-// from (BarPopout, Calendar, ClipboardOverlay, NotificationsOverlay): a
-// full-screen transparent PanelWindow holding one anchored, fading card.
-// Each caller supplies only what differs — its own `shown` state, the
-// card's resolved width/height, where it anchors, and its content — this
-// file owns the window chrome (exclusiveZone double-count fix below
-// fade, click-outside dismiss, keyboard focus, Escape) once instead of
-// each caller repeating it.
-// `default property alias content` routes straight into the inner
-// Widgets.Panel's own content slot, so a caller's children — visual or
-// not (an IpcHandler, a Timer) — land inside the card exactly as if they
-// had written the Panel themselves.
+// The structural shell every small corner overlay in this shell is built from
+// (BarPopout, Calendar, ClipboardOverlay, NotificationsOverlay): a full-screen
+// transparent PanelWindow holding one anchored, fading card. Each caller
+// supplies only what differs — its own `shown` state, the card's resolved
+// width/height, where it anchors, and its content — this file owns the window
+// chrome (exclusiveZone double-count fix below fade, click-outside dismiss,
+// keyboard focus, Escape) once instead of each caller repeating it. `default
+// property alias content` routes straight into the inner Widgets.Panel's own
+// content slot, so a caller's children — visual or not (an IpcHandler, a
+// Timer) — land inside the card exactly as if they had written the Panel
+// themselves.
 
 PanelWindow {
     id: root
@@ -23,10 +22,10 @@ PanelWindow {
     property real cardWidth: 0
     property real cardHeight: 0
 
-    // "right"/"left": cardX is the button edge the card's own right/left
-    // edge tracks (screen space), clamped to stay on screen; <= 0 falls
-    // back to the screen corner. "center": cardX is ignored, the card is
-    // horizontally centered on screen (Calendar's own one case).
+    // "right"/"left": cardX is the button edge the card's own right/left edge
+    // tracks (screen space), clamped to stay on screen; <= 0 falls back to the
+    // screen corner. "center": cardX is ignored, the card is horizontally
+    // centered on screen (Calendar's own one case).
     property string anchorEdge: "right"
     property real cardX: 0
     // Sits above the bottom bar instead of below the top one.
@@ -40,8 +39,8 @@ PanelWindow {
 
     property alias padding: panel.padding
     // The card Item itself — ClipboardOverlay's Modules.Clipboard hold-
-    // preview overlay clamps against it (needs the real on-screen card
-    // rect, not just a width).
+    // preview overlay clamps against it (needs the real on-screen card rect,
+    // not just a width).
     readonly property alias cardItem: cardWrap
     default property alias content: panel.content
 
@@ -49,9 +48,9 @@ PanelWindow {
 
     anchors { top: true; right: true; left: true; bottom: true }
     // The bar's own exclusiveZone already shifts this window's top-anchored
-    // origin down by the bar's height before anchors.topMargin runs below
-    // — `-1` (not `0`) is what stops that shift from happening, so the
-    // margin isn't added on top of it a second time.
+    // origin down by the bar's height before anchors.topMargin runs below —
+    // `-1` (not `0`) is what stops that shift from happening, so the margin
+    // isn't added on top of it a second time.
     exclusiveZone: -1
     color: "transparent"
     visible: root.shown || fadeRoot.opacity > 0

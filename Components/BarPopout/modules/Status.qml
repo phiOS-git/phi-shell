@@ -6,13 +6,12 @@ import qs.Widgets as Widgets
 import "../../Bar/glyphs.js" as Glyphs
 import "." as Local
 
-// Bar/modules/StatusMenu.qml's own card: profile row, power actions
-// real MPRIS media controls, compact system toggles, and the tiling-mode
-// grid. No avatar-picture or per-session-length data source exists
-// anywhere in this codebase — `_profileName` below and "session time"
-// (Services.SystemInfo.uptime, the same figure General's own "System"
-// card shows) are both real, just not what the original request assumed
-// existed.
+// Bar/modules/StatusMenu.qml's own card: profile row, power actions real MPRIS
+// media controls, compact system toggles, and the tiling-mode grid. No
+// avatar-picture or per-session-length data source exists anywhere in this
+// codebase — `_profileName` below and "session time"
+// (Services.SystemInfo.uptime, the same figure General's own "System" card
+// shows) are both real, just not what the original request assumed existed.
 
 Widgets.StaggerReveal {
     id: root
@@ -27,10 +26,10 @@ Widgets.StaggerReveal {
 
     readonly property string _profileName: Quickshell.env("USER") || "user"
 
-    // Session-local only — no native Hyprland concept exists for four of
-    // these six (only Tile/dwindle-master and Floating are real; the
-    // Grid's Column further down documents this for whoever reaches it
-    // next). Selecting a non-real one only highlights the button.
+    // Session-local only — no native Hyprland concept exists for four of these
+    // six (only Tile/dwindle-master and Floating are real; the Grid's Column
+    // further down documents this for whoever reaches it next). Selecting a
+    // non-real one only highlights the button.
     property string _tilingMode: "tile"
     function _applyTilingMode(id) {
         root._tilingMode = id
@@ -87,34 +86,33 @@ Widgets.StaggerReveal {
             Repeater {
                 model: ["lock", "suspend", "hibernate", "logout", "reboot", "shutdown"]
 
-                // One plain Item-rooted button per action, tiling the row's full
-                // width edge-to-edge: with no spacing each button is
+                // One plain Item-rooted button per action, tiling the row's
+                // full width edge-to-edge: with no spacing each button is
                 // exactly one sixth of the row and as tall as it is wide
                 // (1/1), the glyph centered with even padding on all four
-                // sides. On hover the whole button fills
-                // with its action's own semantic tone (powerActions.toneFor
-                // — the same map PowerMenu's pills use, so a shutdown
-                // action always reads error-red here too) and the glyph
-                // flips to that tone's paired text token, carrying the
-                // colour identity the way the pill row does. At rest the
-                // tile is surface1-identical, ringed by a thin
-                // borderWidth outline in borderStrong — the same visible
-                // resting outline; the plain
-                // `border` hairline was effectively invisible on the
-                // card — so the six read as bare power icons in outlined
-                // slots; the glyphs stay uniformly textPrimary, differing
-                // by shape (powerActions.glyph) alone until hovered.
-                // Plain Item, not Widgets.Panel, on purpose: Panel routes
-                // declared children into its padded contentItem, and
-                // pointer handlers only receive hover/click along the hit
-                // item's own ancestry — a handler living inside contentItem
-                // never reacts to a cursor over the background Rectangle
-                // (its sibling), so only the glyph's own area ever hovered
-                // while the wash still filled the whole tile. Rooting the
-                // full-bleed wash Rectangle and both handlers on this Item
-                // itself (the same shape as Widgets/IconButton — a click
-                // target that is the entire control) puts every pixel of
-                // the tile — wash, border, glyph — under the handlers.
+                // sides. On hover the whole button fills with its action's own
+                // semantic tone (powerActions.toneFor — the same map
+                // PowerMenu's pills use, so a shutdown action always reads
+                // error-red here too) and the glyph flips to that tone's
+                // paired text token, carrying the colour identity the way the
+                // pill row does. At rest the tile is surface1-identical,
+                // ringed by a thin borderWidth outline in borderStrong — the
+                // same visible resting outline; the plain `border` hairline
+                // was effectively invisible on the card — so the six read as
+                // bare power icons in outlined slots; the glyphs stay
+                // uniformly textPrimary, differing by shape
+                // (powerActions.glyph) alone until hovered. Plain Item, not
+                // Widgets.Panel, on purpose: Panel routes declared children
+                // into its padded contentItem, and pointer handlers only
+                // receive hover/click along the hit item's own ancestry — a
+                // handler living inside contentItem never reacts to a cursor
+                // over the background Rectangle (its sibling), so only the
+                // glyph's own area ever hovered while the wash still filled
+                // the whole tile. Rooting the full-bleed wash Rectangle and
+                // both handlers on this Item itself (the same shape as
+                // Widgets/IconButton — a click target that is the entire
+                // control) puts every pixel of the tile — wash, border, glyph
+                // — under the handlers.
                 Item {
                     id: pwrBtn
                     required property string modelData
@@ -156,10 +154,10 @@ Widgets.StaggerReveal {
         width: parent.width
         visible: Services.Mpris.active !== null
         // The same controls body as the dedicated Media popout
-        // Local.MediaControls (this directory's shared section) is the
-        // one place the track info, progress and transport live, so
-        // the two cards can't drift apart. No own title: the section is
-        // self-evident, the same way the Media popout shows none.
+        // Local.MediaControls (this directory's shared section) is the one
+        // place the track info, progress and transport live, so the two cards
+        // can't drift apart. No own title: the section is self-evident, the
+        // same way the Media popout shows none.
         Local.MediaControls {
             width: parent.width
             chWidth: root.chWidth
@@ -178,8 +176,8 @@ Widgets.StaggerReveal {
 
             // A compact icon + read-only-looking bar, not a second full
             // draggable Widgets.Meter — the Volume/Brightness cards already
-            // have one each; two sliders for the same value risks drifting
-            // out of sync visually. The icon still toggles mute for volume.
+            // have one each; two sliders for the same value risks drifting out
+            // of sync visually. The icon still toggles mute for volume.
             Item {
                 width: parent.width
                 implicitHeight: Math.max(statusVolMeter.implicitHeight, statusVolPct.implicitHeight)
@@ -241,12 +239,11 @@ Widgets.StaggerReveal {
                 }
             }
 
-            // Five real states across five sensor icons, distributed
-            // evenly — hand-drawn Canvas icons (Widgets/TrueToneIcon
-            // StayAwakeIcon, MicrophoneIcon, CameraIcon), same convention
-            // as every other icon in this shell with no reliable font
-            // glyph, so each toggle gets a real per-state shape rather
-            // than a short text abbreviation.
+            // Five real states across five sensor icons, distributed evenly —
+            // hand-drawn Canvas icons (Widgets/TrueToneIcon StayAwakeIcon,
+            // MicrophoneIcon, CameraIcon), same convention as every other icon
+            // in this shell with no reliable font glyph, so each toggle gets a
+            // real per-state shape rather than a short text abbreviation.
             Row {
                 id: sensorRow
                 width: parent.width
@@ -278,7 +275,8 @@ Widgets.StaggerReveal {
                     id: trueToneBtn
                     width: sensorRow._btnSize; height: width
                     enabled: Config.Capabilities.ambientLight
-                    // 0.45 mirrors Widgets/WidgetStates.js's own INACTIVE_OPACITY.
+                    // 0.45 mirrors Widgets/WidgetStates.js's own
+                    // INACTIVE_OPACITY.
                     opacity: enabled ? 1 : 0.45
                     Widgets.TrueToneIcon {
                         anchors.centerIn: parent
@@ -296,8 +294,8 @@ Widgets.StaggerReveal {
                 }
 
                 // Stay-awake (Services/Idle.qml's `manualOverride`) — see
-                // Widgets/StayAwakeIcon.qml's own header for why this draws
-                // an eye rather than a named third-party app's own logo.
+                // Widgets/StayAwakeIcon.qml's own header for why this draws an
+                // eye rather than a named third-party app's own logo.
                 Item {
                     id: awakeBtn
                     width: sensorRow._btnSize; height: width
@@ -317,8 +315,8 @@ Widgets.StaggerReveal {
                 }
 
                 // Microphone — three real states marked by shape (Widgets/
-                // MicrophoneIcon.qml: muted strikes the capsule through
-                // in-use fills it solid) as well as colour.
+                // MicrophoneIcon.qml: muted strikes the capsule through in-use
+                // fills it solid) as well as colour.
                 Item {
                     id: micBtn
                     width: sensorRow._btnSize; height: width
@@ -339,9 +337,9 @@ Widgets.StaggerReveal {
                 }
 
                 // Camera — "in use" reads Services.SensorPermissions.
-                // activeUsers, the same source Camera.qml's own list
-                // filters; it stays empty until a real detection backend
-                // exists, so "in use" here is honest, not faked.
+                // activeUsers, the same source Camera.qml's own list filters;
+                // it stays empty until a real detection backend exists, so "in
+                // use" here is honest, not faked.
                 Item {
                     id: camBtn
                     width: sensorRow._btnSize; height: width

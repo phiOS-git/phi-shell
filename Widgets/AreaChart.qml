@@ -2,8 +2,8 @@ import QtQuick
 import qs.Config as Config
 
 // A filled-area sparkline for the Wi-Fi speed graph, used in the settings
-// section and mirrored in the wifi bar overlay. Ambient motion category D:
-// it just redraws when a new sample lands, no spring smoothing.
+// section and mirrored in the wifi bar overlay. Ambient motion category D: it
+// just redraws when a new sample lands, no spring smoothing.
 //
 // Pure QtQuick Canvas, no shader / GraphicalEffects.
 

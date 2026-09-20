@@ -3,23 +3,22 @@ import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
 // Same dumb/reusable icon family as the other Widgets/*Icon files
-// Bar/modules/Bluetooth.qml owns the state reads.
-// Deliberately NOT a from-scratch Canvas redraw of the bluetooth rune the
-// way SunMoonIcon/VolumeIcon/BatteryIcon/WifiIcon draw their own shapes:
-// that glyph's diagonal strokes are intricate enough that hand-authoring
-// its path blind (no compositor access to check the result against) risks
-// a worse outcome than the verified font-symbol glyph, rendered as plain
-// Text here rather than through Widgets/StyledIcon so this stays
-// self-contained like every sibling icon file. What's animated is the new
-// part: `poweredAmount` fades the glyph's own opacity between a dimmed
-// "off" look and full "on" (category B, a discrete activation event), and
-// a small dot badge in the corner breathes continuously (category A
-// same reasoning as Widgets/BatteryIcon.qml's charging bolt and
-// Widgets/WifiIcon.qml's search pulse) for as long as a device stays
-// connected — an ongoing state, not a one-off transition.
-// No glyph-SWAP between off/on/connected shapes: that would reintroduce
-// an instant snap between two images. One glyph, continuously varying
-// opacity + a badge, sidesteps it entirely.
+// Bar/modules/Bluetooth.qml owns the state reads. Deliberately NOT a
+// from-scratch Canvas redraw of the bluetooth rune the way
+// SunMoonIcon/VolumeIcon/BatteryIcon/WifiIcon draw their own shapes: that
+// glyph's diagonal strokes are intricate enough that hand-authoring its path
+// blind (no compositor access to check the result against) risks a worse
+// outcome than the verified font-symbol glyph, rendered as plain Text here
+// rather than through Widgets/StyledIcon so this stays self-contained like
+// every sibling icon file. What's animated is the new part: `poweredAmount`
+// fades the glyph's own opacity between a dimmed "off" look and full "on"
+// (category B, a discrete activation event), and a small dot badge in the
+// corner breathes continuously (category A same reasoning as
+// Widgets/BatteryIcon.qml's charging bolt and Widgets/WifiIcon.qml's search
+// pulse) for as long as a device stays connected — an ongoing state, not a
+// one-off transition. No glyph-SWAP between off/on/connected shapes: that
+// would reintroduce an instant snap between two images. One glyph,
+// continuously varying opacity + a badge, sidesteps it entirely.
 
 Item {
     id: root

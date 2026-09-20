@@ -2,22 +2,21 @@ import QtQuick
 import qs.Config as Config
 
 // A Reynolds flocking simulation (separation + alignment + cohesion, the
-// textbook "boids" algorithm), drawn as small triangle-arrow heads
-// oriented along each boid's own heading, coloured by its current speed.
-// Toroidal wraparound at the edges (same choice Lock/Starfield.qml's own
-// points make) rather than a bounce or an avoid-the-edge steering force
-// — simpler, and a screensaver background never needs the flock to visibly
-// "notice" the screen edge. Neighbour distance is computed toroidally too
-// (the nearest copy across a wrapped edge, not the raw straight-line
-// distance) so the flock reads as one continuous group across the seam.
-// No persistent-trail buffer: this effect's Canvas is composited over the
-// real lock-screen wallpaper, not a solid background, so the classic
-// "fade the previous frame toward black" trail trick would fade toward
-// black specifically, not toward transparency — visibly wrong on a light
-// wallpaper. Left out rather than shipped wrong.
-// Colour: tokens only — every boid eases between `info` (slow) and
-// `accent` (near top speed), the same accent/info pairing every other
-// effect in this file uses for its own two-colour drift.
+// textbook "boids" algorithm), drawn as small triangle-arrow heads oriented
+// along each boid's own heading, coloured by its current speed. Toroidal
+// wraparound at the edges (same choice Lock/Starfield.qml's own points make)
+// rather than a bounce or an avoid-the-edge steering force — simpler, and a
+// screensaver background never needs the flock to visibly "notice" the screen
+// edge. Neighbour distance is computed toroidally too (the nearest copy across
+// a wrapped edge, not the raw straight-line distance) so the flock reads as
+// one continuous group across the seam. No persistent-trail buffer: this
+// effect's Canvas is composited over the real lock-screen wallpaper, not a
+// solid background, so the classic "fade the previous frame toward black"
+// trail trick would fade toward black specifically, not toward transparency —
+// visibly wrong on a light wallpaper. Left out rather than shipped wrong.
+// Colour: tokens only — every boid eases between `info` (slow) and `accent`
+// (near top speed), the same accent/info pairing every other effect in this
+// file uses for its own two-colour drift.
 
 Item {
     id: root
@@ -46,10 +45,9 @@ Item {
     // maps these ids to labels and triggers).
     readonly property var features: ["verification", "lockout"]
 
-    // The one exposed knob; the three Reynolds rule weights stay fixed
-    // tuned constants, the same way LavaLamp's own morph amplitude is
-    // folded into its one "wobble" multiplier rather than each exposed
-    // separately.
+    // The one exposed knob; the three Reynolds rule weights stay fixed tuned
+    // constants, the same way LavaLamp's own morph amplitude is folded into
+    // its one "wobble" multiplier rather than each exposed separately.
     property int boidCount: 40
 
     property var boids: []
@@ -60,20 +58,19 @@ Item {
 
     function _rand(a, b) { return a + Math.random() * (b - a) }
 
-    // Unlike every sibling effect (fractional 0..1 coordinates, immune to
-    // not knowing a real width/height yet), boids are seeded directly in
-    // pixel space, since neighbour-distance rules are naturally expressed
-    // in fixed pixel radii, not screen fractions. That makes seed timing
-    // actually matter: `_seededWithRealSize` tracks whether the LAST
-    // seed() call had a real (nonzero) size to work with, so a
-    // `boidCount` change or Component.onCompleted firing before layout
-    // has resolved a width/height (a real, if narrow, possibility for a
-    // freshly Loader-instantiated Item) doesn't permanently strand every
-    // boid clustered near the origin — the guard below re-seeds again the
-    // moment a real size actually shows up, rather than relying on
-    // `boids.length === 0` (which a degenerate zero-size seed already
-    // falsifies, since it does still populate the array, just with
-    // useless positions).
+    // Unlike every sibling effect (fractional 0..1 coordinates, immune to not
+    // knowing a real width/height yet), boids are seeded directly in pixel
+    // space, since neighbour-distance rules are naturally expressed in fixed
+    // pixel radii, not screen fractions. That makes seed timing actually
+    // matter: `_seededWithRealSize` tracks whether the LAST seed() call had a
+    // real (nonzero) size to work with, so a `boidCount` change or
+    // Component.onCompleted firing before layout has resolved a width/height
+    // (a real, if narrow, possibility for a freshly Loader-instantiated Item)
+    // doesn't permanently strand every boid clustered near the origin — the
+    // guard below re-seeds again the moment a real size actually shows up,
+    // rather than relying on `boids.length === 0` (which a degenerate
+    // zero-size seed already falsifies, since it does still populate the
+    // array, just with useless positions).
     property bool _seededWithRealSize: false
     function seed() {
         var out = []
@@ -95,10 +92,9 @@ Item {
     onBoidCountChanged: seed()
     Component.onCompleted: seed()
 
-    // One O(n²) pass per tick — boidCount defaults to 40 (1,600 pair
-    // checks), trivial arithmetic each, at the shared 24ms tick. Cheap
-    // enough that this file does not need a spatial grid the way a much
-    // larger flock would.
+    // One O(n²) pass per tick — boidCount defaults to 40 (1,600 pair checks),
+    // trivial arithmetic each, at the shared 24ms tick. Cheap enough that this
+    // file does not need a spatial grid the way a much larger flock would.
     function _step() {
         var b = root.boids
         var w = root.width, h = root.height
@@ -141,9 +137,9 @@ Item {
                 self.vx = self.vx / sp * maxSp
                 self.vy = self.vy / sp * maxSp
             } else if (sp < maxSp * 0.35) {
-                // Never fully stall — a lifeless, motionless boid reads as
-                // a bug, not a calm flock. Keeps the existing heading
-                // (falls back to a fresh random one only in the
+                // Never fully stall — a lifeless, motionless boid reads as a
+                // bug, not a calm flock. Keeps the existing heading (falls
+                // back to a fresh random one only in the
                 // essentially-impossible exact-zero-velocity case).
                 var ang2 = (self.vx !== 0 || self.vy !== 0)
                     ? Math.atan2(self.vy, self.vx) : root._rand(0, Math.PI * 2)
@@ -216,9 +212,8 @@ Item {
             // Auth reactions (the bound state above): a full-surface cast
             // toward `info` that breathes with the field's pulse while
             // `validating`, and toward `error` that fades as the lockout
-            // countdown drains. The two can't overlap — respond() is
-            // guarded by `!lockedOut` — but the `else if` keeps it
-            // explicit.
+            // countdown drains. The two can't overlap — respond() is guarded
+            // by `!lockedOut` — but the `else if` keeps it explicit.
             if (root.validating && root.validationProgress > 0.001) {
                 var lift = Config.Appearance.info
                 ctx.fillStyle = Qt.rgba(lift.r, lift.g, lift.b,

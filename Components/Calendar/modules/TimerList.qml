@@ -4,12 +4,12 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../../../Widgets/Format.js" as Format
 
-// A plain minutes-from-now creation control plus the existing countdown-
-// list rendering — Services.Timers is the exact same singleton/API
-// Components/BarPopout/modules/Timer.qml already reads/writes, reused
-// here rather than a second timer mechanism. An hour:minute alarm and a
-// repeating alarm both stay a runner-bar-only creation path ("timer 5m",
-// "alarm 7:30"), same scope this control has always covered.
+// A plain minutes-from-now creation control plus the existing countdown- list
+// rendering — Services.Timers is the exact same singleton/API
+// Components/BarPopout/modules/Timer.qml already reads/writes, reused here
+// rather than a second timer mechanism. An hour:minute alarm and a repeating
+// alarm both stay a runner-bar-only creation path ("timer 5m", "alarm 7:30"),
+// same scope this control has always covered.
 
 Widgets.OverlaySection {
     id: root

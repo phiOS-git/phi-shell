@@ -3,20 +3,19 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Live throughput and latency for the Wi-Fi settings section and the wifi
-// bar overlay — an area graph plus the numbers.
-// No `phi net` verb: this reads /proc/net/dev and runs `ping` directly
-// the same way Services/WifiBridge.qml and Services/Tailscale.qml read
-// their own sources rather than routing through `phi`. Every Process here
-// sets `running = false` in onExited — Process.onFinished re-arms
-// unconditionally, so a one-shot left running tight-loops instead of
-// polling.
+// Live throughput and latency for the Wi-Fi settings section and the wifi bar
+// overlay — an area graph plus the numbers. No `phi net` verb: this reads
+// /proc/net/dev and runs `ping` directly the same way Services/WifiBridge.qml
+// and Services/Tailscale.qml read their own sources rather than routing
+// through `phi`. Every Process here sets `running = false` in onExited —
+// Process.onFinished re-arms unconditionally, so a one-shot left running
+// tight-loops instead of polling.
 
 Singleton {
     id: root
 
-    // Only sample while something is actually watching (the settings
-    // section or the wifi overlay), toggled by those surfaces.
+    // Only sample while something is actually watching (the settings section
+    // or the wifi overlay), toggled by those surfaces.
     property int watchers: 0
     readonly property bool active: root.watchers > 0
 
@@ -34,10 +33,10 @@ Singleton {
     property real _lastTx: -1
     // The rate formula divides the byte delta by the REAL elapsed time
     // (`_lastSampleT`, Date.now()), not a hardcoded 1000ms poll interval
-    // `pingProc` below can take up to a full second on packet loss and
-    // runs every tick alongside `devProc`, so a tick landing late is a
-    // real risk; dividing by an assumed 1000 would silently under-report
-    // the rate by whatever multiple the real gap exceeded 1s by.
+    // `pingProc` below can take up to a full second on packet loss and runs
+    // every tick alongside `devProc`, so a tick landing late is a real risk;
+    // dividing by an assumed 1000 would silently under-report the rate by
+    // whatever multiple the real gap exceeded 1s by.
     property real _lastSampleT: -1
 
     function watch() { root.watchers++ }
@@ -68,11 +67,11 @@ Singleton {
         root._lastSampleT = -1
     }
 
-    // Resolve the interface + gateway of the default route, once.
-    // `ip route show default` names both with no DNS lookup and no address
-    // argument — so it still works when the network is down (which is
-    // exactly when someone opens the speed graph), and there is no IPv4
-    // literal for the repo hook to catch.
+    // Resolve the interface + gateway of the default route, once. `ip route
+    // show default` names both with no DNS lookup and no address argument — so
+    // it still works when the network is down (which is exactly when someone
+    // opens the speed graph), and there is no IPv4 literal for the repo hook
+    // to catch.
     Process {
         id: routeProc
         command: ["sh", "-c", "ip route show default 2>/dev/null | head -1"]
@@ -107,8 +106,8 @@ Singleton {
                     if (isNaN(rx) || isNaN(tx)) return
                     var now = Date.now()
                     if (root._lastRx >= 0 && root._lastSampleT >= 0) {
-                        // Floored at 0.1s so two samples landing back to
-                        // back can't spike the rate toward infinity.
+                        // Floored at 0.1s so two samples landing back to back
+                        // can't spike the rate toward infinity.
                         var elapsedS = Math.max(0.1, (now - root._lastSampleT) / 1000)
                         root.downKbps = Math.max(0, (rx - root._lastRx) * 8 / 1000 / elapsedS)
                         root.upKbps = Math.max(0, (tx - root._lastTx) * 8 / 1000 / elapsedS)

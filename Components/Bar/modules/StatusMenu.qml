@@ -5,9 +5,9 @@ import qs.Widgets as Widgets
 import "../glyphs.js" as Glyphs
 
 // Top-bar right isle: opens the "status overlay" (profile/session, power
-// actions, media controls, system toggles, tiling-mode grid) — not the
-// app Settings panel. Icon-only bar module: icon + click opens a bar
-// popout key, no local content of its own. Popout key: "status".
+// actions, media controls, system toggles, tiling-mode grid) — not the app
+// Settings panel. Icon-only bar module: icon + click opens a bar popout key,
+// no local content of its own. Popout key: "status".
 
 Widgets.Segment {
     id: root

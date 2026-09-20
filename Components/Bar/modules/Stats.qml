@@ -4,8 +4,8 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../glyphs.js" as Glyphs
 
-// Bottom-bar right isle. Icon-only bar module: icon + click opens a bar
-// popout key, no local content of its own.
+// Bottom-bar right isle. Icon-only bar module: icon + click opens a bar popout
+// key, no local content of its own.
 
 Widgets.Segment {
     id: root

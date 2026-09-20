@@ -79,18 +79,18 @@ Singleton {
     // shows itself whenever this is non-null.
     property var pendingPrompt: null
 
-    // Not exposed outside this file — respond() reads it, same "caller
-    // can never be left with a stale reference" reasoning
+    // Not exposed outside this file — respond() reads it, same "caller can
+    // never be left with a stale reference" reasoning
     // Services/ConfirmDialog.qml's own `_onConfirm` already uses.
     property var _onAnswered: null
 
-    // The one real, callable entry point a future detection service would
-    // use — see file header for why nothing calls it automatically yet.
+    // The one real, callable entry point a future detection service would use
+    // — see file header for why nothing calls it automatically yet.
     // callback(allowed: bool) — called synchronously if a stored
-    // "always"/"never" rule already answers this appId+sensor, or later
-    // via respond() once the user picks one of the dialog's three
-    // choices. Matches Services/ConfirmDialog.qml's own open()-takes-a-
-    // callback shape rather than inventing a sync-or-async return value.
+    // "always"/"never" rule already answers this appId+sensor, or later via
+    // respond() once the user picks one of the dialog's three choices. Matches
+    // Services/ConfirmDialog.qml's own open()-takes-a- callback shape rather
+    // than inventing a sync-or-async return value.
     function requestPermission(appId, appName, sensor, callback) {
         const existing = root.ruleFor(appId, sensor)
         if (existing) {
@@ -101,13 +101,13 @@ Singleton {
         root._onAnswered = callback || null
     }
 
-    // Settings' own "preview the permission prompt" control — always
-    // shows the dialog, ignoring any stored rule, so a repeated preview
-    // click keeps working even after the user has picked "Always"/"Never"
-    // once. requestPermission() itself must never skip its own rule
-    // check (that IS the point, for a real caller) — this is a distinct
-    // function specifically so that real behaviour never has to bend for
-    // a test affordance's convenience.
+    // Settings' own "preview the permission prompt" control — always shows the
+    // dialog, ignoring any stored rule, so a repeated preview click keeps
+    // working even after the user has picked "Always"/"Never" once.
+    // requestPermission() itself must never skip its own rule check (that IS
+    // the point, for a real caller) — this is a distinct function specifically
+    // so that real behaviour never has to bend for a test affordance's
+    // convenience.
     function previewPrompt(sensor) {
         root.pendingPrompt = { appId: "preview", appName: "Test App", sensor: sensor }
         root._onAnswered = null

@@ -2,13 +2,12 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// A colour input row: a swatch, a hex TextField, and a toggle that expands
-// an inline Widgets/ColorPicker below it (inline, not floating — the
-// settings content pane is a clipped Flickable).
-// Controlled: `value` is a "#rrggbb" string the caller owns (seed it, read
-// it back — a reset just reassigns it). `committed(hex)` fires once the
-// user settles on a new valid colour, via the hex field (Enter/focus-out)
-// or the picker (drag release) — never mid-drag.
+// A colour input row: a swatch, a hex TextField, and a toggle that expands an
+// inline Widgets/ColorPicker below it (inline, not floating — the settings
+// content pane is a clipped Flickable). Controlled: `value` is a "#rrggbb"
+// string the caller owns (seed it, read it back — a reset just reassigns it).
+// `committed(hex)` fires once the user settles on a new valid colour, via the
+// hex field (Enter/focus-out) or the picker (drag release) — never mid-drag.
 
 Column {
     id: root
@@ -30,8 +29,8 @@ Column {
     property color _preview: root._valid ? root.value : "transparent"
 
     // Keep the field and picker in step when the caller reseeds `value`
-    // (initial load, per-row reset). Guarded so a change we made ourselves
-    // in _accept() does not bounce back.
+    // (initial load, per-row reset). Guarded so a change we made ourselves in
+    // _accept() does not bounce back.
     onValueChanged: {
         if (hexField.text.toLowerCase() !== (root.value || "").toLowerCase())
             hexField.text = root.value
@@ -64,12 +63,12 @@ Column {
             color: root._preview
             border.width: Config.Appearance.borderWidth
             border.color: Config.Appearance.border
-            // Cursor/hover only, not a keyboard path of its own: this
-            // swatch is a mouse-only shortcut for exactly what the
-            // "pick"/"done" SmallButton right next to it already does
-            // (and that button is keyboard-reachable, the shared-widget
-            // fix this same pass made everywhere) — no functionality
-            // would be unreachable without one here too.
+            // Cursor/hover only, not a keyboard path of its own: this swatch
+            // is a mouse-only shortcut for exactly what the "pick"/"done"
+            // SmallButton right next to it already does (and that button is
+            // keyboard-reachable, the shared-widget fix this same pass made
+            // everywhere) — no functionality would be unreachable without one
+            // here too.
             HoverHandler { cursorShape: Qt.PointingHandCursor }
             TapHandler { onTapped: root.expanded = !root.expanded }
         }

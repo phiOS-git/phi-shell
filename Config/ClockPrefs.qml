@@ -3,10 +3,10 @@ import QtQml
 import Quickshell
 import Quickshell.Io
 
-// The bar clock's display format. Same mechanism as Config/LockPrefs: one
-// flat JSON object at Paths.clockPrefsFile, read once on load, rewritten
-// whole on change — not `phi state` (closed scalar-key set) and not the
-// repository (runtime UI state, not configuration).
+// The bar clock's display format. Same mechanism as Config/LockPrefs: one flat
+// JSON object at Paths.clockPrefsFile, read once on load, rewritten whole on
+// change — not `phi state` (closed scalar-key set) and not the repository
+// (runtime UI state, not configuration).
 //
 // `dateStyle` is "off" | "short" | "long": "short" adds day + month
 // ("13/09"); "long" adds the weekday name and year too ("Sat, 13 Sep
@@ -56,8 +56,8 @@ Singleton {
             }
         }
         onLoadFailed: function (error) {
-            // Normal before the user has ever changed a clock setting —
-            // every property stays at its default above.
+            // Normal before the user has ever changed a clock setting — every
+            // property stays at its default above.
         }
     }
 }

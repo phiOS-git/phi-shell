@@ -3,15 +3,14 @@ import QtQml
 import Quickshell
 import Quickshell.Io
 
-// Capability detection: "does a battery device exist", never "is this
-// razer". Shells out to bin/phios-capabilities (phios-dotfiles), which
-// probes /sys and /proc directly rather than trusting the hostname or
-// assigned profile. A bar module or settings section reads a
-// Capabilities.* property and appears only where it's true — it never
-// checks which machine it's running on.
-// phios-dotfiles isn't guaranteed to be on PATH, so the probe resolves it
-// the same way the `phi` binary does: $PHI_DOTFILES if set, else
-// ~/phios-dotfiles, falling back to a bare PATH lookup.
+// Capability detection: "does a battery device exist", never "is this razer".
+// Shells out to bin/phios-capabilities (phios-dotfiles), which probes /sys and
+// /proc directly rather than trusting the hostname or assigned profile. A bar
+// module or settings section reads a Capabilities.* property and appears only
+// where it's true — it never checks which machine it's running on.
+// phios-dotfiles isn't guaranteed to be on PATH, so the probe resolves it the
+// same way the `phi` binary does: $PHI_DOTFILES if set, else ~/phios-dotfiles,
+// falling back to a bare PATH lookup.
 
 Singleton {
     id: root
@@ -27,12 +26,11 @@ Singleton {
     readonly property bool bluetooth: capRaw.bluetooth
     readonly property bool multiMonitor: capRaw.multiMonitor
 
-    // Derived, not a raw probe field: PHI_CAP_GPU_VENDOR is a comma-
-    // separated list (a hybrid-graphics host can report "nvidia,intel")
-    // so this checks membership, not equality. Named for the vendor
-    // rather than "discreteGpu" because the bar's GPU module monitors
-    // specifically via nvidia-smi — an AMD card would need its own tool
-    // and its own capability name.
+    // Derived, not a raw probe field: PHI_CAP_GPU_VENDOR is a comma- separated
+    // list (a hybrid-graphics host can report "nvidia,intel") so this checks
+    // membership, not equality. Named for the vendor rather than "discreteGpu"
+    // because the bar's GPU module monitors specifically via nvidia-smi — an
+    // AMD card would need its own tool and its own capability name.
     readonly property bool nvidiaGpu: capRaw.gpuVendor.split(",").includes("nvidia")
 
     property var capRaw: ({
@@ -49,9 +47,9 @@ Singleton {
 
     Process {
         id: probe
-        // Process.onFinished() restarts the process automatically if
-        // `running` is still true — without this, probe would respawn in
-        // a tight, uninterrupted loop from the moment the shell starts.
+        // Process.onFinished() restarts the process automatically if `running`
+        // is still true — without this, probe would respawn in a tight,
+        // uninterrupted loop from the moment the shell starts.
         onExited: probe.running = false
         command: ["sh", "-c",
             "\"${PHI_DOTFILES:-$HOME/phios-dotfiles}/bin/phios-capabilities\" 2>/dev/null || phios-capabilities 2>/dev/null"]

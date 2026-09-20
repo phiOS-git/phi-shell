@@ -2,28 +2,27 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// Bar/modules/Brightness.qml's `iconDelegate` — a plain brightness glyph
-// (a disc + eight rays, always fully drawn, no day/night eclipse morph)
-// with the same liquid-level fill gauge Widgets/SunMoonIcon uses for
-// `fillLevel`. A separate, simpler widget rather than an edit to
-// SunMoonIcon — that one stays the real reusable night-mode on/off
-// indicator; this one has no day/night state of its own.
-// Technique lifted directly from SunMoonIcon's own sun-drawing + fill-gauge
-// code (see that file's header for the full reasoning on the gauge
-// clip-and-arc approach) with the eclipse/shadow half removed entirely
-// no `dayness`, no destination-out cutout, no shadow disc.
-// Motion category: B (state transition) — `fillLevel` is expected to
-// arrive pre-wrapped in a category-B Behavior at the call site, same
-// contract as every other Canvas-repaint-on-change widget in this family
-// (VolumeIcon, SunMoonIcon).
+// Bar/modules/Brightness.qml's `iconDelegate` — a plain brightness glyph (a
+// disc + eight rays, always fully drawn, no day/night eclipse morph) with the
+// same liquid-level fill gauge Widgets/SunMoonIcon uses for `fillLevel`. A
+// separate, simpler widget rather than an edit to SunMoonIcon — that one stays
+// the real reusable night-mode on/off indicator; this one has no day/night
+// state of its own. Technique lifted directly from SunMoonIcon's own
+// sun-drawing + fill-gauge code (see that file's header for the full reasoning
+// on the gauge clip-and-arc approach) with the eclipse/shadow half removed
+// entirely no `dayness`, no destination-out cutout, no shadow disc. Motion
+// category: B (state transition) — `fillLevel` is expected to arrive
+// pre-wrapped in a category-B Behavior at the call site, same contract as
+// every other Canvas-repaint-on-change widget in this family (VolumeIcon,
+// SunMoonIcon).
 
 Item {
     id: root
 
     property color iconColor: "white"
     property int sizeStep: 2
-    // 0..1, brightness percent/100. Plain external property — wrap it in
-    // a Behavior at the call site.
+    // 0..1, brightness percent/100. Plain external property — wrap it in a
+    // Behavior at the call site.
     property real fillLevel: 1.0
 
     readonly property real _boxSize: WidgetStates.drawnIconBoxSize(Config.Appearance, root.sizeStep)
@@ -34,8 +33,8 @@ Item {
 
     readonly property real _cx: _boxSize / 2
     readonly property real _cy: _boxSize / 2
-    // Same proportions SunMoonIcon's own sun end uses, so this reads as
-    // the same icon family at rest.
+    // Same proportions SunMoonIcon's own sun end uses, so this reads as the
+    // same icon family at rest.
     readonly property real _r: _boxSize * 0.34
     readonly property real _rayGap: _boxSize * 0.05
     readonly property real _rayLen: _boxSize * 0.17
@@ -70,11 +69,11 @@ Item {
                 ctx.stroke()
             }
 
-            // Body disc — a dim "track" for the full disc, always
-            // present, then a brighter fill clipped to the bottom
-            // `fillLevel` fraction (SunMoonIcon's own liquid-level gauge
-            // technique, same idea as Widgets/BatteryIcon.qml's
-            // rectangular fill, applied to a circle).
+            // Body disc — a dim "track" for the full disc, always present,
+            // then a brighter fill clipped to the bottom `fillLevel` fraction
+            // (SunMoonIcon's own liquid-level gauge technique, same idea as
+            // Widgets/BatteryIcon.qml's rectangular fill, applied to a
+            // circle).
             ctx.globalAlpha = 0.25
             ctx.fillStyle = c
             ctx.beginPath()

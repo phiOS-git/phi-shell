@@ -8,16 +8,15 @@ import qs.Widgets as Widgets
 import "modules" as Modules
 import "../Bar/glyphs.js" as Glyphs
 
-// The shell-summoned phi agent surface: a left-edge dock that slides in
-// with three sections — Chat, Coding sessions, Status — on a header tab
-// strip, plus a settings deep link at the strip's right end. A dedicated
-// surface, not a registry instance; the surface type is code written once.
-// Chat is one persistent sidebar-plus-conversation layout (Modules.ChatShell)
-// not a separate list and conversation destination.
-// Every call goes through Services/Modules.qml, the one client point.
-// Entry points, all via Services/AgentPanel.qml: the bar Φ segment
-// Super+P (hyprland.lua.tmpl `ipc call agent toggle`), and
-// Settings › AI Agent › Open agent panel.
+// The shell-summoned phi agent surface: a left-edge dock that slides in with
+// three sections — Chat, Coding sessions, Status — on a header tab strip, plus
+// a settings deep link at the strip's right end. A dedicated surface, not a
+// registry instance; the surface type is code written once. Chat is one
+// persistent sidebar-plus-conversation layout (Modules.ChatShell) not a
+// separate list and conversation destination. Every call goes through
+// Services/Modules.qml, the one client point. Entry points, all via
+// Services/AgentPanel.qml: the bar Φ segment Super+P (hyprland.lua.tmpl `ipc
+// call agent toggle`), and Settings › AI Agent › Open agent panel.
 
 PanelWindow {
     id: root
@@ -47,9 +46,9 @@ PanelWindow {
         function open(): void { Services.AgentPanel.show() }
         function close(): void { Services.AgentPanel.hide() }
         function status(): void { root.section = "status"; Services.AgentPanel.show() }
-        // "memory" is a kept alias for "status". No bound caller uses it, but an IPC
-        // verb is a public surface this repo cannot fully account for, so the old
-        // name keeps working at zero cost.
+        // "memory" is a kept alias for "status". No bound caller uses it, but
+        // an IPC verb is a public surface this repo cannot fully account for,
+        // so the old name keeps working at zero cost.
         function memory(): void { status() }
         function code(): void { root.section = "code"; Services.AgentPanel.show() }
     }
@@ -66,9 +65,9 @@ PanelWindow {
     onShownChanged: {
         if (root.shown) {
             // Imperative, not `focus: root.shown`: the focus system sets
-            // `keyScope.focus = false` when anything else takes focus and never restores
-            // the binding. Without this, closing the panel while a field had focus would
-            // leave Escape dead on reopen.
+            // `keyScope.focus = false` when anything else takes focus and
+            // never restores the binding. Without this, closing the panel
+            // while a field had focus would leave Escape dead on reopen.
             keyScope.forceActiveFocus()
             if (root.agent.currentSessionId.length === 0) root._autoOpenArmed = true
             root.agent.refreshHealth()
@@ -89,17 +88,17 @@ PanelWindow {
             root._autoOpenArmed = false
             const chats = root.agent.chats || []
             if (chats.length === 0) return
-            // The wire format is Go-JSON-capitalised (`ID`, `Updated`, …) with a
-            // lowercase fallback, matched here the same way every other reader in this
-            // panel does.
+            // The wire format is Go-JSON-capitalised (`ID`, `Updated`, …) with
+            // a lowercase fallback, matched here the same way every other
+            // reader in this panel does.
             const updatedOf = (c) => c.Updated || c.updated || ""
             const mostRecent = chats.reduce((a, b) => (updatedOf(b) > updatedOf(a) ? b : a))
             root.agent.openSession(mostRecent.ID || mostRecent.id)
         }
     }
-    // Section tabs take no keyboard focus on click (TapHandler never moves active
-    // focus), so switching sections destroys a focused field with nothing left to
-    // reclaim focus — same hazard as above.
+    // Section tabs take no keyboard focus on click (TapHandler never moves
+    // active focus), so switching sections destroys a focused field with
+    // nothing left to reclaim focus — same hazard as above.
     onSectionChanged: keyScope.forceActiveFocus()
 
     TextMetrics {
@@ -112,19 +111,20 @@ PanelWindow {
     readonly property real gap: chWidth * Config.Appearance.space3
 
     // The dock widens for Status so literal diffs have room, capped. Sized off
-    // `root.width`, not `parent.width`: a PanelWindow has no parent, so the dock
-    // would collapse to zero. The cap suits Chat too, whose sidebar shares the
-    // same width.
+    // `root.width`, not `parent.width`: a PanelWindow has no parent, so the
+    // dock would collapse to zero. The cap suits Chat too, whose sidebar
+    // shares the same width.
     readonly property real baseWidth: Math.min(root.width * 0.62, chWidth * 92)
     readonly property real wideWidth: Math.min(root.width * 0.62, chWidth * 92)
     readonly property real targetWidth:
         (root.section === "status" && root.agent.totalPendingProposals > 0) ? wideWidth : baseWidth
 
     // The dim must not cover either status bar. Every dim surface here is
-    // WlrLayer.Overlay, which layer-shell always stacks above the bar's Top layer
-    // so changing layers is the wrong lever. Instead the scrim is a plain child of
-    // this same window, inset top and bottom by the bars' published heights
-    // (Services.BarMetrics), leaving both visibly undimmed with no cross-layer risk.
+    // WlrLayer.Overlay, which layer-shell always stacks above the bar's Top
+    // layer so changing layers is the wrong lever. Instead the scrim is a
+    // plain child of this same window, inset top and bottom by the bars'
+    // published heights (Services.BarMetrics), leaving both visibly undimmed
+    // with no cross-layer risk.
     Widgets.Scrim {
         anchors.top: parent.top
         anchors.topMargin: Services.BarMetrics.height
@@ -145,18 +145,20 @@ PanelWindow {
 
         MouseArea { anchors.fill: parent; onClicked: Services.AgentPanel.hide() }
 
-        // Escape closes the panel only when nothing inside holds focus. An Item with
-        // `focus: root.shown` holds active focus by default, so Escape reaches here.
-        // A field that grabs focus outranks it; when that field blurs itself on Escape
-        // the section reclaims focus explicitly — QML does not hand it back on its own
-        // — so the next Escape closes the panel.
+        // Escape closes the panel only when nothing inside holds focus. An
+        // Item with `focus: root.shown` holds active focus by default, so
+        // Escape reaches here. A field that grabs focus outranks it; when that
+        // field blurs itself on Escape the section reclaims focus explicitly —
+        // QML does not hand it back on its own — so the next Escape closes the
+        // panel.
         Item {
             id: keyScope
             anchors.fill: parent
             focus: root.shown
-            // `hasBack`/`goBack()` are an opt-in contract (undefined on sections with no
-            // local navigation). Checked before falling through to closing the panel, so
-            // Escape backs out one level at a time instead of discarding the user's place.
+            // `hasBack`/`goBack()` are an opt-in contract (undefined on
+            // sections with no local navigation). Checked before falling
+            // through to closing the panel, so Escape backs out one level at a
+            // time instead of discarding the user's place.
             Keys.onEscapePressed: {
                 if (sectionLoader.item && sectionLoader.item.hasBack === true)
                     sectionLoader.item.goBack()
@@ -168,8 +170,8 @@ PanelWindow {
         Item {
             id: dock
             anchors.top: parent.top
-            // (item 2): the same small inset (panelGap) on
-            // all four sides — below the bar and off the three screen edges.
+            // (item 2): the same small inset (panelGap) on all four sides —
+            // below the bar and off the three screen edges.
             anchors.topMargin: Services.BarMetrics.height + Config.Appearance.panelGap
             anchors.bottom: parent.bottom
             anchors.bottomMargin: Services.BarMetrics.bottomHeight + Config.Appearance.panelGap
@@ -196,8 +198,8 @@ PanelWindow {
                 anchors.fill: parent
                 radius: Config.Appearance.panelRadius
 
-                // Header: horizontal section tabs, glyph + label, with the shared tab
-                // grammar's bottom-edge indicator.
+                // Header: horizontal section tabs, glyph + label, with the
+                // shared tab grammar's bottom-edge indicator.
                 Item {
                     id: header
                     anchors { top: parent.top; left: parent.left; right: parent.right }
@@ -236,9 +238,11 @@ PanelWindow {
                         }
                     }
 
-                    // Shares the header strip's right end so it stays reachable from every
-                    // section — a section's own header content starts below the strip separator.
-                    // A plain Widgets.IconButton (opacity on hover, no background or border).
+                    // Shares the header strip's right end so it stays
+                    // reachable from every section — a section's own header
+                    // content starts below the strip separator. A plain
+                    // Widgets.IconButton (opacity on hover, no background or
+                    // border).
                     Widgets.IconButton {
                         id: panelSettingsBtn
                         anchors.right: parent.right
@@ -274,8 +278,9 @@ PanelWindow {
                     }
                     Component { id: chatComp;   Modules.ChatShell { onRequestSection: (s) => root.section = s; onBlurred: keyScope.forceActiveFocus() } }
                     Component { id: codeComp;   Modules.CodingSessions {} }
-                    // Still MemoryProposals.qml: only the section key and this Component's id
-                    // changed to "status"; the file opens with a status overview above its list.
+                    // Still MemoryProposals.qml: only the section key and this
+                    // Component's id changed to "status"; the file opens with
+                    // a status overview above its list.
                     Component { id: statusComp; Modules.MemoryProposals {} }
                 }
             }

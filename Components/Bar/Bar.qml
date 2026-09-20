@@ -19,16 +19,17 @@ import "modules" as Modules
 //
 // The Quickshell.Wayland import is a narrow exception to keeping the service
 // surface in Services/: IdleInhibitor needs a real mapped window, and the bar
-// is the one guaranteed-visible surface on every host. The rule logic lives
-// in Services/Idle.qml; this file only hosts the protocol object.
+// is the one guaranteed-visible surface on every host. The rule logic lives in
+// Services/Idle.qml; this file only hosts the protocol object.
 
 PanelWindow {
     id: bar
     
-    // "top" (default) or "bottom": which screen edge this instance sits against.
-    // Threaded through anchors, the registry filename, BarIsle's corner direction,
-    // the autohide slide direction and BarMetrics reporting. A parameter, not a
-    // second copy of this file — everything else here is edge-independent.
+    // "top" (default) or "bottom": which screen edge this instance sits
+    // against. Threaded through anchors, the registry filename, BarIsle's
+    // corner direction, the autohide slide direction and BarMetrics reporting.
+    // A parameter, not a second copy of this file — everything else here is
+    // edge-independent.
     property string edge: "top"
     
     anchors {
@@ -39,8 +40,8 @@ PanelWindow {
     }
     // The window paints the one background every isle used to draw separately.
     // Its own `color` stays transparent (barBackground is a child Item) so the
-    // margin around the isles still shows the wallpaper. exclusiveZone is bound
-    // further down, not here.
+    // margin around the isles still shows the wallpaper. exclusiveZone is
+    // bound further down, not here.
     color: "transparent"
 
     // design/tokens.common.sh stores space-N in `ch`, not px — see
@@ -52,15 +53,15 @@ PanelWindow {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
-    // Gap BETWEEN buttons inside an isle (tight) vs. gap from an isle to
-    // the screen edge / the reserved centre zone.
+    // Gap BETWEEN buttons inside an isle (tight) vs. gap from an isle to the
+    // screen edge / the reserved centre zone.
     readonly property real islandGap: chWidth * Config.Appearance.space1
     readonly property real islandMargin: chWidth * Config.Appearance.space1
 
     // No design token covers bar height — derived from the side-isle footprint
-    // plus one outer margin. The centre isle is excluded on purpose: its content
-    // comes and goes, and the bar must not resize when an app opens. It is pinned
-    // to the side-isle height instead.
+    // plus one outer margin. The centre isle is excluded on purpose: its
+    // content comes and goes, and the bar must not resize when an app opens.
+    // It is pinned to the side-isle height instead.
     height: Math.max(Config.Appearance.fontSize1,
     leftIsle.implicitHeight, rightIsle.implicitHeight)
     + islandMargin
@@ -168,15 +169,16 @@ PanelWindow {
                 console.warn("phi-shell: " + registryFile.path + " failed to parse: " + e)
                 bar.registryRows = []
             }
-            // See `startupReveal` for why this waits on THIS signal and still defers.
+            // See `startupReveal` for why this waits on THIS signal and still
+            // defers.
             Qt.callLater(function () { bar.startupReveal = false })
         }
     }
     
-    // Auto-hidden while the active window on this screen is fullscreen, with an
-    // edge-reveal on hover. The window keeps its geometry always, so hoverHandler
-    // can still catch a pointer at the screen edge while hidden; only
-    // exclusiveZone and the content's `y` change.
+    // Auto-hidden while the active window on this screen is fullscreen, with
+    // an edge-reveal on hover. The window keeps its geometry always, so
+    // hoverHandler can still catch a pointer at the screen edge while hidden;
+    // only exclusiveZone and the content's `y` change.
     readonly property var _activeToplevel: Services.ToplevelBridge.activeToplevel
     // Manual loop, not `.includes()`: `screens` is a QList Q_PROPERTY and not
     // every Array method is guaranteed on how Qt marshals it into JS.
@@ -192,12 +194,12 @@ PanelWindow {
     && bar._onThisScreen(bar._activeToplevel)
     readonly property bool autoHidden: bar.activeIsFullscreenHere && !hoverHandler.hovered
     
-    // Reuses the fullscreen auto-hide slide for the start/lock/unlock transition
-    // rather than a second parallel animation. `startupReveal` starts true and is
-    // cleared by registryFile's onLoaded, deferred one more frame: `bar.height`
-    // derives from the isles' implicitHeight, which is empty until that async load
-    // populates the Repeaters, so flipping earlier would slide in a few-pixel-tall
-    // bar and read as no animation at all.
+    // Reuses the fullscreen auto-hide slide for the start/lock/unlock
+    // transition rather than a second parallel animation. `startupReveal`
+    // starts true and is cleared by registryFile's onLoaded, deferred one more
+    // frame: `bar.height` derives from the isles' implicitHeight, which is
+    // empty until that async load populates the Repeaters, so flipping earlier
+    // would slide in a few-pixel-tall bar and read as no animation at all.
     //
     // `Services.LockState.locked` folds lock/unlock into the same slide. Named
     // `concealed`, not `hidden`, to avoid shadowing a PanelWindow property.
@@ -206,14 +208,14 @@ PanelWindow {
 
     // Keyed to `autoHidden`, not `concealed`: the fullscreen case can drop the
     // reserved strip to 0 because the fullscreen window covers it, but the
-    // lock/startup cases must not — un-reserving during a lock would reflow every
-    // tiled window and reflow back on unlock. Only the content's `y` reacts to the
-    // wider `concealed` condition.
+    // lock/startup cases must not — un-reserving during a lock would reflow
+    // every tiled window and reflow back on unlock. Only the content's `y`
+    // reacts to the wider `concealed` condition.
     exclusiveZone: bar.autoHidden ? 0 : bar.height
 
     // Covers the PanelWindow itself, which stays pinned at its edge and never
-    // moves, so "hover near the edge" works for both top and bottom bars from one
-    // unconditional handler without reading `bar.edge`.
+    // moves, so "hover near the edge" works for both top and bottom bars from
+    // one unconditional handler without reading `bar.edge`.
     HoverHandler {
         id: hoverHandler
     }
@@ -221,17 +223,18 @@ PanelWindow {
     Item {
         id: barContent
         anchors.fill: parent
-        // A bottom bar slides down (+height), the mirror of the top bar's -height:
-        // both move the content clear toward the edge it belongs to.
+        // A bottom bar slides down (+height), the mirror of the top bar's
+        // -height: both move the content clear toward the edge it belongs to.
         y: bar.concealed ? (bar.edge === "top" ? -bar.height : bar.height) : 0
 
         Behavior on y {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
-        // One continuous background for the whole bar, not three rounded boxes. The
-        // corners nearest the screen edge are "outward" and take radiusSmall; those
-        // facing the desktop are "inward" and take radiusLarge.
+        // One continuous background for the whole bar, not three rounded
+        // boxes. The corners nearest the screen edge are "outward" and take
+        // radiusSmall; those facing the desktop are "inward" and take
+        // radiusLarge.
         Widgets.AsymmetricPanel {
             id: barBackground
             anchors.fill: parent
@@ -256,15 +259,18 @@ PanelWindow {
                 delegate: Loader {
                     required property var modelData
                     sourceComponent: bar.componentFor(modelData.type)
-                    // A module that hides itself sets its own root invisible. Without mirroring it
-                    // here the Loader stays visible at the module's implicitWidth and the isle
-                    // reserves a blank gap for it.
+                    // A module that hides itself sets its own root invisible.
+                    // Without mirroring it here the Loader stays visible at
+                    // the module's implicitWidth and the isle reserves a blank
+                    // gap for it.
                     visible: !item || item.visible
-                    // Row only manages child X, so every child sits at y:0 unless told otherwise.
-                    // This Loader is the Row-managed child (the module's real root is its `item`),
-                    // so a plain `y` binding — not an anchor, which Row children cannot use —
-                    // centres every module in one place. Row's implicitHeight is the max of child
-                    // `height`, never `y`, so this cannot feed back into the isle's size.
+                    // Row only manages child X, so every child sits at y:0
+                    // unless told otherwise. This Loader is the Row-managed
+                    // child (the module's real root is its `item`), so a plain
+                    // `y` binding — not an anchor, which Row children cannot
+                    // use — centres every module in one place. Row's
+                    // implicitHeight is the max of child `height`, never `y`,
+                    // so this cannot feed back into the isle's size.
                     y: parent ? Math.round((parent.height - height) / 2) : 0
                 }
             }
@@ -282,28 +288,30 @@ PanelWindow {
                     required property var modelData
                     sourceComponent: bar.componentFor(modelData.type)
                     // See the left isle's Loader — mirror a self-hiding
-                    // module's visibility so the Row does not keep a blank gap.
+                    // module's visibility so the Row does not keep a blank
+                    // gap.
                     visible: !item || item.visible
-                    // See the left isle's Loader — same generic vertical-centre
-                    // fix, same reasoning.
+                    // See the left isle's Loader — same generic
+                    // vertical-centre fix, same reasoning.
                     y: parent ? Math.round((parent.height - height) / 2) : 0
                 }
             }
         }
 
-        // The centre isle is pinned to the true screen centre, not spaced between the
-        // side isles. A single Loader, not Row+Repeater: the centre is one fixed
-        // edge-dependent role (clock on top, WindowList on the bottom).
-        // `maxContentWidth` reserves the wider of the two side isles on both sides so
-        // the centre can never overlap either.
-        // TODO: WindowList has no elide or scroll, so enough windows simply overflow.
+        // The centre isle is pinned to the true screen centre, not spaced
+        // between the side isles. A single Loader, not Row+Repeater: the
+        // centre is one fixed edge-dependent role (clock on top, WindowList on
+        // the bottom). `maxContentWidth` reserves the wider of the two side
+        // isles on both sides so the centre can never overlap either. TODO:
+        // WindowList has no elide or scroll, so enough windows simply
+        // overflow.
         Widgets.BarIsle {
             id: centerIsle
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
             visible: centerLoader.item !== null && centerLoader.width > 0
-            // Exactly the side-isle height: the title is a normal bar element with
-            // horizontal breathing room only.
+            // Exactly the side-isle height: the title is a normal bar element
+            // with horizontal breathing room only.
             height: Math.max(leftIsle.implicitHeight, rightIsle.implicitHeight)
             pad: 0
             padH: bar.chWidth * Config.Appearance.space2

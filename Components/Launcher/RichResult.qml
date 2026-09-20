@@ -3,12 +3,11 @@ import qs.Config as Config
 import qs.Widgets as Widgets
 
 // The expanded card the runner shows beside a calculator/converter result
-// whose `phi query` payload carries a `rich` object. Every number here
-// was computed by `phi query` — this file only draws what arrived: the
-// steps, the roots, the alternate-unit table and the pre-sampled plot
-// curve. No math happens in QML.
-// Pure QtQuick: the plot is a plain Canvas 2D path, the same primitive
-// Widgets/AreaChart uses, since neither a ShaderEffect nor
+// whose `phi query` payload carries a `rich` object. Every number here was
+// computed by `phi query` — this file only draws what arrived: the steps, the
+// roots, the alternate-unit table and the pre-sampled plot curve. No math
+// happens in QML. Pure QtQuick: the plot is a plain Canvas 2D path, the same
+// primitive Widgets/AreaChart uses, since neither a ShaderEffect nor
 // Qt5Compat.GraphicalEffects is confirmed in this build.
 
 Item {

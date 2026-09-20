@@ -2,15 +2,14 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// A titled disclosure: a header row that toggles an inline body open and
-// shut. Used by Settings/sections/Devices.qml for each Chroma integration's
-// extra settings.
-// Inline, not a popover — the settings content pane is a clipped Flickable
-// (same constraint Widgets/ColorField.qml calls out). The body's height
-// animates category B, the one transition category the whole shell shares.
-// Stateless w.r.t. persistence: `expanded` is plain view state the caller
-// can seed or ignore. The seven transverse states exist on the header for
-// interface uniformity; only default/hover/disabled/loading have a defined
+// A titled disclosure: a header row that toggles an inline body open and shut.
+// Used by Settings/sections/Devices.qml for each Chroma integration's extra
+// settings. Inline, not a popover — the settings content pane is a clipped
+// Flickable (same constraint Widgets/ColorField.qml calls out). The body's
+// height animates category B, the one transition category the whole shell
+// shares. Stateless w.r.t. persistence: `expanded` is plain view state the
+// caller can seed or ignore. The seven transverse states exist on the header
+// for interface uniformity; only default/hover/disabled/loading have a defined
 // look for a disclosure header.
 
 Column {
@@ -48,10 +47,10 @@ Column {
         width: parent.width
         height: caret.implicitHeight + root._pad * 2
 
-        // The trailing slot's own footprint, measured so the toggle area
-        // below can stop short of it — a trailing "clear" doesn't also
-        // toggle the disclosure (or vice versa) the way one shared
-        // full-width TapHandler would.
+        // The trailing slot's own footprint, measured so the toggle area below
+        // can stop short of it — a trailing "clear" doesn't also toggle the
+        // disclosure (or vice versa) the way one shared full-width TapHandler
+        // would.
         readonly property real _trailingW: trailingSlot.children.length > 0 ? trailingSlot.width : 0
 
         Item {
@@ -112,11 +111,11 @@ Column {
     }
 
     // Clipped wrapper so the body's own height can be animated without its
-    // content spilling while collapsed. A hairline rule on the left edge
-    // inset from the header's own caret column, is the one piece of chrome
-    // every collapsible surface in this shell shares regardless of what
-    // its body actually holds, so a body always reads as "inside" its
-    // header rather than just another block of content below it.
+    // content spilling while collapsed. A hairline rule on the left edge inset
+    // from the header's own caret column, is the one piece of chrome every
+    // collapsible surface in this shell shares regardless of what its body
+    // actually holds, so a body always reads as "inside" its header rather
+    // than just another block of content below it.
     Item {
         width: parent.width
         height: root.expanded ? body.implicitHeight + root._pad : 0

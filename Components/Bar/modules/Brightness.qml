@@ -5,21 +5,20 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 
 // Icon + value: a brightness icon and the percentage. Capability-gated on
-// `backlight` so it never appears on a desktop with no internal panel.
-// The XF86MonBrightness keys are one way to change it; a click here opens
-// the shared bar popout, which owns a real draggable Widgets.Meter slider
-// plus the night-mode toggle.
-// The glyph is Widgets/BrightnessIcon — a plain brightness glyph with no
-// day/night morph. `fillLevel` (brightness percent/100, animated) is the
-// only thing this module drives.
-// `fillLevel` is set IMPERATIVELY (Connections + Component.onCompleted)
-// not as a binding (`property real fillLevel: Brightness.percent / 100`)
-// despite the Behavior below reading as if it should apply either way. It
-// doesn't, reliably: a binding re-evaluation writes the new value
-// directly rather than being intercepted by Behavior the way a plain
-// assignment is, which would collapse the fill slide into a one-frame
-// jump. The imperative form is the standard, unambiguous way to drive a
-// Behavior-animated property from an external state change.
+// `backlight` so it never appears on a desktop with no internal panel. The
+// XF86MonBrightness keys are one way to change it; a click here opens the
+// shared bar popout, which owns a real draggable Widgets.Meter slider plus the
+// night-mode toggle. The glyph is Widgets/BrightnessIcon — a plain brightness
+// glyph with no day/night morph. `fillLevel` (brightness percent/100,
+// animated) is the only thing this module drives. `fillLevel` is set
+// IMPERATIVELY (Connections + Component.onCompleted) not as a binding
+// (`property real fillLevel: Brightness.percent / 100`) despite the Behavior
+// below reading as if it should apply either way. It doesn't, reliably: a
+// binding re-evaluation writes the new value directly rather than being
+// intercepted by Behavior the way a plain assignment is, which would collapse
+// the fill slide into a one-frame jump. The imperative form is the standard,
+// unambiguous way to drive a Behavior-animated property from an external state
+// change.
 
 Widgets.Segment {
     id: root
@@ -27,9 +26,9 @@ Widgets.Segment {
     required property ShellScreen screen
 
     ambient: "isle"
-    // BrightnessIcon's own `fillLevel` already carries the value
-    // visually (and the real percentage is still a click away, in the
-    // bar popout card), so no text label.
+    // BrightnessIcon's own `fillLevel` already carries the value visually (and
+    // the real percentage is still a click away, in the bar popout card), so
+    // no text label.
     label: ""
     active: Services.BarPopout.which === "brightness"
 
@@ -55,12 +54,12 @@ Widgets.Segment {
 
     Component.onCompleted: {
         Services.Brightness.refresh()
-        // Sets the correct initial fill if brightness is already other
-        // than 100% at shell startup — accepting the minor cosmetic cost
-        // that this also runs through the same Behavior as any later
-        // change, so the bar shows one brief settle animation moments
-        // after it first appears rather than a suppression mechanism for
-        // a single, barely-noticeable startup animation.
+        // Sets the correct initial fill if brightness is already other than
+        // 100% at shell startup — accepting the minor cosmetic cost that this
+        // also runs through the same Behavior as any later change, so the bar
+        // shows one brief settle animation moments after it first appears
+        // rather than a suppression mechanism for a single, barely-noticeable
+        // startup animation.
         root.fillLevel = Math.max(0, Math.min(1, Services.Brightness.percent / 100))
     }
 }

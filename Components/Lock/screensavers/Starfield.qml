@@ -2,11 +2,10 @@ import QtQuick
 import qs.Config as Config
 
 // The calm option: a slow parallax drift of faint points, twinkling. From
-// scratch in a Canvas.
-// Screensaver animation, an exception confined to the lock surface and
-// stopped on conceal via `running`.
-// Colour: tokens only — points sit between fg-3 and fg-1 by depth, the
-// nearest few tinted toward `accent`. Cheap: ~140 filled rects a frame.
+// scratch in a Canvas. Screensaver animation, an exception confined to the
+// lock surface and stopped on conceal via `running`. Colour: tokens only —
+// points sit between fg-3 and fg-1 by depth, the nearest few tinted toward
+// `accent`. Cheap: ~140 filled rects a frame.
 
 Item {
     id: root
@@ -110,9 +109,8 @@ Item {
             // Auth reactions (the bound state above): a full-surface cast
             // toward `info` that breathes with the field's pulse while
             // `validating`, and toward `error` that fades as the lockout
-            // countdown drains. The two can't overlap — respond() is
-            // guarded by `!lockedOut` — but the `else if` keeps it
-            // explicit.
+            // countdown drains. The two can't overlap — respond() is guarded
+            // by `!lockedOut` — but the `else if` keeps it explicit.
             if (root.validating && root.validationProgress > 0.001) {
                 var lift = Config.Appearance.info
                 ctx.fillStyle = Qt.rgba(lift.r, lift.g, lift.b,

@@ -46,12 +46,12 @@ Row {
     property var actions: []
     signal chosen(string action)
 
-    // Selects the first pill — call this once, when the surface that
-    // hosts this row actually becomes visible. Component.onCompleted
-    // alone would not do this: the host window is created once and only
-    // ever shown/hidden via opacity, so this component's own
-    // Component.onCompleted fires exactly once, on the very first open of
-    // the whole session, never again on a later reopen.
+    // Selects the first pill — call this once, when the surface that hosts
+    // this row actually becomes visible. Component.onCompleted alone would not
+    // do this: the host window is created once and only ever shown/hidden via
+    // opacity, so this component's own Component.onCompleted fires exactly
+    // once, on the very first open of the whole session, never again on a
+    // later reopen.
     function focusFirst() {
         if (pillRepeater.count > 0) pillRepeater.itemAt(0).forceActiveFocus()
     }
@@ -97,10 +97,10 @@ Row {
         return Config.Appearance.textMuted
     }
 
-    // The text token paired with the tone above (the *Text companion of
-    // each semantic colour, ThemeOverrides-aware) — what the glyph and
-    // label flip to while the pill is hovered, so they stay readable on
-    // the tone fill instead of carrying the tone themselves.
+    // The text token paired with the tone above (the *Text companion of each
+    // semantic colour, ThemeOverrides-aware) — what the glyph and label flip
+    // to while the pill is hovered, so they stay readable on the tone fill
+    // instead of carrying the tone themselves.
     function _toneTextFor(action) {
         switch (action) {
         case "lock": return Config.Appearance.accentText
@@ -126,11 +126,11 @@ Row {
             readonly property bool keyboardFocus: activeFocus
 
             // `keyboardFocus: false` here is deliberate: resolve()'s own
-            // precedence would otherwise route a focused pill to its
-            // "focus" case (a border-ring look, one rung below "active")
-            // — passing it as `active` directly is what gives a
-            // Tab-selected pill the full accent fill rather than just a
-            // ring (see this file's own header).
+            // precedence would otherwise route a focused pill to its "focus"
+            // case (a border-ring look, one rung below "active") — passing it
+            // as `active` directly is what gives a Tab-selected pill the full
+            // accent fill rather than just a ring (see this file's own
+            // header).
             readonly property string resolvedState: WidgetStates.resolve({
                 enabled: true, hovered: pill.hovered, pressed: pill.pressed,
                 active: pill.keyboardFocus, keyboardFocus: false,
@@ -138,15 +138,14 @@ Row {
             })
             readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState, "powerPill")
 
-            // The action's semantic tone is a HOVER background, not a
-            // resting glyph colour: on hover the whole pill fills with the
-            // tone (shutdown red, logout/reboot amber, suspend blue
-            // lock/hibernate accent) and the glyph and label flip to that
-            // tone's paired text token, so the identity is carried by the
-            // pill, not by a static icon fill. Rest stays neutral
-            // (`stateColors.fg`: textMuted); the keyboard-focus pill keeps
-            // the accent fill and accentText glyph, and an invalid pill
-            // keeps the error state's fg.
+            // The action's semantic tone is a HOVER background, not a resting
+            // glyph colour: on hover the whole pill fills with the tone
+            // (shutdown red, logout/reboot amber, suspend blue lock/hibernate
+            // accent) and the glyph and label flip to that tone's paired text
+            // token, so the identity is carried by the pill, not by a static
+            // icon fill. Rest stays neutral (`stateColors.fg`: textMuted); the
+            // keyboard-focus pill keeps the accent fill and accentText glyph,
+            // and an invalid pill keeps the error state's fg.
             readonly property color pillBg: pill.resolvedState === "hover"
                 ? root._toneFor(pill.modelData)
                 : pill.stateColors.bg

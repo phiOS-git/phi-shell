@@ -4,11 +4,10 @@ import "WidgetStates.js" as WidgetStates
 
 // A numeric stepper: − [value] + . Used wherever a theme variable needs a
 // number — font scale, spacing scale, radii, a motion duration, a wallpaper
-// scale — rather than a slider: a slider invites idle dragging of a value
-// that should be deliberate, and cannot show an exact figure. A slider
-// stays for the two places a continuous sweep is the point (texture
-// intensity, a bezier handle).
-// Controlled: `value` is the caller's. `committed(value)` fires on a
+// scale — rather than a slider: a slider invites idle dragging of a value that
+// should be deliberate, and cannot show an exact figure. A slider stays for
+// the two places a continuous sweep is the point (texture intensity, a bezier
+// handle). Controlled: `value` is the caller's. `committed(value)` fires on a
 // step-button press or when the field is edited and confirmed (Enter /
 // focus-out) — never per keystroke.
 
@@ -35,11 +34,11 @@ Row {
     readonly property real chWidth: chMetrics.width
 
     // A flat fixed width overflows for a long suffix like " days"
-    // (Notifications.qml's retention field: "365 days" is 8 characters
-    // with inset padding eating into the same space). Measures the widest
-    // value this field can actually show (from/to, at the real
-    // decimals/suffix) instead of guessing a fixed width, so a long suffix
-    // gets more room rather than overflowing it.
+    // (Notifications.qml's retention field: "365 days" is 8 characters with
+    // inset padding eating into the same space). Measures the widest value
+    // this field can actually show (from/to, at the real decimals/suffix)
+    // instead of guessing a fixed width, so a long suffix gets more room
+    // rather than overflowing it.
     TextMetrics {
         id: widestMetrics
         font.family: Config.Appearance.fontMono
@@ -60,12 +59,11 @@ Row {
     }
     function _clamp(v) { return Math.max(root.from, Math.min(root.to, v)) }
     // Rounds `value` itself to `decimals`, not just the displayed text
-    // otherwise a typed "5.7" into a `decimals: 0` field (or float drift
-    // from repeatedly stepping by a fractional `step`) leaves the field
-    // showing "6" while `value`, and the `committed` it emits, are still
-    // 5.7 underneath. A caller wrapping its own `Math.round(v)` around the
-    // committed value stays a harmless no-op once this rounds at the
-    // source.
+    // otherwise a typed "5.7" into a `decimals: 0` field (or float drift from
+    // repeatedly stepping by a fractional `step`) leaves the field showing "6"
+    // while `value`, and the `committed` it emits, are still 5.7 underneath. A
+    // caller wrapping its own `Math.round(v)` around the committed value stays
+    // a harmless no-op once this rounds at the source.
     function _round(v) {
         var mult = Math.pow(10, root.decimals)
         return Math.round(v * mult) / mult

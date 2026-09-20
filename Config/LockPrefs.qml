@@ -47,12 +47,12 @@ Singleton {
         prefsFile.setText(JSON.stringify(root.prefs, null, 2))
     }
 
-    // Peak opacity/brightness, kept per-effect rather than one shared
-    // value — the existing per-effect defaults already differ enormously
-    // by design (0.18 for MatrixRain's deliberately-faint glyphs vs. 0.9
-    // for Starfield), so one shared number would wash out the faint ones
-    // or blow out the bright ones. Mirrors each effect's own pre-existing
-    // hardcoded default, so an untouched key changes nothing.
+    // Peak opacity/brightness, kept per-effect rather than one shared value —
+    // the existing per-effect defaults already differ enormously by design
+    // (0.18 for MatrixRain's deliberately-faint glyphs vs. 0.9 for Starfield),
+    // so one shared number would wash out the faint ones or blow out the
+    // bright ones. Mirrors each effect's own pre-existing hardcoded default,
+    // so an untouched key changes nothing.
     readonly property var _intensityDefaults: ({
         lava: 0.28, matrix: 0.18, starfield: 0.9, plasma: 0.85, life: 0.85, boids: 0.85
     })

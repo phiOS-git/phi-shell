@@ -7,33 +7,29 @@ import qs.Config as Config
 import qs.Services as Services
 
 // Writes directly to the org.razer session-bus DBus service via
-// `busctl`/Quickshell.Io — no razer-cli, no polychromatic, no Quickshell
-// DBus client type exists for this.
-// NAMES TO CONFIRM ON HARDWARE. Every interface/method string below is a
-// named constant precisely so a correction after
-// busctl --user introspect org.razer /org/razer/device/<serial>
-// is a one-line edit, not a hunt. Taken from the openrazer daemon source
-// and python-openrazer's advanced-matrix path, which the user has
-// confirmed works end to end on this Razer Blade — but from
-// this file's own side: no org.razer service is reachable from this
-// machine, so this file has never actually run.
+// `busctl`/Quickshell.Io — no razer-cli, no polychromatic, no Quickshell DBus
+// client type exists for this. NAMES TO CONFIRM ON HARDWARE. Every
+// interface/method string below is a named constant precisely so a correction
+// after busctl --user introspect org.razer /org/razer/device/<serial> is a
+// one-line edit, not a hunt. Taken from the openrazer daemon source and
+// python-openrazer's advanced-matrix path, which the user has confirmed works
+// end to end on this Razer Blade — but from this file's own side: no org.razer
+// service is reachable from this machine, so this file has never actually run.
 // ARCHITECTURE. Five things want to drive one keyboard: the static base
 // colour, the per-key override map, the battery power-key indicator, the
-// notification blink, and the neovim mode tint. They are NOT five
-// writers — every one only sets state, a single _render() composes the
-// current state into one frame, and a single Process pushes it. That's
-// what makes "blink then restore" automatic: the blink flag flips
-// _render() runs, the timer clears the flag, _render() runs again
-// rather than a second code path that has to remember what was underneath.
-// A frame is either one setStatic (no per-key content) or N setKeyRow
-// calls plus one setCustom. All of it goes out as ONE
-// `sh -c "busctl … && busctl … && …"`: assigning Process.command in a loop
-// would clobber each call before it ran (Quickshell doesn't queue command
-// reassignments).
-// Panel: Settings/sections/Devices.qml. Storage: the two scalars that
-// already have `phi state` keys stay there (toggle.chroma, chroma.color).
-// The open-ended data — the per-key map and integration config — is one
-// JSON object at Config.Paths.chromaConfigFile.
+// notification blink, and the neovim mode tint. They are NOT five writers —
+// every one only sets state, a single _render() composes the current state
+// into one frame, and a single Process pushes it. That's what makes "blink
+// then restore" automatic: the blink flag flips _render() runs, the timer
+// clears the flag, _render() runs again rather than a second code path that
+// has to remember what was underneath. A frame is either one setStatic (no
+// per-key content) or N setKeyRow calls plus one setCustom. All of it goes out
+// as ONE `sh -c "busctl … && busctl … && …"`: assigning Process.command in a
+// loop would clobber each call before it ran (Quickshell doesn't queue command
+// reassignments). Panel: Settings/sections/Devices.qml. Storage: the two
+// scalars that already have `phi state` keys stay there (toggle.chroma,
+// chroma.color). The open-ended data — the per-key map and integration config
+// — is one JSON object at Config.Paths.chromaConfigFile.
 
 Singleton {
     id: root
@@ -57,10 +53,10 @@ Singleton {
     property var keyOverrides: ({})            // { "row,col": "#rrggbb" }
     property var integrations: ({ battery: false, notifications: false, neovim: false })
     // Per-integration settings. Matrix coordinates default to nothing
-    // sensible-but-wrong: the user reads their real values off the
-    // KeyboardMap grid (click a cell, see which key lights) and sets them
-    // here. -1 means "not configured" — the integration then paints
-    // nothing rather than guessing a position.
+    // sensible-but-wrong: the user reads their real values off the KeyboardMap
+    // grid (click a cell, see which key lights) and sets them here. -1 means
+    // "not configured" — the integration then paints nothing rather than
+    // guessing a position.
     property var integrationConfig: ({
         batteryRow: -1, batteryCol: -1, batteryThreshold: 20,
         notifyRow: 0
@@ -81,8 +77,8 @@ Singleton {
 
     // Config.Capabilities.chroma resolves from an async probe, and this
     // singleton may instantiate (and load chroma.json, and first _render())
-    // before it lands. Re-render the moment it does, so a restored per-key
-    // map / integration paints without waiting for the first user action.
+    // before it lands. Re-render the moment it does, so a restored per-key map
+    // / integration paints without waiting for the first user action.
     onPresentChanged: if (root.present) root._render()
 
     // ==================================================================
@@ -151,8 +147,8 @@ Singleton {
 
     // One-shot notification blink of the function row. Caller:
     // Services/Notifications.qml onNotification, gated on !dnd there.
-    // `present` is not checked here — _render() guards on it, and this can
-    // be called before the async capability probe resolves.
+    // `present` is not checked here — _render() guards on it, and this can be
+    // called before the async capability probe resolves.
     function notifyBlink() {
         if (!root.enabled || root.integrations.notifications !== true) return
         blinkTimer._count = 0
@@ -182,10 +178,10 @@ Singleton {
     IpcHandler {
         target: "chroma"
         // Called by profiles/base/home/.config/nvim/lua/phi_chroma.lua on
-        // ModeChanged / VimLeavePre. `mode` is a Neovim mode string
-        // ("n", "i", "v", "V", "R", "c", …); this shell keeps the first
-        // letter and maps it to a Config.Appearance token — the colour
-        // never leaves the shell, so nvim ships no literal (I-05).
+        // ModeChanged / VimLeavePre. `mode` is a Neovim mode string ("n", "i",
+        // "v", "V", "R", "c", …); this shell keeps the first letter and maps
+        // it to a Config.Appearance token — the colour never leaves the shell,
+        // so nvim ships no literal.
         function nvimMode(mode: string): void { root.setNvimMode(mode) }
     }
 
@@ -285,10 +281,10 @@ Singleton {
     }
 
     // One `sh -c` with every busctl call &&-joined. Every token is
-    // [A-Za-z0-9_/.:-] or a decimal integer, so no quoting is needed.
-    // Bursts (blink, pulse, a fast drag) coalesce: a push arriving while
-    // frameProc is still running is held and replayed once on exit, so the
-    // device always ends on the latest frame and the calls never overlap.
+    // [A-Za-z0-9_/.:-] or a decimal integer, so no quoting is needed. Bursts
+    // (blink, pulse, a fast drag) coalesce: a push arriving while frameProc is
+    // still running is held and replayed once on exit, so the device always
+    // ends on the latest frame and the calls never overlap.
     property var _pendingCmd: null
     property bool _pushQueued: false
 
@@ -324,8 +320,8 @@ Singleton {
         }
     }
 
-    // rgb triplet 0..255 from a "#rrggbb" string OR a Config.Appearance
-    // colour value (the integration colours come through as the latter).
+    // rgb triplet 0..255 from a "#rrggbb" string OR a Config.Appearance colour
+    // value (the integration colours come through as the latter).
     function _rgb(x) {
         var c = (typeof x === "string") ? Qt.color(x) : x
         return [Math.round((c.r || 0) * 255), Math.round((c.g || 0) * 255), Math.round((c.b || 0) * 255)]
@@ -368,8 +364,8 @@ Singleton {
         onExited: matrixProc.running = false
         stdout: StdioCollector {
             onStreamFinished: {
-                // busctl prints the signature then the values, e.g.
-                // "ii 6 22" or "ai 2 6 22". Take the last two integers.
+                // busctl prints the signature then the values, e.g. "ii 6 22"
+                // or "ai 2 6 22". Take the last two integers.
                 var nums = String(this.text).match(/-?\d+/g) || []
                 if (nums.length >= 2) {
                     var rr = parseInt(nums[nums.length - 2], 10)
@@ -403,10 +399,10 @@ Singleton {
         onTriggered: root._render()
     }
 
-    // Slow under-threshold pulse. `running` is false in every normal
-    // state, so this is not a category-C effect on a frequent event — it
-    // only ticks while the battery integration is on AND the charge is
-    // genuinely below the user's threshold.
+    // Slow under-threshold pulse. `running` is false in every normal state, so
+    // this is not a category-C effect on a frequent event — it only ticks
+    // while the battery integration is on AND the charge is genuinely below
+    // the user's threshold.
     Timer {
         id: batteryPulse
         interval: 1200

@@ -5,13 +5,13 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../modules" as Modules
 
-// Bluetooth, Wi-Fi (with a live speed graph), WireGuard VPN, Tailscale
-// and the inbound firewall, each a Modules.SettingsGroup so a search or a bar
-// overlay's "Show in settings" button lands on the right one.
-// Every reader already exists as a Services/ bridge — this section is a
-// second consumer, never a new probe. The no-address-leak contract is
-// enforced structurally upstream: neither Services.Tailscale nor
-// Services.Vpn exposes an IP, so nothing here can show one.
+// Bluetooth, Wi-Fi (with a live speed graph), WireGuard VPN, Tailscale and the
+// inbound firewall, each a Modules.SettingsGroup so a search or a bar
+// overlay's "Show in settings" button lands on the right one. Every reader
+// already exists as a Services/ bridge — this section is a second consumer,
+// never a new probe. The no-address-leak contract is enforced structurally
+// upstream: neither Services.Tailscale nor Services.Vpn exposes an IP, so
+// nothing here can show one.
 
 Column {
     id: root
@@ -102,10 +102,10 @@ Column {
             }
         }
         // The same Widgets/WifiNetworkList.qml the bar popout's wifi card
-        // uses. `active: true` is correct without wiring it to anything:
-        // this whole section only exists while it's the loaded Settings
-        // section (Settings.qml's Loader destroys/recreates sections on
-        // navigation), so a scan fires exactly once per visit.
+        // uses. `active: true` is correct without wiring it to anything: this
+        // whole section only exists while it's the loaded Settings section
+        // (Settings.qml's Loader destroys/recreates sections on navigation),
+        // so a scan fires exactly once per visit.
         Modules.SettingsRow {
             wide: true
             title: "Available networks"
@@ -155,10 +155,10 @@ Column {
         readonly property bool hasTunnels: Services.Vpn.tunnels.length > 0
         caption: "up/down go through `sudo -n wg-quick` — never an endpoint or address is shown. Needs the sudoers drop-in profiles/desktop/system/etc/sudoers.d/49-phi-vpn installed (see profiles/desktop/manual.txt)."
 
-        // The controls stay VISIBLE and DISABLED when there is nothing
-        // yet, rather than the section collapsing to a single line of
-        // prose. A tunnel appears here once its .conf is in
-        // ~/.config/phi/wireguard OR /etc/wireguard, OR it's simply up.
+        // The controls stay VISIBLE and DISABLED when there is nothing yet,
+        // rather than the section collapsing to a single line of prose. A
+        // tunnel appears here once its .conf is in ~/.config/phi/wireguard OR
+        // /etc/wireguard, OR it's simply up.
         Widgets.Reveal {
             shown: !vpnGroup.hasTunnels
             Modules.SettingsRow {

@@ -3,17 +3,16 @@ import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
 // The shared section-switcher grammar, for wherever the user picks which
-// section of a panel is currently showing. Deliberately NOT Widgets/Segment:
-// a tab is a navigation state, not a momentary action, so selecting one
-// must never read as "a button just got pressed" the way Segment's/
-// StyledButton's full inversion does. No resting box, a flat hover wash
-// and the current tab marked by accent-coloured content plus a thin accent
-// bar on the edge facing what it controls — so which section is active
-// reads at a glance, without needing to compare against a neighbour.
-// `indicatorEdge` picks that edge: "bottom" for a horizontal strip (the
-// ordinary tab convention), "right"/"left" for a vertical icon rail on the
-// panel's left/right edge.
-// No caller has been migrated to it yet.
+// section of a panel is currently showing. Deliberately NOT Widgets/Segment: a
+// tab is a navigation state, not a momentary action, so selecting one must
+// never read as "a button just got pressed" the way Segment's/ StyledButton's
+// full inversion does. No resting box, a flat hover wash and the current tab
+// marked by accent-coloured content plus a thin accent bar on the edge facing
+// what it controls — so which section is active reads at a glance, without
+// needing to compare against a neighbour. `indicatorEdge` picks that edge:
+// "bottom" for a horizontal strip (the ordinary tab convention),
+// "right"/"left" for a vertical icon rail on the panel's left/right edge. No
+// caller has been migrated to it yet.
 
 Item {
     id: root
@@ -24,11 +23,11 @@ Item {
     property bool loading: false
     property bool invalid: false
     property string indicatorEdge: "bottom" // "bottom" | "left" | "right"
-    // A small numeric badge (e.g. a pending-count on a rail item). 0 or
-    // less hides it.
+    // A small numeric badge (e.g. a pending-count on a rail item). 0 or less
+    // hides it.
     property int badge: 0
-    // A vertical icon rail shows the glyph only, sized to fill a square
-    // tile; a horizontal strip shows glyph + label.
+    // A vertical icon rail shows the glyph only, sized to fill a square tile;
+    // a horizontal strip shows glyph + label.
     property bool iconOnly: false
 
     readonly property bool hovered: hoverHandler.hovered
@@ -75,8 +74,8 @@ Item {
         }
     }
 
-    // The one piece of persistent chrome this grammar keeps: a thin accent
-    // bar on whichever edge faces the content this tab controls.
+    // The one piece of persistent chrome this grammar keeps: a thin accent bar
+    // on whichever edge faces the content this tab controls.
     Rectangle {
         color: Config.Appearance.accent
         radius: root._barThickness / 2

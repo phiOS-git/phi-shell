@@ -5,17 +5,16 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// Services/Timers.qml owns the item list, firing queue and ringtone; this
-// file is presentation only, same split as Components/Dialogs/
-// BatteryAlert.qml, whose layer-shell/scrim/fade plumbing this file
-// copies verbatim.
+// Services/Timers.qml owns the item list, firing queue and ringtone; this file
+// is presentation only, same split as Components/Dialogs/ BatteryAlert.qml,
+// whose layer-shell/scrim/fade plumbing this file copies verbatim.
 //
-// firingIds can hold more than one due item at once (the machine was
-// asleep through several alarm times, or a timer and an alarm land in the
-// same tick) — this dialog only ever shows firingItem (the OLDEST one);
-// dismissing advances Services.Timers' own queue, and this window simply
-// stays open (re-reading the new firingItem) for as long as `alerting`
-// stays true, rather than needing to know the queue exists at all.
+// firingIds can hold more than one due item at once (the machine was asleep
+// through several alarm times, or a timer and an alarm land in the same tick)
+// — this dialog only ever shows firingItem (the OLDEST one); dismissing
+// advances Services.Timers' own queue, and this window simply stays open
+// (re-reading the new firingItem) for as long as `alerting` stays true, rather
+// than needing to know the queue exists at all.
 PanelWindow {
     id: root
 

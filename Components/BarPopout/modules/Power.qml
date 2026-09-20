@@ -4,11 +4,10 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "." as Local
 
-// Six plain action rows plus a "Settings…" row that opens the settings
-// panel generally (not deep-linked to any one section). Reboot/Shutdown
-// are gated behind PowerActions' shared centered confirm dialog, same
-// policy the runner bar's own confirm sub-view uses for the identical two
-// actions.
+// Six plain action rows plus a "Settings…" row that opens the settings panel
+// generally (not deep-linked to any one section). Reboot/Shutdown are gated
+// behind PowerActions' shared centered confirm dialog, same policy the runner
+// bar's own confirm sub-view uses for the identical two actions.
 
 Column {
     id: root

@@ -3,24 +3,23 @@ import qs.Config as Config
 
 // The classic demoscene/XScreenSaver "plasma" effect: a smoothly shifting
 // colour field from three overlaid sine waves, no image data, no shader.
-// Coarser grid than Starfield's per-point rects (32x18 filled cells
-// instead of ~140 points) — plasma reads as a field, not discrete points
-// and a per-pixel canvas would cost far more per frame for no visible
-// gain at lock-screen viewing distance.
-// Same contract every other effect (LavaLamp/MatrixRain/Starfield)
-// follows: `running`/`intensity` properties, a Timer at
-// `Config.Appearance.motionCTypeStep` driving `requestPaint()`, colour
-// from Config.Appearance tokens only — here `surface1` → `accent` →
-// `info`, the same accent/info pairing LavaLamp uses for its blobs.
-// Two OPTIONAL inputs. (1) The password-validation pulse: Lock.qml calls
+// Coarser grid than Starfield's per-point rects (32x18 filled cells instead of
+// ~140 points) — plasma reads as a field, not discrete points and a per-pixel
+// canvas would cost far more per frame for no visible gain at lock-screen
+// viewing distance. Same contract every other effect
+// (LavaLamp/MatrixRain/Starfield) follows: `running`/`intensity` properties, a
+// Timer at `Config.Appearance.motionCTypeStep` driving `requestPaint()`,
+// colour from Config.Appearance tokens only — here `surface1` → `accent` →
+// `info`, the same accent/info pairing LavaLamp uses for its blobs. Two
+// OPTIONAL inputs. (1) The password-validation pulse: Lock.qml calls
 // `triggerValidation(success)` after every completed password attempt; an
 // effect may react or ignore it entirely — effects that never declare the
 // function are simply never called. (2) The bound lock/auth state below
-// (`validating`/`validationProgress`, `lockedOut`/`lockoutProgress`)
-// wired from Lock.qml on the active effect. This effect answers all of
-// them: a travelling wave in the outcome's colour band, a breathing lift
-// while verifying, and a draining error cast during the lockout cooldown
-// (see onPaint).
+// (`validating`/`validationProgress`, `lockedOut`/`lockoutProgress`) wired
+// from Lock.qml on the active effect. This effect answers all of them: a
+// travelling wave in the outcome's colour band, a breathing lift while
+// verifying, and a draining error cast during the lockout cooldown (see
+// onPaint).
 
 Item {
     id: root
@@ -28,9 +27,9 @@ Item {
     property bool running: true
     property real intensity: 0.85
     property real speed: 1.0
-    // Multiplier on the grid resolution (>1 = finer detail, more cells
-    // more fill cost per frame; <1 = coarser, cheaper). 1.0 keeps the
-    // original fixed 32×18 grid.
+    // Multiplier on the grid resolution (>1 = finer detail, more cells more
+    // fill cost per frame; <1 = coarser, cheaper). 1.0 keeps the original
+    // fixed 32×18 grid.
     property real resolution: 1.0
     // --- lock/auth state (bound by Lock.qml on the active effect) -------
     // Read-only reaction inputs for the auth flow, wired straight from
@@ -80,9 +79,9 @@ Item {
         repeat: true
         onTriggered: {
             root.t += 0.035 * root.speed
-            // The validation wave fades back out on its own — quick at
-            // first, then slackening; anything left below a hairline is a
-            // rounding smudge, snapped flat so the decay genuinely ends.
+            // The validation wave fades back out on its own — quick at first,
+            // then slackening; anything left below a hairline is a rounding
+            // smudge, snapped flat so the decay genuinely ends.
             if (root.validationPulse > 0.004) root.validationPulse *= 0.93
             else root.validationPulse = 0
             canvas.requestPaint()
@@ -128,12 +127,12 @@ Item {
                         ? root._mix(low, mid, v * 2)
                         : root._mix(mid, high, (v - 0.5) * 2)
 
-                    // A completed password attempt sweeps one diagonal
-                    // band of the outcome colour (success / error) across
-                    // the field, fading as `validationPulse` decays — the
-                    // band travels because its phase advances with `t`.
-                    // Pure mix-in at the very end, so it never re-enters
-                    // the field's own shaping, just tints it.
+                    // A completed password attempt sweeps one diagonal band of
+                    // the outcome colour (success / error) across the field,
+                    // fading as `validationPulse` decays — the band travels
+                    // because its phase advances with `t`. Pure mix-in at the
+                    // very end, so it never re-enters the field's own shaping,
+                    // just tints it.
                     if (root.validationPulse > 0.001) {
                         var wave = Math.sin((xi + yi) * 0.55 - root.t * 2.2)
                         if (wave > 0) {
@@ -158,7 +157,8 @@ Item {
                             0.10 + 0.06 * root.lockoutProgress)
                     }
                     ctx.fillStyle = colour
-                    // +1px overlap so the grid seams don't show as hairline gaps.
+                    // +1px overlap so the grid seams don't show as hairline
+                    // gaps.
                     ctx.fillRect(xi * cw, yi * ch, cw + 1, ch + 1)
                 }
             }

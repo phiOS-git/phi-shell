@@ -5,15 +5,14 @@ import Quickshell.Io
 import Quickshell.Networking
 
 // Thin wrapper over Quickshell.Networking — the one file outside Config/
-// allowed to touch this service surface.
-// `Networking` is the NetworkManager-backed singleton, `Networking.devices`
-// an ObjectModel<NetworkDevice> with a `type` of Wifi or Wired. This wraps
-// NOT "the network module" (that's Tailscale, a separate CLI-driven
-// concept) but specifically the local Wi-Fi radio.
-// A NetworkDevice's own `networks` model holds every network it has seen;
-// the connected one (if any) is found by its `connected` flag, not
-// assumed to be index 0 — `Network.name` is that network's SSID, not the
-// device's own name.
+// allowed to touch this service surface. `Networking` is the
+// NetworkManager-backed singleton, `Networking.devices` an
+// ObjectModel<NetworkDevice> with a `type` of Wifi or Wired. This wraps NOT
+// "the network module" (that's Tailscale, a separate CLI-driven concept) but
+// specifically the local Wi-Fi radio. A NetworkDevice's own `networks` model
+// holds every network it has seen; the connected one (if any) is found by its
+// `connected` flag, not assumed to be index 0 — `Network.name` is that
+// network's SSID, not the device's own name.
 
 Singleton {
     id: root
@@ -30,8 +29,8 @@ Singleton {
     readonly property bool connecting: root.present && root.device.state === ConnectionState.Connecting
 
     // No Quickshell.Networking property exposes the radio on/off state
-    // directly — `nmcli radio wifi` is the documented NetworkManager CLI
-    // query for it (nmcli is already a hard dependency of this file's own
+    // directly — `nmcli radio wifi` is the documented NetworkManager CLI query
+    // for it (nmcli is already a hard dependency of this file's own
     // scan/connect calls below), polled the same lightweight way
     // Services/Tailscale.qml polls its own state.
     property bool radioEnabled: true
@@ -132,11 +131,11 @@ Singleton {
         return false
     }
 
-    // `nmcli device wifi rescan` returns as soon as the scan is REQUESTED
-    // not once results are ready — a fixed delay before reading the list
-    // back is a real approximation (this project has no way to observe
-    // NetworkManager's actual scan-complete signal without a real D-Bus
-    // binding this codebase doesn't have), not a measured constant.
+    // `nmcli device wifi rescan` returns as soon as the scan is REQUESTED not
+    // once results are ready — a fixed delay before reading the list back is a
+    // real approximation (this project has no way to observe NetworkManager's
+    // actual scan-complete signal without a real D-Bus binding this codebase
+    // doesn't have), not a measured constant.
     function rescan() {
         if (!root.present) return
         root.scanning = true
@@ -183,9 +182,9 @@ Singleton {
                     const entry = { ssid: ssid, signal: signal, secured: secured, connected: connected, known: root._isKnownSsid(ssid) }
                     let idx = -1
                     for (let j = 0; j < list.length; j++) { if (list[j].ssid === ssid) { idx = j; break } }
-                    // De-duplicate by SSID (multiple access points/BSSIDs
-                    // e.g. a mesh, can share one) — keep the strongest
-                    // signal seen, or whichever row nmcli marks connected.
+                    // De-duplicate by SSID (multiple access points/BSSIDs e.g.
+                    // a mesh, can share one) — keep the strongest signal seen,
+                    // or whichever row nmcli marks connected.
                     if (idx === -1) list.push(entry)
                     else if (connected || signal > list[idx].signal) list[idx] = entry
                 }
@@ -197,8 +196,8 @@ Singleton {
             }
         }
         // Without this, a bad field name or a `nmcli` too old to run this
-        // exact command would leave `scannedNetworks` silently empty
-        // forever, with no visible sign anything went wrong.
+        // exact command would leave `scannedNetworks` silently empty forever,
+        // with no visible sign anything went wrong.
         stderr: StdioCollector {
             onStreamFinished: {
                 const t = this.text.trim()
@@ -207,10 +206,10 @@ Singleton {
         }
     }
 
-    // Only for a network with no secret to supply: already-known (nmcli
-    // reuses its saved profile) or genuinely open. A secured, not-yet-
-    // known network is deliberately NOT reachable through this function
-    // see the header comment above for why.
+    // Only for a network with no secret to supply: already-known (nmcli reuses
+    // its saved profile) or genuinely open. A secured, not-yet- known network
+    // is deliberately NOT reachable through this function see the header
+    // comment above for why.
     function connectToKnownNetwork(ssid) {
         if (!root.present || root.busy) return
         root.busy = true
@@ -221,14 +220,13 @@ Singleton {
 
     Process {
         id: connectProc
-        // Deliberately independent of the stderr collector below (same
-        // shape as Services/Vpn.qml's own actionProc) rather than
-        // branching on exitCode here: the two handlers' relative firing
-        // order is not guaranteed, so reading connectError from within
-        // onExited to decide a fallback message would be a race. If
-        // nmcli fails with no stderr text at all, connectError stays
-        // empty and only `busy` going false signals the attempt ended
-        // an accepted, narrow gap, not a silent hang.
+        // Deliberately independent of the stderr collector below (same shape
+        // as Services/Vpn.qml's own actionProc) rather than branching on
+        // exitCode here: the two handlers' relative firing order is not
+        // guaranteed, so reading connectError from within onExited to decide a
+        // fallback message would be a race. If nmcli fails with no stderr text
+        // at all, connectError stays empty and only `busy` going false signals
+        // the attempt ended an accepted, narrow gap, not a silent hang.
         onExited: {
             connectProc.running = false
             root.busy = false

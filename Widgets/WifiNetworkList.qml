@@ -3,26 +3,24 @@ import qs.Config as Config
 import qs.Services as Services
 
 // The scannable Wi-Fi network list, currently used by
-// Settings/sections/Connectivity.qml's Wi-Fi group — one implementation
-// so the list/connect logic exists in one place, shareable with any future
-// caller that needs the same UI.
-// `active` controls when a scan is triggered: Settings' Connectivity
-// section only exists while it's the loaded section (Settings/Settings.qml's
-// Loader), so the default `true` fires a scan exactly once per visit
-// there. A caller that stays permanently instantiated behind a `visible:`
-// binding instead should pass `active` explicitly, tied to its own
-// visibility — otherwise `Component.onCompleted` fires once at shell
-// startup regardless of whether that surface is ever opened.
-// Services/WifiBridge.qml owns the scan/connect state and every nmcli call
-// (the fenced service-surface rule, phi-shell/CLAUDE.md). Tapping a row
-// that is already connected does nothing. Tapping an open or already-
-// known network connects with no password needed. A secured network this
-// device has never joined before is NOT tappable here — see Services/
-// WifiBridge.qml's own header for why (a password field here would put
-// the secret on the process command line, world-readable via
-// /proc/<pid>/cmdline) — it shows a plain "Secured" status and directs to
-// the existing "Manage networks…" (nmtui) button, which already has a
-// real password prompt.
+// Settings/sections/Connectivity.qml's Wi-Fi group — one implementation so the
+// list/connect logic exists in one place, shareable with any future caller
+// that needs the same UI. `active` controls when a scan is triggered:
+// Settings' Connectivity section only exists while it's the loaded section
+// (Settings/Settings.qml's Loader), so the default `true` fires a scan exactly
+// once per visit there. A caller that stays permanently instantiated behind a
+// `visible:` binding instead should pass `active` explicitly, tied to its own
+// visibility — otherwise `Component.onCompleted` fires once at shell startup
+// regardless of whether that surface is ever opened. Services/WifiBridge.qml
+// owns the scan/connect state and every nmcli call (the fenced service-surface
+// rule, phi-shell/CLAUDE.md). Tapping a row that is already connected does
+// nothing. Tapping an open or already- known network connects with no password
+// needed. A secured network this device has never joined before is NOT
+// tappable here — see Services/ WifiBridge.qml's own header for why (a
+// password field here would put the secret on the process command line,
+// world-readable via /proc/<pid>/cmdline) — it shows a plain "Secured" status
+// and directs to the existing "Manage networks…" (nmtui) button, which already
+// has a real password prompt.
 Item {
     id: root
 
@@ -49,8 +47,8 @@ Item {
 
         // An `Item` with the status text/indicator anchored left and the
         // button anchored right, rather than a plain `Row` — a `Row` packs
-        // every child snug against the previous one from the left edge
-        // instead of pushing the last one to the far side.
+        // every child snug against the previous one from the left edge instead
+        // of pushing the last one to the far side.
         Item {
             width: parent.width
             implicitHeight: Math.max(scanStatusRow.implicitHeight, refreshBtn.height)
@@ -65,9 +63,8 @@ Item {
                     visible: !Services.WifiBridge.scanning
                     text: Services.WifiBridge.scannedNetworks.length + (Services.WifiBridge.scannedNetworks.length === 1 ? " network found" : " networks found")
                 }
-                // A real animated "still working" cue (Widgets/Dots)
-                // rather than a static "Scanning…" that never visibly
-                // changes.
+                // A real animated "still working" cue (Widgets/Dots) rather
+                // than a static "Scanning…" that never visibly changes.
                 Row {
                     visible: Services.WifiBridge.scanning
                     anchors.verticalCenter: parent.verticalCenter
@@ -101,10 +98,10 @@ Item {
         }
 
         // Only for the FIRST scan (nothing to show yet) — a rescan that
-        // already has a result list keeps showing it while it refreshes
-        // (the Refresh button's own `loading` already covers that case);
-        // replacing a real, useful list with a skeleton on every rescan
-        // would be a regression, not an improvement.
+        // already has a result list keeps showing it while it refreshes (the
+        // Refresh button's own `loading` already covers that case); replacing
+        // a real, useful list with a skeleton on every rescan would be a
+        // regression, not an improvement.
         Skeleton {
             width: parent.width
             visible: Services.WifiBridge.scanning && Services.WifiBridge.scannedNetworks.length === 0
@@ -115,8 +112,8 @@ Item {
             model: Services.WifiBridge.scannedNetworks
 
             delegate: ListRow {
-                // `thin` is opt-in — see Widgets/ListRow.qml's own header
-                // for why the compact look isn't ListRow's default.
+                // `thin` is opt-in — see Widgets/ListRow.qml's own header for
+                // why the compact look isn't ListRow's default.
                 thin: true
                 width: col.width
                 label: modelData.ssid
@@ -128,8 +125,8 @@ Item {
                             ? ("Secured · " + modelData.signal + "%")
                             : ("Open · " + modelData.signal + "%")))
                 // `enabled` reflects whether a tap actually does anything
-                // ListRow's own disabled dimming and hover/cursor handlers
-                // key off `enabled`, so a secured-never-joined or
+                // ListRow's own disabled dimming and hover/cursor handlers key
+                // off `enabled`, so a secured-never-joined or
                 // already-connected row reads as inert instead of looking
                 // clickable while silently doing nothing.
                 readonly property bool _actionable: !modelData.connected

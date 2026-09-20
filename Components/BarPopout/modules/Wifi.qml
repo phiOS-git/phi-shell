@@ -6,8 +6,8 @@ import qs.Widgets as Widgets
 import "../../../Widgets/Format.js" as Format
 
 // Dormant: no bar module opens "wifi" on its own any more, its content was
-// folded into Network.qml's own Wi-Fi sub-section. Kept so a standalone
-// entry point stays sane if one is ever reconnected.
+// folded into Network.qml's own Wi-Fi sub-section. Kept so a standalone entry
+// point stays sane if one is ever reconnected.
 
 Column {
     id: root

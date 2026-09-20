@@ -4,17 +4,15 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// Icon + value: a speaker icon and the percentage (or "mute"). A click
-// opens the shared bar popout, which owns the real mixer control (a
-// draggable Widgets.Meter) and mute toggle — this bar segment is just the
-// readout.
+// Icon + value: a speaker icon and the percentage (or "mute"). A click opens
+// the shared bar popout, which owns the real mixer control (a draggable
+// Widgets.Meter) and mute toggle — this bar segment is just the readout.
 //
-// The glyph is Widgets/VolumeIcon — sound-wave arcs whose extent tracks
-// volume level continuously, and a mute slash that fades in rather than
-// snapping in. Both animated properties (`level`, `mutedAmount`) are set
-// imperatively (Connections, not a binding) — see Bar/modules/
-// Brightness.qml's own header for why a plain binding isn't reliably
-// intercepted by a Behavior.
+// The glyph is Widgets/VolumeIcon — sound-wave arcs whose extent tracks volume
+// level continuously, and a mute slash that fades in rather than snapping in.
+// Both animated properties (`level`, `mutedAmount`) are set imperatively
+// (Connections, not a binding) — see Bar/modules/ Brightness.qml's own header
+// for why a plain binding isn't reliably intercepted by a Behavior.
 
 Widgets.Segment {
     id: root
@@ -26,9 +24,9 @@ Widgets.Segment {
     readonly property bool muted: Services.AudioBridge.muted
     readonly property int percent: Math.round(Services.AudioBridge.volume * 100)
 
-    // VolumeIcon's own `level`/`mutedAmount` fill+slash already carry
-    // both states visually (and the real percentage is still a click
-    // away, in the bar popout card), so no text label.
+    // VolumeIcon's own `level`/`mutedAmount` fill+slash already carry both
+    // states visually (and the real percentage is still a click away, in the
+    // bar popout card), so no text label.
     label: ""
     tone: root.muted ? "warn" : ""
     active: Services.BarPopout.which === "volume"

@@ -4,8 +4,8 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 
 // Dormant, same as Wifi.qml — folded into Network.qml. Deliberately just a
-// status readout: no `connectivity.ethernet` Settings section exists yet
-// to deep-link to.
+// status readout: no `connectivity.ethernet` Settings section exists yet to
+// deep-link to.
 
 Column {
     id: root

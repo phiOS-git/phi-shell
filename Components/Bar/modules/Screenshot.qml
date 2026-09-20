@@ -35,10 +35,10 @@ Widgets.Segment {
     onActivated: {
         if (root.recording) {
             // Self-directed `qs ipc call` — same shape
-            // Services/PowerActions.qml's `lock()` uses to reach a
-            // top-level surface's IpcHandler from in-process QML; `-p
-            // Quickshell.configDir` is required since a bare `qs ipc
-            // call` targets the default config, not this named instance.
+            // Services/PowerActions.qml's `lock()` uses to reach a top-level
+            // surface's IpcHandler from in-process QML; `-p
+            // Quickshell.configDir` is required since a bare `qs ipc call`
+            // targets the default config, not this named instance.
             Quickshell.execDetached(["qs", "-p", Quickshell.configDir, "ipc", "call", "record", "stop"])
         } else {
             Services.BarPopout.toggle("screenshot", root.rightX())

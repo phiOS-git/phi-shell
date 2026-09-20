@@ -6,12 +6,12 @@ import "../../Bar/glyphs.js" as Glyphs
 import "../../../Widgets/Format.js" as Format
 
 // Folds Wifi.qml/Ethernet.qml's own content into one card, plus
-// Tailscale/VPN/Firewall — Bar/modules/Network.qml only ever opens
-// "network" as of , so those standalone keys are
-// unreachable from any bar icon (kept dormant, not deleted). Each
-// sub-section gets its own settings deep-link since this merges four
-// independent Settings destinations into one card — the shared card
-// header's settings icon (Header.qml) only covers a single-topic card.
+// Tailscale/VPN/Firewall — Bar/modules/Network.qml only ever opens "network"
+// as of , so those standalone keys are unreachable from any bar icon (kept
+// dormant, not deleted). Each sub-section gets its own settings deep-link
+// since this merges four independent Settings destinations into one card — the
+// shared card header's settings icon (Header.qml) only covers a single-topic
+// card.
 
 Widgets.StaggerReveal {
     id: root
@@ -165,9 +165,9 @@ Widgets.StaggerReveal {
             checked: Services.Tailscale.connected
             onToggled: (v) => v ? Services.Tailscale.up() : Services.Tailscale.down()
         }
-        // Plain label+value text, not a ListRow — this row has no
-        // interaction wired behind it, it's just status text (a ListRow is
-        // always interactive: hover state, pointer cursor, selection).
+        // Plain label+value text, not a ListRow — this row has no interaction
+        // wired behind it, it's just status text (a ListRow is always
+        // interactive: hover state, pointer cursor, selection).
         Item {
             width: parent.width
             visible: Services.Tailscale.connected
@@ -276,9 +276,9 @@ Widgets.StaggerReveal {
             enabled: Services.Firewall.nftAvailable && !Services.Firewall.busy
             onToggled: (v) => v ? Services.Firewall.enable() : Services.Firewall.disable()
         }
-        // A select-one option list — the same thin-list treatment as the
-        // Wi-Fi network list and the Bluetooth device list above, not a
-        // row of labelled action buttons.
+        // A select-one option list — the same thin-list treatment as the Wi-Fi
+        // network list and the Bluetooth device list above, not a row of
+        // labelled action buttons.
         Column {
             width: parent.width
             visible: Services.Firewall.enabled

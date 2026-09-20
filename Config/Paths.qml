@@ -1,11 +1,11 @@
 pragma Singleton
 import Quickshell
 
-// Resolves every runtime state/config/data path the shell uses.
-// `phi state` only covers a closed set of flat scalar keys — anything that
-// is a collection or a nested object (per-app rules, prefs objects, lists)
-// lives instead as its own plain JSON file under stateDir, each owned by
-// the Services/*.qml (or Config/*.qml) file noted next to it below.
+// Resolves every runtime state/config/data path the shell uses. `phi state`
+// only covers a closed set of flat scalar keys — anything that is a collection
+// or a nested object (per-app rules, prefs objects, lists) lives instead as
+// its own plain JSON file under stateDir, each owned by the Services/*.qml (or
+// Config/*.qml) file noted next to it below.
 
 Singleton {
     id: root
@@ -39,9 +39,9 @@ Singleton {
 
     // Clipboard capture is plain POSIX sh with no JSON writer, so structure
     // lives in the filesystem: one <id>.data + <id>.mime pair per entry
-    // `latest` holds the newest id so a single watched file can signal a
-    // new arrival without polling. pins.json/rules.json are the pieces
-    // Quickshell itself writes.
+    // `latest` holds the newest id so a single watched file can signal a new
+    // arrival without polling. pins.json/rules.json are the pieces Quickshell
+    // itself writes.
     readonly property string clipboardDir: root.stateDir + "/clipboard"
     readonly property string clipboardEntriesDir: root.clipboardDir + "/entries"
     readonly property string clipboardLatestFile: root.clipboardDir + "/latest"
@@ -63,9 +63,9 @@ Singleton {
     // Owned by Services/DynamicWallpaper.qml.
     readonly property string dynamicWallpaperPrefsFile: root.stateDir + "/dynamic-wallpaper.json"
     // HEIC/HEIF frames rendered for the dynamic wallpaper. Qt has no HEIC
-    // decoder, so Services/DynamicWallpaper.qml converts the picked frame
-    // with ImageMagick into one cached JPEG per source file, keyed by the
-    // file's mtime + the frame index.
+    // decoder, so Services/DynamicWallpaper.qml converts the picked frame with
+    // ImageMagick into one cached JPEG per source file, keyed by the file's
+    // mtime + the frame index.
     readonly property string dynamicWallpaperCacheDir: root.dataDir + "/dynamic-heic-cache"
     // Cached `phi wallpaper texture` output, named "<mode>-<intensity>.png".
     readonly property string texturesDir: root.dataDir + "/textures"
@@ -80,9 +80,9 @@ Singleton {
     // Bar clock format prefs. Written by Settings, read by
     // Components/Bar/modules/Clock.qml.
     readonly property string clockPrefsFile: root.stateDir + "/clock.json"
-    // Chroma's per-key override map and integration settings. (The two
-    // scalar values with a phi-state key, toggle.chroma/chroma.color, stay
-    // there — one value, one writer.)
+    // Chroma's per-key override map and integration settings. (The two scalar
+    // values with a phi-state key, toggle.chroma/chroma.color, stay there —
+    // one value, one writer.)
     readonly property string chromaConfigFile: root.stateDir + "/chroma.json"
     // Battery sound prefs. Owned by Services/PowerBridge.qml.
     readonly property string powerSoundPrefsFile: root.stateDir + "/power-sound.json"
@@ -93,9 +93,9 @@ Singleton {
     // Battery-saver automation toggle. Owned by Services/PowerBridge.qml.
     readonly property string batterySaverPrefsFile: root.stateDir + "/battery-saver.json"
 
-    // Deliberately $HOME/Documents, not an XDG user-dirs lookup — resolving
-    // a relocated Documents folder would need a package this project
-    // doesn't otherwise depend on. A real but narrow gap.
+    // Deliberately $HOME/Documents, not an XDG user-dirs lookup — resolving a
+    // relocated Documents folder would need a package this project doesn't
+    // otherwise depend on. A real but narrow gap.
     readonly property string documentsDir: Quickshell.env("HOME") + "/Documents"
     readonly property string quickNoteDir: root.documentsDir + "/phiOS Quick Notes"
     readonly property string quickNoteFile: root.quickNoteDir + "/quick-note.md"

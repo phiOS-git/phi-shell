@@ -21,9 +21,9 @@ import qs.Widgets as Widgets
 //
 // The grid draws one workspace at a time — `viewedWorkspaceId`, which panning
 // can move independently of both the selection and the real active workspace
-// (see that property for the three-way split). Window data is a
-// `hyprctl clients -j` snapshot taken on open, since a momentary surface wants
-// a snapshot; the workspace strip reads the live HyprlandBridge model.
+// (see that property for the three-way split). Window data is a `hyprctl
+// clients -j` snapshot taken on open, since a momentary surface wants a
+// snapshot; the workspace strip reads the live HyprlandBridge model.
 //
 // WlrLayer.Overlay with exclusiveZone -1 and a Widgets.Scrim, like every modal
 // panel here, so the dim covers the status bars.
@@ -32,8 +32,8 @@ PanelWindow {
     id: root
 
     property bool shown: false
-    // true when opened by Alt+Tab (Alt is held, its release confirms);
-    // false when opened by the gesture or a plain toggle (pointer-driven).
+    // true when opened by Alt+Tab (Alt is held, its release confirms); false
+    // when opened by the gesture or a plain toggle (pointer-driven).
     property bool heldOpen: false
     // Selection tracked by window address, so it survives a re-snapshot.
     property string selectedAddress: ""
@@ -46,27 +46,28 @@ PanelWindow {
         if (root.WlrLayershell) root.WlrLayershell.layer = WlrLayer.Overlay
     }
 
-    // PanelWindow has no `opacity` property (see Components/Toast.qml's
-    // note) — the fade lives on fadeRoot; `visible` holds until it settles.
+    // PanelWindow has no `opacity` property (see Components/Toast.qml's note)
+    // — the fade lives on fadeRoot; `visible` holds until it settles.
     visible: root.shown || fadeRoot.opacity > 0
 
     // Escape closes the surface, relevant only in the gesture-opened mode. The
-    // held Alt+Tab mode gets Escape from the compositor: the "alttab" submap binds
-    // it to the same cancel() IPC call before this surface sees a key. The gesture
-    // path never enters that submap, so it needs real Wayland keyboard focus.
+    // held Alt+Tab mode gets Escape from the compositor: the "alttab" submap
+    // binds it to the same cancel() IPC call before this surface sees a key.
+    // The gesture path never enters that submap, so it needs real Wayland
+    // keyboard focus.
     Services.LayerFocus { target: root }
 
     IpcHandler {
         target: "alttab"
         function next(): void { root._cycle(1) }
         function prev(): void { root._cycle(-1) }
-        // Guarded on `shown`: the ALT_L/ALT_R release binds that call this
-        // are registered globally (submap_universal), so this can fire from
-        // an Alt release unrelated to Alt+Tab — do nothing then.
+        // Guarded on `shown`: the ALT_L/ALT_R release binds that call this are
+        // registered globally (submap_universal), so this can fire from an Alt
+        // release unrelated to Alt+Tab — do nothing then.
         function confirm(): void { if (root.shown) root._confirm() }
         function cancel(): void { root._close() }
-        // The gesture and a plain toggle open the same surface,
-        // persistently (there is no Alt to release).
+        // The gesture and a plain toggle open the same surface, persistently
+        // (there is no Alt to release).
         function open(): void { root._open(false) }
         function close(): void { root._close() }
         function toggle(): void { root.shown ? root._close() : root._open(false) }
@@ -82,21 +83,21 @@ PanelWindow {
 
     // --- window snapshot --------------------------------------------------
 
-    // [{ address, title, cls, wsId, wsName }], workspace order not sorted
-    // here (groups does that).
+    // [{ address, title, cls, wsId, wsName }], workspace order not sorted here
+    // (groups does that).
     property var windows: []
 
     // _applyStartSelection is asynchronous — clientsProc then activeProc each
     // round-trip through hyprctl — while _selectStartWindow sets a provisional
     // selection the instant the snapshot lands, so the surface never opens on
-    // nothing. Two races live in that gap, both ending with the provisional pick
-    // as the final answer: a second Tab press cycling before activeProc returns
-    // and then being overwritten by the late response, or Alt being released
-    // before it returns at all.
+    // nothing. Two races live in that gap, both ending with the provisional
+    // pick as the final answer: a second Tab press cycling before activeProc
+    // returns and then being overwritten by the late response, or Alt being
+    // released before it returns at all.
     //
-    // _snapshotSeq and _userMoved close both: a response applies only if it belongs
-    // to the current open and the user has not moved the selection since it was
-    // requested.
+    // _snapshotSeq and _userMoved close both: a response applies only if it
+    // belongs to the current open and the user has not moved the selection
+    // since it was requested.
     property int _snapshotSeq: 0
     property bool _userMoved: false
 
@@ -114,10 +115,12 @@ PanelWindow {
                     for (let i = 0; i < arr.length; i++) {
                         const c = arr[i]
                         if (!c || !c.workspace || c.workspace.id < 0) continue
-                        // This shell's own process appears in `hyprctl clients -j` as a real toplevel
-                        // (class "org.quickshell") on a real workspace. "Select the window after the
-                        // active one" could land on it, and the grid never draws it, so the selection
-                        // pointed at nothing and every visible box read as unselected.
+                        // This shell's own process appears in `hyprctl clients
+                        // -j` as a real toplevel (class "org.quickshell") on a
+                        // real workspace. "Select the window after the active
+                        // one" could land on it, and the grid never draws it,
+                        // so the selection pointed at nothing and every
+                        // visible box read as unselected.
                         if (c.class === "org.quickshell") continue
                         out.push({
                             address: c.address,
@@ -156,8 +159,9 @@ PanelWindow {
     // --- derived model ---------------------------------------------------
 
     // Windows grouped by workspace, ascending. Not the layout model — the grid
-    // draws only viewedWorkspaceId — this exists to give `flat` a deterministic
-    // cycle order, since Alt+Tab still cycles across every workspace.
+    // draws only viewedWorkspaceId — this exists to give `flat` a
+    // deterministic cycle order, since Alt+Tab still cycles across every
+    // workspace.
     readonly property var groups: {
         const byWs = ({})
         const order = []
@@ -173,8 +177,8 @@ PanelWindow {
         return order.map((id) => byWs[id])
     }
 
-    // Flat list in the exact top-to-bottom, left-to-right order shown, for
-    // Tab cycling.
+    // Flat list in the exact top-to-bottom, left-to-right order shown, for Tab
+    // cycling.
     readonly property var flat: {
         const out = []
         for (let g = 0; g < root.groups.length; g++)
@@ -189,9 +193,9 @@ PanelWindow {
         return -1
     }
 
-    // The workspace the selected window is on — kept as the single source
-    // used both to seed viewedWorkspaceId below and (unchanged from
-    // before) as part of window-focus bookkeeping.
+    // The workspace the selected window is on — kept as the single source used
+    // both to seed viewedWorkspaceId below and (unchanged from before) as part
+    // of window-focus bookkeeping.
     readonly property int selectedWorkspaceId: {
         const i = root.selectedFlatIndex
         return (i >= 0) ? root.flat[i].wsId : -1
@@ -205,8 +209,9 @@ PanelWindow {
     //   - a workspace-pill click through _panTo(), which sets this directly and
     //     leaves selectedAddress alone.
     //
-    // The two can genuinely disagree — panning to workspace 3 while the selection
-    // is a window on workspace 1 — which is the point of panning, not a bug.
+    // The two can genuinely disagree — panning to workspace 3 while the
+    // selection is a window on workspace 1 — which is the point of panning,
+    // not a bug.
     property int viewedWorkspaceId: -1
 
     onSelectedAddressChanged: {
@@ -225,9 +230,9 @@ PanelWindow {
         return -1
     }
 
-    // The grid's model: root.windows filtered to the viewed workspace, in snapshot
-    // order. `groups` and `flat` above still drive Alt+Tab's cycle order across
-    // every workspace; only what is drawn changes here.
+    // The grid's model: root.windows filtered to the viewed workspace, in
+    // snapshot order. `groups` and `flat` above still drive Alt+Tab's cycle
+    // order across every workspace; only what is drawn changes here.
     readonly property var viewedWindows: {
         const out = []
         for (let i = 0; i < root.windows.length; i++)
@@ -249,16 +254,16 @@ PanelWindow {
     function _close() {
         root.shown = false
         root.heldOpen = false
-        // Cleared, not left stale: otherwise a reopen on the same window set skips the
-        // provisional pick below and briefly shows the previous selection until the
-        // async lookup corrects it.
+        // Cleared, not left stale: otherwise a reopen on the same window set
+        // skips the provisional pick below and briefly shows the previous
+        // selection until the async lookup corrects it.
         root.selectedAddress = ""
     }
 
     function _selectStartWindow() {
-        // Snapshot just arrived. Ask Hyprland which window is active so we
-        // can land on "the next one" (Alt+Tab convention); if the query is
-        // slow, _applyStartSelection still runs with "" and picks index 0.
+        // Snapshot just arrived. Ask Hyprland which window is active so we can
+        // land on "the next one" (Alt+Tab convention); if the query is slow,
+        // _applyStartSelection still runs with "" and picks index 0.
         if (root.flat.length === 0) { root.selectedAddress = ""; return }
         // Provisional pick so the surface never opens with nothing selected.
         if (root.selectedFlatIndex < 0)
@@ -268,8 +273,9 @@ PanelWindow {
     }
 
     function _applyStartSelection(activeAddr) {
-        // The user has already cycled since this lookup was requested; applying it now
-        // would revert their input to wherever activewindow was when _open() ran.
+        // The user has already cycled since this lookup was requested;
+        // applying it now would revert their input to wherever activewindow
+        // was when _open() ran.
         if (!root.shown || root.flat.length === 0 || root._userMoved) return
         let start = 0
         if (root.flat.length > 1 && activeAddr.length > 0) {
@@ -298,22 +304,23 @@ PanelWindow {
         root._close()
     }
 
-    // Dispatch goes through Services.HyprlandBridge.dispatch(), not a
-    // `hyprctl dispatch` subprocess: this Hyprland build's Lua config repurposes
-    // that socket command to EVALUATE its argument as Lua, so dispatcher strings
-    // like `focuswindow address:...` failed silently every time (execDetached()
-    // never reads the child's output, so nothing surfaced it). The Lua-call form
-    // `focus({ window = "address:0x..." })` switches to the window's workspace and
-    // focuses it in one call, so the workspace half needs no separate command.
+    // Dispatch goes through Services.HyprlandBridge.dispatch(), not a `hyprctl
+    // dispatch` subprocess: this Hyprland build's Lua config repurposes that
+    // socket command to EVALUATE its argument as Lua, so dispatcher strings
+    // like `focuswindow address:...` failed silently every time
+    // (execDetached() never reads the child's output, so nothing surfaced it).
+    // The Lua-call form `focus({ window = "address:0x..." })` switches to the
+    // window's workspace and focuses it in one call, so the workspace half
+    // needs no separate command.
     function _focusWindow(addr) {
         if (addr && addr.length > 0)
             Services.HyprlandBridge.dispatch("hl.dsp.focus({ window = \"address:" + addr + "\" })")
     }
 
     // A workspace-pill click pans the view: nothing dispatches to Hyprland and
-    // nothing closes, only `viewedWorkspaceId` changes. The window-focus path is
-    // unaffected — _focusWindow already switches workspace and focuses in one
-    // dispatch.
+    // nothing closes, only `viewedWorkspaceId` changes. The window-focus path
+    // is unaffected — _focusWindow already switches workspace and focuses in
+    // one dispatch.
     function _panTo(wsId) {
         if (wsId === root.viewedWorkspaceId) return
         panFade.targetWsId = wsId
@@ -329,9 +336,9 @@ PanelWindow {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
-    // The shade comes from Widgets.Panel's default rendering; the box overrides
-    // Panel's base padding with a more generous one, since the usual default suits
-    // a much smaller control.
+    // The shade comes from Widgets.Panel's default rendering; the box
+    // overrides Panel's base padding with a more generous one, since the usual
+    // default suits a much smaller control.
     readonly property real cellW: chWidth * 28
     readonly property real cellH: chWidth * 12
     readonly property real cellGap: chWidth * Config.Appearance.space2
@@ -363,8 +370,9 @@ PanelWindow {
             onClicked: root._close()
         }
 
-        // Window grid: one centred row of same-size boxes for viewedWindows, one
-        // workspace at a time. `gridWrap` is what _panTo's crossfade fades.
+        // Window grid: one centred row of same-size boxes for viewedWindows,
+        // one workspace at a time. `gridWrap` is what _panTo's crossfade
+        // fades.
         Item {
             id: gridWrap
             width: root.width * 0.92
@@ -431,10 +439,10 @@ PanelWindow {
             }
         }
 
-        // The pan crossfade: fade the current set out, swap viewedWorkspaceId while
-        // invisible, fade the new set in. Deliberately not Widgets/StaggerReveal, which
-        // cascades a static set of declared children — this is one coherent swap of an
-        // entire model.
+        // The pan crossfade: fade the current set out, swap viewedWorkspaceId
+        // while invisible, fade the new set in. Deliberately not
+        // Widgets/StaggerReveal, which cascades a static set of declared
+        // children — this is one coherent swap of an entire model.
         SequentialAnimation {
             id: panFade
             property int targetWsId: -1
@@ -458,9 +466,9 @@ PanelWindow {
             visible: root.flat.length === 0
         }
 
-        // Distinct from the empty state above: windows exist somewhere,
-        // just not on the workspace currently being viewed (reachable now
-        // that panning can show an empty workspace without closing).
+        // Distinct from the empty state above: windows exist somewhere, just
+        // not on the workspace currently being viewed (reachable now that
+        // panning can show an empty workspace without closing).
         Widgets.StyledText {
             anchors.centerIn: parent
             kind: "label"
@@ -482,22 +490,24 @@ PanelWindow {
                 Widgets.Segment {
                     id: wsPill
                     required property var modelData
-                    // Matches Bar/modules/Workspaces.qml's own pills —
-                    // same control in two places should look identical.
+                    // Matches Bar/modules/Workspaces.qml's own pills — same
+                    // control in two places should look identical.
                     ambient: "workspace"
                     widthBoost: wsPill.active ? root.chWidth * Config.Appearance.space2 : 0
                     squared: true
                     visible: wsPill.modelData.id > 0
                     label: wsPill.modelData.name.length > 0
                         ? wsPill.modelData.name : String(wsPill.modelData.id)
-                    // Highlights viewedWorkspaceId, what the grid is actually showing, not
-                    // selectedWorkspaceId. The two agree except just after a pan; `tone` below is
-                    // the weaker cue for where Hyprland will be if the surface closes without a
+                    // Highlights viewedWorkspaceId, what the grid is actually
+                    // showing, not selectedWorkspaceId. The two agree except
+                    // just after a pan; `tone` below is the weaker cue for
+                    // where Hyprland will be if the surface closes without a
                     // pick.
                     active: wsPill.modelData.id === root.viewedWorkspaceId
-                    // Folds "really active" into the same pill as a subtler signal rather than a
-                    // second full highlight, which would fight for attention in so small a strip.
-                    // Shown only when the two diverge.
+                    // Folds "really active" into the same pill as a subtler
+                    // signal rather than a second full highlight, which would
+                    // fight for attention in so small a strip. Shown only when
+                    // the two diverge.
                     tone: (wsPill.modelData.id === root.activeWorkspaceId
                         && wsPill.modelData.id !== root.viewedWorkspaceId) ? "info" : ""
                     onActivated: root._panTo(wsPill.modelData.id)

@@ -3,20 +3,18 @@ import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
 // The standard two-state switch: a rectangular track at radius-small with a
-// square knob that slides left (off) → right (on).
-// The B&W grammar is unchanged: the on-state is a full inversion
-// (WidgetStates.surfaceColors "active" → track inverts to the opposite
-// colour, knob takes the main colour), so an on Toggle reads as inverted
-// exactly like every other active control. `active` in the shared state
-// model is `checked`.
-// Controlled component, not self-mutating: a tap emits toggled(!checked)
-// and leaves `checked` untouched — every caller binds `checked` to an
-// external source of truth (a Services/*.qml singleton's reactive
-// property) and flips it from `onToggled`. Assigning `checked` here would
-// drop that binding on the first tap.
-// The design scale's space tokens are non-linear past space4 (1,2,3,4,6,8ch)
-// — `space5` names the FIFTH step, not "5ch". `space4` (4ch) against the
-// 2ch (`space2`) height gives the track its 2:1 ratio.
+// square knob that slides left (off) → right (on). The B&W grammar is
+// unchanged: the on-state is a full inversion (WidgetStates.surfaceColors
+// "active" → track inverts to the opposite colour, knob takes the main
+// colour), so an on Toggle reads as inverted exactly like every other active
+// control. `active` in the shared state model is `checked`. Controlled
+// component, not self-mutating: a tap emits toggled(!checked) and leaves
+// `checked` untouched — every caller binds `checked` to an external source of
+// truth (a Services/*.qml singleton's reactive property) and flips it from
+// `onToggled`. Assigning `checked` here would drop that binding on the first
+// tap. The design scale's space tokens are non-linear past space4
+// (1,2,3,4,6,8ch) — `space5` names the FIFTH step, not "5ch". `space4` (4ch)
+// against the 2ch (`space2`) height gives the track its 2:1 ratio.
 
 Item {
     id: root
@@ -36,8 +34,8 @@ Item {
         active: root.checked, keyboardFocus: root.keyboardFocus,
         loading: root.loading, invalid: root.invalid
     })
-    // See WidgetStates.js's own "toggle" ambient branch for why a plain
-    // B&W panel inversion wasn't enough here.
+    // See WidgetStates.js's own "toggle" ambient branch for why a plain B&W
+    // panel inversion wasn't enough here.
     readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState, "toggle")
 
     // design/tokens.common.sh stores space-N in `ch`, not px — see
@@ -68,8 +66,8 @@ Item {
         radius: Config.Appearance.radiusSmall
         color: root.stateColors.bg
         // The hairline token, not the bulkier generic one — see
-        // WidgetStates.js's "toggle" ambient for the matching
-        // border-colour change.
+        // WidgetStates.js's "toggle" ambient for the matching border-colour
+        // change.
         border.width: Config.Appearance.borderWidthStrong
         border.color: root.stateColors.border
 

@@ -122,21 +122,20 @@ Widgets.Segment {
     Component.onCompleted: root._sync()
 
     iconDelegate: Component {
-        // `pivot` packs the three status badges (Tailscale, VPN, firewall)
-        // to the LEFT of the main glyph. Each badge exists only while its
-        // own option is up — no fixed reservation — so the badge Row
-        // re-flows as states change and `implicitWidth` follows it: the
-        // group grows from the left edge while the main glyph stays pinned
-        // to the right and never shifts. Every gap — badge-to-badge and
-        // badge-to-main — is the same `_badgeGap`, so when several badges
-        // are up the icons read as one evenly-spaced set.
-        // `width: implicitWidth` is required, not a nicety: Segment loads
-        // this delegate through a plain Loader that only imposes a size on
-        // the loaded item when the Loader itself has an explicit size
-        // (qquickloader.cpp's setInitialState/_q_updateSize, and Segment's
-        // `customIcon` Loader never sets one). An Item's `width` defaults
-        // to 0, which would collapse every `anchors.left/right` inside
-        // this root onto a single point — the jam the old fixed
+        // `pivot` packs the three status badges (Tailscale, VPN, firewall) to
+        // the LEFT of the main glyph. Each badge exists only while its own
+        // option is up — no fixed reservation — so the badge Row re-flows as
+        // states change and `implicitWidth` follows it: the group grows from
+        // the left edge while the main glyph stays pinned to the right and
+        // never shifts. Every gap — badge-to-badge and badge-to-main — is the
+        // same `_badgeGap`, so when several badges are up the icons read as
+        // one evenly-spaced set. `width: implicitWidth` is required, not a
+        // nicety: Segment loads this delegate through a plain Loader that only
+        // imposes a size on the loaded item when the Loader itself has an
+        // explicit size (qquickloader.cpp's setInitialState/_q_updateSize, and
+        // Segment's `customIcon` Loader never sets one). An Item's `width`
+        // defaults to 0, which would collapse every `anchors.left/right`
+        // inside this root onto a single point — the jam the old fixed
         // reservation was masking.
         Item {
             id: pivot
@@ -147,9 +146,9 @@ Widgets.Segment {
             implicitHeight: Math.max(ethIcon.implicitHeight, badges.implicitHeight)
 
             // The three status badges, left to right in the order the
-            // Connectivity settings section lists them. Each is `visible`
-            // only while active (so the Row drops it and spacing re-flows)
-            // and fades in through its own amount.
+            // Connectivity settings section lists them. Each is `visible` only
+            // while active (so the Row drops it and spacing re-flows) and
+            // fades in through its own amount.
             Row {
                 id: badges
                 anchors.left: parent.left
@@ -203,11 +202,11 @@ Widgets.Segment {
                 }
             }
 
-            // Primary glyph: the ethernet plug when a wired NIC exists at
-            // all; otherwise the Wi-Fi fan (its own connecting-pulse
-            // included) — off and no-radio both read through that same
-            // fan at low resting opacity, see the file header's "NOT
-            // built" note on why there's no separate disabled-vs-off glyph.
+            // Primary glyph: the ethernet plug when a wired NIC exists at all;
+            // otherwise the Wi-Fi fan (its own connecting-pulse included) —
+            // off and no-radio both read through that same fan at low resting
+            // opacity, see the file header's "NOT built" note on why there's
+            // no separate disabled-vs-off glyph.
             Widgets.EthernetIcon {
                 id: ethIcon
                 visible: root.usingEthernet

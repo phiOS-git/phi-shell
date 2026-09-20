@@ -4,24 +4,21 @@ import Quickshell
 import Quickshell.Io
 import qs.Config as Config
 
-// Drives hyprsunset via `hyprctl hyprsunset` IPC:
-// hyprctl hyprsunset temperature <K> warm shift to K
-// hyprctl hyprsunset identity no shift (True Tone's "off" state
-// and the plain on/off toggle's own
-// off state both resolve here)
-// Owns toggle.night-mode / toggle.true-tone / nightmode.temp itself, the
+// Drives hyprsunset via `hyprctl hyprsunset` IPC: hyprctl hyprsunset
+// temperature <K> warm shift to K hyprctl hyprsunset identity no shift (True
+// Tone's "off" state and the plain on/off toggle's own off state both resolve
+// here) Owns toggle.night-mode / toggle.true-tone / nightmode.temp itself, the
 // same way Services/Notifications.qml owns toggle.dnd — the settings panel
-// calls this file's functions rather than Config.Settings directly, so
-// there is one place, not two, that knows what changing night-mode/
-// True-Tone/temperature actually does.
-// True Tone reads ambient lux from /sys/bus/iio/devices/iio:device0/
-// in_illuminance_raw on a timer, mapped to a target temperature by a plain
-// linear heuristic this file invents (dark room -> warm 2700K, bright
-// daylight -> neutral 6500K). against real hardware — the
-// sysfs attribute name and the mapping curve have never been checked
-// against a captured raw value. The attribute-name probe below tries the
-// two common IIO conventions (in_illuminance_raw, in_illuminance_input)
-// and reports which one worked, rather than assuming.
+// calls this file's functions rather than Config.Settings directly, so there
+// is one place, not two, that knows what changing night-mode/
+// True-Tone/temperature actually does. True Tone reads ambient lux from
+// /sys/bus/iio/devices/iio:device0/ in_illuminance_raw on a timer, mapped to a
+// target temperature by a plain linear heuristic this file invents (dark room
+// -> warm 2700K, bright daylight -> neutral 6500K). against real hardware —
+// the sysfs attribute name and the mapping curve have never been checked
+// against a captured raw value. The attribute-name probe below tries the two
+// common IIO conventions (in_illuminance_raw, in_illuminance_input) and
+// reports which one worked, rather than assuming.
 
 Singleton {
     id: root
@@ -32,16 +29,15 @@ Singleton {
     property bool trueTone: false
     property int targetTemp: 4500
 
-    // A clock-driven alternative to flipping `enabled` by hand, distinct
-    // from True Tone above (which reacts to ambient light, not the clock).
-    // "off": `enabled` is purely manual.
-    // "auto": a fixed default window (autoStartHour..autoEndHour) turns it
-    // on/off automatically. No location/sunset calculation exists
-    // anywhere in this repo (that needs geolocation this project has no
-    // source for), so "auto" is a fixed evening-to-morning default
-    // rather than something computed.
-    // "custom": same automatic toggling, using scheduleStartHour/
-    // scheduleEndHour instead of the fixed default.
+    // A clock-driven alternative to flipping `enabled` by hand, distinct from
+    // True Tone above (which reacts to ambient light, not the clock). "off":
+    // `enabled` is purely manual. "auto": a fixed default window
+    // (autoStartHour..autoEndHour) turns it on/off automatically. No
+    // location/sunset calculation exists anywhere in this repo (that needs
+    // geolocation this project has no source for), so "auto" is a fixed
+    // evening-to-morning default rather than something computed. "custom":
+    // same automatic toggling, using scheduleStartHour/ scheduleEndHour
+    // instead of the fixed default.
     property string scheduleMode: "off"
     readonly property int autoStartHour: 20
     readonly property int autoEndHour: 7
@@ -72,24 +68,23 @@ Singleton {
         root._evaluateSchedule()
     }
 
-    // `phi state set` rejects an unknown key outright until phi is
-    // rebuilt and reinstalled from the commit that declares the schedule
-    // keys. Silently dropping that failure would make the schedule reset
-    // to its default on every shell restart with no visible cause, so
-    // this warns.
+    // `phi state set` rejects an unknown key outright until phi is rebuilt and
+    // reinstalled from the commit that declares the schedule keys. Silently
+    // dropping that failure would make the schedule reset to its default on
+    // every shell restart with no visible cause, so this warns.
     function _warnIfRejected(v, code) {
         if (code !== 0)
             console.warn("phi-shell: night-mode schedule setting was not saved (phi state rejected it, exit " + code + ") — is phi up to date?")
     }
 
-    // Re-run on every schedule-affecting change and every scheduleTimer
-    // tick. A window that wraps midnight (start > end, the normal case
-    // "auto"'s own 20..7 default included) is "on outside [end, start)";
-    // one that doesn't (start < end) is "on inside [start, end)". Equal
-    // start/end is treated as always-on — the only reading of a zero-width
-    // "off" window that isn't a silently dead setting nobody can reach by
-    // adjusting the fields (24 is not a selectable hour, so "always off"
-    // has no equal-hour representation to give it instead).
+    // Re-run on every schedule-affecting change and every scheduleTimer tick.
+    // A window that wraps midnight (start > end, the normal case "auto"'s own
+    // 20..7 default included) is "on outside [end, start)"; one that doesn't
+    // (start < end) is "on inside [start, end)". Equal start/end is treated as
+    // always-on — the only reading of a zero-width "off" window that isn't a
+    // silently dead setting nobody can reach by adjusting the fields (24 is
+    // not a selectable hour, so "always off" has no equal-hour representation
+    // to give it instead).
     function _evaluateSchedule() {
         if (root.scheduleMode === "off") return
         const start = root.scheduleMode === "auto" ? root.autoStartHour : root.scheduleStartHour
@@ -102,9 +97,9 @@ Singleton {
     }
 
     // No triggeredOnStart: the very first evaluation is already covered by
-    // _afterLoad() below, once all three schedule keys (mode, start, end)
-    // have actually finished loading — firing here too, before they load
-    // would risk one evaluation against the still-default start/end hours.
+    // _afterLoad() below, once all three schedule keys (mode, start, end) have
+    // actually finished loading — firing here too, before they load would risk
+    // one evaluation against the still-default start/end hours.
     Timer {
         id: scheduleTimer
         interval: 60000
@@ -138,9 +133,9 @@ Singleton {
 
     function _applyLux(lux) {
         if (!root.enabled || !root.trueTone) return
-        // 0 lux (dark) -> 2700K, 1000+ lux (bright indoor/daylight through
-        // a window) -> 6500K, linear in between. Unverified range, see
-        // this file's own header.
+        // 0 lux (dark) -> 2700K, 1000+ lux (bright indoor/daylight through a
+        // window) -> 6500K, linear in between. Unverified range, see this
+        // file's own header.
         const clampedLux = Math.max(0, Math.min(1000, lux))
         const k = Math.round(2700 + (clampedLux / 1000) * 3800)
         _run(["hyprctl", "hyprsunset", "temperature", String(k)])
@@ -148,8 +143,8 @@ Singleton {
 
     // A single reusable Process (command reassigned, then running set true
     // again), not a dynamically Component.created one per call — the same
-    // shape Settings/sections/Theme.qml's own setProc uses for
-    // `phi theme set`.
+    // shape Settings/sections/Theme.qml's own setProc uses for `phi theme
+    // set`.
     function _run(command) {
         proc.command = command
         proc.running = true

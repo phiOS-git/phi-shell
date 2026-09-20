@@ -1,19 +1,19 @@
 import QtQuick
 import qs.Config as Config
 
-// The per-key editor surface for Chroma's advanced mode: a plain rows×cols grid
-// of cells, one per addressable matrix position, each showing its override
-// colour (or the unset neutral). Clicking a cell selects it and emits
-// keyPicked — Settings/sections/Devices.qml opens a Widgets/ColorPicker
-// below and writes the result back through Services.Chroma.setKeyOverride.
-// Deliberately a raw matrix, not a drawn keyboard: this shell has no
-// verified keycap layout for the user's specific Razer Blade, and a wrong
-// one would mislabel every key. The grid dimensions come from the device
-// itself (Services.Chroma.matrixRows / matrixCols, from openrazer's
-// getMatrixDimensions). It doubles as the coordinate-discovery tool — click
-// a cell, see which physical key lights up, read off (row, col) for the
-// battery power-key and notification function-row settings.
-// Solid colour only — no lighting animation, per the user's directive.
+// The per-key editor surface for Chroma's advanced mode: a plain rows×cols
+// grid of cells, one per addressable matrix position, each showing its
+// override colour (or the unset neutral). Clicking a cell selects it and emits
+// keyPicked — Settings/sections/Devices.qml opens a Widgets/ColorPicker below
+// and writes the result back through Services.Chroma.setKeyOverride.
+// Deliberately a raw matrix, not a drawn keyboard: this shell has no verified
+// keycap layout for the user's specific Razer Blade, and a wrong one would
+// mislabel every key. The grid dimensions come from the device itself
+// (Services.Chroma.matrixRows / matrixCols, from openrazer's
+// getMatrixDimensions). It doubles as the coordinate-discovery tool — click a
+// cell, see which physical key lights up, read off (row, col) for the battery
+// power-key and notification function-row settings. Solid colour only — no
+// lighting animation, per the user's directive.
 
 Item {
     id: root

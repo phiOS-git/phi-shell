@@ -3,13 +3,12 @@ import qs.Config as Config
 import qs.Services as Services
 import "../../Bar/glyphs.js" as Glyphs
 
-// The power-action glyph/confirm logic shared by the "power" card (six
-// full rows) and the "status" card's own compact power-icon row — each
-// instantiates this once as a plain child, same reusable-non-singleton
-// shape as Services/LayerFocus.qml.
-// Confirmation: Services/ConfirmDialog.qml's shared centered modal closes
-// every other panel (this popout included) the moment it opens, so
-// cancelling returns to a closed bar, not a still-open action list.
+// The power-action glyph/confirm logic shared by the "power" card (six full
+// rows) and the "status" card's own compact power-icon row — each instantiates
+// this once as a plain child, same reusable-non-singleton shape as
+// Services/LayerFocus.qml. Confirmation: Services/ConfirmDialog.qml's shared
+// centered modal closes every other panel (this popout included) the moment it
+// opens, so cancelling returns to a closed bar, not a still-open action list.
 
 QtObject {
     id: root
@@ -29,13 +28,12 @@ QtObject {
     // The per-action semantic tone painted as the HOVER background of each
     // button in this module's power rows (shutdown error-red, logout/reboot
     // warn-amber, suspend info-blue, lock/hibernate accent), and the paired
-    // *Text token the glyph flips to while hovered so it stays readable on
-    // the fill — the status card's compact row (Status.qml) reads these
-    // directly. Dialogs/PowerActionsRow.qml carries the same two maps for
-    // the PowerMenu/Lock pills; they are duplicated exactly as the glyph
-    // map above is, because the BarPopout and Dialogs trees cannot import
-    // each other. Rule 6: every entry is a design token, never a literal
-    // colour.
+    // *Text token the glyph flips to while hovered so it stays readable on the
+    // fill — the status card's compact row (Status.qml) reads these directly.
+    // Dialogs/PowerActionsRow.qml carries the same two maps for the
+    // PowerMenu/Lock pills; they are duplicated exactly as the glyph map above
+    // is, because the BarPopout and Dialogs trees cannot import each other.
+    // Rule 6: every entry is a design token, never a literal colour.
     function toneFor(action) {
         switch (action) {
         case "lock": return Config.Appearance.accent

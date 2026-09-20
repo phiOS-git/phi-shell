@@ -8,20 +8,18 @@ import qs.Widgets as Widgets
 import "./sections" as Sections
 import "./modules/options.js" as Options
 
-// The settings panel. Section content is data-driven from sections.json
-// adding a section is a one-file registry change, not a code change (same
-// pattern as Bar.qml's modules.json). Left-hand vertical section list
-// (rather than a horizontal tab strip) since the section count doesn't fit
-// one row at any reasonable width.
-// Every section reads Config.Settings (phi state) or a Services/ bridge
-// none write into a repository path.
-// Search HIGHLIGHTS matches rather than filtering the section list, so
-// nothing already open ever disappears. Enter acts on the top-ranked result
-// from Settings/options.js: a whole section selects it, a specific option
-// reveals it (select the section, scroll to the row, pulse it). The same
-// reveal path is exposed over IPC (`qs ipc call settings reveal <id>`) for
-// a "Show in settings" button elsewhere in the shell.
-// Bound to Super+S in dotfiles.
+// The settings panel. Section content is data-driven from sections.json adding
+// a section is a one-file registry change, not a code change (same pattern as
+// Bar.qml's modules.json). Left-hand vertical section list (rather than a
+// horizontal tab strip) since the section count doesn't fit one row at any
+// reasonable width. Every section reads Config.Settings (phi state) or a
+// Services/ bridge none write into a repository path. Search HIGHLIGHTS
+// matches rather than filtering the section list, so nothing already open ever
+// disappears. Enter acts on the top-ranked result from Settings/options.js: a
+// whole section selects it, a specific option reveals it (select the section,
+// scroll to the row, pulse it). The same reveal path is exposed over IPC (`qs
+// ipc call settings reveal <id>`) for a "Show in settings" button elsewhere in
+// the shell. Bound to Super+S in dotfiles.
 
 PanelWindow {
     id: root
@@ -93,10 +91,10 @@ PanelWindow {
         return Options.sectionMatches(row.type, Services.SettingsPanel.query)
     }
 
-    // Enter in the search field acts on a ranked catalogue hit; pressing
-    // Enter again advances to the next one and wraps, so a query with
-    // several matches is walked by repeated Enter. `_acceptIdx` resets
-    // whenever the query changes (onTextChanged below).
+    // Enter in the search field acts on a ranked catalogue hit; pressing Enter
+    // again advances to the next one and wraps, so a query with several
+    // matches is walked by repeated Enter. `_acceptIdx` resets whenever the
+    // query changes (onTextChanged below).
     property int _acceptIdx: 0
     function _acceptCycle() {
         var hits = Options.rank(searchField.text)
@@ -168,8 +166,8 @@ PanelWindow {
         function toggle(): void { Services.SettingsPanel.toggle() }
         function open(): void { Services.SettingsPanel.show() }
         function close(): void { Services.SettingsPanel.hide() }
-        // Jumps straight to one control. `id` is a Settings/options.js
-        // option id, e.g. "connectivity.wifi.speed".
+        // Jumps straight to one control. `id` is a Settings/options.js option
+        // id, e.g. "connectivity.wifi.speed".
         function reveal(id: string): void { Services.SettingsPanel.reveal(id) }
         function section(name: string): void { Services.SettingsPanel.openSection(name) }
     }
@@ -305,8 +303,8 @@ PanelWindow {
                             visible: searchField.text.length === 0
                         }
                         // A row opts in to advanced-only visibility with
-                        // Modules.SettingsRow's own `advanced: true`; this switch
-                        // gates them.
+                        // Modules.SettingsRow's own `advanced: true`; this
+                        // switch gates them.
                         Row {
                             id: advancedRow
                             anchors.right: parent.right
@@ -323,7 +321,8 @@ PanelWindow {
                                 onToggled: (v) => Services.SettingsPanel.setShowAdvanced(v)
                             }
                         }
-                        // Same clear-button grammar as Launcher's search field.
+                        // Same clear-button grammar as Launcher's search
+                        // field.
                         Widgets.StyledIcon {
                             id: searchClearGlyph
                             visible: searchField.text.length > 0
@@ -376,8 +375,8 @@ PanelWindow {
                 // Matches contentFlick's own leftMargin/rightMargin.
                 anchors.leftMargin: root.gap
                 anchors.top: topSep.bottom
-                // Nav column and content pane start on the same line below
-                // the rule (both root.gap).
+                // Nav column and content pane start on the same line below the
+                // rule (both root.gap).
                 anchors.topMargin: root.gap
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: root.gap

@@ -109,34 +109,33 @@ Item {
                 anchors.margins: root._pad
                 wrapMode: Text.Wrap
                 text: root.text
-                // Agent/error replies render as markdown (bold, code
-                // lists, fenced blocks) — Qt's own textFormat mode, no
-                // external dependency. The user's own bubble stays plain
-                // text: what you typed displays as typed, not
-                // reinterpreted, the same convention every mainstream
-                // chat app already follows.
+                // Agent/error replies render as markdown (bold, code lists,
+                // fenced blocks) — Qt's own textFormat mode, no external
+                // dependency. The user's own bubble stays plain text: what you
+                // typed displays as typed, not reinterpreted, the same
+                // convention every mainstream chat app already follows.
                 textFormat: root.mine ? Text.PlainText : Text.MarkdownText
-                // The "you" bubble inverts, so its text takes the main
-                // colour; the agent bubble is a resting surface, ordinary
-                // ink; the error bubble uses the same invalid-state token
+                // The "you" bubble inverts, so its text takes the main colour;
+                // the agent bubble is a resting surface, ordinary ink; the
+                // error bubble uses the same invalid-state token
                 // Widgets.StyledText's own `invalid` prop draws from.
                 color: root.mine ? Config.Appearance.selectionText
                     : (root.isError ? Config.Appearance.errorText : Config.Appearance.textPrimary)
             }
 
-            // Hover-revealed copy button — this bubble had no way to get
-            // its text out of the panel at all before (StyledText/Text is
-            // not mouse-selectable the way a TextEdit is). `wl-copy` is
-            // the exact same clipboard mechanism this shell already uses
-            // (Screenshot/ColorPicker.qml, Launcher/Launcher.qml), not a
-            // new one. Hand-rolled rather than Widgets.SmallButton: that
-            // widget's `label` renders through its own fontUi StyledText
-            // not the fontSymbol icon font Widgets/StyledIcon.qml uses
-            // (its own header: mixing a glyph into a text font risks a
-            // missing-glyph box) — same small square-icon-button shape
-            // Dialogs/PowerActionsRow.qml's own pills already use, sized
-            // the same comfortable ~30px this shell's controlHeight gives
-            // every other control, not a bespoke tiny target.
+            // Hover-revealed copy button — this bubble had no way to get its
+            // text out of the panel at all before (StyledText/Text is not
+            // mouse-selectable the way a TextEdit is). `wl-copy` is the exact
+            // same clipboard mechanism this shell already uses
+            // (Screenshot/ColorPicker.qml, Launcher/Launcher.qml), not a new
+            // one. Hand-rolled rather than Widgets.SmallButton: that widget's
+            // `label` renders through its own fontUi StyledText not the
+            // fontSymbol icon font Widgets/StyledIcon.qml uses (its own
+            // header: mixing a glyph into a text font risks a missing-glyph
+            // box) — same small square-icon-button shape
+            // Dialogs/PowerActionsRow.qml's own pills already use, sized the
+            // same comfortable ~30px this shell's controlHeight gives every
+            // other control, not a bespoke tiny target.
             Rectangle {
                 id: copyBtn
                 anchors.top: parent.top
@@ -145,10 +144,9 @@ Item {
                 width: WidgetStates.controlHeight(Config.Appearance, copyChWidth)
                 height: width
                 radius: Config.Appearance.radiusSmall
-                // Opaque even at rest (matching the bubble's own colour
-                // not "transparent") so the icon never sits on top of
-                // wrapped text bleeding through underneath it while
-                // fading in.
+                // Opaque even at rest (matching the bubble's own colour not
+                // "transparent") so the icon never sits on top of wrapped text
+                // bleeding through underneath it while fading in.
                 color: copyHover.hovered ? Config.Appearance.panelHover
                     : (root.mine ? Config.Appearance.selectionBackground : Config.Appearance.surface1)
                 opacity: root.hovered ? 1 : 0

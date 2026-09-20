@@ -8,9 +8,8 @@ import "WidgetStates.js" as WidgetStates
 // NotificationBellIcon's `dndPop`.
 //
 // Kept as a real font-symbol glyph rather than hand-drawn: matching
-// Bar/glyphs.js's own glyph pixel-for-pixel by hand is unnecessary risk
-// for a shape this generic — same judgment BluetoothIcon makes for its own
-// glyph.
+// Bar/glyphs.js's own glyph pixel-for-pixel by hand is unnecessary risk for a
+// shape this generic — same judgment BluetoothIcon makes for its own glyph.
 
 Item {
     id: root
@@ -38,8 +37,8 @@ Item {
 
         scale: 1.0
         // No `Behavior on scale`, deliberately — `pop` below drives it
-        // directly; see NotificationBellIcon's identical note for why the
-        // two would otherwise fight over the same property.
+        // directly; see NotificationBellIcon's identical note for why the two
+        // would otherwise fight over the same property.
     }
 
     SequentialAnimation {

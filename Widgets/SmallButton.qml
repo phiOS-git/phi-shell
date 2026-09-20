@@ -2,17 +2,16 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// A quiet, compact push button for minor actions — a stepper's − / +, a
-// colour field's "pick", a "reset", the small actions inside a status-bar
-// popout. Distinct on purpose from Widgets/StyledButton (the full-weight
-// labelled action) and from the selectable-option grammar (StyledButton/
-// Segment with `active`): a minor action and a selectable choice must not
-// read the same.
-// At rest it is just a low-contrast label with no fill and no border;
-// hover brings it to full contrast with a faint wash; pressed inverts to a
-// small block, the same "inversione piena" every other control uses.
-// Same seven-state model and the same `label` / `active` / `clicked()`
-// API as StyledButton, so it drops in wherever that was overkill.
+// A quiet, compact push button for minor actions — a stepper's − / +, a colour
+// field's "pick", a "reset", the small actions inside a status-bar popout.
+// Distinct on purpose from Widgets/StyledButton (the full-weight labelled
+// action) and from the selectable-option grammar (StyledButton/ Segment with
+// `active`): a minor action and a selectable choice must not read the same. At
+// rest it is just a low-contrast label with no fill and no border; hover
+// brings it to full contrast with a faint wash; pressed inverts to a small
+// block, the same "inversione piena" every other control uses. Same
+// seven-state model and the same `label` / `active` / `clicked()` API as
+// StyledButton, so it drops in wherever that was overkill.
 
 Item {
     id: root
@@ -33,8 +32,8 @@ Item {
         active: root.active, keyboardFocus: root.keyboardFocus,
         loading: root.loading, invalid: root.invalid
     })
-    // "shaded", not the generic B&W default; see WidgetStates.js's own
-    // comment on this branch.
+    // "shaded", not the generic B&W default; see WidgetStates.js's own comment
+    // on this branch.
     readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState, "shaded")
 
     // design/tokens.common.sh stores space-N in `ch`, not px — see
@@ -48,13 +47,13 @@ Item {
     readonly property real chWidth: chMetrics.width
     readonly property real paddingH: WidgetStates.chToPixels(Config.Appearance.space2, chWidth)
     // Floors the height at the shared control height so a −/+ stepper, a
-    // "pick" or a "reset" lines up with the field it sits next to. Its
-    // "small" comes from no resting chrome and a muted label, not from
-    // being shorter than everything else.
+    // "pick" or a "reset" lines up with the field it sits next to. Its "small"
+    // comes from no resting chrome and a muted label, not from being shorter
+    // than everything else.
     readonly property real _controlHeight: WidgetStates.controlHeight(Config.Appearance, chWidth)
 
-    // No resting chrome; a background/border only once the control is
-    // hovered, focused or active.
+    // No resting chrome; a background/border only once the control is hovered,
+    // focused or active.
     readonly property bool _chrome: resolvedState === "hover"
         || resolvedState === "focus" || resolvedState === "active"
         || resolvedState === "invalid"

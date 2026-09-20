@@ -2,20 +2,18 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// Same dumb/reusable Canvas-icon family as SunMoonIcon/VolumeIcon/
-// BatteryIcon — Bar/modules/Wifi.qml owns the Services/WifiBridge.qml
-// reads.
-// No signal-STRENGTH gauge here, deliberately: Quickshell's Network API
-// (this project's pinned v0.3.1) exposes no signal-strength property
-// anywhere — a fabricated fluctuating strength bar would be decoration
-// with no real data behind it, which is worse than not building it. What
-// IS real and shown here: `connectAmount` (0..1 — connected vs not
-// Behavior-wrapped by the caller, category B) drives the base opacity of
-// the classic three-arc "wifi fan" silhouette, and `connecting` (a plain
-// bool — the real ConnectionState.Connecting device state) drives a
-// continuous breathing pulse ON TOP of that while active, motion category
-// A — the same reasoning Widgets/BatteryIcon.qml's charging bolt uses for
-// the same category.
+// Same dumb/reusable Canvas-icon family as SunMoonIcon/VolumeIcon/ BatteryIcon
+// — Bar/modules/Wifi.qml owns the Services/WifiBridge.qml reads. No
+// signal-STRENGTH gauge here, deliberately: Quickshell's Network API (this
+// project's pinned v0.3.1) exposes no signal-strength property anywhere — a
+// fabricated fluctuating strength bar would be decoration with no real data
+// behind it, which is worse than not building it. What IS real and shown here:
+// `connectAmount` (0..1 — connected vs not Behavior-wrapped by the caller,
+// category B) drives the base opacity of the classic three-arc "wifi fan"
+// silhouette, and `connecting` (a plain bool — the real
+// ConnectionState.Connecting device state) drives a continuous breathing pulse
+// ON TOP of that while active, motion category A — the same reasoning
+// Widgets/BatteryIcon.qml's charging bolt uses for the same category.
 
 Item {
     id: root
@@ -31,17 +29,17 @@ Item {
     width: _boxSize
     height: _boxSize
 
-    // Disconnected/idle arcs read at a low, fixed opacity rather than
-    // fully invisible — still recognisably "the wifi icon", just clearly
-    // inactive, same affordance StyledIcon's own disabled-state opacity
-    // takes elsewhere in this codebase.
+    // Disconnected/idle arcs read at a low, fixed opacity rather than fully
+    // invisible — still recognisably "the wifi icon", just clearly inactive,
+    // same affordance StyledIcon's own disabled-state opacity takes elsewhere
+    // in this codebase.
     readonly property real _restingOpacity: 0.28 + 0.72 * Math.max(0, Math.min(1, root.connectAmount))
 
     readonly property int _searchEasing: Config.Appearance.motionAEasing === "linear" ? Easing.Linear : Easing.OutQuad
-    // Not underscore-prefixed, unlike this file's other internals: it
-    // needs its own onSearchPulseChanged repaint trigger below, and
-    // QML's auto-generated handler name for a leading-underscore
-    // property is ambiguous enough to just avoid (same reasoning as
+    // Not underscore-prefixed, unlike this file's other internals: it needs
+    // its own onSearchPulseChanged repaint trigger below, and QML's
+    // auto-generated handler name for a leading-underscore property is
+    // ambiguous enough to just avoid (same reasoning as
     // Widgets/BatteryIcon.qml's pulseLevel).
     property real searchPulse: 0.0
     SequentialAnimation on searchPulse {
@@ -78,16 +76,16 @@ Item {
             ctx.arc(cx, cy, 0.05 * b, 0, 2 * Math.PI)
             ctx.fill()
 
-            // Three nested semicircular arcs bulging upward from the dot
-            // — the classic "wifi fan". `ctx.arc(cx, cy, r, PI, 2*PI)`
-            // sweeps from due-left through due-up to due-right in canvas'
-            // y-down angle convention, i.e. exactly the top half.
+            // Three nested semicircular arcs bulging upward from the dot — the
+            // classic "wifi fan". `ctx.arc(cx, cy, r, PI, 2*PI)` sweeps from
+            // due-left through due-up to due-right in canvas' y-down angle
+            // convention, i.e. exactly the top half.
             const radii = [0.17 * b, 0.29 * b, 0.41 * b]
             ctx.lineWidth = Math.max(1, b * 0.075)
             for (let i = 0; i < radii.length; i++) {
-                // The searching pulse adds emphasis outward-to-inward
-                // (outer arc breathes most), on top of the resting
-                // opacity — clamped so it never exceeds full opacity.
+                // The searching pulse adds emphasis outward-to-inward (outer
+                // arc breathes most), on top of the resting opacity — clamped
+                // so it never exceeds full opacity.
                 const pulseWeight = (i + 1) / radii.length
                 const a = Math.min(1, root._restingOpacity + root.searchPulse * 0.6 * pulseWeight)
                 ctx.globalAlpha = a

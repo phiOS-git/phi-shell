@@ -3,10 +3,10 @@ import qs.Config as Config
 import qs.Widgets as Widgets
 
 // A read-only, interactive month grid — no event/CalDAV backend exists
-// anywhere in this codebase. Clicking a day only highlights it locally;
-// no event data is fabricated. Prev/next navigate the viewed month; today
-// and the current selection are tracked independently so navigating away
-// and back loses neither.
+// anywhere in this codebase. Clicking a day only highlights it locally; no
+// event data is fabricated. Prev/next navigate the viewed month; today and the
+// current selection are tracked independently so navigating away and back
+// loses neither.
 
 Widgets.OverlaySection {
     id: root

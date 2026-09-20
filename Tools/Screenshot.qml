@@ -17,15 +17,23 @@ PanelWindow {
 
     readonly property bool selecting: root.mode.startsWith("select-")
 
-    // Mirrors this surface's two state properties into the Services/ScreenshotState.qml singleton so surfaces outside this component tree can read them without reaching in.
-    // `onModeChanged`/`onRecordingChanged` fire for every real change;
-    // the merged Component.onCompleted pushes the initial values before any change happens.
+    // Mirrors this surface's two state properties into the
+    // Services/ScreenshotState.qml singleton so surfaces outside this
+    // component tree can read them without reaching in.
+    // `onModeChanged`/`onRecordingChanged` fire for every real change; the
+    // merged Component.onCompleted pushes the initial values before any change
+    // happens.
     onModeChanged: Services.ScreenshotState.mode = root.mode
     onRecordingChanged: Services.ScreenshotState.recording = root.recording
 
     anchors { top: true; bottom: true; left: true; right: true }
-    // On the default Top layer, the bar's own exclusiveZone reduces this surface's available region to stop short of the bar strip — not a z-order occlusion, the region itself stops there, so neither the Scrim nor the selection MouseArea can reach it.
-    // Raising to WlrLayer.Overlay (below) paired with `exclusiveZone: -1` is the same fix Components/Overview.qml uses for the identical symptom, — dim covers the status bar too.
+    // On the default Top layer, the bar's own exclusiveZone reduces this
+    // surface's available region to stop short of the bar strip — not a
+    // z-order occlusion, the region itself stops there, so neither the Scrim
+    // nor the selection MouseArea can reach it. Raising to WlrLayer.Overlay
+    // (below) paired with `exclusiveZone: -1` is the same fix
+    // Components/Overview.qml uses for the identical symptom, so the dim covers the
+    // status bar too.
     exclusiveZone: -1
     color: "transparent"
     visible: root.selecting || root.resultText.length > 0
@@ -37,8 +45,9 @@ PanelWindow {
         Services.ScreenshotState.recording = root.recording
     }
 
-    // Every other modal-style overlay in this shell wires Escape to cancel/close;
-    // without this, the only way to back out of a selection near-empty drag or actually completing a capture.
+    // Every other modal-style overlay in this shell wires Escape to
+    // cancel/close; without this, the only way to back out of a selection
+    // near-empty drag or actually completing a capture.
     Services.LayerFocus { target: root }
     Item {
         id: keyScope
@@ -62,8 +71,12 @@ PanelWindow {
         return base + "/Recordings"
     }
 
-    // Neither grim nor wf-recorder is expected to create a missing parent directory itself, so this ensures both output directories exist.
-    // running=false in onExited even though nothing ever re-triggers this one: Process.onFinished() calls startProcessIfReady() unconditionally on exit, so ANY Process left with running still true after it completes respawns itself forever.
+    // Neither grim nor wf-recorder is expected to create a missing parent
+    // directory itself, so this ensures both output directories exist.
+    // running=false in onExited even though nothing ever re-triggers this one:
+    // Process.onFinished() calls startProcessIfReady() unconditionally on
+    // exit, so ANY Process left with running still true after it completes
+    // respawns itself forever.
     Process {
         id: ensureDirsProc
         command: ["sh", "-c", 'mkdir -p "$1" "$2"', "mkdir", root._picturesDir(), root._recordingsDir()]
@@ -83,7 +96,11 @@ PanelWindow {
     IpcHandler {
         target: "screenshot"
         function area(): void { root.mode = "select-save" }
-        // Window mode needs no selection overlay at all — the active window's geometry comes straight from `hyprctl activewindow -j` — so this calls the query directly rather than routing through `mode` and immediately resetting it again in the same tick (an earlier draft did and which this comment replaces).
+        // Window mode needs no selection overlay at all — the active window's
+        // geometry comes straight from `hyprctl activewindow -j` — so this
+        // calls the query directly rather than routing through `mode` and
+        // immediately resetting it again in the same tick (an earlier draft
+        // did and which this comment replaces).
         function window(): void { windowQueryComponent.createObject(root) }
         function fullscreen(): void { root._captureFullscreen() }
         function ocr(): void { root.mode = "select-ocr" }
@@ -125,13 +142,21 @@ PanelWindow {
                 root.mode = "idle"
                 return
             }
-            // grim's `-g` box is entirely in LOGICAL coordinates — `render()` subtracts it straight against each output's logical geometry and separately multiplies width/height by `scale` itself to size the output buffer, so scale is never something the caller should pre-multiply in.
-            // Pre-multiplying by devicePixelRatio breaks proportionally to a monitor's own x/y offset in a multi-monitor layout, since the offset is already logical and correct on its own.
-            // root.screen.x/y/width/height and mouse.x/y are all logical (Qt/QML's own convention) — exactly what grim wants, unmultiplied.
+            // grim's `-g` box is entirely in LOGICAL coordinates — `render()`
+            // subtracts it straight against each output's logical geometry and
+            // separately multiplies width/height by `scale` itself to size the
+            // output buffer, so scale is never something the caller should
+            // pre-multiply in. Pre-multiplying by devicePixelRatio breaks
+            // proportionally to a monitor's own x/y offset in a multi-monitor
+            // layout, since the offset is already logical and correct on its
+            // own. root.screen.x/y/width/height and mouse.x/y are all logical
+            // (Qt/QML's own convention) — exactly what grim wants,
+            // unmultiplied.
             const geometry = Math.round(root.screen.x + selectionRect.x) + ","
                 + Math.round(root.screen.y + selectionRect.y) + " "
                 + Math.round(selectionRect.width) + "x" + Math.round(selectionRect.height)
-            // Evaluated as a plain JS argument, before _captureGeometry hides this surface.
+            // Evaluated as a plain JS argument, before _captureGeometry hides
+            // this surface.
             root._captureGeometry(geometry, root.mode)
         }
 
@@ -146,9 +171,14 @@ PanelWindow {
 
     Widgets.Scrim {
         anchors.fill: parent
-        // Not `shown: root.selecting` alone — `_prepareCapture` resets `mode` to "idle" (so `selecting` goes false) BEFORE the async grim/tesseract/zbarimg run even starts, — OCR/QR result panel needs the scrim kept up independently of `selecting` or it would render with nothing behind it.
+        // Not `shown: root.selecting` alone — `_prepareCapture` resets `mode`
+        // to "idle" (so `selecting` goes false) BEFORE the async
+        // grim/tesseract/zbarimg run even starts, so the OCR/QR result panel needs
+        // the scrim kept up independently of `selecting` or it would render
+        // with nothing behind it.
         shown: root.selecting || root.resultText.length > 0
-        // Screenshot selection is one of the "covers the bar" dims — gets the stronger intensity.
+        // Screenshot selection is one of the "covers the bar" dims — gets the
+        // stronger intensity.
         strong: true
     }
 
@@ -157,8 +187,11 @@ PanelWindow {
     Widgets.Panel {
         anchors.centerIn: parent
         width: Math.min(parent.width * 0.8, 60 * chMetrics.width)
-        // Without a driven height the Panel collapses to its 0 implicit size and only the overflowing inner Column shows — text floating on the scrim with no card behind it.
-        // ConfirmDialog's card uses exactly this `height: body.implicitHeight + padding * 2` recipe, — surface background and border always wrap the content.
+        // Without a driven height the Panel collapses to its 0 implicit size
+        // and only the overflowing inner Column shows — text floating on the
+        // scrim with no card behind it. ConfirmDialog's card uses exactly this
+        // `height: body.implicitHeight + padding * 2` recipe, so the surface
+        // background and border always wrap the content.
         height: body.implicitHeight + padding * 2
         padding: chMetrics.width * Config.Appearance.space3
         visible: root.resultText.length > 0
@@ -181,7 +214,10 @@ PanelWindow {
                 mono: true
                 text: root.resultText
             }
-            // _copyTextToClipboard already runs silently on every successful OCR/QR read (see _runOcr/_runQr) — this confirms the side effect that actually matters: it's already on the clipboard, ready to paste.
+            // _copyTextToClipboard already runs silently on every successful
+            // OCR/QR read (see _runOcr/_runQr) — this confirms the side effect
+            // that actually matters: it's already on the clipboard, ready to
+            // paste.
             Widgets.StyledText {
                 width: parent.width
                 kind: "label"; sizeStep: 0
@@ -202,7 +238,10 @@ PanelWindow {
     // That interval is a reasoned default, not hardware-verified: if a capture is still occasionally tinted, this is the one thing to try raising.
     function _prepareCapture(fn) {
         root.mode = "idle"
-        // A stale, undismissed OCR/QR result panel is part of this surface's own visible UI too — discarding unread text is deliberate: leaving it up would let it leak into the NEW capture, the same bug in a second shape.
+        // A stale, undismissed OCR/QR result panel is part of this surface's
+        // own visible UI too — discarding unread text is deliberate: leaving
+        // it up would let it leak into the NEW capture, the same bug in a
+        // second shape.
         root.resultText = ""
         selectionRect.width = 0
         selectionRect.height = 0
@@ -233,7 +272,9 @@ PanelWindow {
         })
     }
 
-    // forMode is captured by value at each call site before this hides root.mode — onReleased's own comment and windowQueryComponent, the two callers.
+    // forMode is captured by value at each call site before this hides
+    // root.mode — onReleased's own comment and windowQueryComponent, the two
+    // callers.
     function _captureGeometry(geometry, forMode) {
         root._prepareCapture(() => root._doCaptureGeometry(geometry, forMode))
     }
@@ -247,7 +288,11 @@ PanelWindow {
         })
     }
 
-    // "select-window" resolves the active window's geometry via `hyprctl activewindow -j` before capturing — this is the one place this file reads Hyprland state directly rather than through Services/ HyprlandBridge.qml: HyprlandToplevel exposes no pixel geometry at all, so there is nothing there to route through.
+    // "select-window" resolves the active window's geometry via `hyprctl
+    // activewindow -j` before capturing — this is the one place this file
+    // reads Hyprland state directly rather than through Services/
+    // HyprlandBridge.qml: HyprlandToplevel exposes no pixel geometry at all,
+    // so there is nothing there to route through.
     property Component windowQueryComponent: Component {
         Process {
             id: windowQueryProc
@@ -382,8 +427,14 @@ PanelWindow {
         recordProc.running = true
     }
 
-    // wf-recorder finalises its output file correctly only on SIGINT, not SIGTERM — Quickshell's own Process.running = false sends SIGTERM (setRunning(false) calls QProcess::terminate()), so stopping sends SIGINT explicitly via Process.signal() instead of relying on that.
-    // A separate `kill -INT <pid>` Process spawned from recordProc.processId is the wrong way to do this: a stale processId at the moment that Process spawns can leave the encoder killed uncleanly, corrupting the file ("moov atom not found") since its trailer never gets written.
+    // wf-recorder finalises its output file correctly only on SIGINT, not
+    // SIGTERM — Quickshell's own Process.running = false sends SIGTERM
+    // (setRunning(false) calls QProcess::terminate()), so stopping sends
+    // SIGINT explicitly via Process.signal() instead of relying on that. A
+    // separate `kill -INT <pid>` Process spawned from recordProc.processId is
+    // the wrong way to do this: a stale processId at the moment that Process
+    // spawns can leave the encoder killed uncleanly, corrupting the file
+    // ("moov atom not found") since its trailer never gets written.
     // Process.signal() removes that whole indirection.
     function _stopRecording() {
         if (!root.recording) return

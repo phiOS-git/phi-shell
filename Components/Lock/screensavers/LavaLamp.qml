@@ -34,13 +34,13 @@ Item {
 
     property bool running: true
 
-    // Peak opacity of a blob centre. Low, so the clock / password field on
-    // top stay readable.
+    // Peak opacity of a blob centre. Low, so the clock / password field on top
+    // stay readable.
     property real intensity: 0.28
-    // A plain multiplier on every per-tick motion delta below, not a
-    // second timer interval: changing `interval` instead would also
-    // change how often the colour phase and gradient repaint happen
-    // coupling "how fast it moves" to "how smooth it looks" for no reason.
+    // A plain multiplier on every per-tick motion delta below, not a second
+    // timer interval: changing `interval` instead would also change how often
+    // the colour phase and gradient repaint happen coupling "how fast it
+    // moves" to "how smooth it looks" for no reason.
     property real speed: 1.0
     // --- lock/auth state (bound by Lock.qml on the active effect) -------
     // Read-only reaction inputs for the auth flow, wired straight from
@@ -64,9 +64,9 @@ Item {
     readonly property var features: ["verification", "lockout"]
 
     property int blobCount: 9
-    // Multiplier on the elliptical morph amplitude and the horizontal
-    // drift wobble — 0 would be perfectly circular, motionless-shape blobs
-    // (still drifting vertically); higher values read as more turbulent.
+    // Multiplier on the elliptical morph amplitude and the horizontal drift
+    // wobble — 0 would be perfectly circular, motionless-shape blobs (still
+    // drifting vertically); higher values read as more turbulent.
     property real wobble: 1.0
 
     property var blobs: []
@@ -85,9 +85,9 @@ Item {
                 vy: root._rand(-0.0016, 0.0016),
                 wob: root._rand(0, Math.PI * 2),
                 wobRate: root._rand(0.008, 0.02),
-                // Independent morph phases per axis, per blob — out of
-                // phase with each other and with every other blob, so the
-                // field never pulses in unison.
+                // Independent morph phases per axis, per blob — out of phase
+                // with each other and with every other blob, so the field
+                // never pulses in unison.
                 morphPhase: root._rand(0, Math.PI * 2),
                 morphRate: root._rand(0.010, 0.022),
                 morph2Phase: root._rand(0, Math.PI * 2),
@@ -153,17 +153,16 @@ Item {
                 var cx = blob.x * width
                 var cy = blob.y * height
 
-                // Heat expansion: bigger near the bottom (the lamp's own
-                // heat source), smaller near the top — clamped so a blob
-                // mid-wrap (y outside 0..1) doesn't overshoot the range.
+                // Heat expansion: bigger near the bottom (the lamp's own heat
+                // source), smaller near the top — clamped so a blob mid-wrap
+                // (y outside 0..1) doesn't overshoot the range.
                 var heatFactor = 0.82 + 0.36 * root._clamp01(blob.y)
                 var baseR = blob.r * unit * heatFactor
 
-                // Elliptical squash/stretch on two independent sines
-                // never a perfect circle, never symmetric with itself
-                // (the two axes are out of phase), the actual "wobbling
-                // mass" cue a rigid circle can't give no matter how it
-                // moves.
+                // Elliptical squash/stretch on two independent sines never a
+                // perfect circle, never symmetric with itself (the two axes
+                // are out of phase), the actual "wobbling mass" cue a rigid
+                // circle can't give no matter how it moves.
                 var rx = baseR * (1 + 0.22 * root.wobble * Math.sin(blob.morphPhase))
                 var ry = baseR * (1 + 0.22 * root.wobble * Math.sin(blob.morph2Phase))
                 rx = Math.max(1, rx); ry = Math.max(1, ry)
@@ -191,9 +190,8 @@ Item {
             // Auth reactions (the bound state above): a full-surface cast
             // toward `info` that breathes with the field's pulse while
             // `validating`, and toward `error` that fades as the lockout
-            // countdown drains. The two can't overlap — respond() is
-            // guarded by `!lockedOut` — but the `else if` keeps it
-            // explicit.
+            // countdown drains. The two can't overlap — respond() is guarded
+            // by `!lockedOut` — but the `else if` keeps it explicit.
             if (root.validating && root.validationProgress > 0.001) {
                 var lift = Config.Appearance.info
                 ctx.fillStyle = Qt.rgba(lift.r, lift.g, lift.b,

@@ -5,24 +5,23 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 
 // Bottom-bar centre isle: icons for all windows in the current workspace
-// active status for the focused one, click to focus.
-// Data source: Services.HyprlandBridge.toplevels, filtered to the
-// workspace that is currently ACTIVE ON THIS BAR'S OWN SCREEN — found by
-// scanning Services.HyprlandBridge.workspaces the same way Bar/modules/
-// Workspaces.qml does, not the single global `activeToplevel`, since a
-// monitor keeps showing its own current workspace even while keyboard
-// focus is on a different monitor.
-// `HyprlandToplevel` has no `wmClass` property — the real app id is one
-// level down, `.wayland.appId`, on the wrapped Wayland toplevel handle
-// (see `_wmClass`'s own comment below). It also has no `.activate()`
-// that's a HyprlandWorkspace method, not a HyprlandToplevel one; focusing
-// a window goes through `hl.dsp.focus({ window = "address:..." })` over
+// active status for the focused one, click to focus. Data source:
+// Services.HyprlandBridge.toplevels, filtered to the workspace that is
+// currently ACTIVE ON THIS BAR'S OWN SCREEN — found by scanning
+// Services.HyprlandBridge.workspaces the same way Bar/modules/ Workspaces.qml
+// does, not the single global `activeToplevel`, since a monitor keeps showing
+// its own current workspace even while keyboard focus is on a different
+// monitor. `HyprlandToplevel` has no `wmClass` property — the real app id is
+// one level down, `.wayland.appId`, on the wrapped Wayland toplevel handle
+// (see `_wmClass`'s own comment below). It also has no `.activate()` that's a
+// HyprlandWorkspace method, not a HyprlandToplevel one; focusing a window goes
+// through `hl.dsp.focus({ window = "address:..." })` over
 // Services.HyprlandBridge.dispatch instead, the same fix
-// Components/Overview.qml's own `_focusWindow` needed.
-// Icon resolution: the same DesktopEntries.heuristicLookup(wmClass) +
-// Quickshell.iconPath(...) pair Components/Overview.qml uses. A window
-// whose class resolves no desktop entry falls back to a single glyph-less
-// initial letter — the text IS the icon content, not text next to an icon.
+// Components/Overview.qml's own `_focusWindow` needed. Icon resolution: the
+// same DesktopEntries.heuristicLookup(wmClass) + Quickshell.iconPath(...) pair
+// Components/Overview.qml uses. A window whose class resolves no desktop entry
+// falls back to a single glyph-less initial letter — the text IS the icon
+// content, not text next to an icon.
 
 Item {
     id: root
@@ -59,11 +58,10 @@ Item {
         return out
     }
 
-    // Falls back to the empty-state label's own width when there is
-    // nothing to show — otherwise this Item (and the centre isle around
-    // it, via Bar.qml's own Loader width binding) would collapse to zero
-    // width and the "no windows" dash would render off-centre instead of
-    // simply not appearing.
+    // Falls back to the empty-state label's own width when there is nothing to
+    // show — otherwise this Item (and the centre isle around it, via Bar.qml's
+    // own Loader width binding) would collapse to zero width and the "no
+    // windows" dash would render off-centre instead of simply not appearing.
     implicitWidth: root._windows.length > 0 ? row.implicitWidth : emptyText.implicitWidth
     implicitHeight: Math.max(row.implicitHeight, emptyText.implicitHeight)
 
@@ -80,9 +78,9 @@ Item {
 
                 // `HyprlandToplevel` has no `wmClass` property at all
                 // (address/handle/wayland/title/activated/urgent/
-                // lastIpcObject/workspace/monitor, no `wmClass`) — the
-                // real app id lives one level down, on the wrapped
-                // Wayland toplevel handle's own `appId`.
+                // lastIpcObject/workspace/monitor, no `wmClass`) — the real
+                // app id lives one level down, on the wrapped Wayland toplevel
+                // handle's own `appId`.
                 readonly property string _wmClass: (winBtn.modelData.wayland ? winBtn.modelData.wayland.appId : "") || ""
                 readonly property string _title: winBtn.modelData.title || ""
                 readonly property var _entry: DesktopEntries.heuristicLookup(winBtn._wmClass)

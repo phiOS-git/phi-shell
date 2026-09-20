@@ -3,19 +3,19 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// `hyprctl binds -j` parsing, factored out of Components/Cheatsheet.qml so
-// the settings panel's read-only Keybindings section reads the exact same
-// data through the exact same parsing rather than a second copy.
-// Cheatsheet.qml reads this file instead of running its own Process.
-// Still read-only and fetched fresh on every refresh() call, never cached
-// across a real config edit — there is no second place holding this data.
-// context() derives a group label per binding, and groups() buckets the
-// live list into ordered sections — a derivation over the one live query
-// not a stored second copy. `hyprctl binds -j` carries no context field of
-// its own, so the signal is, in priority order: the `description` string
-// (every phi-shell bind sets one), then the dispatcher + arg, then the
-// submap, then the raw keysym (the XF86* media keys). A binding that
-// can't be classified goes to "Other" rather than being dropped.
+// `hyprctl binds -j` parsing, factored out of Components/Cheatsheet.qml so the
+// settings panel's read-only Keybindings section reads the exact same data
+// through the exact same parsing rather than a second copy. Cheatsheet.qml
+// reads this file instead of running its own Process. Still read-only and
+// fetched fresh on every refresh() call, never cached across a real config
+// edit — there is no second place holding this data. context() derives a group
+// label per binding, and groups() buckets the live list into ordered sections
+// — a derivation over the one live query not a stored second copy. `hyprctl
+// binds -j` carries no context field of its own, so the signal is, in priority
+// order: the `description` string (every phi-shell bind sets one), then the
+// dispatcher + arg, then the submap, then the raw keysym (the XF86* media
+// keys). A binding that can't be classified goes to "Other" rather than being
+// dropped.
 
 Singleton {
     id: root
@@ -48,9 +48,9 @@ Singleton {
         }
     }
 
-    // Modifier-bit decoding (SHIFT=1, CTRL=4, ALT=8, SUPER=64): the
-    // standard XKB/wlroots modifier bit convention, not independently
-    // confirmed against a real `hyprctl binds -j` capture.
+    // Modifier-bit decoding (SHIFT=1, CTRL=4, ALT=8, SUPER=64): the standard
+    // XKB/wlroots modifier bit convention, not independently confirmed against
+    // a real `hyprctl binds -j` capture.
     function modText(modmask) {
         if (!modmask) return ""
         const names = []
@@ -73,9 +73,9 @@ Singleton {
         return [root.modText(bind.modmask), bind.key].filter((s) => s && s.length > 0).join(" + ")
     }
 
-    // The fixed section order. groups() only emits the ones that have at
-    // least one binding, in this order; a label not listed here (should
-    // not happen) is appended after.
+    // The fixed section order. groups() only emits the ones that have at least
+    // one binding, in this order; a label not listed here (should not happen)
+    // is appended after.
     readonly property var contextOrder: [
         "Window management",
         "Window switching",
@@ -86,8 +86,8 @@ Singleton {
         "Other"
     ]
 
-    // The group label for one binding. See the file header for the
-    // priority order. Pure classification — reads, never writes.
+    // The group label for one binding. See the file header for the priority
+    // order. Pure classification — reads, never writes.
     function context(bind) {
         var d = String(bind.description || "").toLowerCase()
         var disp = String(bind.dispatcher || "").toLowerCase()
@@ -98,8 +98,8 @@ Singleton {
         function argHas(s) { return arg.indexOf(s) !== -1 }
         function ipcTo(target) { return argHas("ipc call " + target) }
 
-        // A submap binding, or the entry points into the alt-tab submap.
-        // The resize submap (Super+R and its arrow/hjkl children) is window
+        // A submap binding, or the entry points into the alt-tab submap. The
+        // resize submap (Super+R and its arrow/hjkl children) is window
         // management, not window switching — classify it before the generic
         // submap rule catches it.
         if (sub === "resize" || d.indexOf("resize mode") !== -1)
@@ -152,8 +152,8 @@ Singleton {
         return "Other"
     }
 
-    // [{ context, binds: [...] }, …] over `list` (defaults to the live
-    // set), in contextOrder, skipping empty groups.
+    // [{ context, binds: [...] }, …] over `list` (defaults to the live set),
+    // in contextOrder, skipping empty groups.
     function groups(list) {
         var src = list || root.binds || []
         var bucket = ({})

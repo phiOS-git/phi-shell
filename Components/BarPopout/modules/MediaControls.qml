@@ -6,20 +6,19 @@ import "../../Bar/glyphs.js" as Glyphs
 import "../../../Widgets/WidgetStates.js" as WidgetStates
 
 // The media controls body shared by BarPopout/modules/Media.qml (the full
-// popout card) and BarPopout/modules/Status.qml's media section — the
-// same inner section in both cards so future layout changes happen here
-// once. Reads the active MPRIS player from Services.Mpris; `active` is
-// driven by the consuming card so the one-second progress timer and the
-// marquee drift only run while the card is actually on screen.
-// The MPRIS source (identity) line is clickable and focuses the player's
-// own window: it scans Services.HyprlandBridge.toplevels for a window
-// whose app id matches the player's desktopEntry (then identity) and
-// dispatches the proven `hl.dsp.focus({ window = "address:..." })` — the
-// same path Bar/modules/WindowList.qml uses. Players expose no window
-// handle over MPRIS, only a desktop-entry name, so this is best effort: a
-// player whose window class differs from its desktop entry (rare) is
-// simply not found, and the fallback is MPRIS's own raise() when the
-// player implements it.
+// popout card) and BarPopout/modules/Status.qml's media section — the same
+// inner section in both cards so future layout changes happen here once. Reads
+// the active MPRIS player from Services.Mpris; `active` is driven by the
+// consuming card so the one-second progress timer and the marquee drift only
+// run while the card is actually on screen. The MPRIS source (identity) line
+// is clickable and focuses the player's own window: it scans
+// Services.HyprlandBridge.toplevels for a window whose app id matches the
+// player's desktopEntry (then identity) and dispatches the proven
+// `hl.dsp.focus({ window = "address:..." })` — the same path
+// Bar/modules/WindowList.qml uses. Players expose no window handle over MPRIS,
+// only a desktop-entry name, so this is best effort: a player whose window
+// class differs from its desktop entry (rare) is simply not found, and the
+// fallback is MPRIS's own raise() when the player implements it.
 
 Column {
     id: root
@@ -77,8 +76,8 @@ Column {
 
     // --- identity / track info ------------------------------------------
 
-    // The source is clickable — the click target is the whole label row;
-    // hover brightens the text so the line reads as actionable.
+    // The source is clickable — the click target is the whole label row; hover
+    // brightens the text so the line reads as actionable.
     Item {
         width: parent.width
         implicitHeight: sourceLine.implicitHeight
@@ -95,8 +94,8 @@ Column {
         TapHandler { onTapped: root._focusSource() }
     }
     // Track title and artist—album lines marquee when they don't fit
-    // (Widgets/MarqueeText.qml); `running` follows the card gate so the
-    // drift never ticks while the card is closed.
+    // (Widgets/MarqueeText.qml); `running` follows the card gate so the drift
+    // never ticks while the card is closed.
     Widgets.MarqueeText {
         width: parent.width
         kind: "title"; sizeStep: 0
@@ -118,10 +117,10 @@ Column {
     // --- elapsed / total + read-only progress rail ----------------------
 
     // MprisPlayer's own `position` is deliberately non-reactive (quickshell
-    // only pushes updates on non-linear changes — track change, seek — to
-    // save CPU), so this timer re-reads it once a second while the card is
-    // open and imperatively drives the two readouts; `onActiveChanged` /
-    // `onCompleted` catch every state change in between.
+    // only pushes updates on non-linear changes — track change, seek — to save
+    // CPU), so this timer re-reads it once a second while the card is open and
+    // imperatively drives the two readouts; `onActiveChanged` / `onCompleted`
+    // catch every state change in between.
     Item {
         width: parent.width
         implicitHeight: Math.max(posBar.implicitHeight, posTimes.implicitHeight)
@@ -139,9 +138,9 @@ Column {
             anchors.right: posTimes.left
             anchors.rightMargin: root.chWidth * Config.Appearance.space2
             anchors.verticalCenter: parent.verticalCenter
-            // Read-only on purpose: seeking is beyond this card's scope
-            // (a `canSeek` interactive Meter is a small follow-up once
-            // real usage asks for it).
+            // Read-only on purpose: seeking is beyond this card's scope (a
+            // `canSeek` interactive Meter is a small follow-up once real usage
+            // asks for it).
             interactive: false
             fillColor: Config.Appearance.accent
         }
@@ -149,17 +148,16 @@ Column {
 
     // --- transport: shuffle / prev-play-pause-next / repeat -------------
 
-    // One row so every glyph sits on the same centre line, bound with a
-    // wider gap (space3) between the outboard shuffle/repeat and the
-    // transport trio (space2) — the separation that keeps the "what to
-    // play next" controls apart from the queue-state toggles. Every
-    // button is 5 ch tall, the play/pause target, so no neighbour reads
-    // as vertically off-line beside it.
-    // Shuffle and repeat appear only when the active player supports them
+    // One row so every glyph sits on the same centre line, bound with a wider
+    // gap (space3) between the outboard shuffle/repeat and the transport trio
+    // (space2) — the separation that keeps the "what to play next" controls
+    // apart from the queue-state toggles. Every button is 5 ch tall, the
+    // play/pause target, so no neighbour reads as vertically off-line beside
+    // it. Shuffle and repeat appear only when the active player supports them
     // ("if available") and are hidden otherwise; the row then centres what
     // remains. IconButton has no disabled/active look of its own, so each
-    // button gates the click at the signal, fades to the shared inactive
-    // ratio while disabled, and paints accent while its queue state is on.
+    // button gates the click at the signal, fades to the shared inactive ratio
+    // while disabled, and paints accent while its queue state is on.
     Row {
         anchors.horizontalCenter: parent.horizontalCenter
         spacing: root.chWidth * Config.Appearance.space3
@@ -253,8 +251,8 @@ Column {
             Behavior on opacity {
                 NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
             }
-            // Off → Playlist ("repeat all") → Track ("repeat one") → Off
-            // the same cycle reference players use.
+            // Off → Playlist ("repeat all") → Track ("repeat one") → Off the
+            // same cycle reference players use.
             onActivated: {
                 const p = Services.Mpris.active
                 if (!repeatBtn.enabled || p === null) return

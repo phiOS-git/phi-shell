@@ -2,21 +2,20 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// A row inside a list, popover or launcher result set. The one place in
-// this widget library that renders the ">" glyph, reserved for the active
-// input point only: it marks keyboard-navigation position specifically
-// (the resolved "focus" state), distinct from `active` (a persisted
-// selection, e.g. "this is the current tab") — the two can coexist on the
-// same row without conflict, since resolve() already gives active/pressed
-// precedence over a bare focus state. The row has one leading slot: it
-// shows ">" while focused, else the row's own `glyph` if it has one, else
-// nothing — never both, so the glyph never appears as ambient decoration.
-// `thin` (opt-in, default false — plain text, a highlighter pill, no
-// resting box) is a distinct compact style for a status-bar-overlay device
-// list (Widgets/WifiNetworkList.qml and similar), set explicitly only at
-// those call sites, never as this widget's own default — ListRow is the
-// SHARED row used everywhere (Settings nav, the agent panel's project
-// list, the memory-notice picker, …), and every one of those surfaces
+// A row inside a list, popover or launcher result set. The one place in this
+// widget library that renders the ">" glyph, reserved for the active input
+// point only: it marks keyboard-navigation position specifically (the resolved
+// "focus" state), distinct from `active` (a persisted selection, e.g. "this is
+// the current tab") — the two can coexist on the same row without conflict,
+// since resolve() already gives active/pressed precedence over a bare focus
+// state. The row has one leading slot: it shows ">" while focused, else the
+// row's own `glyph` if it has one, else nothing — never both, so the glyph
+// never appears as ambient decoration. `thin` (opt-in, default false — plain
+// text, a highlighter pill, no resting box) is a distinct compact style for a
+// status-bar-overlay device list (Widgets/WifiNetworkList.qml and similar),
+// set explicitly only at those call sites, never as this widget's own default
+// — ListRow is the SHARED row used everywhere (Settings nav, the agent panel's
+// project list, the memory-notice picker, …), and every one of those surfaces
 // wants the original panel-button look.
 
 Item {
@@ -28,13 +27,12 @@ Item {
     property bool active: false
     property bool loading: false
     property bool invalid: false
-    // A search-match wash, distinct from `active` (a persisted selection):
-    // the settings nav highlights an entry whose section matches the query
-    // without hiding the others. Default-off — every existing caller is
-    // unaffected.
+    // A search-match wash, distinct from `active` (a persisted selection): the
+    // settings nav highlights an entry whose section matches the query without
+    // hiding the others. Default-off — every existing caller is unaffected.
     property bool highlighted: false
-    // See this file's own header — opt-in, default false (the original
-    // look). True is the status-bar-overlay device-list style.
+    // See this file's own header — opt-in, default false (the original look).
+    // True is the status-bar-overlay device-list style.
     property bool thin: false
 
     readonly property bool hovered: hoverHandler.hovered
@@ -49,33 +47,32 @@ Item {
         loading: root.loading, invalid: root.invalid
     })
     // The "list" ambient (WidgetStates.js) is the thin-text/highlighter
-    // recipe, read only when `thin` is set; every other ambient's
-    // `default` case (the plain, no-ambient call below) still paints a
-    // full-contrast block behind the row at rest, this widget's original
-    // look.
+    // recipe, read only when `thin` is set; every other ambient's `default`
+    // case (the plain, no-ambient call below) still paints a full-contrast
+    // block behind the row at rest, this widget's original look.
     readonly property var stateColors: root.thin
         ? WidgetStates.surfaceColors(Config.Appearance, resolvedState, "list")
         : WidgetStates.surfaceColors(Config.Appearance, resolvedState)
-    // The "hover effect (opacity)" half of the same request, `thin` only:
-    // a resting row reads at reduced emphasis, hovering (or being
-    // selected/focused/invalid, all of which already carry their own
-    // colour cue) brings it to full. The original (non-thin) look never
-    // dimmed a resting row this way.
+    // The "hover effect (opacity)" half of the same request, `thin` only: a
+    // resting row reads at reduced emphasis, hovering (or being
+    // selected/focused/invalid, all of which already carry their own colour
+    // cue) brings it to full. The original (non-thin) look never dimmed a
+    // resting row this way.
     readonly property real restEmphasis: root.thin
         && (root.resolvedState === "default" || root.resolvedState === "disabled")
         ? 0.7 : 1.0
 
     // When the row background inverts (the "active"/selected state
-    // surfaceColors() → bg: contrast), the label, value and leading glyph
-    // must invert with it or the row reads as invisible same-on-same
-    // Segment and StyledButton already recolour their own content this
-    // way. `labelColor` tracks the resolved fg in every state (which is
-    // the ordinary full-contrast ink except when inverted or invalid);
-    // `valueColor` keeps the affordance split — a value stays low-contrast
-    // monochrome at rest — and only follows the inversion when the whole
-    // row is selected (`thin` also follows it on keyboard-focus, since
-    // that state gets its own highlighter pill there too — the original
-    // look has no such pill to match).
+    // surfaceColors() → bg: contrast), the label, value and leading glyph must
+    // invert with it or the row reads as invisible same-on-same Segment and
+    // StyledButton already recolour their own content this way. `labelColor`
+    // tracks the resolved fg in every state (which is the ordinary
+    // full-contrast ink except when inverted or invalid); `valueColor` keeps
+    // the affordance split — a value stays low-contrast monochrome at rest —
+    // and only follows the inversion when the whole row is selected (`thin`
+    // also follows it on keyboard-focus, since that state gets its own
+    // highlighter pill there too — the original look has no such pill to
+    // match).
     readonly property color labelColor: root.stateColors.fg
     readonly property color valueColor: (root.resolvedState === "active"
             || (root.thin && root.resolvedState === "focus"))
@@ -93,9 +90,9 @@ Item {
     readonly property real chWidth: chMetrics.width
     readonly property real inset: WidgetStates.chToPixels(Config.Appearance.space2, chWidth)
     readonly property real gap: WidgetStates.chToPixels(Config.Appearance.space1, chWidth)
-    // The `thin` highlight's own small overshoot past the text it hugs
-    // same proportion Launcher.qml's own result-row highlight uses
-    // (`hpad: root.chWidth * 0.6`), not this row's `inset` above.
+    // The `thin` highlight's own small overshoot past the text it hugs same
+    // proportion Launcher.qml's own result-row highlight uses (`hpad:
+    // root.chWidth * 0.6`), not this row's `inset` above.
     readonly property real hpad: root.chWidth * 0.6
 
     // `thin` rows are noticeably denser: Launcher.qml's own result row is
@@ -106,10 +103,9 @@ Item {
         * (root.thin ? 1 : 2)
     // Most callers explicitly bind `width:` and never read this back, but
     // Widgets/ContextMenu.qml's `layout` Column sizes the popup window from
-    // `layout.implicitWidth` — for a Column that's the max of its
-    // children's own `implicitWidth`, never their assigned `width` — so
-    // leaving this unset collapses every row (and the whole menu) to zero
-    // width.
+    // `layout.implicitWidth` — for a Column that's the max of its children's
+    // own `implicitWidth`, never their assigned `width` — so leaving this
+    // unset collapses every row (and the whole menu) to zero width.
     implicitWidth: (root.thin ? 0 : root.inset)
         + (leading.visible ? leading.implicitWidth + root.gap : 0)
         + labelText.implicitWidth
@@ -118,8 +114,8 @@ Item {
     activeFocusOnTab: true
     opacity: WidgetStates.opacityFor(resolvedState) * root.restEmphasis
 
-    // The original look: a full-row-width filled Rectangle, present at
-    // every state (colour alone changes).
+    // The original look: a full-row-width filled Rectangle, present at every
+    // state (colour alone changes).
     Rectangle {
         visible: !root.thin
         anchors.fill: parent
@@ -131,11 +127,11 @@ Item {
         }
     }
 
-    // The `thin` "highlighter effect": a Rectangle sized to the leading
-    // glyph + label text ONLY (not the row's full width, and not the
-    // trailing `value`) — Launcher.qml's own result-row highlight is the
-    // literal reference this shape copies. Shown for active/keyboard-focus
-    // only; hover is opacity-only (`restEmphasis` above).
+    // The `thin` "highlighter effect": a Rectangle sized to the leading glyph
+    // + label text ONLY (not the row's full width, and not the trailing
+    // `value`) — Launcher.qml's own result-row highlight is the literal
+    // reference this shape copies. Shown for active/keyboard-focus only; hover
+    // is opacity-only (`restEmphasis` above).
     Rectangle {
         visible: root.thin
         x: (leading.visible ? leading.x : labelText.x) - root.hpad
@@ -162,8 +158,8 @@ Item {
     StyledIcon {
         id: leading
         // The only glyph in this widget library carrying the "active input
-        // point" meaning — shown for the focus state specifically, never
-        // for hover/active/pressed, and never anywhere else.
+        // point" meaning — shown for the focus state specifically, never for
+        // hover/active/pressed, and never anywhere else.
         glyph: root.resolvedState === "focus" ? ">" : root.glyph
         visible: glyph.length > 0
         color: root.labelColor

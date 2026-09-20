@@ -6,7 +6,9 @@ import Quickshell
 Singleton {
     id: root
 
-    // Colors.qml, not Tokens.qml: a variant switch rewrites Colors.json, never this singleton's own source, so reading it doesn't force a destructive full re-evaluation of Appearance itself.
+    // Colors.qml, not Tokens.qml: a variant switch rewrites Colors.json, never
+    // this singleton's own source, so reading it doesn't force a destructive
+    // full re-evaluation of Appearance itself.
     readonly property string variant: Colors.variant
 
     // --- Structure ---------------------------------------------------------
@@ -21,7 +23,8 @@ Singleton {
     readonly property color border: _color(_tok("border", Colors.border))
     readonly property color borderStrong: _color(_tok("border-strong", Colors.borderStrong))
     readonly property color overlayScrim: _color(Colors.overlayScrim)
-    // For full-attention blocking surfaces only — not overridable, same as overlayScrim.
+    // For full-attention blocking surfaces only — not overridable, same as
+    // overlayScrim.
     readonly property color overlayScrimStrong: _color(Colors.overlayScrimStrong)
 
     // --- Accent and semantic state ------------------------------------------
@@ -29,7 +32,8 @@ Singleton {
     readonly property color accentText: {
         var explicit = _tok("accent-fg", null)
         if (explicit !== null) return _color(explicit)
-        // Auto-flip when accent is overridden but its text colour is not: a user-picked light accent needs dark text, and vice versa.
+        // Auto-flip when accent is overridden but its text colour is not: a
+        // user-picked light accent needs dark text, and vice versa.
         if (ThemeOverrides.value("accent") !== null) return _bestText(root.accent)
         return _color(Colors.accentFg)
     }
@@ -48,29 +52,32 @@ Singleton {
     readonly property color colorMain: root.background
     readonly property color colorOpposite: root.textPrimary
 
-    // Panels: main background, opposite border (borderWidthStrong), text in the opposite colour.
+    // Panels: main background, opposite border (borderWidthStrong), text in
+    // the opposite colour.
     readonly property color panelBackground: root.colorMain
     readonly property color panelBorder: root.colorOpposite
     readonly property color panelText: root.colorOpposite
 
-    // The bar has no fill of its own.
-    // A bar button is an opposite-coloured glyph/label sitting on the wallpaper;
-    // only its selected state paints a full block.
-    // See Widgets/WidgetStates.js surfaceColors().
+    // The bar has no fill of its own. A bar button is an opposite-coloured
+    // glyph/label sitting on the wallpaper; only its selected state paints a
+    // full block. See Widgets/WidgetStates.js surfaceColors().
     readonly property color barText: root.colorOpposite
 
-    // Selection / active item: a block of the opposite colour, text flips to main.
+    // Selection / active item: a block of the opposite colour, text flips to
+    // main.
     readonly property color selectionBackground: root.colorOpposite
     readonly property color selectionText: root.colorMain
 
     // The one control state that still shows accent — a ring, not a fill.
     readonly property color focusRing: root.accent
 
-    // Subtle hover wash, one step toward the contrast colour.
-    // A bare mix ratio, not a design token — same latitude as WidgetStates.js's INACTIVE_OPACITY.
+    // Subtle hover wash, one step toward the contrast colour. A bare mix
+    // ratio, not a design token — same latitude as WidgetStates.js's
+    // INACTIVE_OPACITY.
     readonly property color panelHover: _mix(root.colorMain, root.colorOpposite, 0.08)
-    // A bar button's resting surface: translucent main-coloured fill plus a hairline border, — wallpaper still shows through.
-    // Hover reuses panelHover; selected state is the full opposite/main inversion.
+    // A bar button's resting surface: translucent main-coloured fill plus a
+    // hairline border, so the wallpaper still shows through. Hover reuses
+    // panelHover; selected state is the full opposite/main inversion.
     readonly property color barButtonBackground: Qt.rgba(root.colorMain.r,
         root.colorMain.g, root.colorMain.b, 0.72)
     readonly property color barButtonBorder: Qt.rgba(root.colorOpposite.r,
@@ -82,7 +89,8 @@ Singleton {
     readonly property string fontUi: _tok("font-ui", Tokens.fontUi)
     readonly property string fontSymbol: Tokens.fontSymbol
 
-    // One multiplier over the whole generated size scale — the settings panel exposes this rather than seven individual sizes.
+    // One multiplier over the whole generated size scale — the settings panel
+    // exposes this rather than seven individual sizes.
     readonly property real fontScale: _scale("font-scale", Tokens.fontScale)
 
     readonly property real fontSize0: _px(Tokens.fontSize0) * root.fontScale
@@ -93,8 +101,9 @@ Singleton {
     readonly property real fontSize5: _px(Tokens.fontSize5) * root.fontScale
     readonly property real fontSize6: _px(Tokens.fontSize6) * root.fontScale
 
-    // Spacing stays in units of 1ch of fontMono, not px — storing px would silently break if the mono family ever changes.
-    // A caller that needs px measures the font itself and multiplies.
+    // Spacing stays in units of 1ch of fontMono, not px — storing px would
+    // silently break if the mono family ever changes. A caller that needs px
+    // measures the font itself and multiplies.
     readonly property real spaceScale: _scale("space-scale", Tokens.spaceScale)
     readonly property real space1: _ch(Tokens.space1) * root.spaceScale
     readonly property real space2: _ch(Tokens.space2) * root.spaceScale
@@ -112,12 +121,14 @@ Singleton {
     readonly property real borderWidthStrong: _pxOr(Tokens.borderWidthStrong, root.borderWidth)
     readonly property real panelPadding: _pxOr(Tokens.panelPadding, root.radiusBase)
 
-    // Inset that-the-bar surfaces keep from the bar and screen edges, and the corner radius they round at.
-    // Both per-user editable (Theme › Shape & spacing).
-    // Fallbacks cover the hot-reload window before `phi theme set` regenerates Tokens.qml with these keys.
+    // Inset that-the-bar surfaces keep from the bar and screen edges, and the
+    // corner radius they round at. Both per-user editable (Theme › Shape &
+    // spacing). Fallbacks cover the hot-reload window before `phi theme set`
+    // regenerates Tokens.qml with these keys.
     readonly property real panelGap: _pxOr(_tok("panel-gap", Tokens.panelGap), 4)
     readonly property real panelRadius: _pxOr(_tok("panel-radius", Tokens.panelRadius), 6)
-    // Widgets/Meter's visible track height — a thin rail. Not settings-exposed.
+    // Widgets/Meter's visible track height — a thin rail. Not
+    // settings-exposed.
     readonly property real sliderThickness: _pxOr(Tokens.sliderThickness, 4)
 
     // --- Layering ------------------------------------------------------
@@ -135,11 +146,12 @@ Singleton {
     readonly property string motionAEasing: Tokens.motionAEasing
     readonly property int motionBDuration: _ms(_tok("motion-b-duration", Tokens.motionBDuration))
     readonly property string motionBEasing: Tokens.motionBEasing
-    // Kept for any straggler; new code uses motionBCurve.
-    // OutQuad is the enum equivalent of the default bezier.
+    // Kept for any straggler; new code uses motionBCurve. OutQuad is the enum
+    // equivalent of the default bezier.
     readonly property int motionBEasingType: motionBEasing === "linear" ? Easing.Linear : Easing.OutQuad
-    // Category-B curve as an easing.bezierCurve list: four editable control points plus the mandatory final (1,1).
-    // Default reproduces Easing.OutQuad.
+    // Category-B curve as an easing.bezierCurve list: four editable control
+    // points plus the mandatory final (1,1). Default reproduces
+    // Easing.OutQuad.
     readonly property var motionBCurve: {
         var raw = _tok("motion-b-bezier", Tokens.motionBBezier)
         var p = String(raw || "").split(",").map(function (s) { return parseFloat(s) })
@@ -183,8 +195,9 @@ Singleton {
         return (isNaN(n) || n <= 0) ? 1 : n
     }
 
-    // Merge a Config/ThemeOverrides.qml value over a generated token.
-    // Passing `null` as the fallback is how a getter asks "is this overridden at all" (see accentText).
+    // Merge a Config/ThemeOverrides.qml value over a generated token. Passing
+    // `null` as the fallback is how a getter asks "is this overridden at all"
+    // (see accentText).
     function _tok(key, fallback) {
         var o = ThemeOverrides.value(key)
         return (o === null || o === undefined || String(o).length === 0) ? fallback : o
@@ -195,7 +208,9 @@ Singleton {
                        a.b + (b.b - a.b) * t, a.a + (b.a - a.a) * t)
     }
 
-    // Config/Tokens.qml and Config/Colors.qml are private to this file — the settings panel gets a key's generated default through instead of reading them directly.
+    // Config/Tokens.qml and Config/Colors.qml are private to this file — the
+    // settings panel gets a key's generated default through instead of reading
+    // them directly.
     function tokenDefault(key) {
         switch (key) {
         case "accent": return Colors.accent
@@ -234,20 +249,23 @@ Singleton {
         return (v === undefined || v === null || String(v).length === 0) ? String(fallback) : String(v)
     }
 
-    // The effective (override-aware) string for a token key — what the settings field shows, and what a reset restores to (tokenDefault).
+    // The effective (override-aware) string for a token key — what the
+    // settings field shows, and what a reset restores to (tokenDefault).
     function tokenValue(key) {
         return String(root._tok(key, root.tokenDefault(key)) || "")
     }
 
-    // Pick main or opposite as the readable text colour over an arbitrary (user-picked) accent — relative luminance, WCAG-style coefficients.
+    // Pick main or opposite as the readable text colour over an arbitrary
+    // (user-picked) accent — relative luminance, WCAG-style coefficients.
     function _bestText(c) {
         var lum = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
         return lum > 0.5 ? root.colorMain : root.colorOpposite
     }
 
-    // Tokens store an 8-digit colour as #rrggbbaa (CSS order), not Qt's #aarrggbb — parsed by hand — scrim's alpha byte never lands in the wrong place.
-    // 6-digit values pass through with alpha 1;
-    // a malformed or undefined value yields transparent.
+    // Tokens store an 8-digit colour as #rrggbbaa (CSS order), not Qt's
+    // #aarrggbb — parsed by hand — scrim's alpha byte never lands in the wrong
+    // place. 6-digit values pass through with alpha 1; a malformed or
+    // undefined value yields transparent.
     function _color(hex) {
         if (hex === undefined || hex === null) return Qt.rgba(0, 0, 0, 0)
         var h = String(hex).replace("#", "")

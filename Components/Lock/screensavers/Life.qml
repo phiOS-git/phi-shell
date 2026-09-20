@@ -3,18 +3,16 @@ import qs.Config as Config
 
 // Conway's Game of Life, a classic terminal-screensaver effect. Same
 // `running`/`intensity`/Timer-at-`motionCTypeStep` contract as
-// Lock/Starfield.qml.
-// The shared `motionCTypeStep` tick (the same one every other lock
-// effect redraws on) is far too fast for a generation step — Life would
-// look like flicker, not a recognisable pattern. Rather than invent a
-// second ad-hoc duration, this file keeps the SAME shared tick for its
-// Timer and instead only advances the simulation every `stepEveryTicks`
-// ticks (a frame-skip ratio, not a duration) — the Canvas still redraws
-// every tick so cells can fade smoothly between generations rather than
-// snapping instantly on/off.
-// Toroidal (wraparound) neighbour counting, standard B3/S23 rules. A
-// board that dies out completely (a real, common Life outcome) re-seeds
-// itself rather than leaving a blank lock screen indefinitely.
+// Lock/Starfield.qml. The shared `motionCTypeStep` tick (the same one every
+// other lock effect redraws on) is far too fast for a generation step — Life
+// would look like flicker, not a recognisable pattern. Rather than invent a
+// second ad-hoc duration, this file keeps the SAME shared tick for its Timer
+// and instead only advances the simulation every `stepEveryTicks` ticks (a
+// frame-skip ratio, not a duration) — the Canvas still redraws every tick so
+// cells can fade smoothly between generations rather than snapping instantly
+// on/off. Toroidal (wraparound) neighbour counting, standard B3/S23 rules. A
+// board that dies out completely (a real, common Life outcome) re-seeds itself
+// rather than leaving a blank lock screen indefinitely.
 
 Item {
     id: root
@@ -22,10 +20,9 @@ Item {
     property bool running: true
     property real intensity: 0.85
     // Life has no continuous per-tick delta to scale the way every other
-    // effect does (its motion is discrete generation steps, not smooth
-    // motion) — speed instead scales the frame-skip ratio itself
-    // inversely: doubling speed halves stepEveryTicks, so generations
-    // advance twice as often.
+    // effect does (its motion is discrete generation steps, not smooth motion)
+    // — speed instead scales the frame-skip ratio itself inversely: doubling
+    // speed halves stepEveryTicks, so generations advance twice as often.
     property real speed: 1.0
     // --- lock/auth state (bound by Lock.qml on the active effect) -------
     // Read-only reaction inputs for the auth flow, wired straight from
@@ -48,13 +45,13 @@ Item {
     // maps these ids to labels and triggers).
     readonly property var features: ["verification", "lockout"]
 
-    // Same grid-resolution multiplier shape as Lock/Plasma.qml's own
-    // identical property; 1.0 keeps the original fixed 48×27 grid.
+    // Same grid-resolution multiplier shape as Lock/Plasma.qml's own identical
+    // property; 1.0 keeps the original fixed 48×27 grid.
     property real resolution: 1.0
-    // The initial random-alive probability each seed() (and re-seed on a
-    // dead board) uses — was a hardcoded 0.28. Higher reads as a denser
-    // more chaotic starting pattern; lower as sparser, more likely to
-    // settle into stable still-lifes quickly.
+    // The initial random-alive probability each seed() (and re-seed on a dead
+    // board) uses — was a hardcoded 0.28. Higher reads as a denser more
+    // chaotic starting pattern; lower as sparser, more likely to settle into
+    // stable still-lifes quickly.
     property real seedDensity: 0.28
 
     readonly property int cols: Math.max(8, Math.round(48 * root.resolution))
@@ -108,13 +105,13 @@ Item {
         if (alive === 0) root.seed() // dead board — start a fresh pattern
     }
 
-    // Builds a fresh array rather than mutating root.brightness in place
-    // and reassigning it to itself — an in-place mutation followed by a
-    // self-assignment is the same object, so QML's change notification
-    // would not reliably fire were anything ever bound to `brightness`
-    // (nothing is today — onPaint reads it directly and this file always
-    // calls requestPaint() itself — but a fresh array costs nothing here
-    // and removes the trap for whenever that stops being true).
+    // Builds a fresh array rather than mutating root.brightness in place and
+    // reassigning it to itself — an in-place mutation followed by a
+    // self-assignment is the same object, so QML's change notification would
+    // not reliably fire were anything ever bound to `brightness` (nothing is
+    // today — onPaint reads it directly and this file always calls
+    // requestPaint() itself — but a fresh array costs nothing here and removes
+    // the trap for whenever that stops being true).
     function _fade() {
         var next = new Array(root.brightness.length)
         for (var i = 0; i < next.length; i++) {
@@ -181,9 +178,8 @@ Item {
             // Auth reactions (the bound state above): a full-surface cast
             // toward `info` that breathes with the field's pulse while
             // `validating`, and toward `error` that fades as the lockout
-            // countdown drains. The two can't overlap — respond() is
-            // guarded by `!lockedOut` — but the `else if` keeps it
-            // explicit.
+            // countdown drains. The two can't overlap — respond() is guarded
+            // by `!lockedOut` — but the `else if` keeps it explicit.
             if (root.validating && root.validationProgress > 0.001) {
                 var lift = Config.Appearance.info
                 ctx.fillStyle = Qt.rgba(lift.r, lift.g, lift.b,

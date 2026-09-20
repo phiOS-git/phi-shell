@@ -1,34 +1,33 @@
 import QtQuick
 import qs.Config as Config
 
-// A horizontal value bar: a pill track with a fill. Read-only by default
-// (the OSD, a battery gauge); set `interactive: true` and it emits
-// `moved(real)` continuously during a drag and `released(real)` once at
-// the end, so the volume and brightness bar popouts drive the same
-// primitive the OSD shows.
+// A horizontal value bar: a pill track with a fill. Read-only by default (the
+// OSD, a battery gauge); set `interactive: true` and it emits `moved(real)`
+// continuously during a drag and `released(real)` once at the end, so the
+// volume and brightness bar popouts drive the same primitive the OSD shows.
 // While the pointer is down the fill follows the pointer directly, so a
-// consumer that only commits on `released` (brightness → brightnessctl)
-// still shows live feedback during the drag.
+// consumer that only commits on `released` (brightness → brightnessctl) still
+// shows live feedback during the drag.
 
 Item {
     id: root
 
     property real value: 0            // 0..1, clamped on read
     property bool interactive: false
-    // Arrow keys nudge by this fraction; each press is one atomic commit
-    // (no "drag" concept applies to a single key press), so it fires
-    // `moved` then `released` immediately rather than tracking `_dragging`.
+    // Arrow keys nudge by this fraction; each press is one atomic commit (no
+    // "drag" concept applies to a single key press), so it fires `moved` then
+    // `released` immediately rather than tracking `_dragging`.
     property real keyStep: 0.05
-    // The fill is the ink colour, never accent; the track is a faint wash
-    // of the same ink so it reads on any surface the meter sits on. Both
-    // still overridable.
+    // The fill is the ink colour, never accent; the track is a faint wash of
+    // the same ink so it reads on any surface the meter sits on. Both still
+    // overridable.
     property color fillColor: Config.Appearance.textPrimary
     property color trackColor: Qt.rgba(Config.Appearance.textPrimary.r,
         Config.Appearance.textPrimary.g, Config.Appearance.textPrimary.b, 0.15)
 
-    // `moved` fires continuously during a drag (cheap live updates, e.g.
-    // a Pipewire volume property); `released` fires once when the drag
-    // ends (for a value whose setter spawns a process, e.g. brightnessctl).
+    // `moved` fires continuously during a drag (cheap live updates, e.g. a
+    // Pipewire volume property); `released` fires once when the drag ends (for
+    // a value whose setter spawns a process, e.g. brightnessctl).
     signal moved(real v)
     signal released(real v)
 
@@ -39,8 +38,8 @@ Item {
 
     // The row still reserves a full text line so callers that vertically
     // centre against it are unchanged; the visible rail is a few px tall
-    // centred in that line, and the MouseArea keeps the whole line as its
-    // hit target.
+    // centred in that line, and the MouseArea keeps the whole line as its hit
+    // target.
     implicitHeight: Config.Appearance.fontSize1
     implicitWidth: Config.Appearance.fontSize1 * 14
 
@@ -83,8 +82,8 @@ Item {
 
     // Keyboard-focus ring — the same token every other focusable control's
     // "focus" state already borders itself with (WidgetStates.js's
-    // surfaceColors()), just applied directly here since this widget has
-    // no seven-state resolvedState machinery of its own to hook into.
+    // surfaceColors()), just applied directly here since this widget has no
+    // seven-state resolvedState machinery of its own to hook into.
     Rectangle {
         anchors.fill: track
         anchors.margins: -Config.Appearance.borderWidthStrong

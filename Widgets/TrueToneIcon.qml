@@ -3,15 +3,14 @@ import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
 // Hand-drawn Canvas rather than a font glyph — a wrong PUA codepoint is a
-// silent, hard-to-spot failure mode font glyphs carry in this directory
-// (see e.g. Bar/modules/Microphone.qml's own history with it), so any icon
-// without reliable font coverage (SunMoonIcon, VolumeIcon, WifiIcon,
-// BrightnessIcon, BatteryIcon, GpuIcon, this one) is drawn instead.
+// silent, hard-to-spot failure mode font glyphs carry in this directory (see
+// e.g. Bar/modules/Microphone.qml's own history with it), so any icon without
+// reliable font coverage (SunMoonIcon, VolumeIcon, WifiIcon, BrightnessIcon,
+// BatteryIcon, GpuIcon, this one) is drawn instead.
 //
-// A simple aperture/eye motif: an outer ring (the display) and an inner
-// disc (the adaptive colour itself) — hollow when off, filled solid when
-// on. Two states only, colour supplied by the caller like every sibling
-// icon here.
+// A simple aperture/eye motif: an outer ring (the display) and an inner disc
+// (the adaptive colour itself) — hollow when off, filled solid when on. Two
+// states only, colour supplied by the caller like every sibling icon here.
 
 Item {
     id: root

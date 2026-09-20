@@ -6,22 +6,18 @@ import qs.Config as Config
 
 // Owns the cursor-locator overlay's state: `shown` (hold-to-show, or the
 // settings Toggle's sticky toggle) and the chosen effect + its per-effect
-// options.
-// Effects (Tools/Spotlight.qml renders one, picked by `effect`):
-// dim — a soft vignette; everything but a circle around the cursor
-// is dimmed. `size`, `intensity`.
-// flashlight — a hard-edged clear circle, the rest dimmed harder.
-// `size`, `intensity`.
-// crosshair — no dim; a full-width + full-height hairline through the
-// cursor. `crosshairThickness`, `crosshairOpacity`. Cheapest.
-// ring — no dim; a stroked circle around the cursor.
-// `ringRadius`, `ringThickness`.
-// Storage: a nested JSON prefs file (Config.Paths.spotlightPrefsFile), not
-// `phi state`'s closed scalar set. The pre-existing `spotlight.size`
-// phi-state key is read once as a seed so an existing choice carries over.
-// Hold-to-show, not a persistent toggle: show()/hide() are hyprland.lua's
-// SUPER+G press / bare-g release binds; toggle() is kept for the settings
-// Toggle.
+// options. Effects (Tools/Spotlight.qml renders one, picked by `effect`): dim
+// — a soft vignette; everything but a circle around the cursor is dimmed.
+// `size`, `intensity`. flashlight — a hard-edged clear circle, the rest dimmed
+// harder. `size`, `intensity`. crosshair — no dim; a full-width + full-height
+// hairline through the cursor. `crosshairThickness`, `crosshairOpacity`.
+// Cheapest. ring — no dim; a stroked circle around the cursor. `ringRadius`,
+// `ringThickness`. Storage: a nested JSON prefs file
+// (Config.Paths.spotlightPrefsFile), not `phi state`'s closed scalar set. The
+// pre-existing `spotlight.size` phi-state key is read once as a seed so an
+// existing choice carries over. Hold-to-show, not a persistent toggle:
+// show()/hide() are hyprland.lua's SUPER+G press / bare-g release binds;
+// toggle() is kept for the settings Toggle.
 
 Singleton {
     id: root

@@ -6,17 +6,16 @@ import qs.Widgets as Widgets
 import "Bar/glyphs.js" as Glyphs
 
 // Purely reactive: watches Services.AudioBridge (volume/muted) and
-// Services.Brightness (percent) and shows itself transiently on a
-// change, auto-hiding after a timeout — it never reads a key press
-// itself. This is the surface the volume/brightness FUNCTION KEYS
-// (XF86Audio*, XF86MonBrightness*) evoke, centre-bottom; the bar's
-// volume/brightness icons open the richer control card instead. One
-// OSD, any trigger that changes the underlying value.
-// Single instance, not per-screen: shown on the primary screen only
-// since a volume/brightness change from a keybind has no per-monitor
-// meaning to disambiguate.
-// The body is a pill — glyph · meter · % on one row. The meter here is
-// read-only: this surface auto-hides in ~1.5s, there is nothing to drag.
+// Services.Brightness (percent) and shows itself transiently on a change,
+// auto-hiding after a timeout — it never reads a key press itself. This is the
+// surface the volume/brightness FUNCTION KEYS (XF86Audio*, XF86MonBrightness*)
+// evoke, centre-bottom; the bar's volume/brightness icons open the richer
+// control card instead. One OSD, any trigger that changes the underlying
+// value. Single instance, not per-screen: shown on the primary screen only
+// since a volume/brightness change from a keybind has no per-monitor meaning
+// to disambiguate. The body is a pill — glyph · meter · % on one row. The
+// meter here is read-only: this surface auto-hides in ~1.5s, there is nothing
+// to drag.
 
 PanelWindow {
     id: root

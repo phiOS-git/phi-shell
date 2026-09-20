@@ -6,15 +6,14 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 
 // Same layer-shell/scrim/centered-panel/LayerFocus shape as Components/
-// Dialogs/ConfirmDialog.qml — a third real choice ("Once") instead of
-// that file's confirm/cancel pair, since a permission decision genuinely
-// has three outcomes.
-// UI-and-interactions only — see Services/SensorPermissions.qml's own
-// header for the full scope note: nothing in this codebase calls
-// requestPermission() automatically yet, so this dialog only ever
-// appears via Settings' own explicit test-prompt control today. The
-// dialog itself is fully real: every button here really answers a real
-// pendingPrompt through Services.SensorPermissions.respond().
+// Dialogs/ConfirmDialog.qml — a third real choice ("Once") instead of that
+// file's confirm/cancel pair, since a permission decision genuinely has three
+// outcomes. UI-and-interactions only — see Services/SensorPermissions.qml's
+// own header for the full scope note: nothing in this codebase calls
+// requestPermission() automatically yet, so this dialog only ever appears via
+// Settings' own explicit test-prompt control today. The dialog itself is fully
+// real: every button here really answers a real pendingPrompt through
+// Services.SensorPermissions.respond().
 
 PanelWindow {
     id: root
@@ -69,8 +68,8 @@ PanelWindow {
             // "Once" is the safe default on a stray Escape — the same
             // reasoning ConfirmDialog's own header gives for Escape never
             // defaulting to a destructive choice: denying by accident is
-            // annoying, granting "always" by accident is the one outcome
-            // this dialog exists to prevent.
+            // annoying, granting "always" by accident is the one outcome this
+            // dialog exists to prevent.
             Keys.onEscapePressed: Services.SensorPermissions.respond("once")
 
             Column {

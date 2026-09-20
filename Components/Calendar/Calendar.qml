@@ -4,16 +4,14 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "modules" as Modules
 
-// The small panel that drops below the bar clock — opened from the top
-// bar's true horizontal centre (Bar/modules/Clock.qml), not a corner
-// icon, so it is the one overlay in this shell that horizontal-centers
-// under its trigger instead of hugging a left/right edge
-// (Widgets.PopoutSurface's `anchorEdge: "center"`), and the one overlay
-// whose nearest-trigger corner rule gives BOTH top corners the small
-// radius rather than one.
-// No calendar/CalDAV backend exists anywhere in this codebase — the month
-// grid (Modules/MonthGrid.qml) is read-only, clicking a day only
-// highlights it locally.
+// The small panel that drops below the bar clock — opened from the top bar's
+// true horizontal centre (Bar/modules/Clock.qml), not a corner icon, so it is
+// the one overlay in this shell that horizontal-centers under its trigger
+// instead of hugging a left/right edge (Widgets.PopoutSurface's `anchorEdge:
+// "center"`), and the one overlay whose nearest-trigger corner rule gives BOTH
+// top corners the small radius rather than one. No calendar/CalDAV backend
+// exists anywhere in this codebase — the month grid (Modules/MonthGrid.qml) is
+// read-only, clicking a day only highlights it locally.
 
 Widgets.PopoutSurface {
     id: root
@@ -78,12 +76,12 @@ Widgets.PopoutSurface {
 
         // The flip-clock Row sits in a full-width Item so
         // anchors.horizontalCenter has something to centre against — a
-        // StaggerReveal (Column-based) always left-aligns a direct child
-        // at its own x. Each Widgets.FlipDigit cell flips independently
-        // only when the character it shows actually changes; the colons
-        // are plain static text with `showCard: false` on the digits
-        // beside them, so every cell shares the same unpadded height and
-        // the colons stay vertically aligned with the digits.
+        // StaggerReveal (Column-based) always left-aligns a direct child at
+        // its own x. Each Widgets.FlipDigit cell flips independently only when
+        // the character it shows actually changes; the colons are plain static
+        // text with `showCard: false` on the digits beside them, so every cell
+        // shares the same unpadded height and the colons stay vertically
+        // aligned with the digits.
         Item {
             width: parent.width
             implicitHeight: clockRow.implicitHeight

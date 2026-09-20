@@ -3,25 +3,23 @@ import QtQml
 import Quickshell
 import Quickshell.Io
 
-// Companion to Config/Tokens.qml, holding only what differs by theme
-// variant. Config/Tokens.qml is `pragma Singleton`; rewriting a singleton's
-// own QML source file forces Quickshell to fully re-evaluate it, destroying
-// every binding and any in-flight state — so a theme-variant switch used to
-// reset the whole shell when colour lived there too.
-// This file is also `pragma Singleton`, but its own source never changes.
-// What changes on a variant switch is Config/Colors.json, a plain generated
-// file read here via FileView with `watchChanges: true`. Rewriting that
-// JSON only updates the FileView's tracked content — a normal scoped
-// reactive update — so every existing binding (via Config/Appearance.qml)
-// just re-evaluates against the new values, and any `Behavior on color`
-// already on a widget crossfades the change for free.
-// Properties are plain, not readonly, because onLoaded reassigns them on
-// every `phi theme set` while this process keeps running. Seeded here with
-// the dark variant's real values so the very first paint — before
-// Colors.json has ever been read — still renders real colours instead of
-// transparent.
-// Only Config/Appearance.qml reads this file directly; everything else
-// reads Appearance.
+// Companion to Config/Tokens.qml, holding only what differs by theme variant.
+// Config/Tokens.qml is `pragma Singleton`; rewriting a singleton's own QML
+// source file forces Quickshell to fully re-evaluate it, destroying every
+// binding and any in-flight state — so a theme-variant switch used to reset
+// the whole shell when colour lived there too. This file is also `pragma
+// Singleton`, but its own source never changes. What changes on a variant
+// switch is Config/Colors.json, a plain generated file read here via FileView
+// with `watchChanges: true`. Rewriting that JSON only updates the FileView's
+// tracked content — a normal scoped reactive update — so every existing
+// binding (via Config/Appearance.qml) just re-evaluates against the new
+// values, and any `Behavior on color` already on a widget crossfades the
+// change for free. Properties are plain, not readonly, because onLoaded
+// reassigns them on every `phi theme set` while this process keeps running.
+// Seeded here with the dark variant's real values so the very first paint —
+// before Colors.json has ever been read — still renders real colours instead
+// of transparent. Only Config/Appearance.qml reads this file directly;
+// everything else reads Appearance.
 
 Singleton {
     id: root
@@ -89,8 +87,8 @@ Singleton {
         id: colorsFile
         path: Qt.resolvedUrl("./Colors.json")
         watchChanges: true
-        // watchChanges alone only fires fileChanged — it does not re-read
-        // the file or re-emit `loaded`. reload() forces that.
+        // watchChanges alone only fires fileChanged — it does not re-read the
+        // file or re-emit `loaded`. reload() forces that.
         onFileChanged: colorsFile.reload()
         onLoaded: {
             try {
@@ -152,8 +150,8 @@ Singleton {
                 console.warn("phi-shell: " + colorsFile.path + " failed to parse, keeping previous colours: " + e)
             }
         }
-        // Named `err`, not `error` — this singleton has its own `error`
-        // colour property, and a same-named parameter here shadows it.
+        // Named `err`, not `error` — this singleton has its own `error` colour
+        // property, and a same-named parameter here shadows it.
         onLoadFailed: function(err) {
             console.warn("phi-shell: Config/Colors.json not found — run `phi theme set <variant>` once. Using built-in defaults.")
         }

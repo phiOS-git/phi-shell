@@ -3,23 +3,21 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Fan profile control for the Stats overlay (auto, silent, default
-// heavy) — a thin `phi fan` process bridge, same shape as
-// Services/Vpn.qml's `phi vpn status --json` + action-Process pair. No
-// logic of its own beyond parsing and gating.
-// `available`/`channels` are read from `phi fan status --json`, refreshed
-// on `refresh()` and watch-gated — status barely changes on its own, so
-// this is a light poll while the Stats card is open. `profile` is a plain
-// UI selection reflecting only the LAST profile THIS session applied:
-// hwmon's own pwmN_enable value doesn't encode which of phiOS's four
-// named profiles produced it (silent/default/heavy differ only by a duty
-// byte the kernel doesn't label), so a profile set by a previous session
-// or hand-edited outside phi-shell can't be reliably inferred from
-// `channels` alone — a known, accepted simplification, not a bug.
-// UNTESTED end to end: `phi fan set`'s write path was never exercised
-// from this development environment (this workspace never touches the
-// live machine's /etc or runs sudo). `phi fan status` (read-only) was
-// confirmed live.
+// Fan profile control for the Stats overlay (auto, silent, default heavy) — a
+// thin `phi fan` process bridge, same shape as Services/Vpn.qml's `phi vpn
+// status --json` + action-Process pair. No logic of its own beyond parsing and
+// gating. `available`/`channels` are read from `phi fan status --json`,
+// refreshed on `refresh()` and watch-gated — status barely changes on its own,
+// so this is a light poll while the Stats card is open. `profile` is a plain
+// UI selection reflecting only the LAST profile THIS session applied: hwmon's
+// own pwmN_enable value doesn't encode which of phiOS's four named profiles
+// produced it (silent/default/heavy differ only by a duty byte the kernel
+// doesn't label), so a profile set by a previous session or hand-edited
+// outside phi-shell can't be reliably inferred from `channels` alone — a
+// known, accepted simplification, not a bug. UNTESTED end to end: `phi fan
+// set`'s write path was never exercised from this development environment
+// (this workspace never touches the live machine's /etc or runs sudo). `phi
+// fan status` (read-only) was confirmed live.
 
 Singleton {
     id: root

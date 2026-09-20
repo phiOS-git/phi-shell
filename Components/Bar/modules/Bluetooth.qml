@@ -5,16 +5,16 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../glyphs.js" as Glyphs
 
-// Icon only — the bar button carries no text label; the popout (a click
-// away) has the connected device name and full detail. Capability-gated
-// on `bluetooth` (real detected hardware).
+// Icon only — the bar button carries no text label; the popout (a click away)
+// has the connected device name and full detail. Capability-gated on
+// `bluetooth` (real detected hardware).
 //
-// The icon is Widgets/BluetoothIcon via `iconDelegate` — `poweredAmount`
-// fades it in/out on activation and a small badge breathes while a
-// device is connected, instead of an instant glyph swap between shapes.
-// The icon's own poweredAmount/connectedAmount animation is the ONLY
-// on-bar signal for power/connection state; the device name is still
-// available a click away in the popout.
+// The icon is Widgets/BluetoothIcon via `iconDelegate` — `poweredAmount` fades
+// it in/out on activation and a small badge breathes while a device is
+// connected, instead of an instant glyph swap between shapes. The icon's own
+// poweredAmount/connectedAmount animation is the ONLY on-bar signal for
+// power/connection state; the device name is still available a click away in
+// the popout.
 
 Widgets.Segment {
     id: root

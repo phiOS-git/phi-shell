@@ -3,15 +3,13 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — agent PersonalityEditor. The full
-// create/edit/rename/delete view. The panel runs outside the containment and
-// IS the user (§8.2 "scrive solo l'utente"); personalita/ stays read-only
-// inside the mount. Writes go through `phi agent personality` for validation
-// and agent.md regeneration.
-// the name field is
-// Widgets/TextField (with its `invalid` tint for the slug check); a new
-// personality opens with an empty field, not the "+" sentinel; the list
-// gap is a derived token.
+// phiOS — agent PersonalityEditor. The full create/edit/rename/delete view.
+// The panel runs outside the containment and IS the user — only the user
+// writes here; personalita/ stays read-only inside the mount. Writes go
+// through `phi agent personality` for validation and agent.md regeneration.
+// the name field is Widgets/TextField (with its `invalid` tint for the slug
+// check); a new personality opens with an empty field, not the "+" sentinel;
+// the list gap is a derived token.
 
 Item {
     id: root
@@ -19,8 +17,8 @@ Item {
     property string preselect: ""
 
     signal closed()
-    // the Escape task — re-emitted up through ProjectView to
-    // AgentPanel's keyScope; see Widgets/TextField.qml's `escaped()`.
+    // the Escape task — re-emitted up through ProjectView to AgentPanel's
+    // keyScope; see Widgets/TextField.qml's `escaped()`.
     signal blurred()
 
     TextMetrics { id: ch; font.family: Config.Appearance.fontMono; font.pixelSize: Config.Appearance.fontSize1; text: "0" }
@@ -30,11 +28,11 @@ Item {
 
     property string editing: ""   // "" = list; a name = editing that one; "+" = new
 
-    // AgentPanel.qml's own keyScope contract (see
-    // that file's Keys.onEscapePressed). Always true while this editor is
-    // the active overlay — mirrors the "‹" button's own two-case logic
-    // exactly (line below): back out of an in-progress edit first, then
-    // close the whole editor on the next press.
+    // AgentPanel.qml's own keyScope contract (see that file's
+    // Keys.onEscapePressed). Always true while this editor is the active
+    // overlay — mirrors the "‹" button's own two-case logic exactly (line
+    // below): back out of an in-progress edit first, then close the whole
+    // editor on the next press.
     readonly property bool hasBack: true
     function goBack() { root.editing.length === 0 ? root.closed() : (root.editing = "") }
 
@@ -102,13 +100,12 @@ Item {
                     id: nameField
                     width: 24 * root.chWidth
                     anchors.verticalCenter: parent.verticalCenter
-                    // this was `readOnly` for every
-                    // existing personality — Services.Agent.personalityRename()
-                    // is a real, complete function (`phi agent personality
-                    // rename <old> <new>`) that had no way to reach it at
-                    // all, since renaming was never actually possible from
-                    // here. Now editable always; Save below detects a
-                    // changed name and renames first.
+                    // this was `readOnly` for every existing personality —
+                    // Services.Agent.personalityRename() is a real, complete
+                    // function (`phi agent personality rename <old> <new>`)
+                    // that had no way to reach it at all, since renaming was
+                    // never actually possible from here. Now editable always;
+                    // Save below detects a changed name and renames first.
                     placeholder: "lower-case-name"
                     invalid: !/^[a-z0-9][a-z0-9._-]{0,63}$/.test(text)
                     onEscaped: root.blurred()
@@ -143,14 +140,14 @@ Item {
                 // Runs the write one settle interval after a rename, never
                 // both in the same tick: personalityRename() and
                 // personalityWrite() are two independent async Processes
-                // (persMiscProc / persWriteProc in Services/Agent.qml) with
-                // no ordering guarantee between them — firing the write for
-                // the NEW name immediately could race the rename's own
-                // `mv`, landing the write before the file exists under its
-                // old name is even gone. A REASONED default (400ms for a
-                // local `phi` CLI call), not hardware-verified — flagged
-                // for cheap veto the same way this codebase flags every
-                // other unverified timing constant.
+                // (persMiscProc / persWriteProc in Services/Agent.qml) with no
+                // ordering guarantee between them — firing the write for the
+                // NEW name immediately could race the rename's own `mv`,
+                // landing the write before the file exists under its old name
+                // is even gone. A REASONED default (400ms for a local `phi`
+                // CLI call), not hardware-verified — flagged for cheap veto
+                // the same way this codebase flags every other unverified
+                // timing constant.
                 Timer {
                     id: renameSettle
                     interval: 400
@@ -173,15 +170,14 @@ Item {
                     visible: root.editing !== "+"
                     label: "Delete"
                     invalid: true
-                    // this deleted a personality (its
-                    // whole system prompt included) on a single click, no
-                    // confirmation at all — the one destructive settings
-                    // action in this shell without it, unlike VPN "Forget"
-                    // "Clear all keys" and "Clear all notifications", all of
-                    // which already go through this same ConfirmDialog per
-                    // standing directive ("sensible
-                    // settings ... should ask confirmation with a blocking
-                    // alert").
+                    // this deleted a personality (its whole system prompt
+                    // included) on a single click, no confirmation at all —
+                    // the one destructive settings action in this shell
+                    // without it, unlike VPN "Forget" "Clear all keys" and
+                    // "Clear all notifications", all of which already go
+                    // through this same ConfirmDialog per standing directive
+                    // ("sensible settings ... should ask confirmation with a
+                    // blocking alert").
                     onClicked: Services.ConfirmDialog.open({
                         title: "Delete personality “" + root.editing + "”",
                         message: "Deletes its system prompt. This cannot be undone.",

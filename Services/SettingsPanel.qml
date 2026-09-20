@@ -35,25 +35,24 @@ Singleton {
     // closed or the field is empty.
     property string query: ""
 
-    // A SettingsRow can mark itself `advanced: true`; it then stays out of
-    // the way (visible: false, no layout space) until this is on — see
-    // SettingsRow.qml's own `visible` binding. Session-only, not a `phi
-    // state` key, so it defaults off each time the shell starts.
+    // A SettingsRow can mark itself `advanced: true`; it then stays out of the
+    // way (visible: false, no layout space) until this is on — see
+    // SettingsRow.qml's own `visible` binding. Session-only, not a `phi state`
+    // key, so it defaults off each time the shell starts.
     property bool showAdvanced: false
     function setShowAdvanced(v) { root.showAdvanced = v }
 
-    // Reactive on `shown` rather than added to each setter individually
-    // so it covers every entry point below (show, openSection, reveal)
-    // the same way.
+    // Reactive on `shown` rather than added to each setter individually so it
+    // covers every entry point below (show, openSection, reveal) the same way.
     onShownChanged: if (root.shown) {
         Services.AgentPanel.hide()
         Services.BarPopout.hide()
         Services.HyprlandBridge.leaveReservedWorkspace()
     }
 
-    // id -> the SettingsRow item currently registered for it (only rows in
-    // the loaded section are present). Not reactive on purpose: consumers
-    // read it transiently during a reveal, they do not bind to it.
+    // id -> the SettingsRow item currently registered for it (only rows in the
+    // loaded section are present). Not reactive on purpose: consumers read it
+    // transiently during a reveal, they do not bind to it.
     property var _rows: ({})
 
     // Emitted whenever a row (re)registers, so Settings.qml can complete a

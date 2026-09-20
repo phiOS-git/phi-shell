@@ -4,8 +4,8 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../../../Widgets/Format.js" as Format
 
-// Bar/modules/Stats.qml's card: network, disk, RAM/CPU/GPU usage, CPU
-// temp + fan profiles, GPU temp, and a "More details" btop launcher.
+// Bar/modules/Stats.qml's card: network, disk, RAM/CPU/GPU usage, CPU temp +
+// fan profiles, GPU temp, and a "More details" btop launcher.
 
 Widgets.StaggerReveal {
     id: root
@@ -18,8 +18,8 @@ Widgets.StaggerReveal {
     spacing: root.chWidth * Config.Appearance.space2
     visible: root.active
 
-    // Requested: add one to the currently
-    // highest workspace and focus it, then launch btop there.
+    // Requested: add one to the currently highest workspace and focus it, then
+    // launch btop there.
     function _openBtopInNewWorkspace() {
         var wss = Services.HyprlandBridge.workspaces
         var values = wss && wss.values ? wss.values : []

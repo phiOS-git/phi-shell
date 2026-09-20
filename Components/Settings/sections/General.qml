@@ -4,13 +4,13 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../modules" as Modules
 
-// Hostname, hardware model, OS/kernel version, uptime, disk space, and
-// (where present) battery stats. Every value is read-only — this section
-// reports the machine's shape, it doesn't configure anything.
+// Hostname, hardware model, OS/kernel version, uptime, disk space, and (where
+// present) battery stats. Every value is read-only — this section reports the
+// machine's shape, it doesn't configure anything.
 //
 // A responsive 2-column grid of compact key/value tiles inside
-// Modules.SettingsGroup cards, one card per catalogue option (general.machine /
-// general.system / general.battery) so a search or a reveal lands on the
+// Modules.SettingsGroup cards, one card per catalogue option (general.machine
+// / general.system / general.battery) so a search or a reveal lands on the
 // right group.
 
 Column {
@@ -127,9 +127,9 @@ Column {
             StatTile {
                 span: true
                 label: "Power profile"
-                // TLP (profiles/laptop) manages this by policy, not a
-                // toggle the shell owns. Reading it needs tlp-stat, which
-                // isn't confirmed safe to spawn on every panel open.
+                // TLP (profiles/laptop) manages this by policy, not a toggle
+                // the shell owns. Reading it needs tlp-stat, which isn't
+                // confirmed safe to spawn on every panel open.
                 value: "managed by TLP — see tlp-stat on the machine"
             }
         }

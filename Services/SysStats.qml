@@ -3,18 +3,17 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Live usage percentages and a sampled graph for the Stats overlay
-// distinct from Services/SystemInfo.qml's static hardware-shape totals.
-// Same `sh -c` KEY=VALUE-lines shape every other system probe in this
-// repo uses: one script, parsed once, rather than three separate Process
-// objects for three fast local reads.
-// CPU temperature reads /sys/class/thermal/thermal_zone0/temp — the plain
-// kernel ACPI/thermal sysfs interface, present with no extra package
-// (unlike lm_sensors, not guaranteed installed here). thermal_zone0 is
-// the conventional first zone, not independently confirmed to be
-// specifically the CPU package sensor on every host this runs on.
-// Watch-gated like Services/NetStats.qml: only polls while the Stats
-// overlay is actually open.
+// Live usage percentages and a sampled graph for the Stats overlay distinct
+// from Services/SystemInfo.qml's static hardware-shape totals. Same `sh -c`
+// KEY=VALUE-lines shape every other system probe in this repo uses: one
+// script, parsed once, rather than three separate Process objects for three
+// fast local reads. CPU temperature reads
+// /sys/class/thermal/thermal_zone0/temp — the plain kernel ACPI/thermal sysfs
+// interface, present with no extra package (unlike lm_sensors, not guaranteed
+// installed here). thermal_zone0 is the conventional first zone, not
+// independently confirmed to be specifically the CPU package sensor on every
+// host this runs on. Watch-gated like Services/NetStats.qml: only polls while
+// the Stats overlay is actually open.
 
 Singleton {
     id: root
@@ -54,10 +53,10 @@ Singleton {
         onTriggered: poll.running = true
     }
 
-    // One instantaneous snapshot of /proc/stat's own cumulative jiffy
-    // counters per poll — the delta against the LAST snapshot (computed in
-    // QML below) is what turns this into a rate, the same technique
-    // Services/NetStats.qml uses for network throughput.
+    // One instantaneous snapshot of /proc/stat's own cumulative jiffy counters
+    // per poll — the delta against the LAST snapshot (computed in QML below)
+    // is what turns this into a rate, the same technique Services/NetStats.qml
+    // uses for network throughput.
     Process {
         id: poll
         command: ["sh", "-c", [

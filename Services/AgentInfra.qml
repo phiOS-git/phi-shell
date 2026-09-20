@@ -5,18 +5,16 @@ import Quickshell
 import Quickshell.Io
 
 // Read-only host facts about the AI agent subsystem for Settings/sections/
-// AiAgent.qml: the state of the phi-agent systemd user units, and the
-// values in the broker/engine config files a user would want to check
-// without opening a terminal.
-// Kept out of Services/Agent.qml on purpose — that file is the one client
-// point for the running A1 opencode service; nothing here is a call to
-// opencode, it's `systemctl` and plain file reads.
-// The unit state and the broker meter are genuinely runtime. broker.json /
-// opencode.json / the whitelist are versioned config, surfaced here
-// READ-ONLY as a readout with the file path, never an edit control
-// editing them from a panel would fight `git pull`.
-// Same shape as Services/SystemInfo.qml: one `sh -c` script emitting
-// tagged lines, parsed once.
+// AiAgent.qml: the state of the phi-agent systemd user units, and the values
+// in the broker/engine config files a user would want to check without opening
+// a terminal. Kept out of Services/Agent.qml on purpose — that file is the one
+// client point for the running A1 opencode service; nothing here is a call to
+// opencode, it's `systemctl` and plain file reads. The unit state and the
+// broker meter are genuinely runtime. broker.json / opencode.json / the
+// whitelist are versioned config, surfaced here READ-ONLY as a readout with
+// the file path, never an edit control editing them from a panel would fight
+// `git pull`. Same shape as Services/SystemInfo.qml: one `sh -c` script
+// emitting tagged lines, parsed once.
 
 Singleton {
     id: root
@@ -33,12 +31,11 @@ Singleton {
     property string modelIdA1: ""
     property int whitelistEntries: -1    // -1 = file unreadable
     property bool loaded: false
-    // Last line of each instance's broker-meter.jsonl (already written by
-    // phi agent broker, never surfaced before) — {status, model, time} or
-    // null when no request has been metered yet. No response BODY is ever
-    // read here: the broker deliberately never buffers a streamed reply
-    // (V-09), so this is status-code-only, exactly what the meter itself
-    // records.
+    // Last line of each instance's broker-meter.jsonl (already written by phi
+    // agent broker, never surfaced before) — {status, model, time} or null
+    // when no request has been metered yet. No response BODY is ever read
+    // here: the broker deliberately never buffers a streamed reply (V-09), so
+    // this is status-code-only, exactly what the meter itself records.
     property var lastRequestA1: null
     property var lastRequestA2: null
 
@@ -64,8 +61,8 @@ Singleton {
     function refresh() { if (!probe.running) probe.running = true }
 
     // Bulk-start whichever units a caller names (CodingSessions' preflight
-    // banner, Settings' "Start A2 services" button) — same systemctl
-    // --user shape as Services/Agent.qml's setActivated, N units at once.
+    // banner, Settings' "Start A2 services" button) — same systemctl --user
+    // shape as Services/Agent.qml's setActivated, N units at once.
     property bool starting: false
     Process {
         id: startProc
@@ -79,10 +76,10 @@ Singleton {
     }
 
     // `startUnits` above is a no-op against an already-active unit — after
-    // editing broker.json/opencode.json (the "Edit configuration" buttons
-    // in Settings/sections/AiAgent.qml) the unit needs an actual restart
-    // to pick the change up. Same shape as startUnits, reusing `starting`
-    // since the two are exclusive user-triggered actions on this panel.
+    // editing broker.json/opencode.json (the "Edit configuration" buttons in
+    // Settings/sections/AiAgent.qml) the unit needs an actual restart to pick
+    // the change up. Same shape as startUnits, reusing `starting` since the
+    // two are exclusive user-triggered actions on this panel.
     function restartUnits(names) {
         if (startProc.running || !names || names.length === 0) return
         root.starting = true

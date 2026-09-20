@@ -201,11 +201,10 @@ Column {
             invalid: root.infra.modelIdA1.indexOf("REPLACE-WITH") >= 0
         }
 
-        // Edits real files through a terminal editor rather than a
-        // control on this panel — the one shape that doesn't fight
-        // `git pull`. `$EDITOR` with a `nvim` fallback: nvim is what
-        // every host here has installed, but a user's own `$EDITOR`
-        // still wins when set.
+        // Edits real files through a terminal editor rather than a control on
+        // this panel — the one shape that doesn't fight `git pull`. `$EDITOR`
+        // with a `nvim` fallback: nvim is what every host here has installed,
+        // but a user's own `$EDITOR` still wins when set.
         Modules.SettingsRow {
             title: "Edit configuration"
             description: "Opens the real files — model id, provider key, broker settings, the A2 egress whitelist — in a terminal editor. Restart the engine below afterwards for a change to take effect."
@@ -218,8 +217,8 @@ Column {
                 }
                 Widgets.StyledButton {
                     // Same "Open folder…" convention as Settings/sections/
-                    // Theme.qml's wallpaper picker — xdg-open on a
-                    // directory, the user's default file manager.
+                    // Theme.qml's wallpaper picker — xdg-open on a directory,
+                    // the user's default file manager.
                     label: "Open config folder…"
                     onClicked: Quickshell.execDetached(["xdg-open", root.infra.configRoot])
                 }

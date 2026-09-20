@@ -3,17 +3,17 @@ import Quickshell.Io
 import qs.Config as Config
 
 // Lists installed freedesktop sound names (/usr/share/sounds/freedesktop/
-// stereo/*.oga) as a row of selectable chips, rather than asking the user
-// to type a name from memory into a bare TextField. Tapping one both
-// selects it AND plays it once, so picking is also previewing.
-// `committed(name)` fires on selection, the same controlled-component shape
-// every other picker in this library uses (Toggle, ColorField, …) — the
-// caller still owns the real value and its own persistence.
+// stereo/*.oga) as a row of selectable chips, rather than asking the user to
+// type a name from memory into a bare TextField. Tapping one both selects it
+// AND plays it once, so picking is also previewing. `committed(name)` fires on
+// selection, the same controlled-component shape every other picker in this
+// library uses (Toggle, ColorField, …) — the caller still owns the real value
+// and its own persistence.
 //
-// The freedesktop set is a real package (sound-theme-freedesktop) that may
-// not be installed — an empty scan just means an empty chip row, not an
-// error; the caller's own custom-path fallback (a plain TextField, kept
-// alongside this) still works from a bare path either way.
+// The freedesktop set is a real package (sound-theme-freedesktop) that may not
+// be installed — an empty scan just means an empty chip row, not an error; the
+// caller's own custom-path fallback (a plain TextField, kept alongside this)
+// still works from a bare path either way.
 
 Column {
     id: root

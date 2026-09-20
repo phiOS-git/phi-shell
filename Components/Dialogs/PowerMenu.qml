@@ -8,17 +8,16 @@ import "." as Local
 
 // Services/PowerMenu.qml owns the shown/double-tap state — this file is
 // presentation only. Layer-shell/scrim/fade plumbing copied verbatim from
-// Components/Dialogs/ConfirmDialog.qml.
-// A bare horizontal PowerActionsRow pill row directly on the scrim.
-// Reboot/shutdown still go through the existing Services.ConfirmDialog
-// "this cannot be undone" step (Services.PowerActions.needsConfirm())
-// PowerActionsRow's own `chosen` signal only decides whether to interpose
-// that step, the mechanism itself is untouched.
-// `pills.focusFirst()` runs every time this overlay actually becomes
-// shown, not just once at startup — this window is created once and only
-// ever shown/hidden via opacity (never destroyed), so
-// Component.onCompleted alone would only catch the very first SUPER+L of
-// the session.
+// Components/Dialogs/ConfirmDialog.qml. A bare horizontal PowerActionsRow pill
+// row directly on the scrim. Reboot/shutdown still go through the existing
+// Services.ConfirmDialog "this cannot be undone" step
+// (Services.PowerActions.needsConfirm()) PowerActionsRow's own `chosen` signal
+// only decides whether to interpose that step, the mechanism itself is
+// untouched. `pills.focusFirst()` runs every time this overlay actually
+// becomes shown, not just once at startup — this window is created once and
+// only ever shown/hidden via opacity (never destroyed), so
+// Component.onCompleted alone would only catch the very first SUPER+L of the
+// session.
 PanelWindow {
     id: root
 
@@ -44,15 +43,14 @@ PanelWindow {
         // weight of full-attention blocking surface.
         strong: true
     }
-    // A second identical scrim layer stacked on the first: this overlay
-    // sits on top of the real, likely bright desktop — windows, terminals
-    // whatever was on screen — so `strong` alone (80% black, the darkest
-    // existing token) still lets more of it show through than wanted.
-    // Two 80%-opaque layers stack to ~96% transmittance, reusing the
-    // existing token twice rather than inventing a new one-off opacity
-    // value. No blur effect is available here (would need a Qt
-    // graphical-effects module this codebase doesn't depend on) — this is
-    // the lever design tokens allow.
+    // A second identical scrim layer stacked on the first: this overlay sits
+    // on top of the real, likely bright desktop — windows, terminals whatever
+    // was on screen — so `strong` alone (80% black, the darkest existing
+    // token) still lets more of it show through than wanted. Two 80%-opaque
+    // layers stack to ~96% transmittance, reusing the existing token twice
+    // rather than inventing a new one-off opacity value. No blur effect is
+    // available here (would need a Qt graphical-effects module this codebase
+    // doesn't depend on) — this is the lever design tokens allow.
     Widgets.Scrim {
         anchors.fill: parent
         shown: root.shown
@@ -87,8 +85,8 @@ PanelWindow {
             onClicked: Services.PowerMenu.hide()
         }
 
-        // Swallow clicks on the row itself so tapping a pill doesn't also
-        // hit this Item's own click-outside-closes MouseArea above.
+        // Swallow clicks on the row itself so tapping a pill doesn't also hit
+        // this Item's own click-outside-closes MouseArea above.
         Item {
             anchors.centerIn: parent
             width: pills.implicitWidth

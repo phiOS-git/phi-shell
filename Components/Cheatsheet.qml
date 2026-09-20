@@ -7,16 +7,16 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 
 // READ-ONLY, sourced from `hyprctl binds -j` at the moment of display (via
-// Services/Keybinds.qml) — never a saved copy, and there is deliberately
-// no editing UI: a binding changed in hyprland.lua and reloaded shows up
-// here on the very next open because there's no second place holding it.
-// A search field, auto-focused on open; Esc or a click outside the panel
-// closes it. Rows are grouped by context (Services.Keybinds.groups — the
-// same derivation the settings panel's Keybindings section renders), each
-// group under a small caps header and a hairline, laid out in two
-// side-by-side columns. The key column width is the longest visible key
-// string times one chWidth (mono font → one glyph is one cell, so the
-// columns line up exactly with no per-row measurement).
+// Services/Keybinds.qml) — never a saved copy, and there is deliberately no
+// editing UI: a binding changed in hyprland.lua and reloaded shows up here on
+// the very next open because there's no second place holding it. A search
+// field, auto-focused on open; Esc or a click outside the panel closes it.
+// Rows are grouped by context (Services.Keybinds.groups — the same derivation
+// the settings panel's Keybindings section renders), each group under a small
+// caps header and a hairline, laid out in two side-by-side columns. The key
+// column width is the longest visible key string times one chWidth (mono font
+// → one glyph is one cell, so the columns line up exactly with no per-row
+// measurement).
 
 PanelWindow {
     id: root
@@ -25,8 +25,8 @@ PanelWindow {
     readonly property var binds: Services.Keybinds.binds
     property string query: ""
 
-    // Spans the whole screen and sits above the bar so the scrim dims it
-    // too, like every other full-screen overlay in this shell.
+    // Spans the whole screen and sits above the bar so the scrim dims it too,
+    // like every other full-screen overlay in this shell.
     anchors { top: true; bottom: true; left: true; right: true }
     exclusiveZone: -1
     color: "transparent"
@@ -68,18 +68,17 @@ PanelWindow {
     }
     readonly property var grouped: Services.Keybinds.groups(root.filtered)
 
-    // Groups alternate between the two columns (even index left, odd
-    // right) rather than a straight first-half/second-half split:
-    // `Services.Keybinds.groups` gives no guarantee its groups are
-    // ordered by size, so a straight split risks one column ending up
-    // visibly taller if larger groups cluster together. Not a true
-    // height-balanced (masonry) layout, but a reasonable approximation.
+    // Groups alternate between the two columns (even index left, odd right)
+    // rather than a straight first-half/second-half split:
+    // `Services.Keybinds.groups` gives no guarantee its groups are ordered by
+    // size, so a straight split risks one column ending up visibly taller if
+    // larger groups cluster together. Not a true height-balanced (masonry)
+    // layout, but a reasonable approximation.
     readonly property var groupedLeft: root.grouped.filter((g, i) => i % 2 === 0)
     readonly property var groupedRight: root.grouped.filter((g, i) => i % 2 === 1)
 
-    // Spacing goes around the whole combination and its "+" separators
-    // not between every character. keyLabel() already joins the parts
-    // with " + ".
+    // Spacing goes around the whole combination and its "+" separators not
+    // between every character. keyLabel() already joins the parts with " + ".
     function keyChips(bind) {
         return "[ " + Services.Keybinds.keyLabel(bind) + " ]"
     }
@@ -106,10 +105,10 @@ PanelWindow {
         }
         readonly property real chWidth: chMetrics.width
         readonly property real gap: fadeRoot.chWidth * Config.Appearance.space2
-        // Width of the key column — the longest visible key string (one
-        // mono glyph == one cell), plus a cell of breathing room, capped
-        // so a single very long binding can't push the description
-        // column off to the right.
+        // Width of the key column — the longest visible key string (one mono
+        // glyph == one cell), plus a cell of breathing room, capped so a
+        // single very long binding can't push the description column off to
+        // the right.
         readonly property real keyColW: {
             let m = 0
             const rows = root.filtered
@@ -132,9 +131,9 @@ PanelWindow {
             width: parent.width * 0.6
             height: parent.height * 0.8
 
-            // Swallows clicks on the panel (border included) so a blank
-            // spot never falls through to the close-on-outside MouseArea.
-            // The search field and Flickable are on top and still get theirs.
+            // Swallows clicks on the panel (border included) so a blank spot
+            // never falls through to the close-on-outside MouseArea. The
+            // search field and Flickable are on top and still get theirs.
             MouseArea { anchors.fill: parent }
 
             Widgets.Panel {
@@ -213,11 +212,11 @@ PanelWindow {
                 }
             }
 
-            // One group's worth of rendering (context header + hairline +
-            // its own Repeater of bind rows), shared by both side-by-side
+            // One group's worth of rendering (context header + hairline + its
+            // own Repeater of bind rows), shared by both side-by-side
             // Repeaters below via root.groupedLeft/groupedRight — `width:
-            // parent.width` so the same Component works regardless of
-            // which of the two Columns instantiates it.
+            // parent.width` so the same Component works regardless of which of
+            // the two Columns instantiates it.
             Component {
                 id: groupBlock
 
@@ -276,12 +275,11 @@ PanelWindow {
                 anchors.topMargin: fadeRoot.gap
                 anchors.bottom: parent.bottom
                 contentWidth: width
-                // Row's own implicitHeight is the taller of its two
-                // children (standard Qt Quick Row behaviour, not
-                // something this project defines) — exactly the extent
-                // the shorter column's own trailing whitespace needs to
-                // match, so nothing here has to compare the two heights
-                // itself.
+                // Row's own implicitHeight is the taller of its two children
+                // (standard Qt Quick Row behaviour, not something this project
+                // defines) — exactly the extent the shorter column's own
+                // trailing whitespace needs to match, so nothing here has to
+                // compare the two heights itself.
                 contentHeight: columnsRow.implicitHeight
                 clip: true
 
@@ -289,8 +287,8 @@ PanelWindow {
                     id: columnsRow
                     width: parent.width
                     // Wider than the inter-row spacing reused below inside
-                    // each column — a visibly distinct gutter between the
-                    // two columns themselves, not just another row gap.
+                    // each column — a visibly distinct gutter between the two
+                    // columns themselves, not just another row gap.
                     spacing: fadeRoot.chWidth * Config.Appearance.space3
 
                     Column {

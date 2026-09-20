@@ -5,18 +5,17 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "modules" as Modules
 
-// The small card that drops below the bar button that opened it — one
-// shared Widgets.PopoutSurface, one section per `which` key (Modules/).
-// Right-isle keys track the button's right edge; the one left-isle key
-// ("power") tracks its left edge instead, via Services.BarPopout's own
-// anchorEdge (right-edge alignment would push a card opened from near the
-// screen's left edge almost entirely off-screen).
-// Every Modules/ section stays instantiated for the shell's whole
-// session — never Loader-swapped — so each keeps its own local state
-// (Modules/Status.qml's tiling-mode highlight, live countdowns) across
+// The small card that drops below the bar button that opened it — one shared
+// Widgets.PopoutSurface, one section per `which` key (Modules/). Right-isle
+// keys track the button's right edge; the one left-isle key ("power") tracks
+// its left edge instead, via Services.BarPopout's own anchorEdge (right-edge
+// alignment would push a card opened from near the screen's left edge almost
+// entirely off-screen). Every Modules/ section stays instantiated for the
+// shell's whole session — never Loader-swapped — so each keeps its own local
+// state (Modules/Status.qml's tiling-mode highlight, live countdowns) across
 // close/reopen exactly as a user would expect; `active` only drives
-// `visible`/`shown`, which a QtQuick Column already excludes from layout
-// when false.
+// `visible`/`shown`, which a QtQuick Column already excludes from layout when
+// false.
 
 Widgets.PopoutSurface {
     id: root
@@ -39,36 +38,36 @@ Widgets.PopoutSurface {
 
     // notifications/clipboard are the two wide, tall exceptions to the
     // standard chWidth-based card: notifications' history can run long
-    // clipboard's search results always want a real scrollable area, so
-    // both size off the screen instead of a fixed character count.
+    // clipboard's search results always want a real scrollable area, so both
+    // size off the screen instead of a fixed character count.
     readonly property bool _wideCard: root.which === "notifications" || root.which === "clipboard"
     cardWidth: root._wideCard
         ? Math.min(root.width * 0.32, root.chWidth * 46)
         : root.chWidth * (["status", "stats", "network"].indexOf(root.which) !== -1 ? 44 : 36)
     cardHeight: bodyCol.implicitHeight + root.padding * 2
 
-    // The height budget notifications/clipboard's own module content can
-    // grow into, INNER content only (this card's shared `padding` is
-    // added back exactly once, by `cardHeight` above) — capped at 3/4 the
-    // screen height and at whatever room is actually left below the bar.
+    // The height budget notifications/clipboard's own module content can grow
+    // into, INNER content only (this card's shared `padding` is added back
+    // exactly once, by `cardHeight` above) — capped at 3/4 the screen height
+    // and at whatever room is actually left below the bar.
     readonly property real _wideCardAvailableHeight: Math.min(
         root.height * 0.75,
         root.height - (Services.BarMetrics.height + Config.Appearance.panelGap) - Config.Appearance.panelGap
     ) - root.padding * 2
 
-    // The one corner nearest the triggering bar icon is radiusSmall, the
-    // other three radiusLarge. "power" is the one left-isle key (top-left
-    // nearest); every bottom-bar key sits ABOVE that bar (bottom-right
-    // nearest); every other (top-bar, right-isle) key sits below the top
-    // bar (top-right nearest).
+    // The one corner nearest the triggering bar icon is radiusSmall, the other
+    // three radiusLarge. "power" is the one left-isle key (top-left nearest);
+    // every bottom-bar key sits ABOVE that bar (bottom-right nearest); every
+    // other (top-bar, right-isle) key sits below the top bar (top-right
+    // nearest).
     readonly property bool _leftIsle: root.which === "power"
     cornerRadiusTopLeft: root._leftIsle ? Config.Appearance.radiusSmall : Config.Appearance.radiusLarge
     cornerRadiusTopRight: (!root.fromBottom && !root._leftIsle) ? Config.Appearance.radiusSmall : Config.Appearance.radiusLarge
     cornerRadiusBottomLeft: Config.Appearance.radiusLarge
     cornerRadiusBottomRight: root.fromBottom ? Config.Appearance.radiusSmall : Config.Appearance.radiusLarge
 
-    // Live network/system sampling only runs while a card that actually
-    // shows it is on screen.
+    // Live network/system sampling only runs while a card that actually shows
+    // it is on screen.
     property bool _netWatched: false
     property bool _statsWatched: false
     onWhichChanged: { root._syncNetWatch(); root._syncStatsWatch() }
@@ -117,10 +116,10 @@ Widgets.PopoutSurface {
         function close(): void { Services.BarPopout.hide() }
     }
 
-    // The shared card header's settings icon: every single-topic card gets
-    // one Settings destination here; the "network" card merges four
-    // destinations into one card, so it keeps its own per-sub-section
-    // icons instead (Modules/Network.qml).
+    // The shared card header's settings icon: every single-topic card gets one
+    // Settings destination here; the "network" card merges four destinations
+    // into one card, so it keeps its own per-sub-section icons instead
+    // (Modules/Network.qml).
     function _headerSettingsTarget(which) {
         switch (which) {
         case "wifi": return "connectivity.wifi.speed"
@@ -128,17 +127,17 @@ Widgets.PopoutSurface {
         case "timer": return "notifications.timers"
         case "microphone": return "security.sensors"
         case "camera": return "security.sensors"
-        // battery/clipboard go straight to the one Settings group that
-        // owns them (Devices › Battery — the battery card's controls) and
-        // Security › Clipboard history rules.
+        // battery/clipboard go straight to the one Settings group that owns
+        // them (Devices › Battery — the battery card's controls) and Security
+        // › Clipboard history rules.
         case "battery": return "devices.battery"
         case "clipboard": return "security.clipboard"
         }
         return ""
     }
     function _headerSettingsActivate(which) {
-        // "brightness"/"volume" deep-link to a whole Settings section
-        // (Theme, Devices), not a single options.js anchor id.
+        // "brightness"/"volume" deep-link to a whole Settings section (Theme,
+        // Devices), not a single options.js anchor id.
         if (which === "brightness") {
             Services.SettingsPanel.openSection("theme")
             Services.BarPopout.hide()
@@ -169,9 +168,9 @@ Widgets.PopoutSurface {
         }
 
         // volume/brightness carry the actual controls (the bar icons open
-        // this, the function keys get the transient pill in Osd/Osd.qml);
-        // the rest are compact readouts with a deep-link where a mature
-        // tool exists.
+        // this, the function keys get the transient pill in Osd/Osd.qml); the
+        // rest are compact readouts with a deep-link where a mature tool
+        // exists.
         Modules.Volume     { chWidth: root.chWidth; active: root.which === "volume" }
         Modules.Media      { chWidth: root.chWidth; active: root.which === "media" }
         Modules.Screenshot { chWidth: root.chWidth; active: root.which === "screenshot" }
@@ -191,8 +190,8 @@ Widgets.PopoutSurface {
 
         // Migrated from the old standalone NotificationsOverlay/
         // ClipboardOverlay windows — both wide cards, sized via
-        // `_wideCardAvailableHeight`/`_wideCard` above instead of the
-        // standard chWidth formula.
+        // `_wideCardAvailableHeight`/`_wideCard` above instead of the standard
+        // chWidth formula.
         Modules.Notifications {
             active: root.which === "notifications"
             screenHeight: root.height

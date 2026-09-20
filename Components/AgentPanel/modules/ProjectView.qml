@@ -4,14 +4,12 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "." as Local
 
-// The agent panel's ProjectView section (project
-// detail). Name, description, instruction list, context files (materiali/)
-// folders of interest (read-only real dirs), default personality, project
-// chats.
-// the six section headers are
+// The agent panel's ProjectView section (project detail). Name, description,
+// instruction list, context files (materiali/) folders of interest (read-only
+// real dirs), default personality, project chats. the six section headers are
 // `kind: "title"` (DemiBold ink), matching every other panel heading; the
-// three add-a-path rows use Widgets/TextField; micro-gaps are derived
-// tokens (`tightGap`), no literal `spacing: 2`.
+// three add-a-path rows use Widgets/TextField; micro-gaps are derived tokens
+// (`tightGap`), no literal `spacing: 2`.
 
 Item {
     id: root
@@ -24,12 +22,12 @@ Item {
     // keyScope; see Widgets/TextField.qml's `escaped()`.
     signal blurred()
 
-    // AgentPanel.qml's own keyScope contract. Always
-    // true while this view is the active section (Dashboard delegates to
-    // it whenever a project is open) — goBack() itself picks which of the
-    // two nested levels (the personality editor, or this view itself) to
-    // step back out of, the same shape PersonalityEditor's own "‹" button
-    // already uses for ITS two levels.
+    // AgentPanel.qml's own keyScope contract. Always true while this view is
+    // the active section (Dashboard delegates to it whenever a project is
+    // open) — goBack() itself picks which of the two nested levels (the
+    // personality editor, or this view itself) to step back out of, the same
+    // shape PersonalityEditor's own "‹" button already uses for ITS two
+    // levels.
     readonly property bool hasBack: true
     function goBack() {
         if (personalityEditor.active && personalityEditor.item) personalityEditor.item.goBack()
@@ -86,18 +84,17 @@ Item {
                 }
             }
 
-            // (reported directly: "managing projects
-            // is a generic form of fields with no hierarchy and grammar").
-            // Every section below the exact same shape — a
-            // plain `kind: "title"` heading followed by rows — with
-            // nothing to tell them apart at a glance or let a user
-            // collapse the ones they are not touching right now. Wrapped
-            // each in Widgets/Accordion (the same disclosure Settings/
+            // (reported directly: "managing projects is a generic form of
+            // fields with no hierarchy and grammar"). Every section below the
+            // exact same shape — a plain `kind: "title"` heading followed by
+            // rows — with nothing to tell them apart at a glance or let a user
+            // collapse the ones they are not touching right now. Wrapped each
+            // in Widgets/Accordion (the same disclosure Settings/
             // sections/Devices.qml already uses for a comparable "several
             // grouped sub-settings" shape), `expanded: true` by default so
-            // opening a project loses no information and needs no extra
-            // click — the win here is the grouping/hierarchy itself (a
-            // titled, bordered region per concern), not hiding anything.
+            // opening a project loses no information and needs no extra click
+            // — the win here is the grouping/hierarchy itself (a titled,
+            // bordered region per concern), not hiding anything.
 
             // description
             Widgets.Accordion {
@@ -239,10 +236,10 @@ Item {
                 }
             }
 
-            // project chats — : same gap as
-            // Panels/tabs/agent/Dashboard.qml's own ChatRow had (see its
-            // comment) — the star only ever displayed pin state, nothing
-            // here called the real Services.Agent.setChatPinned(). Same fix.
+            // project chats — : same gap as Panels/tabs/agent/Dashboard.qml's
+            // own ChatRow had (see its comment) — the star only ever displayed
+            // pin state, nothing here called the real
+            // Services.Agent.setChatPinned(). Same fix.
             Widgets.Accordion {
                 width: parent.width
                 title: "Conversations"
@@ -269,8 +266,8 @@ Item {
                             label: chatRow.pinned ? "Unpin" : "Pin"
                             onClicked: root.agent.setChatPinned(chatRow.chatId, !chatRow.pinned)
                         }
-                        // same Services.Agent.closeSession()
-                        // gap as Dashboard.qml's own ChatRow — see its comment.
+                        // same Services.Agent.closeSession() gap as
+                        // Dashboard.qml's own ChatRow — see its comment.
                         Widgets.SmallButton {
                             id: closeBtn
                             anchors.verticalCenter: parent.verticalCenter
@@ -294,11 +291,11 @@ Item {
         property string text: ""
         property string placeholder: ""
         signal commit(string value)
-        // Inline components (the `component Name: Type {}` syntax) cannot
-        // see the enclosing document's ids, `root` included — this has to
-        // be re-emitted from the instantiation site below, not called
-        // directly, the same reason `et.text`/`et.commit` are used above
-        // instead of reaching into `root`.
+        // Inline components (the `component Name: Type {}` syntax) cannot see
+        // the enclosing document's ids, `root` included — this has to be
+        // re-emitted from the instantiation site below, not called directly,
+        // the same reason `et.text`/`et.commit` are used above instead of
+        // reaching into `root`.
         signal blurred()
         spacing: root.tightGap
         Widgets.Panel {

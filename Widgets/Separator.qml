@@ -4,13 +4,13 @@ import "WidgetStates.js" as WidgetStates
 
 // A hairline divider, coloured and sized from design tokens.
 //
-// The seven transverse states are present here for interface uniformity
-// with every other widget in this directory, but only three have a
-// defined look for a plain divider: default, disabled and loading fade
-// together via the shared opacity precedence, and invalid tints the line
-// to the error colour. hover/pressed/active/keyboardFocus have no meaning
-// for a line nothing can click or focus, and are not wired to any visual
-// effect — a genuinely honest "not applicable", not a silently faked one.
+// The seven transverse states are present here for interface uniformity with
+// every other widget in this directory, but only three have a defined look for
+// a plain divider: default, disabled and loading fade together via the shared
+// opacity precedence, and invalid tints the line to the error colour.
+// hover/pressed/active/keyboardFocus have no meaning for a line nothing can
+// click or focus, and are not wired to any visual effect — a genuinely honest
+// "not applicable", not a silently faked one.
 
 Item {
     id: root
@@ -19,8 +19,8 @@ Item {
     property bool strong: false
     property bool loading: false
     property bool invalid: false
-    // Present for the seven-state contract; no visual effect here (see
-    // file comment above).
+    // Present for the seven-state contract; no visual effect here (see file
+    // comment above).
     property bool hovered: false
     property bool pressed: false
     property bool active: false

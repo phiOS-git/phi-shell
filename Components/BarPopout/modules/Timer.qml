@@ -4,9 +4,8 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../../../Widgets/Format.js" as Format
 
-// Sorted soonest first. Creating a new timer/alarm is the runner bar's
-// job ("timer 5m", "alarm 7:30"), not duplicated here as a second input
-// form.
+// Sorted soonest first. Creating a new timer/alarm is the runner bar's job
+// ("timer 5m", "alarm 7:30"), not duplicated here as a second input form.
 
 Column {
     id: root

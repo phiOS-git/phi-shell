@@ -5,16 +5,16 @@ import Quickshell.Io
 
 // Deliberately its own file rather than a third `kind` bolted onto
 // Services/Timers.qml's own `items` list: a stopwatch counts UP with no
-// target/firing/ringtone/overlay at all, while a timer/alarm's whole
-// shape is built around a `targetMs` and an alert when it's reached.
-// Sharing one list between two genuinely different shapes would mean
-// every consumer of `items` has to branch on `kind` for fields that only
-// make sense for one side — this file owns a much simpler shape instead:
-// one running/paused elapsed-time counter plus laps, session-local only.
-// Not persisted across a restart, unlike timers/alarms: a stopwatch has
-// no natural resume point to describe to the user beyond "started N
-// minutes before the shell restarted, trust it" — this is a session-local
-// check-the-time tool, not state the shell needs to defend across a crash.
+// target/firing/ringtone/overlay at all, while a timer/alarm's whole shape is
+// built around a `targetMs` and an alert when it's reached. Sharing one list
+// between two genuinely different shapes would mean every consumer of `items`
+// has to branch on `kind` for fields that only make sense for one side — this
+// file owns a much simpler shape instead: one running/paused elapsed-time
+// counter plus laps, session-local only. Not persisted across a restart,
+// unlike timers/alarms: a stopwatch has no natural resume point to describe to
+// the user beyond "started N minutes before the shell restarted, trust it" —
+// this is a session-local check-the-time tool, not state the shell needs to
+// defend across a crash.
 
 Singleton {
     id: root
@@ -56,10 +56,9 @@ Singleton {
         root.laps = root.laps.concat([{ ms: root.elapsedMs(Date.now()) }])
     }
 
-    // Callers own their own tick (the bar module and the popout card each
-    // need one, gated on their own visibility) — this file runs no
-    // background Timer of its own, so an idle (or paused) stopwatch costs
-    // nothing.
+    // Callers own their own tick (the bar module and the popout card each need
+    // one, gated on their own visibility) — this file runs no background Timer
+    // of its own, so an idle (or paused) stopwatch costs nothing.
     function elapsedMs(nowMs) {
         return root.accumulatedMs + (root.running ? Math.max(0, nowMs - root._segmentStartMs) : 0)
     }

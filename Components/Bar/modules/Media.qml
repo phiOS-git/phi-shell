@@ -54,11 +54,11 @@ Widgets.Segment {
 
     onActivated: Services.BarPopout.toggle("media", root.rightX())
 
-    // This button is the only way the "media" popout can be opened AND
-    // closed, so the card must not outlive its trigger: the moment no
-    // player is connected the segment hides, and an open card would hang
-    // there with no way back — close it. A player SWITCH (one source
-    // stops, another takes over) leaves it open; only going to null does.
+    // This button is the only way the "media" popout can be opened AND closed,
+    // so the card must not outlive its trigger: the moment no player is
+    // connected the segment hides, and an open card would hang there with no
+    // way back — close it. A player SWITCH (one source stops, another takes
+    // over) leaves it open; only going to null does.
     onPlayerChanged: {
         if (root.player === null && Services.BarPopout.which === "media")
             Services.BarPopout.hide()

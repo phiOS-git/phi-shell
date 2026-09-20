@@ -5,9 +5,8 @@ import qs.Widgets as Widgets
 import "../modules" as Modules
 
 // Do-not-disturb (duration or on-demand), per-app rules, Chroma blink on
-// arrival. Everything reads Services/Notifications directly — DND reuses
-// phi state's toggle.dnd, per-app rules and the seen-app list live there
-// too.
+// arrival. Everything reads Services/Notifications directly — DND reuses phi
+// state's toggle.dnd, per-app rules and the seen-app list live there too.
 
 Column {
     id: root
@@ -126,10 +125,9 @@ Column {
                 width: parent.width
                 spacing: root.gap
                 // Preset buttons first, since retention is almost always
-                // picked from a small set of common spans (the same
-                // pattern "Silence for a while" above already
-                // establishes), the NumberField kept below for anything
-                // in between.
+                // picked from a small set of common spans (the same pattern
+                // "Silence for a while" above already establishes), the
+                // NumberField kept below for anything in between.
                 Row {
                     spacing: root.gap
                     Repeater {
@@ -238,8 +236,8 @@ Column {
         optionId: "notifications.timers"
         // Empty state folded into the caption, not a separate invisible-
         // when-non-empty Modules.SettingsRow: a hidden-but-still-child-0 row
-        // would draw the first real row's separator against nothing
-        // above it (Modules.SettingsRow's own `_first` check reads position in
+        // would draw the first real row's separator against nothing above it
+        // (Modules.SettingsRow's own `_first` check reads position in
         // `children`, not visibility).
         caption: Services.Timers.soundError.length > 0
             ? ("Last sound error: " + Services.Timers.soundError)

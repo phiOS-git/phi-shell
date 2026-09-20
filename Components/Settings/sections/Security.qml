@@ -5,10 +5,9 @@ import qs.Widgets as Widgets
 import "../modules" as Modules
 
 // Every row in the ClamAV/Face-unlock/Secrets groups is a placeholder by
-// design, not by omission: ClamAV isn't built yet, face unlock is
-// explicitly excluded (howdy/howdy-next are AUR-only, out of scope for
-// this project), and the secrets entry point depends on a password-
-// manager choice not yet made.
+// design, not by omission: ClamAV isn't built yet, face unlock is explicitly
+// excluded (howdy/howdy-next are AUR-only, out of scope for this project), and
+// the secrets entry point depends on a password- manager choice not yet made.
 
 Column {
     id: root
@@ -54,11 +53,11 @@ Column {
     }
 
     // A real, working group — unlike its siblings above, which are
-    // placeholders — placed here since its whole point is keeping
-    // sensitive content out of a persisted history. Services/Clipboard.qml
-    // already excludes one thing before it ever touches disk (KeePassXC's
-    // MIME hint); these are the user-added rules layered on top of it
-    // checked in QML the instant an entry is first observed as new.
+    // placeholders — placed here since its whole point is keeping sensitive
+    // content out of a persisted history. Services/Clipboard.qml already
+    // excludes one thing before it ever touches disk (KeePassXC's MIME hint);
+    // these are the user-added rules layered on top of it checked in QML the
+    // instant an entry is first observed as new.
     Modules.SettingsGroup {
         title: "Clipboard history rules"
         optionId: "security.clipboard"
@@ -152,11 +151,11 @@ Column {
     }
 
     // UI and interactions only — see Services/SensorPermissions.qml's own
-    // header for the full scope note: the killswitches below are real
-    // (mic bridges to Services.AudioBridge's actual Pipewire mute; camera
-    // is a real session flag with no device backend to gate yet), the
-    // rules list is real storage with no real detection to populate it
-    // automatically yet, and "Send a test prompt" exercises the real
+    // header for the full scope note: the killswitches below are real (mic
+    // bridges to Services.AudioBridge's actual Pipewire mute; camera is a real
+    // session flag with no device backend to gate yet), the rules list is real
+    // storage with no real detection to populate it automatically yet, and
+    // "Send a test prompt" exercises the real
     // Components/Dialogs/SensorPermissionPrompt.qml end to end without
     // pretending an app actually asked.
     Modules.SettingsGroup {

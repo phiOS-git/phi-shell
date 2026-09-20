@@ -3,8 +3,8 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// The master killswitch, the list of apps currently using the sensor
-// (always empty today — no detection backend exists, see
+// The master killswitch, the list of apps currently using the sensor (always
+// empty today — no detection backend exists, see
 // Services/SensorPermissions.qml), and a settings deep-link.
 
 Widgets.StaggerReveal {

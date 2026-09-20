@@ -4,27 +4,26 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../../Bar/glyphs.js" as Glyphs
 
-// Migrated from the old standalone NotificationsOverlay window (retired
-// into a plain BarPopout "which" card, same
-// shape as every other module here. A DND switch (with 30m/1h/4h quick-
-// triggers), then the notification list grouped by date, then by source
-// within each date — both tiers collapsible (dates default expanded
-// sources default collapsed).
-// This card keeps its own inline title row rather than the shared
-// Modules/Header.qml (Services/BarPopout.qml's title("notifications")
-// returns "" for exactly this reason) since it predates that shared
-// component and already carries its own settings deep-link.
+// Migrated from the old standalone NotificationsOverlay window (retired into a
+// plain BarPopout "which" card, same shape as every other module here. A DND
+// switch (with 30m/1h/4h quick- triggers), then the notification list grouped
+// by date, then by source within each date — both tiers collapsible (dates
+// default expanded sources default collapsed). This card keeps its own inline
+// title row rather than the shared Modules/Header.qml
+// (Services/BarPopout.qml's title("notifications") returns "" for exactly this
+// reason) since it predates that shared component and already carries its own
+// settings deep-link.
 
 Item {
     id: root
 
     property bool active: false
     // The real screen height, handed down by Components/BarPopout/
-    // BarPopout.qml — this card's own height is capped against it rather
-    // than growing to fit however much history exists.
+    // BarPopout.qml — this card's own height is capped against it rather than
+    // growing to fit however much history exists.
     required property real screenHeight
-    // The pre-computed, padding-already-subtracted height budget this
-    // card may grow into (BarPopout.qml's own `_wideCardAvailableHeight`).
+    // The pre-computed, padding-already-subtracted height budget this card may
+    // grow into (BarPopout.qml's own `_wideCardAvailableHeight`).
     property real availableHeight: 0
 
     readonly property real naturalContentHeight: flick.contentHeight
@@ -40,13 +39,13 @@ Item {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
-    // gap — tight, inside a card / between a label and its control.
-    // blockGap — the rhythm between this card's top-level blocks.
+    // gap — tight, inside a card / between a label and its control. blockGap —
+    // the rhythm between this card's top-level blocks.
     readonly property real gap: chWidth * Config.Appearance.space1
     readonly property real blockGap: chWidth * Config.Appearance.space2
 
-    // { "<dateKey>": true } — a date key present here IS collapsed.
-    // Default: every date group starts expanded.
+    // { "<dateKey>": true } — a date key present here IS collapsed. Default:
+    // every date group starts expanded.
     property var collapsedDates: ({})
     function toggleDateGroup(key) {
         var m = Object.assign({}, root.collapsedDates)
@@ -56,10 +55,9 @@ Item {
     function isDateCollapsed(key) { return root.collapsedDates[key] === true }
 
     // { "<dateKey>/<app>": true } — an app key present here IS expanded.
-    // Default: every source (app) sub-group starts collapsed — the
-    // inverse default from collapsedDates above, deliberately two
-    // separate maps so the two tiers can disagree about their own
-    // default state.
+    // Default: every source (app) sub-group starts collapsed — the inverse
+    // default from collapsedDates above, deliberately two separate maps so the
+    // two tiers can disagree about their own default state.
     property var expandedApps: ({})
     function toggleAppGroup(dateKey, app) {
         var k = dateKey + "/" + app
@@ -83,11 +81,10 @@ Item {
         return out
     }
 
-    // "Today, yesterday, this week, older". "This week" is read as a
-    // rolling 2-6-days-ago window (today/yesterday already cover the
-    // first two, "older" starts at 7 days) rather than a calendar week
-    // no start-of-week convention (Monday vs. Sunday) is picked anywhere
-    // else in this shell.
+    // "Today, yesterday, this week, older". "This week" is read as a rolling
+    // 2-6-days-ago window (today/yesterday already cover the first two,
+    // "older" starts at 7 days) rather than a calendar week no start-of-week
+    // convention (Monday vs. Sunday) is picked anywhere else in this shell.
     readonly property var dateGroups: {
         const hist = Services.Notifications.history || []
         const now = new Date()
@@ -130,10 +127,10 @@ Item {
         contentHeight: column.implicitHeight
         clip: true
 
-        // This card's own top-level blocks (DND row, Active header/list
-        // each date group) cascade in after the popout card itself is
-        // visible — the card's own fade is Widgets/PopoutSurface's own
-        // fadeRoot, unchanged here.
+        // This card's own top-level blocks (DND row, Active header/list each
+        // date group) cascade in after the popout card itself is visible — the
+        // card's own fade is Widgets/PopoutSurface's own fadeRoot, unchanged
+        // here.
         Widgets.StaggerReveal {
             id: column
             shown: root.active
@@ -172,10 +169,10 @@ Item {
                 }
 
                 // Services.Notifications.dndFor(minutes) already exists
-                // (Settings/sections/Notifications.qml's own identical
-                // row); reused verbatim, not a second timed-DND mechanism.
-                // StyledButton rather than SmallButton — the same
-                // full-border quick-trigger row the Settings section uses.
+                // (Settings/sections/Notifications.qml's own identical row);
+                // reused verbatim, not a second timed-DND mechanism.
+                // StyledButton rather than SmallButton — the same full-border
+                // quick-trigger row the Settings section uses.
                 Row {
                     id: dndTimingRow
                     width: parent.width
@@ -198,10 +195,10 @@ Item {
                     }
                 }
 
-                // The label flush left, the remaining time flush right
-                // the same full-width label/value grammar ListRow and the
-                // other modules use — the value bold (kind "title") mono
-                // so the countdown reads at a glance.
+                // The label flush left, the remaining time flush right the
+                // same full-width label/value grammar ListRow and the other
+                // modules use — the value bold (kind "title") mono so the
+                // countdown reads at a glance.
                 Item {
                     width: parent.width
                     visible: Services.Notifications.dndRemainingLabel.length > 0
