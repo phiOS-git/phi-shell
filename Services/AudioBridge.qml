@@ -2,23 +2,11 @@ pragma Singleton
 import Quickshell
 import Quickshell.Services.Pipewire
 
-// Thin wrapper over Quickshell.Services.Pipewire — the one file outside
-// Config/ allowed to touch this service surface. Every bar module and the
-// Devices settings section reads this, never Quickshell.Services.Pipewire
-// directly. The C++ class behind a pipewire node is `PwNodeIface`, but it
-// registers under `QML_NAMED_ELEMENT(PwNode)` — the QML-facing name is
-// `PwNode`, not the C++ class name (a real-hardware run caught this mismatch,
-// "PwNodeIface is not a type"). A `PwNode`'s `audio` property is non-null
-// based on whether the node handles audio at all, but the values INSIDE it
-// (volume muted) are only valid once the node is bound via PwObjectTracker
-// unbound objects have limited information access. Every node this file hands
-// out for selection is tracked below for exactly that reason;
-// `defaultAudioSink.ready` / a listed node's `.ready` reports whether the
-// binding has completed. preferredDefaultAudioSink /
-// preferredDefaultAudioSource are writable PwNode references on the Pipewire
-// singleton — assigning one is how the shell changes the system default, with
-// no `wpctl` shell-out. Unverified end to end from here — no real Pipewire
-// graph reachable.
+// Thin wrapper over Quickshell.Services.Pipewire (fenced service surface).
+// PwNode's audio property only valid once bound via PwObjectTracker; tracked
+// below. Ready flag reports if binding completed. Assigning to
+// preferredDefaultAudioSink / preferredDefaultAudioSource changes system
+// default with no wpctl shell-out.
 
 Singleton {
     id: root
@@ -53,14 +41,8 @@ Singleton {
         if (root.inputReady) root.source.audio.muted = !root.source.audio.muted
     }
 
-    // `inputMuted`/`toggleInputMute()` above give a real enabled/disabled
-    // toggle (mutes the default source at the Pipewire level, not just this
-    // shell's own OSD). "in use" reads `Pipewire.linkGroups`: a link group
-    // touching the default input device whose state is `PwLinkState.Active`
-    // means something is actively pulling audio from it, not merely
-    // connected-but-idle. Which end of a capture link is `source` vs. `target`
-    // is not independently verified without real hardware, so this checks both
-    // sides.
+    // "In use": link group touching default input with state Active. Checks
+    // both source and target sides (not verified without real hardware).
     readonly property bool micInUse: {
         if (root.source === null || Pipewire.linkGroups === null) return false
         var list = Pipewire.linkGroups.values ? Pipewire.linkGroups.values : []
@@ -72,11 +54,7 @@ Singleton {
         return false
     }
 
-    // --- device selection --------------------------------------
-    // Real, selectable endpoints only: a bound audio node that is not an
-    // application stream. Monitor sources (`*.monitor`) are the loopback of
-    // a sink, never something a user picks as an input, so they are
-    // dropped. isSink splits the two lists (PwNode has no isSource).
+    // Device selection: real endpoints only (not streams, not monitors).
     readonly property var sinks: root._devices(true)
     readonly property var sources: root._devices(false)
 
@@ -110,11 +88,7 @@ Singleton {
         if (n !== null) Pipewire.preferredDefaultAudioSource = n
     }
 
-    // Binds the default sink/source AND every node offered for selection so
-    // `.description` / `.ready` on a listed node is real rather than the
-    // unbound placeholder. An array literal re-evaluates when any of its
-    // inputs change (a device plugged in, the default switched), so the
-    // tracked set follows automatically.
+    // Track all nodes for binding; array re-evaluates on device changes.
     PwObjectTracker {
         objects: {
             var set = []

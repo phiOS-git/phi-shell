@@ -4,39 +4,12 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../glyphs.js" as Glyphs
 
-// A right-isle glyph for the active MPRIS player. Hidden entirely while
-// no player is connected — a media control with nothing to control earns
-// no bar slot (Bar.qml's Loaders already mirror a self-hiding module's
-// `visible`, so no blank gap is left). Once a player is active the glyph
-// shows the player's current STATE, not the next action: a play icon
-// while playing, a pause icon while paused (deliberately the opposite of
-// the transport button in the popout, which shows what pressing it will
-// do). A left click opens the Media popout (Services.BarPopout.toggle
-// with the "media" key, same click-to-toggle shape as the volume/network
-// buttons); a right click plays/pauses the active player directly — the
-// one touch that shouldn't need a card open.
-// The secondary action sits on a SECOND TapHandler, the same "add the
-// button the other never claimed" pattern
-// Components/BarPopout/modules/Clipboard.qml uses: Segment's own internal
-// TapHandler claims only the left button, so the two never contest for the
-// same pointer button.
-// Touch is a separate case. Qt's TapHandler ignores `acceptedButtons` for
-// touch events entirely (the button check in its Released branch is
-// `isTouch || …`), so a touchscreen tap was landing on the right-button
-// handler below and playing/pausing instead of opening the popout. The
-// discriminator for touch is `acceptedDevices`, not the button mask: the
-// right-button handler admits only mouse/touchpad/stylus devices, and a
-// second TouchScreen-only handler turns a touch LONG PRESS (the touch
-// idiom for "right click") into the play/pause action. A plain touchscreen
-// tap therefore always just reaches Segment's own left-button handler and
-// toggles the popout; the long-press handler keeps the default
-// `gesturePolicy` (DragThreshold — a passive grab, so it never steals the
-// tap from Segment's handler; ReleaseWithinBounds would take an exclusive
-// grab on press and break the popout toggle) and the default
-// `longPressThreshold` (the platform press-and-hold interval, the same
-// value Segment's own handler reads), so Segment's own long-press
-// recognition suppresses its tap on the release — a long press never ALSO
-// toggles the popout.
+// MPRIS player glyph (right isle): shows current state (play/pause), hidden
+// when no player. Left click opens media popout; right click plays/pauses.
+// Touch: TapHandler ignores acceptedButtons for touch; discriminate via
+// acceptedDevices. Touchscreen long-press for play/pause (touch "right click"),
+// tap for popout toggle (Segment's left handler). DragThreshold gesture
+// policy lets Segment's own long-press suppress the tap.
 
 Widgets.Segment {
     id: root
@@ -54,11 +27,8 @@ Widgets.Segment {
 
     onActivated: Services.BarPopout.toggle("media", root.rightX())
 
-    // This button is the only way the "media" popout can be opened AND closed,
-    // so the card must not outlive its trigger: the moment no player is
-    // connected the segment hides, and an open card would hang there with no
-    // way back — close it. A player SWITCH (one source stops, another takes
-    // over) leaves it open; only going to null does.
+    // Only way to close media popout: close it when player becomes null.
+    // Player switch leaves popout open.
     onPlayerChanged: {
         if (root.player === null && Services.BarPopout.which === "media")
             Services.BarPopout.hide()

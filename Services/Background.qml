@@ -5,21 +5,14 @@ import Quickshell.Io
 import qs.Config as Config
 import qs.Services as Services
 
-// Shared wallpaper state — a per-screen Components/Background.qml surface
-// can't own its own IPC or state without colliding across instances (same
-// split as Services/Spotlight.qml). The wallpaper is composited from up to
-// three layers: a solid `color` an optional procedural `texture` overlay
-// (generated once by `phi wallpaper texture` and cached), and an optional
-// `image` with a fit `mode`. Every value is persisted through `phi state`.
-// setX() updates the reactive property synchronously (the surface repaints at
-// once) and fires `phi state set` underneath fire-and-forget purely for
-// persistence.
+// Shared wallpaper state: solid color, optional procedural texture overlay,
+// optional image. Composited from three layers; every value persisted through
+// phi state. setX() updates synchronously and persists via fire-and-forget.
 
 Singleton {
     id: root
 
-    // Legacy single-string API kept so existing callers (the bar OSD
-    // deep-link, older code) still compile; it maps onto `image`.
+    // Legacy single-string API (maps to image); kept for backward compat.
     property string path: ""
 
     property string color: "#000000"
@@ -30,43 +23,28 @@ Singleton {
     property int textureIntensity: 40
     property string texturePath: ""       // cached PNG, "" until generated
 
-    // Every image in the wallpaper folder, grouped for the settings picker: [{
-    // name, images: [absolute paths] }] — one section per subfolder loose
-    // files under "General". A subfolder is how a set of static wallpapers is
-    // organised; the picker renders the sections as collapsible accordions so
-    // a closed group costs nothing while the panel is open. Populated by an
-    // `ls` probe (the repo's own dir-listing pattern, Services/Agent.qml),
-    // refreshed when the panel opens or a new image is added.
+    // Every wallpaper image grouped for the picker: [{ name, images: [...] }].
+    // One section per subfolder; loose files grouped under "General".
+    // Populated by ls probe; refreshed when panel opens or image added.
     property var groups: []
 
-    // The wallpaper folder's loose top-level files, for the flat row next to
-    // the picker's "none" tile — the "General" group is not shown as a section
-    // itself, only subfolders are. Same source the picker's accordions filter
-    // out.
+    // Wallpaper folder's loose top-level files (not shown as "General"
+    // section, only subfolders).
     readonly property var rootImages: {
         for (var i = 0; i < root.groups.length; i++)
             if (root.groups[i].name === "General") return root.groups[i].images
         return []
     }
 
-    // The image actually painted on the shell surface: while a dynamic
-    // wallpaper is driving the wallpaper (Services/DynamicWallpaper.activeNow)
-    // it is that service's current entry, otherwise the user's manually picked
-    // static image. One source of truth, so the surface, the texture-applies
-    // check and the settings all agree on what is shown. Falls back to the
-    // static pick whenever the dynamic entry is empty before its first probe
-    // resolves, and whenever the active folder has no matching image — so the
-    // wallpaper never blanks for a feature.
+    // Image shown: dynamic wallpaper's current entry, else static pick. One
+    // source of truth; falls back to static when dynamic empty or missing.
     readonly property string displayImage: Services.DynamicWallpaper.activeNow
             && Services.DynamicWallpaper.currentImage.length > 0
         ? Services.DynamicWallpaper.currentImage
         : root.image
 
-    // The texture only means anything when there is no image, or the image
-    // does not fully cover the solid colour (contain / repeat leave gaps where
-    // the colour + texture show through). Judged on `displayImage` the image
-    // actually shown — not the static pick, so a covering dynamic image
-    // suppresses the grain exactly like a static one.
+    // Texture applies when no image or image doesn't cover (contain/repeat).
+    // Judged on displayImage so covering dynamic image suppresses grain.
     readonly property bool textureApplies: root.displayImage.length === 0
         || (root.mode !== "cover" && root.mode !== "stretch")
 
@@ -105,6 +83,7 @@ Singleton {
     }
     function setTextureIntensity(n) { root.setTexture(root.texture, n) }
 
+    // Generate texture PNG or cache if already exists.
     function _generateTexture() {
         var out = Config.Paths.texturesDir + "/" + root.texture + "-" + root.textureIntensity + ".png"
         textureProc.command = ["sh", "-c",
@@ -144,8 +123,7 @@ Singleton {
                     if (!grouped[g]) { grouped[g] = []; order.push(g) }
                     grouped[g].push(p[1])
                 }
-                // Loose top-level files become "General" and sit first; the
-                // subfolders follow in listing order.
+                // Loose files as "General" first; subfolders follow.
                 var out = []
                 for (var o = 0; o < order.length; o++) {
                     if (order[o] === "General") continue
