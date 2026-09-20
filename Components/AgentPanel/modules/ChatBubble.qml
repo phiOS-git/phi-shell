@@ -5,50 +5,12 @@ import qs.Widgets as Widgets
 import "../../Bar/glyphs.js" as Glyphs
 import "../../../Widgets/WidgetStates.js" as WidgetStates
 
-// phiOS — Panels/tabs/ChatBubble. One message row in the agent Chat view
-// (Panels/tabs/agent/Chat.qml). A standalone file, not a QML inline
-// component: this repository reaches every reusable visual piece through a
-// directory import (Widgets/, Bar/modules/), and has no precedent for the
-// "component Name: Type {}" inline feature.
-// The two roles read as a conversation, not a stack of identical boxes:
-// - a small mono role label ("you" / "agent") above the bubble
-// - the user's bubble is right-aligned and capped short of full width;
-// the agent's is left-aligned and full width for long tool output / code
-// - the user's bubble is the full B&W inversion (opposite block, main
-// text); the agent's is a quiet card — a recessed surface with a
-// hairline, NOT the heavy opposite-coloured Panel border every agent
-// line used to carry (panels-ux-rework: the user's "very default-looking"
-// was, on the agent side, a wall of identical hard-framed boxes).
-// Both still live entirely in the B&W grammar — no accent, no second hue
-// every colour from Config.Appearance.
-// A third role, "error" (out-of-plan: a turn that fails upstream — a
-// billing/auth/rate-limit rejection from the provider — used to come back
-// from opencode with an empty parts array and Services/Agent.qml simply
-// dropped it, so a failed turn was indistinguishable from a hang; it now
-// surfaces here as a bubble instead of vanishing). Same quiet-card shape as
-// "agent" (still left-aligned, still full width — this is not a user
-// bubble), but its border/text use Config.Appearance.error/errorText, the
-// same invalid-state tokens Widgets.StyledText's own `invalid` prop already
-// draws from (WidgetStates.js contentColor) — no new colour invented.
-// Referenced by id (root.text / root.mine) from the nested StyledText, not
-// a bare `text` (StyledText owns its own `text`) or `parent` — the same
-// indirection Panels/tabs/Notifications.qml documents.
-// pass (no user report — looking for real
-// chat-UX gaps rather than waiting to be told about them): two were found.
-// Neither needed a new dependency:
-// - Markdown rendering. An agent reply routinely contains **bold**
-// `code`, fenced blocks, lists — none of it rendered, all shown as
-// literal punctuation. `Text.MarkdownText` is a real, stable QtQuick
-// textFormat mode (Qt 5.14+, no external module), applied to the
-// agent/error bubble only — the user's own bubble stays plain text
-// matching every mainstream chat app's own convention that what YOU
-// typed displays as typed, not reinterpreted.
-// - No way to copy a reply out of the panel at all: StyledText is a
-// bare `Text`, not selectable, and nothing here ever wrote to the
-// system clipboard. Added a hover-revealed copy button using the
-// exact `wl-copy` invocation this shell already uses elsewhere
-// (Screenshot/ColorPicker.qml, Launcher/Launcher.qml) — not a new
-// clipboard mechanism, the same one.
+// One message row in agent Chat view. Two roles read as conversation, not
+// identical boxes: user (right-aligned, ~82% width, B&W inversion); agent
+// (left-aligned, full width, quiet card with hairline). Both B&W only.
+// Error role (upstream failures) uses quiet-card with error tokens.
+// Markdown rendering: agent/error use Text.MarkdownText; user stays plain.
+// Hover copy button uses same wl-copy mechanism as Screenshot/Launcher.
 
 Item {
     id: root
@@ -59,8 +21,7 @@ Item {
     readonly property bool isError: root.from === "error"
     readonly property bool hovered: hoverHandler.hovered
 
-    // The user's bubble stops short of the pane edge so the asymmetry reads;
-    // the agent's uses the full width.
+    // User bubble stops short for asymmetry; agent uses full width.
     readonly property real _mineWidth: 0.82
 
     width: parent ? parent.width : 0
@@ -109,33 +70,18 @@ Item {
                 anchors.margins: root._pad
                 wrapMode: Text.Wrap
                 text: root.text
-                // Agent/error replies render as markdown (bold, code lists,
-                // fenced blocks) — Qt's own textFormat mode, no external
-                // dependency. The user's own bubble stays plain text: what you
-                // typed displays as typed, not reinterpreted, the same
-                // convention every mainstream chat app already follows.
+                // Agent/error: Qt's textFormat MarkdownText. User stays plain (typed
+                // as typed, not reinterpreted).
                 textFormat: root.mine ? Text.PlainText : Text.MarkdownText
-                // The "you" bubble inverts, so its text takes the main colour;
-                // the agent bubble is a resting surface, ordinary ink; the
-                // error bubble uses the same invalid-state token
-                // Widgets.StyledText's own `invalid` prop draws from.
+                // User: main text (inverted bubble). Agent: textPrimary.
+                // Error: errorText (invalid-state token).
                 color: root.mine ? Config.Appearance.selectionText
                     : (root.isError ? Config.Appearance.errorText : Config.Appearance.textPrimary)
             }
 
-            // Hover-revealed copy button — this bubble had no way to get its
-            // text out of the panel at all before (StyledText/Text is not
-            // mouse-selectable the way a TextEdit is). `wl-copy` is the exact
-            // same clipboard mechanism this shell already uses
-            // (Screenshot/ColorPicker.qml, Launcher/Launcher.qml), not a new
-            // one. Hand-rolled rather than Widgets.SmallButton: that widget's
-            // `label` renders through its own fontUi StyledText not the
-            // fontSymbol icon font Widgets/StyledIcon.qml uses (its own
-            // header: mixing a glyph into a text font risks a missing-glyph
-            // box) — same small square-icon-button shape
-            // Dialogs/PowerActionsRow.qml's own pills already use, sized the
-            // same comfortable ~30px this shell's controlHeight gives every
-            // other control, not a bespoke tiny target.
+            // Hover-revealed copy button. wl-copy is same mechanism as
+            // Screenshot/Launcher. Hand-rolled button (not SmallButton) to avoid
+            // fontUi/fontSymbol mixing risk. Sized ~30px like controlHeight.
             Rectangle {
                 id: copyBtn
                 anchors.top: parent.top
@@ -144,9 +90,8 @@ Item {
                 width: WidgetStates.controlHeight(Config.Appearance, copyChWidth)
                 height: width
                 radius: Config.Appearance.radiusSmall
-                // Opaque even at rest (matching the bubble's own colour not
-                // "transparent") so the icon never sits on top of wrapped text
-                // bleeding through underneath it while fading in.
+                // Opaque at rest (matches bubble colour) so icon never sits on
+                // wrapped text while fading in.
                 color: copyHover.hovered ? Config.Appearance.panelHover
                     : (root.mine ? Config.Appearance.selectionBackground : Config.Appearance.surface1)
                 opacity: root.hovered ? 1 : 0

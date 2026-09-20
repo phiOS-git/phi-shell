@@ -6,9 +6,8 @@ import Quickshell
 Singleton {
     id: root
 
-    // Colors.qml, not Tokens.qml: a variant switch rewrites Colors.json, never
-    // this singleton's own source, so reading it doesn't force a destructive
-    // full re-evaluation of Appearance itself.
+    // Colors.qml not Tokens.qml: variant switch rewrites Colors.json, never
+    // Appearance source, so reading doesn't force full re-evaluation.
     readonly property string variant: Colors.variant
 
     // --- Structure ---------------------------------------------------------
@@ -23,8 +22,7 @@ Singleton {
     readonly property color border: _color(_tok("border", Colors.border))
     readonly property color borderStrong: _color(_tok("border-strong", Colors.borderStrong))
     readonly property color overlayScrim: _color(Colors.overlayScrim)
-    // For full-attention blocking surfaces only — not overridable, same as
-    // overlayScrim.
+    // For blocking surfaces only — not overridable, like overlayScrim.
     readonly property color overlayScrimStrong: _color(Colors.overlayScrimStrong)
 
     // --- Accent and semantic state ------------------------------------------
@@ -32,8 +30,8 @@ Singleton {
     readonly property color accentText: {
         var explicit = _tok("accent-fg", null)
         if (explicit !== null) return _color(explicit)
-        // Auto-flip when accent is overridden but its text colour is not: a
-        // user-picked light accent needs dark text, and vice versa.
+        // Auto-flip when accent overridden but text color not: light accent
+        // needs dark text.
         if (ThemeOverrides.value("accent") !== null) return _bestText(root.accent)
         return _color(Colors.accentFg)
     }
@@ -47,39 +45,31 @@ Singleton {
     readonly property color infoText: _color(Colors.infoFg)
 
     // --- phiOS style grammar -------------------------------------------
-    // "main" (bg-0) and "opposite" (fg-0, its inverse) carry the whole shell.
-    // accent is fine detail only — titles, the focus ring, the Φ agent
-    // processing state — never a generic selected/active fill.
-    // Selection is a full inversion between main and opposite.
+    // main (bg-0) and opposite (fg-0) carry the shell. accent for fine detail
+    // only: titles, focus ring, agent state. Selection: full inversion.
     readonly property color colorMain: root.background
     readonly property color colorOpposite: root.textPrimary
 
-    // Panels: main background, opposite border (borderWidthStrong), text in
-    // the opposite colour.
+    // Panels: main background, opposite border (borderWidthStrong), opposite text.
     readonly property color panelBackground: root.colorMain
     readonly property color panelBorder: root.colorOpposite
     readonly property color panelText: root.colorOpposite
 
-    // The bar has no fill of its own. A bar button is an opposite-coloured
-    // glyph/label sitting on the wallpaper; only its selected state paints a
-    // full block. See Widgets/WidgetStates.js surfaceColors().
+    // Bar has no fill. Button is opposite-coloured glyph on wallpaper; selected
+    // state paints full block.
     readonly property color barText: root.colorOpposite
 
-    // Selection / active item: a block of the opposite colour, text flips to
-    // main.
+    // Selection: opposite block, text flips to main.
     readonly property color selectionBackground: root.colorOpposite
     readonly property color selectionText: root.colorMain
 
     // The one control state that still shows accent — a ring, not a fill.
     readonly property color focusRing: root.accent
 
-    // Subtle hover wash, one step toward the contrast colour. A bare mix
-    // ratio, not a design token — same latitude as WidgetStates.js's
-    // INACTIVE_OPACITY.
+    // Subtle hover wash toward contrast. Mix ratio, not design token.
     readonly property color panelHover: _mix(root.colorMain, root.colorOpposite, 0.08)
-    // A bar button's resting surface: translucent main-coloured fill plus a
-    // hairline border, so the wallpaper still shows through. Hover reuses
-    // panelHover; selected state is the full opposite/main inversion.
+    // Bar button: translucent main fill + hairline border, wallpaper shows
+    // through. Hover reuses panelHover; selected is opposite/main inversion.
     readonly property color barButtonBackground: Qt.rgba(root.colorMain.r,
         root.colorMain.g, root.colorMain.b, 0.72)
     readonly property color barButtonBorder: Qt.rgba(root.colorOpposite.r,
@@ -91,8 +81,8 @@ Singleton {
     readonly property string fontUi: _tok("font-ui", Tokens.fontUi)
     readonly property string fontSymbol: Tokens.fontSymbol
 
-    // One multiplier over the whole generated size scale — the settings panel
-    // exposes this rather than seven individual sizes.
+    // One multiplier over the whole generated size scale (settings panel exposes
+    // this instead of seven individual sizes).
     readonly property real fontScale: _scale("font-scale", Tokens.fontScale)
 
     readonly property real fontSize0: _px(Tokens.fontSize0) * root.fontScale
@@ -103,9 +93,8 @@ Singleton {
     readonly property real fontSize5: _px(Tokens.fontSize5) * root.fontScale
     readonly property real fontSize6: _px(Tokens.fontSize6) * root.fontScale
 
-    // Spacing stays in units of 1ch of fontMono, not px — storing px would
-    // silently break if the mono family ever changes. A caller that needs px
-    // measures the font itself and multiplies.
+    // Spacing in units of fontMono 1ch, not px — stores px would break if font
+    // changes. Callers needing px measure the font and multiply.
     readonly property real spaceScale: _scale("space-scale", Tokens.spaceScale)
     readonly property real space1: _ch(Tokens.space1) * root.spaceScale
     readonly property real space2: _ch(Tokens.space2) * root.spaceScale
@@ -123,14 +112,11 @@ Singleton {
     readonly property real borderWidthStrong: _pxOr(Tokens.borderWidthStrong, root.borderWidth)
     readonly property real panelPadding: _pxOr(Tokens.panelPadding, root.radiusBase)
 
-    // Inset that-the-bar surfaces keep from the bar and screen edges, and the
-    // corner radius they round at. Both per-user editable (Theme › Shape &
-    // spacing). Fallbacks cover the hot-reload window before `phi theme set`
-    // regenerates Tokens.qml with these keys.
+    // Inset bar-surfaces keep from edges and corner radius. Both user-editable
+    // (Theme › Shape & spacing). Fallbacks cover hot-reload before `phi theme set`.
     readonly property real panelGap: _pxOr(_tok("panel-gap", Tokens.panelGap), 4)
     readonly property real panelRadius: _pxOr(_tok("panel-radius", Tokens.panelRadius), 6)
-    // Widgets/Meter's visible track height — a thin rail. Not
-    // settings-exposed.
+    // Widgets/Meter visible track height — thin rail, not settings-exposed.
     readonly property real sliderThickness: _pxOr(Tokens.sliderThickness, 4)
 
     // --- Layering ------------------------------------------------------
@@ -142,22 +128,16 @@ Singleton {
     readonly property int zNotification: parseInt(Tokens.zNotification)
 
     // --- Motion ------------------------------------------------------
-    // Easing stays a string for categories A/C/D: mapping "linear"/ "ease-out"
-    // onto a QML Easing.Type enum needs the animation type in scope (belongs
-    // to the animating widget), not this singleton.
-    // Category B is the exception — every widget animates state transitions on it, so it's resolved once,.
-    // Durations and the category-B curve are per-user editable, merged over
-    // the generated token the same way the palette is.
+    // Easing stays string for A/C/D: mapping to Easing.Type needs animation type
+    // in scope (the widget). Category B exception: resolved once, per-user editable.
     readonly property int motionAPeriod: _ms(_tok("motion-a-period", Tokens.motionAPeriod))
     readonly property string motionAEasing: Tokens.motionAEasing
     readonly property int motionBDuration: _ms(_tok("motion-b-duration", Tokens.motionBDuration))
     readonly property string motionBEasing: Tokens.motionBEasing
-    // Kept for any straggler; new code uses motionBCurve. OutQuad is the enum
-    // equivalent of the default bezier.
+    // Kept for stragglers; new code uses motionBCurve (OutQuad equivalent).
     readonly property int motionBEasingType: motionBEasing === "linear" ? Easing.Linear : Easing.OutQuad
-    // Category-B curve as an easing.bezierCurve list: four editable control
-    // points plus the mandatory final (1,1). Default reproduces
-    // Easing.OutQuad.
+    // Category-B curve: easing.bezierCurve list, four editable control points
+    // plus final (1,1). Default reproduces OutQuad.
     readonly property var motionBCurve: {
         var raw = _tok("motion-b-bezier", Tokens.motionBBezier)
         var p = String(raw || "").split(",").map(function (s) { return parseFloat(s) })
@@ -169,9 +149,8 @@ Singleton {
     readonly property string motionCEasing: Tokens.motionCEasing
     readonly property int motionDDuration: _ms(_tok("motion-d-duration", Tokens.motionDDuration))
 
-    // --- Wallpaper textures -------------------------------------------- Catalogue is a design decision;
-    // falls back to the known set for the hot-reload window before `phi theme
-    // set` regenerates Tokens.qml with this key.
+    // --- Wallpaper textures -------------------------------------------- Catalogue
+    // is a design decision; falls back before `phi theme set` regenerates.
     readonly property var textureModes: {
         var s = String(Tokens.textureModes || "").trim()
         return s.length > 0 ? s.split(/\s+/) : ["grain", "noise", "paper", "leather", "rock", "fabric"]
@@ -181,13 +160,9 @@ Singleton {
         return isNaN(n) ? 40 : n
     }
 
-    // --- helpers ------------------------------------------------------ parseFloat with a fallback.
-    // A token string always carries its unit ("14px") and parseFloat stops there.
-    // `_pxOr`'s fallback covers the transient window after a token is added to
-    // design/tokens.*.sh but before `phi theme set` has regenerated
-    // Config/Tokens.qml — the read is `undefined`, and falling back to a value
-    // that DOES resolve is safer for one hot-reload than NaN propagating
-    // through layout math.
+    // --- helpers ------------------------------------------------------ parseFloat with fallback.
+    // Token string always carries unit ("14px"); parseFloat stops there. _pxOr
+    // fallback covers window after token added but before `phi theme set` regenerates.
     function _pxOr(value, fallback) {
         var n = parseFloat(value)
         return isNaN(n) ? fallback : n
@@ -199,16 +174,15 @@ Singleton {
         return isNaN(n) ? 0 : n
     }
 
-    // A scale multiplier: identity by default, dimensionless.
+    // Scale multiplier: identity by default, dimensionless.
     function _scale(key, tokenValue) {
         var raw = root._tok(key, (tokenValue === undefined || tokenValue === null || String(tokenValue).length === 0) ? "1" : tokenValue)
         var n = parseFloat(raw)
         return (isNaN(n) || n <= 0) ? 1 : n
     }
 
-    // Merge a Config/ThemeOverrides.qml value over a generated token. Passing
-    // `null` as the fallback is how a getter asks "is this overridden at all"
-    // (see accentText).
+    // Merge Config/ThemeOverrides value over generated token. `null` fallback
+    // asks "is this overridden at all" (see accentText).
     function _tok(key, fallback) {
         var o = ThemeOverrides.value(key)
         return (o === null || o === undefined || String(o).length === 0) ? fallback : o
@@ -219,9 +193,8 @@ Singleton {
                        a.b + (b.b - a.b) * t, a.a + (b.a - a.a) * t)
     }
 
-    // Config/Tokens.qml and Config/Colors.qml are private to this file — the
-    // settings panel gets a key's generated default through instead of reading
-    // them directly.
+    // Config/Tokens.qml and Colors.qml private to this file — settings panel gets
+    // defaults through tokenDefault() instead of reading directly.
     function tokenDefault(key) {
         switch (key) {
         case "accent": return Colors.accent
@@ -260,23 +233,21 @@ Singleton {
         return (v === undefined || v === null || String(v).length === 0) ? String(fallback) : String(v)
     }
 
-    // The effective (override-aware) string for a token key — what the
-    // settings field shows, and what a reset restores to (tokenDefault).
+    // Effective (override-aware) string for a token key — what settings shows
+    // and what reset restores to.
     function tokenValue(key) {
         return String(root._tok(key, root.tokenDefault(key)) || "")
     }
 
-    // Pick main or opposite as the readable text colour over an arbitrary
-    // (user-picked) accent — relative luminance, WCAG-style coefficients.
+    // Pick main or opposite as readable text over arbitrary accent — relative
+    // luminance, WCAG-style.
     function _bestText(c) {
         var lum = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
         return lum > 0.5 ? root.colorMain : root.colorOpposite
     }
 
-    // Tokens store an 8-digit colour as #rrggbbaa (CSS order), not Qt's
-    // #aarrggbb — parsed by hand — scrim's alpha byte never lands in the wrong
-    // place. 6-digit values pass through with alpha 1; a malformed or
-    // undefined value yields transparent.
+    // Tokens store 8-digit colour as #rrggbbaa (CSS not Qt), hand-parsed so
+    // alpha never lands wrong. 6-digit: alpha 1. Malformed: transparent.
     function _color(hex) {
         if (hex === undefined || hex === null) return Qt.rgba(0, 0, 0, 0)
         var h = String(hex).replace("#", "")

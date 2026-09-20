@@ -1,72 +1,40 @@
 import QtQuick
 import qs.Config as Config
 
-// A lava-lamp field for the lock screen background: slow blobs that rise
-// fall and merge, with the colour drifting between two tokens. Written
-// from scratch in a Canvas — no extra package.
-// Not true metaballs (a per-pixel threshold Canvas 2D can't do cheaply):
-// each blob is a soft radial gradient drawn with `lighter` compositing
-// so overlapping blobs bloom into one shape the way lamp wax does.
-// Real physical cues a rigid circle can't give:
-// - each blob is drawn as an ELLIPSE that slowly stretches/squashes on
-// two independent, out-of-phase sine waves (`morphPhase`/`morph2Phase`)
-// — a perfect circle never wobbles, wax does. Drawn via
-// save()/translate()/scale()/arc()/restore() rather than
-// ctx.ellipse(), the combination this file (and every sibling effect)
-// already relies on elsewhere.
-// - each blob's RADIUS breathes with its own vertical position — bigger
-// near the bottom (`_heatFactor`, simulating the heat source), smaller
-// near the top (cooling, contracting).
-// - each blob carries its own colour-phase OFFSET, not one shared
-// global phase — the field drifts as independent floating masses
-// not one wash shifting hue in lockstep.
-// - blob count and wobble amplitude are real, caller-settable
-// properties (`blobCount`, `wobble`), exposed by Settings/sections/
-// Theme.qml's "Lava lamp" accordion.
-// Screensaver animation, an exception confined to the lock surface and
-// stopped on conceal (`running`, cleared by Lock.qml).
-// Colour: tokens only. The wax colour eases between `accent` and `info`
-// on a slow cycle — the two-colour grammar's accent plus one semantic
-// hue, nothing literal.
+// Lava-lamp field: slow blobs rise/fall/merge, colour drifts between accent/info
+// in Canvas (no extra package). Not true metaballs; soft radial gradients with
+// `lighter` compositing. Physical cues: ellipse morphs on out-of-phase sines;
+// radius breathes with vertical position (bigger at bottom); per-blob colour
+// offset. Blob count and wobble are caller-settable (Settings › Lava lamp).
+// Stopped on lock conceal. Colour: tokens only.
 
 Item {
     id: root
 
     property bool running: true
 
-    // Peak opacity of a blob centre. Low, so the clock / password field on top
-    // stay readable.
+    // Peak opacity of blob centre (low so clock/password stay readable).
     property real intensity: 0.28
-    // A plain multiplier on every per-tick motion delta below, not a second
-    // timer interval: changing `interval` instead would also change how often
-    // the colour phase and gradient repaint happen coupling "how fast it
-    // moves" to "how smooth it looks" for no reason.
+    // Motion delta multiplier, not timer interval: decouples speed from
+    // repaint frequency.
     property real speed: 1.0
     // --- lock/auth state (bound by Lock.qml on the active effect) -------
-    // Read-only reaction inputs for the auth flow, wired straight from
-    // the lock surface: `validating` is true while a submitted password
-    // is being verified (~2s of PAM on this machine) and
-    // `validationProgress` pulses 0→1 in step with the field's own pulse;
-    // `lockedOut` covers the post-threshold cooldown, `lockoutProgress`
-    // draining 1→0 with the countdown (the "N s" the field shows). An
-    // effect reacts to these or ignores them; never writes. This effect
-    // answers: a full-surface cast toward `info` while verifying, and
-    // toward `error` that fades as the lockout drains (see onPaint).
+    // Read-only reaction inputs from lock surface: validating/validationProgress
+    // pulse with password verification; lockedOut/lockoutProgress drain with
+    // cooldown. This effect: full-surface cast toward info while validating,
+    // toward error fading as lockout drains.
     property bool validating: false
     property real validationProgress: 0
     property bool lockedOut: false
     property real lockoutProgress: 0
 
     // --- preview features ------------------------------------------------
-    // The auth reactions this effect implements, for the settings
-    // gallery's per-feature test buttons (Settings/sections/Theme.qml
-    // maps these ids to labels and triggers).
+    // Auth reactions for settings gallery test buttons.
     readonly property var features: ["verification", "lockout"]
 
     property int blobCount: 9
-    // Multiplier on the elliptical morph amplitude and the horizontal drift
-    // wobble — 0 would be perfectly circular, motionless-shape blobs (still
-    // drifting vertically); higher values read as more turbulent.
+    // Multiplier on morph and drift wobble (0 = circular, motionless;
+    // higher = more turbulent).
     property real wobble: 1.0
 
     property var blobs: []
@@ -85,8 +53,7 @@ Item {
                 vy: root._rand(-0.0016, 0.0016),
                 wob: root._rand(0, Math.PI * 2),
                 wobRate: root._rand(0.008, 0.02),
-                // Independent morph phases per axis, per blob — out of phase
-                // with each other and with every other blob, so the field
+                // Independent morph phases per axis/blob, out of phase so field
                 // never pulses in unison.
                 morphPhase: root._rand(0, Math.PI * 2),
                 morphRate: root._rand(0.010, 0.022),
@@ -103,8 +70,7 @@ Item {
     Component.onCompleted: seed()
 
     Timer {
-        // Reuses the character-step constant Widgets/ScrambleText and
-        // Lock/MatrixRain already reuse as the frame interval.
+        // Reuses motionCTypeStep frame interval (ScrambleText, MatrixRain).
         interval: Config.Appearance.motionCTypeStep
         running: root.running && root.visible && root.width > 0 && root.height > 0
         repeat: true
@@ -118,7 +84,7 @@ Item {
                 blob.morph2Phase += blob.morph2Rate * root.speed
                 blob.y += blob.vy * root.speed
                 blob.x += Math.sin(blob.wob) * 0.0012 * root.wobble * root.speed
-                // wrap softly top/bottom
+                // Wrap softly top/bottom.
                 if (blob.y < -0.4) blob.y = 1.4
                 else if (blob.y > 1.4) blob.y = -0.4
                 if (blob.x < 0.05) blob.x = 0.05
@@ -153,22 +119,19 @@ Item {
                 var cx = blob.x * width
                 var cy = blob.y * height
 
-                // Heat expansion: bigger near the bottom (the lamp's own heat
-                // source), smaller near the top — clamped so a blob mid-wrap
-                // (y outside 0..1) doesn't overshoot the range.
+                // Heat expansion: bigger at bottom, smaller at top (clamped for
+                // mid-wrap blobs).
                 var heatFactor = 0.82 + 0.36 * root._clamp01(blob.y)
                 var baseR = blob.r * unit * heatFactor
 
-                // Elliptical squash/stretch on two independent sines never a
-                // perfect circle, never symmetric with itself (the two axes
-                // are out of phase), the actual "wobbling mass" cue a rigid
-                // circle can't give no matter how it moves.
+                // Elliptical squash/stretch on independent sines (out of phase),
+                // "wobbling mass" cue rigid circle can't give.
                 var rx = baseR * (1 + 0.22 * root.wobble * Math.sin(blob.morphPhase))
                 var ry = baseR * (1 + 0.22 * root.wobble * Math.sin(blob.morph2Phase))
                 rx = Math.max(1, rx); ry = Math.max(1, ry)
 
-                // Per-blob colour phase offset — the field drifts as many
-                // independent masses, not one wash shifting hue in lockstep.
+                // Per-blob colour offset — field drifts as independent masses,
+                // not one wash shifting hue in lockstep.
                 var t = 0.5 + 0.5 * Math.sin(root.phase + blob.colorOffset)
                 var wax = root._mix(Config.Appearance.accent, Config.Appearance.info, t)
 
@@ -187,11 +150,8 @@ Item {
             }
             ctx.globalCompositeOperation = "source-over"
 
-            // Auth reactions (the bound state above): a full-surface cast
-            // toward `info` that breathes with the field's pulse while
-            // `validating`, and toward `error` that fades as the lockout
-            // countdown drains. The two can't overlap — respond() is guarded
-            // by `!lockedOut` — but the `else if` keeps it explicit.
+            // Auth reactions: full-surface cast toward info (validating) or
+            // error (lockout draining). Two can't overlap.
             if (root.validating && root.validationProgress > 0.001) {
                 var lift = Config.Appearance.info
                 ctx.fillStyle = Qt.rgba(lift.r, lift.g, lift.b,
