@@ -7,7 +7,6 @@ import Quickshell.Io
 // object at Paths.lockPrefsFile, read once on load, rewritten whole on
 // change — not `phi state` (closed scalar-key set) and not the repository
 // (runtime UI state, not configuration).
-//
 // `effect` is one of: "none" | "lava" | "matrix" | "starfield" | "plasma"
 // | "life" | "boids". Default is "lava"; the rest are opt-in from the
 // settings Theme section.

@@ -11,7 +11,6 @@ import Quickshell.Io
 // every consumer of `items` has to branch on `kind` for fields that only
 // make sense for one side — this file owns a much simpler shape instead:
 // one running/paused elapsed-time counter plus laps, session-local only.
-//
 // Not persisted across a restart, unlike timers/alarms: a stopwatch has
 // no natural resume point to describe to the user beyond "started N
 // minutes before the shell restarted, trust it" — this is a session-local

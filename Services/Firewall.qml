@@ -7,17 +7,14 @@ import Quickshell.Io
 // CLI-driven, exactly like Services/Vpn.qml — `phi firewall` is the
 // control surface, this file only polls it and forwards the verbs, backed
 // by nftables directly (one `table inet phi`).
-//
 // `status --json` reports enabled/preset/logging/allow-rules, plus a live
 // `enforced` probe (is the table actually loaded?) so a drift — a denied
 // sudo, a manual `nft flush` — is visible.
-//
-// enable/disable/preset/allow/remove/log shell out to `phi firewall`,
+// enable/disable/preset/allow/remove/log shell out to `phi firewall`
 // which runs `sudo -n nft` + `sudo -n tee /etc/nftables.conf`. That needs
 // the sudoers drop-in (profiles/desktop/system/etc/sudoers.d/49-phi-firewall);
 // a failure surfaces as `lastError`, never a silent no-op and never a GUI
 // polkit prompt.
-//
 // SECURITY CONTRACT: `phi firewall` never emits one of the user's own
 // addresses. `blocked` reports only a dropped packet's own source and
 // destination port — a scanner's fields, requested explicitly by

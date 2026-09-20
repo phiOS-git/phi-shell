@@ -8,7 +8,6 @@ import Quickshell.Io
 // plain CLI probe via `tailscale status --json`, the same
 // Quickshell.Io.Process pattern Config/Settings.qml and
 // Config/Capabilities.qml use.
-//
 // SECURITY CONTRACT: this file must NEVER read or expose
 // `Self.TailscaleIPs` (or any peer's) from the JSON — only `BackendState`
 // and `Self.HostName`, the tailnet-internal name, never the address
@@ -52,7 +51,7 @@ Singleton {
         command: ["tailscale", "status", "--json"]
         // running=false in onExited: Process.onFinished() restarts
         // automatically if `running` is still true on exit — without
-        // this, the process respawns immediately in a tight loop,
+        // this, the process respawns immediately in a tight loop
         // completely decoupled from the 30-second Timer above.
         onExited: probe.running = false
         stdout: StdioCollector {

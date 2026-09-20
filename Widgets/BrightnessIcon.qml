@@ -8,12 +8,10 @@ import "WidgetStates.js" as WidgetStates
 // `fillLevel`. A separate, simpler widget rather than an edit to
 // SunMoonIcon — that one stays the real reusable night-mode on/off
 // indicator; this one has no day/night state of its own.
-//
 // Technique lifted directly from SunMoonIcon's own sun-drawing + fill-gauge
 // code (see that file's header for the full reasoning on the gauge
-// clip-and-arc approach) with the eclipse/shadow half removed entirely —
+// clip-and-arc approach) with the eclipse/shadow half removed entirely
 // no `dayness`, no destination-out cutout, no shadow disc.
-//
 // Motion category: B (state transition) — `fillLevel` is expected to
 // arrive pre-wrapped in a category-B Behavior at the call site, same
 // contract as every other Canvas-repaint-on-change widget in this family

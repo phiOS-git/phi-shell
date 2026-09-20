@@ -6,7 +6,6 @@ import qs.Config as Config
 // `moved(real)` continuously during a drag and `released(real)` once at
 // the end, so the volume and brightness bar popouts drive the same
 // primitive the OSD shows.
-//
 // While the pointer is down the fill follows the pointer directly, so a
 // consumer that only commits on `released` (brightness → brightnessctl)
 // still shows live feedback during the drag.
@@ -39,7 +38,7 @@ Item {
     readonly property real _shown: root._dragging ? root._dragFrac : root._v
 
     // The row still reserves a full text line so callers that vertically
-    // centre against it are unchanged; the visible rail is a few px tall,
+    // centre against it are unchanged; the visible rail is a few px tall
     // centred in that line, and the MouseArea keeps the whole line as its
     // hit target.
     implicitHeight: Config.Appearance.fontSize1

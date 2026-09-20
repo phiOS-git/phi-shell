@@ -11,7 +11,6 @@ import "modules" as Modules
 // (Widgets.PopoutSurface's `anchorEdge: "center"`), and the one overlay
 // whose nearest-trigger corner rule gives BOTH top corners the small
 // radius rather than one.
-//
 // No calendar/CalDAV backend exists anywhere in this codebase — the month
 // grid (Modules/MonthGrid.qml) is read-only, clicking a day only
 // highlights it locally.

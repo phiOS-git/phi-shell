@@ -8,13 +8,11 @@ import "WidgetStates.js" as WidgetStates
 // effect of their own here beyond that shared opacity precedence: a
 // passive label has no defined "pressed" look of its own, only an
 // "invalid" one.
-//
 // A system label is low-contrast monochrome by default (`kind: "label"`);
 // a value is full-contrast text by default (`kind: "value"`, the default).
 // A semantic colour (`tone`) is opt-in and never the default — the caller
 // decides when a threshold is crossed, this widget only renders that
 // decision.
-//
 // `kind: "title"` is full-contrast ink (like "value"), set apart from body
 // text by a heavier weight and — at the call site — a larger sizeStep. It
 // does not carry accent: accent is fine detail only, never a text colour.

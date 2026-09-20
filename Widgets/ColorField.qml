@@ -5,7 +5,6 @@ import "WidgetStates.js" as WidgetStates
 // A colour input row: a swatch, a hex TextField, and a toggle that expands
 // an inline Widgets/ColorPicker below it (inline, not floating — the
 // settings content pane is a clipped Flickable).
-//
 // Controlled: `value` is a "#rrggbb" string the caller owns (seed it, read
 // it back — a reset just reassigns it). `committed(hex)` fires once the
 // user settles on a new valid colour, via the hex field (Enter/focus-out)

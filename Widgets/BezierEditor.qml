@@ -6,14 +6,12 @@ import "WidgetStates.js" as WidgetStates
 // curve drawn on it, two draggable control-point handles, and a marker
 // that loops across on the current curve so the feel is visible while
 // editing.
-//
 // Pure QtQuick — the curve is a Canvas path, the preview a plain
 // NumberAnimation with easing.type Easing.Bezier (core Qt Quick, stable).
 // Each handle's pixel position is the source of truth while dragging; x1/y1
 // (x2/y2) are derived from it and clamped to 0..1 (Qt needs a monotonic-x
 // curve; no overshoot handles this pass). When not dragging, the handle
 // follows the property (external setCurve, a reset).
-//
 // Controlled: seed with setCurve(x1,y1,x2,y2). `changed(...)` fires live
 // during a drag, `committed(...)` on release.
 

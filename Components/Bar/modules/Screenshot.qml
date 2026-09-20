@@ -8,15 +8,14 @@ import "../glyphs.js" as Glyphs
 // six capture options: area, window, fullscreen, OCR, QR, record). The
 // glyph reads capture state off Services/ScreenshotState.qml — the
 // singleton Tools/Screenshot.qml mirrors its own `mode`/`recording` into:
-//
-//   - idle:            camera
-//   - awaiting an area (Tools/Screenshot.qml is in a "select-*" mode —
-//     area capture or OCR, both drag-a-region interactions): crop
-//   - screen recording (wf-recorder running): record_rec, toned error,
-//     and a left click then STOPS the recording instead of opening the
-//     popout — the one-key abort a recording session wants. The stop goes
-//     through the same `qs ipc call record stop` external trigger the
-//     popout's own record row uses, so both paths stop identically.
+// - idle: camera
+// - awaiting an area (Tools/Screenshot.qml is in a "select-*" mode
+// area capture or OCR, both drag-a-region interactions): crop
+// - screen recording (wf-recorder running): record_rec, toned error
+// and a left click then STOPS the recording instead of opening the
+// popout — the one-key abort a recording session wants. The stop goes
+// through the same `qs ipc call record stop` external trigger the
+// popout's own record row uses, so both paths stop identically.
 
 Widgets.Segment {
     id: root

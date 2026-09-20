@@ -6,7 +6,6 @@ import qs.Widgets as Widgets
 
 // A bell in the right isle; a click opens the notifications overlay
 // through `openNotifications()` — an in-process property call.
-//
 // The glyph + a separate flash-overlay Rectangle are both replaced by
 // Widgets/NotificationBellIcon via `iconDelegate` — a real swing on
 // arrival, a DND crossfade+pop instead of an instant glyph swap, and a

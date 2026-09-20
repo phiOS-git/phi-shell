@@ -5,11 +5,9 @@ import "WidgetStates.js" as WidgetStates
 // A titled disclosure: a header row that toggles an inline body open and
 // shut. Used by Settings/sections/Devices.qml for each Chroma integration's
 // extra settings.
-//
 // Inline, not a popover — the settings content pane is a clipped Flickable
 // (same constraint Widgets/ColorField.qml calls out). The body's height
 // animates category B, the one transition category the whole shell shares.
-//
 // Stateless w.r.t. persistence: `expanded` is plain view state the caller
 // can seed or ignore. The seven transverse states exist on the header for
 // interface uniformity; only default/hover/disabled/loading have a defined
@@ -114,7 +112,7 @@ Column {
     }
 
     // Clipped wrapper so the body's own height can be animated without its
-    // content spilling while collapsed. A hairline rule on the left edge,
+    // content spilling while collapsed. A hairline rule on the left edge
     // inset from the header's own caret column, is the one piece of chrome
     // every collapsible surface in this shell shares regardless of what
     // its body actually holds, so a body always reads as "inside" its

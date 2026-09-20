@@ -5,13 +5,12 @@ import qs.Widgets as Widgets
 import "../modules" as Modules
 
 // Split into two groups:
-//   - System state: the versions of phi, phios-dotfiles and each installed
-//     phi-* package (`phi pkg state --json`).
-//   - Packages: one collapsible list per manager. phi / pacman / AUR come
-//     from `phi pkg list --json` (bucketed by category); AppImage lists
-//     ~/Applications (`phi pkg list --manager appimage --json`); npm and
-//     flatpak are labelled placeholders until their listers land.
-//
+// - System state: the versions of phi, phios-dotfiles and each installed
+// phi-* package (`phi pkg state --json`).
+// - Packages: one collapsible list per manager. phi / pacman / AUR come
+// from `phi pkg list --json` (bucketed by category); AppImage lists
+// ~/Applications (`phi pkg list --manager appimage --json`); npm and
+// flatpak are labelled placeholders until their listers land.
 // READ-ONLY. Nothing here runs `phi update` or `pacman` — that verb is
 // real, interactive and privileged, and belongs to a terminal the user
 // runs themselves. `phi pkg check` in a terminal is the way to see

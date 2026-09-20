@@ -6,22 +6,19 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 
 // Services/PowerBridge.qml owns both thresholds and the dismiss/
-// escalation state machine (`alertLevel`/`alertShown`/`dismissAlert()`) —
+// escalation state machine (`alertLevel`/`alertShown`/`dismissAlert()`)
 // this file is presentation only.
-//
 // Layer-shell/scrim/fade plumbing copied verbatim from Components/
 // Dialogs/ConfirmDialog.qml. Deliberately its OWN dialog rather than a
 // call into Services.ConfirmDialog: that singleton force-closes every
 // other panel on open, correct for a user-initiated confirmation, wrong
 // for a spontaneous alert that must not eat whatever the user was doing
 // in another panel.
-//
 // Single instance on screens[0], not one per screen like Bar/Toast: the
 // underlying fact (one battery, one percentage) is global, not per-
 // monitor ambient data, and duplicating a blocking modal across every
 // monitor would mean dismissing it N times on a multi-monitor desktop for
 // one real event.
-//
 // Takes keyboard focus and requires an explicit Dismiss click/Enter/
 // Escape — a "full screen alert" is meant to interrupt, the same
 // judgment this repo's other modals make.
@@ -45,7 +42,7 @@ PanelWindow {
     Widgets.Scrim {
         anchors.fill: parent
         shown: root.shown
-        // A battery/warning alert is one of the "covers the bar" dims —
+        // A battery/warning alert is one of the "covers the bar" dims
         // gets the stronger intensity.
         strong: true
     }

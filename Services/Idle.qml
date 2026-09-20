@@ -4,27 +4,26 @@ import Quickshell
 import Quickshell.Io
 import qs.Services as Services
 
-// Native Wayland idle-inhibit, driven by a rule on window class/process —
+// Native Wayland idle-inhibit, driven by a rule on window class/process
 // automatic detection, not a manual toggle or a timer. Owns the RULE LOGIC
 // only — matching Services/ToplevelBridge.qml's `appId`/`fullscreen`
 // against Services/idle-inhibit-rules.json. The actual Wayland idle-
 // inhibit protocol object lives in Components/Bar/Bar.qml instead, since
 // IdleInhibitor needs a real, already-mapped window/surface to attach to
 // and this Singleton has none of its own.
-//
 // Default rules: Steam games (steam_app_* — one rule covers every game
 // without listing titles), mpv, and librewolf FULLSCREEN ONLY. The
 // librewolf rule is coarse by construction: matching plain "librewolf"
 // would inhibit idle for ordinary browsing too, defeating the feature, so
 // it only fires when a librewolf window is actually fullscreen (an
-// imperfect proxy for "probably watching something or on a call"). Data,
+// imperfect proxy for "probably watching something or on a call"). Data
 // not code: editing the registry, not this file, changes the covered set.
 
 Singleton {
     id: root
 
     property var rules: []
-    // Forces `active` true regardless of what the rule scan below finds —
+    // Forces `active` true regardless of what the rule scan below finds
     // "manually keep the system awake". Every consumer of `active` already
     // reads this one property, so nothing downstream needs to change to
     // honour it. Session-local, not persisted, like Notifications.qml's

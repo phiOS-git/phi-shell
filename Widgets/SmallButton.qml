@@ -8,7 +8,6 @@ import "WidgetStates.js" as WidgetStates
 // labelled action) and from the selectable-option grammar (StyledButton/
 // Segment with `active`): a minor action and a selectable choice must not
 // read the same.
-//
 // At rest it is just a low-contrast label with no fill and no border;
 // hover brings it to full contrast with a faint wash; pressed inverts to a
 // small block, the same "inversione piena" every other control uses.

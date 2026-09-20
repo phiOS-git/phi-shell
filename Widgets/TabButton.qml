@@ -6,15 +6,13 @@ import "WidgetStates.js" as WidgetStates
 // section of a panel is currently showing. Deliberately NOT Widgets/Segment:
 // a tab is a navigation state, not a momentary action, so selecting one
 // must never read as "a button just got pressed" the way Segment's/
-// StyledButton's full inversion does. No resting box, a flat hover wash,
+// StyledButton's full inversion does. No resting box, a flat hover wash
 // and the current tab marked by accent-coloured content plus a thin accent
 // bar on the edge facing what it controls — so which section is active
 // reads at a glance, without needing to compare against a neighbour.
-//
 // `indicatorEdge` picks that edge: "bottom" for a horizontal strip (the
 // ordinary tab convention), "right"/"left" for a vertical icon rail on the
 // panel's left/right edge.
-//
 // No caller has been migrated to it yet.
 
 Item {

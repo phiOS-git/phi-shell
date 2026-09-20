@@ -20,7 +20,7 @@ Item {
     property var openRec: null
     property string openTranscript: ""
 
-    // Style pass 2026-09-15: AgentPanel.qml's own keyScope contract — see
+    // AgentPanel.qml's own keyScope contract — see
     // that file's Keys.onEscapePressed for the full reasoning. Having a
     // transcript open is this tab's own "one level deeper" state.
     readonly property bool hasBack: root.openRec !== null
@@ -154,8 +154,8 @@ Item {
                             text: "started " + String(modelData.started || modelData.Started || "").slice(0, 16).replace("T", " ") }
                         Row {
                             spacing: root.gap
-                            // Style pass 2026-09-15: was "Open chat view" —
-                            // this opens the mirrored TRANSCRIPT (read-only,
+                            // was "Open chat view"
+                            // this opens the mirrored TRANSCRIPT (read-only
                             // per this file's own header), not a live chat;
                             // the old label read as if it opened something
                             // interactive.

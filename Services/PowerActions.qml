@@ -5,7 +5,6 @@ import Quickshell
 // for e.g. "reboot" is written once, not once per surface — the bar
 // popout's "power" section and Launcher/Launcher.qml's "system" action
 // kind both call `perform()` here.
-//
 // "lock" goes through Components/Lock/Lock.qml's IpcHandler, never
 // `loginctl lock-session` directly, because unlocking has no IPC path and
 // locking-by-IPC is the one already-proven-safe entry point. "logout"
@@ -26,7 +25,7 @@ Singleton {
     function logout() {
         // `hyprshutdown` is not installed on this system, so the fallback
         // always runs. This build's Lua config rejects the traditional
-        // dispatcher-string form, so the fallback uses the Lua-call form,
+        // dispatcher-string form, so the fallback uses the Lua-call form
         // `hl.dsp.exit()` — matching hyprland.lua.tmpl's own SHIFT+M
         // binding and Hyprland's own bundled example config.
         Quickshell.execDetached(["sh", "-c",
@@ -43,7 +42,7 @@ Singleton {
             || action === "reboot" || action === "shutdown"
     }
 
-    // The display title for an action id — every surface reads from here,
+    // The display title for an action id — every surface reads from here
     // so none can describe the same action differently.
     function title(action) {
         switch (action) {

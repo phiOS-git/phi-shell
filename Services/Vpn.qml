@@ -4,19 +4,16 @@ import Quickshell
 import Quickshell.Io
 
 // WireGuard tunnel state for the Connectivity settings section and the
-// bar's tailscale+vpn module. CLI-driven, like Services/Tailscale.qml —
+// bar's tailscale+vpn module. CLI-driven, like Services/Tailscale.qml
 // `phi vpn` is the control surface, this file just polls it.
-//
 // SECURITY CONTRACT: `phi vpn status --json` never emits an endpoint or
 // an address, so nothing here can expose one — the tunnel objects carry
 // only name / up / managed / origin / handshake / rx / tx.
-//
 // A tunnel shows up here whether its config is in ~/.config/phi/wireguard
 // (managed — import/forget apply), in /etc/wireguard (origin "etc"), or is
 // just a running interface `phi` found via `ip link` (origin "external").
 // So a tunnel the user brought up the standard way is visible and
 // toggleable immediately; importing it only adds forget/rename.
-//
 // up()/down() shell out to `phi vpn up|down`, which runs `sudo -n
 // wg-quick`. That needs the sudoers drop-in installed; a failure surfaces
 // as `lastError`, not a silent no-op and not a GUI polkit prompt.

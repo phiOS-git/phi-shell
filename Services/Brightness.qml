@@ -5,10 +5,9 @@ import Quickshell.Io
 import qs.Config as Config
 
 // Quickshell has no native backlight/brightness service type (checked
-// against its services/ directory listing: greetd, mpris, notifications,
+// against its services/ directory listing: greetd, mpris, notifications
 // pam, pipewire, polkit, status_notifier, upower — nothing
 // backlight-related), so this shells out to `brightnessctl` instead.
-//
 // brightnessctl is already in profiles/laptop/packages.txt. Reads via
 // `brightnessctl -m` (machine-readable: device,class,current,percent,max)
 // rather than parsing `brightnessctl get`'s plain-text form.
@@ -33,7 +32,7 @@ Singleton {
     }
 
     // The XF86MonBrightness{Up,Down} Hyprland binds call these (qs ipc
-    // call brightness up/down) instead of running brightnessctl directly,
+    // call brightness up/down) instead of running brightnessctl directly
     // so this property (and Components/Osd.qml's Connections on it)
     // updates atomically with the real change — a bare Hyprland-side
     // brightnessctl call would leave `percent` stale until the next

@@ -3,11 +3,10 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Fan profile control for the Stats overlay (auto, silent, default,
+// Fan profile control for the Stats overlay (auto, silent, default
 // heavy) — a thin `phi fan` process bridge, same shape as
 // Services/Vpn.qml's `phi vpn status --json` + action-Process pair. No
 // logic of its own beyond parsing and gating.
-//
 // `available`/`channels` are read from `phi fan status --json`, refreshed
 // on `refresh()` and watch-gated — status barely changes on its own, so
 // this is a light poll while the Stats card is open. `profile` is a plain
@@ -17,7 +16,6 @@ import Quickshell.Io
 // byte the kernel doesn't label), so a profile set by a previous session
 // or hand-edited outside phi-shell can't be reliably inferred from
 // `channels` alone — a known, accepted simplification, not a bug.
-//
 // UNTESTED end to end: `phi fan set`'s write path was never exercised
 // from this development environment (this workspace never touches the
 // live machine's /etc or runs sudo). `phi fan status` (read-only) was

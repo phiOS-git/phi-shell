@@ -5,8 +5,7 @@ import Quickshell.Io
 
 // Live throughput and latency for the Wi-Fi settings section and the wifi
 // bar overlay — an area graph plus the numbers.
-//
-// No `phi net` verb: this reads /proc/net/dev and runs `ping` directly,
+// No `phi net` verb: this reads /proc/net/dev and runs `ping` directly
 // the same way Services/WifiBridge.qml and Services/Tailscale.qml read
 // their own sources rather than routing through `phi`. Every Process here
 // sets `running = false` in onExited — Process.onFinished re-arms
@@ -34,7 +33,7 @@ Singleton {
     property real _lastRx: -1
     property real _lastTx: -1
     // The rate formula divides the byte delta by the REAL elapsed time
-    // (`_lastSampleT`, Date.now()), not a hardcoded 1000ms poll interval —
+    // (`_lastSampleT`, Date.now()), not a hardcoded 1000ms poll interval
     // `pingProc` below can take up to a full second on packet loss and
     // runs every tick alongside `devProc`, so a tick landing late is a
     // real risk; dividing by an assumed 1000 would silently under-report

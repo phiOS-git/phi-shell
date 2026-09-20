@@ -8,7 +8,6 @@ import "../modules" as Modules
 // Bluetooth, Wi-Fi (with a live speed graph), WireGuard VPN, Tailscale
 // and the inbound firewall, each a Modules.SettingsGroup so a search or a bar
 // overlay's "Show in settings" button lands on the right one.
-//
 // Every reader already exists as a Services/ bridge — this section is a
 // second consumer, never a new probe. The no-address-leak contract is
 // enforced structurally upstream: neither Services.Tailscale nor

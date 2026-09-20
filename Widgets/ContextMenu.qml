@@ -6,7 +6,6 @@ import qs.Config as Config
 // popup to a window or point, not just screen edges the way the bar's
 // layer-shell surfaces do), built from the existing Popover/ListRow
 // widgets.
-//
 // Items: [{ label, onActivated }]. A menu with no items is not shown.
 
 PopupWindow {

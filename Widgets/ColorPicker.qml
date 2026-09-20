@@ -8,8 +8,7 @@ import "WidgetStates.js" as WidgetStates
 // `Gradient`; the colour maths goes through Qt's own `color` type
 // (`Qt.hsva`, `.hsvHue/.hsvSaturation/.hsvValue`), not a hand-rolled
 // conversion.
-//
-// Not a floating Popover: the settings content pane is a clipped Flickable,
+// Not a floating Popover: the settings content pane is a clipped Flickable
 // so a floating child would be cut off. ColorField embeds this inline and
 // grows the row. Controlled: seed with setColor(hex); `picked(color)`
 // fires live during a drag, `committed(hex)` fires on drag release or

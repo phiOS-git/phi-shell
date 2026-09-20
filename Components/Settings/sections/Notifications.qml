@@ -231,7 +231,7 @@ Column {
     // the runner bar ("timer 5m", "alarm 7:30 wake up") — this group is
     // ringtone customisation plus managing what's already running, not
     // where a new one is created. The stopwatch (Services/Stopwatch.qml)
-    // has no customisable state of its own, so it gets no dedicated row,
+    // has no customisable state of its own, so it gets no dedicated row
     // only a mention in this group's own caption.
     Modules.SettingsGroup {
         title: "Timers, alarms & stopwatch"

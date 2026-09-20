@@ -5,16 +5,14 @@ import "WidgetStates.js" as WidgetStates
 // Same dumb/reusable Canvas-icon family as WifiIcon/SunMoonIcon/VolumeIcon/
 // BatteryIcon — Bar/modules/Ethernet.qml owns the Services/EthernetBridge.qml
 // reads.
-//
 // Hand-drawn, not a font-symbol lookup — this project never guesses an
 // unverified Nerd Font codepoint, having shipped a wrong one before. A
 // plain RJ45 plug silhouette — a body, a retention clip on top, four
 // contact pins on the bottom — using only rectangles, so there is no
 // curve-fitting to get subtly wrong.
-//
 // Only a connect/disconnect fade (`connectAmount`, category B, Behavior-
 // wrapped by the caller like WifiIcon's own), no separate "searching"
-// pulse: unlike Wi-Fi, Quickshell's NetworkDevice gives no confirmed,
+// pulse: unlike Wi-Fi, Quickshell's NetworkDevice gives no confirmed
 // meaningfully-different transitional state for a wired link worth
 // animating — a plain resting-opacity fade is the honest amount of
 // animation to build on what is actually known.

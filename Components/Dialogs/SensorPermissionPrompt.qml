@@ -9,7 +9,6 @@ import qs.Widgets as Widgets
 // Dialogs/ConfirmDialog.qml — a third real choice ("Once") instead of
 // that file's confirm/cancel pair, since a permission decision genuinely
 // has three outcomes.
-//
 // UI-and-interactions only — see Services/SensorPermissions.qml's own
 // header for the full scope note: nothing in this codebase calls
 // requestPermission() automatically yet, so this dialog only ever

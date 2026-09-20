@@ -9,7 +9,6 @@ import Quickshell.Io
 // assigned profile. A bar module or settings section reads a
 // Capabilities.* property and appears only where it's true — it never
 // checks which machine it's running on.
-//
 // phios-dotfiles isn't guaranteed to be on PATH, so the probe resolves it
 // the same way the `phi` binary does: $PHI_DOTFILES if set, else
 // ~/phios-dotfiles, falling back to a bare PATH lookup.
@@ -29,7 +28,7 @@ Singleton {
     readonly property bool multiMonitor: capRaw.multiMonitor
 
     // Derived, not a raw probe field: PHI_CAP_GPU_VENDOR is a comma-
-    // separated list (a hybrid-graphics host can report "nvidia,intel"),
+    // separated list (a hybrid-graphics host can report "nvidia,intel")
     // so this checks membership, not equality. Named for the vendor
     // rather than "discreteGpu" because the bar's GPU module monitors
     // specifically via nvidia-smi — an AMD card would need its own tool

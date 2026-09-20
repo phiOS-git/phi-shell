@@ -7,13 +7,11 @@ import Quickshell.Io
 // version, uptime) for the settings panel's General section. GPU vendor
 // is deliberately NOT re-probed here — Config.Capabilities.gpuVendor
 // already answers that from bin/phios-capabilities.
-//
 // Same shape as Config/Capabilities.qml's own probe: one `sh -c` script
 // emitting KEY=VALUE lines, parsed the same way. Every source here is a
 // plain read of a world-readable /proc or /sys file, or a standard
-// coreutils/util-linux command already present on any phiOS host —
+// coreutils/util-linux command already present on any phiOS host
 // nothing new to install.
-//
 // Storage is `df` on `/` only — the root filesystem's free/total, not a
 // full mount-point breakdown.
 
@@ -41,7 +39,6 @@ Singleton {
     // A single script, not eight separate Process objects: every source
     // here is already fast and local, so there's nothing latency-sensitive
     // about batching them.
-    //
     // The RAM line prints the whole KEY=VALUE line directly from awk, with
     // no `"$(...)"` command-substitution wrapper — wrapping a single-
     // quoted awk script containing escaped double quotes inside an outer

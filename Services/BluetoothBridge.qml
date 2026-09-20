@@ -5,9 +5,8 @@ import Quickshell.Bluetooth
 
 // Thin wrapper over Quickshell.Bluetooth — the one file outside Config/
 // allowed to touch this service surface.
-//
 // `Bluetooth.devices` is "all connected bluetooth devices across all
-// adapters" — already filtered to connected ones by the service itself,
+// adapters" — already filtered to connected ones by the service itself
 // so this file doesn't re-filter by BluetoothDevice.connected a second
 // time, it only re-exposes the model and derives a plain connected count.
 
@@ -39,7 +38,7 @@ Singleton {
         else dev.connect()
     }
 
-    // For the Connectivity settings section's Bluetooth group. UNVERIFIED
+    // For the Connectivity settings section's Bluetooth group.
     // against real hardware. Pairing / scanning for a NEW device stays a
     // `bluetuith` deep-link; this only toggles the radio and drops an
     // already-connected device.

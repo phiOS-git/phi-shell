@@ -7,7 +7,6 @@ import "../../Bar/glyphs.js" as Glyphs
 // full rows) and the "status" card's own compact power-icon row — each
 // instantiates this once as a plain child, same reusable-non-singleton
 // shape as Services/LayerFocus.qml.
-//
 // Confirmation: Services/ConfirmDialog.qml's shared centered modal closes
 // every other panel (this popout included) the moment it opens, so
 // cancelling returns to a closed bar, not a still-open action list.

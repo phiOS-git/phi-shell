@@ -57,7 +57,7 @@ Column {
     // placeholders — placed here since its whole point is keeping
     // sensitive content out of a persisted history. Services/Clipboard.qml
     // already excludes one thing before it ever touches disk (KeePassXC's
-    // MIME hint); these are the user-added rules layered on top of it,
+    // MIME hint); these are the user-added rules layered on top of it
     // checked in QML the instant an entry is first observed as new.
     Modules.SettingsGroup {
         title: "Clipboard history rules"

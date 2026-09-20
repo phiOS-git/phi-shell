@@ -7,7 +7,6 @@ import qs.Config as Config
 // Scoped as ONE persistent scratch note, not a multi-note management
 // system — a separate, bigger "Notes app" is its own not-yet-built
 // concept; building a full note library here would duplicate that.
-//
 // Persisted to Config.Paths.quickNoteFile ($HOME/Documents/phiOS Quick
 // Notes/quick-note.md) via plain Quickshell.Io.FileView — not `phi state`
 // (a multi-line free-text note doesn't fit its closed scalar-key set) and
@@ -32,7 +31,7 @@ Singleton {
         saveDebounce.restart()
     }
 
-    // How long to wait after the last keystroke before writing to disk —
+    // How long to wait after the last keystroke before writing to disk
     // a functional constant, not a design-system value.
     readonly property int saveDebounceMs: 800
 
