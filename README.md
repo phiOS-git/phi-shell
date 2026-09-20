@@ -1,6 +1,6 @@
 # phi-shell
 
-Desktop shell, QML on Quickshell 0.3.1. Master plan §8.
+Desktop shell, QML on Quickshell 0.3.1.
 
 ## Running it
 
@@ -34,13 +34,13 @@ running `phi theme set` first.
 
 ## Iterating without restarting the session
 
-Since S-24, Hyprland starts `qs -p ~/.config/quickshell/phi` itself on
+Hyprland starts `qs -p ~/.config/quickshell/phi` itself on
 login (`hl.on("hyprland.start", ...)` in phios-dotfiles'
 `profiles/desktop/home/.config/hypr/hyprland.lua`), so there is normally no
 manual `qs` process to watch output from.
 
 Editing any `.qml` file needs no restart at all: Quickshell watches every
-file it has loaded and hot-reloads on save (master plan §8.1). This covers
+file it has loaded and hot-reloads on save. This covers
 everything under `Widgets/`, `Bar/`, `Services/`, and `Config/` except
 `Config/Tokens.qml` itself, which only changes when `phi theme set` renders
 it — running that command re-triggers the same hot reload, not a restart.
