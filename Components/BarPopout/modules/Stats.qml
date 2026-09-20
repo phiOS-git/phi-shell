@@ -18,7 +18,7 @@ Widgets.StaggerReveal {
     spacing: root.chWidth * Config.Appearance.space2
     visible: root.active
 
-    // rework-issues.md "New requests" item 2: add one to the currently
+    // Requested: add one to the currently
     // highest workspace and focus it, then launch btop there.
     function _openBtopInNewWorkspace() {
         var wss = Services.HyprlandBridge.workspaces

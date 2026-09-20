@@ -5,7 +5,7 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 
 // Migrated from the old standalone ClipboardOverlay window (retired — see
-// docs/VERIFICATION.md) into a plain BarPopout "which" card, same shape
+// into a plain BarPopout "which" card, same shape
 // as every other module here:
 //   - a search bar, auto-focused when this card opens (Super+Shift+V
 //     opens the popout straight here); typing filters the entries

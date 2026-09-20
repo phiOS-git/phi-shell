@@ -6,7 +6,7 @@ in `phios-dotfiles`, via `design/adapters.txt` (S-20). Both are gitignored,
 so a fresh clone has neither until `phi theme set dark` (or `light`) has run
 once — see the top-level README.
 
-**Split across two files as of the interface rework** (rework.md: the "auto"
+**Split across two files** (for the "auto"
 light/dark theme option needs `phi theme set` to stop forcing a full
 Quickshell session reset). `Config/Tokens.qml` is `pragma Singleton`, and
 rewriting a singleton's own QML SOURCE forces Quickshell to fully

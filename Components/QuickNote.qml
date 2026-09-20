@@ -5,7 +5,7 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — Panels/QuickNote. docs/TODO.md: "add a quick note: when
+// phiOS — Panels/QuickNote. Requested: "add a quick note: when
 // clicking the bottom right corner a quick floating editor window
 // appears ... Positioning the mouse in the corner should have show a
 // small transition (inspired by macos corner note)." Services/
@@ -159,7 +159,7 @@ PanelWindow {
         Widgets.Panel {
             id: card
             anchors.fill: parent
-            // rework-status-bar.md Style item 1: match the status bar's own
+            // Match the status bar's own
             // background instead of the generic "shaded" surface1 — the
             // inner `textPanel` below keeps the default and now reads as a
             // genuinely distinct inner section against it.

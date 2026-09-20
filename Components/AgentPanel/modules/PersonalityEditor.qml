@@ -3,7 +3,7 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — agent PersonalityEditor (phios-agente-delta.md D-08). The full
+// phiOS — agent PersonalityEditor. The full
 // create/edit/rename/delete view. The panel runs outside the containment and
 // IS the user (§8.2 "scrive solo l'utente"); personalita/ stays read-only
 // inside the mount. Writes go through `phi agent personality` for validation
@@ -20,7 +20,7 @@ Item {
     property string preselect: ""
 
     signal closed()
-    // docs/TODO.md ESC task — re-emitted up through ProjectView to
+    // the Escape task — re-emitted up through ProjectView to
     // AgentPanel's keyScope; see Widgets/TextField.qml's `escaped()`.
     signal blurred()
 
@@ -180,7 +180,7 @@ Item {
                     // action in this shell without it, unlike VPN "Forget",
                     // "Clear all keys" and "Clear all notifications", all of
                     // which already go through this same ConfirmDialog per
-                    // docs/TODO.md's own standing directive ("sensible
+                    // standing directive ("sensible
                     // settings ... should ask confirmation with a blocking
                     // alert").
                     onClicked: Services.ConfirmDialog.open({

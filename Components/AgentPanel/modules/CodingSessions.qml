@@ -3,7 +3,7 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — agent CodingSessions (phios-agente-delta.md §3.7 section 3 / D-07).
+// The agent panel's CodingSessions section.
 // A2 sessions, active and past, from phi-owned metadata files — the panel
 // never reaches A2's server (ADR 084). Per session: open the mirrored
 // transcript (read-only), focus the terminal window, or open a fresh one.

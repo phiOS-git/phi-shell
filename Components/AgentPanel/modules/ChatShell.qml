@@ -36,14 +36,14 @@ Item {
     readonly property var agent: Services.Agent
 
     signal requestSection(string s)
-    // docs/TODO.md ESC task — see Widgets/TextField.qml's own `escaped()`;
+    // the Escape task — see Widgets/TextField.qml's own `escaped()`;
     // re-emitted from every field in the sidebar and from the embedded
     // Chat/ProjectView, so AgentPanel's fallback key handler can reclaim
     // focus and make a second Escape close the whole panel.
     signal blurred()
 
     property string selectedProject: ""
-    // Interface rework Phase 4 (rework.md: "a toggleable sidebar with
+    // Interface rework Phase 4 (Requested: "a toggleable sidebar with
     // projects and chat list"). Session-only view state — collapses the
     // sidebar's WIDTH to zero rather than unloading it, so no scroll
     // position/search text is lost across a toggle. See `sidebar`'s own
@@ -308,7 +308,7 @@ Item {
         }
     }
 
-    // Interface rework Phase 4 (rework.md: "a toggleable sidebar"). A
+    // Interface rework Phase 4 (Requested: "a toggleable sidebar"). A
     // sibling of the Row above rather than a child of it — a Row forcibly
     // positions every direct child along its own flow axis — so it tracks
     // `sidebar`'s own moving right edge from outside the Row via

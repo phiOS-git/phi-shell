@@ -227,7 +227,7 @@ WlSessionLock {
         // surface exists. One per screen; only one is input-focused at a time.
         Component.onCompleted: {
             passwordField.forceActiveFocus()
-            // FIXME-guard: the reveal is deferred one turn (Qt.callLater) so the surface
+            // The reveal is deferred one turn (Qt.callLater) so the surface
             // is mapped when the animation starts. Without it the transition ran
             // off-screen and read as instant.
             Qt.callLater(function () { transition.reveal() })

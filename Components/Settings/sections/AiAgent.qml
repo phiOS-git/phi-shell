@@ -149,7 +149,7 @@ Column {
     Modules.SettingsGroup {
         advanced: true
         title: "Services"
-        caption: "All phi-agent units are declared and never auto-enabled (phios-agente.md). Start/stop and enable them with `systemctl --user`. The A2 remote surface is status-only here — starting phi-agent-a2-remote* is how a session is declared remote (§10.3)."
+        caption: "All phi-agent units are declared and never auto-enabled. Start/stop and enable them with `systemctl --user`. The A2 remote surface is status-only here — starting phi-agent-a2-remote* is how a session is declared remote."
 
         Modules.SettingsRow {
             title: "A2 support services"
@@ -179,7 +179,7 @@ Column {
     Modules.SettingsGroup {
         advanced: true
         title: "Broker & engine"
-        caption: "The values below are read-only — broker.json / opencode.json / the egress whitelist are versioned config, and editing them from this panel would fight `git pull` (the exact problem a past round hit doing exactly that). The buttons open the real files in a terminal editor instead. The provider key is a separate mode-600 file, never shown here at all. Full specification: phios-agente.md (ADR 084–100)."
+        caption: "The values below are read-only — broker.json / opencode.json / the egress whitelist are versioned config, and editing them from this panel would fight `git pull` (the exact problem a past round hit doing exactly that). The buttons open the real files in a terminal editor instead. The provider key is a separate mode-600 file, never shown here at all."
 
         // The two facts anyone opening this group wants FIRST — is a key
         // configured, and which model — lead it, ahead of the lower-level

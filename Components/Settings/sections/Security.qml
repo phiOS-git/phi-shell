@@ -162,7 +162,7 @@ Column {
     Modules.SettingsGroup {
         title: "Sensor permissions"
         optionId: "security.sensors"
-        caption: "Microphone and camera access — the detection that would populate \"apps using the sensor\" automatically is designed but not built yet (see docs/VERIFICATION.md). Killswitches and stored rules below are real."
+        caption: "Microphone and camera access — the detection that would populate \"apps using the sensor\" automatically is designed but not built yet. Killswitches and stored rules below are real."
 
         Modules.SettingsRow {
             title: "Microphone"

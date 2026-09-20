@@ -4,7 +4,7 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "." as Local
 
-// phiOS — agent Chat (phios-agente-delta.md §3.7 section 2). One conversation.
+// The agent panel's Chat section. One conversation.
 // Heading `project > title` (title from opencode's session.title after msg 1,
 // id as the fallback). Per-chat personality via a real control. Autoscroll.
 // Streaming + tool approval + a non-blocking memory-proposal cue (§8.6); the
@@ -49,7 +49,7 @@ Item {
     }
 
     signal requestSection(string s)
-    // docs/TODO.md ESC task — see Widgets/TextField.qml's own `escaped()`
+    // the Escape task — see Widgets/TextField.qml's own `escaped()`
     // for the general shape; `field` here is a raw TextInput (not that
     // widget) so it re-implements the same blur-then-signal locally.
     signal blurred()

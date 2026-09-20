@@ -3,12 +3,12 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// phiOS — agent MemoryProposals (phios-agente-delta.md §3.7 section 4 / D-01).
+// The agent panel's MemoryProposals section.
 // Pending proposals grouped by level (system / personality / project). Each
 // shows the LITERAL append-diff — never a summary (§8.6). The panel widens
 // for this section (AgentPanel.targetWidth).
 //
-// Interface rework Phase 4 (rework.md: the panel's "status" tab is "a quick
+// Interface rework Phase 4 (Requested: the panel's "status" tab is "a quick
 // overview of the system status (use icons and small texts) and the list
 // of memory proposal"): this file is now that whole tab, not just the
 // proposals half of it — Panels/AgentPanel.qml's rail renamed "Memory

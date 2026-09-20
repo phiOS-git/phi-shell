@@ -4,7 +4,7 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "." as Local
 
-// phiOS — agent ProjectView (phios-agente-delta.md §3.7 section 1, project
+// The agent panel's ProjectView section (project
 // detail). Name, description, instruction list, context files (materiali/),
 // folders of interest (read-only real dirs), default personality, project
 // chats.
@@ -21,7 +21,7 @@ Item {
 
     signal back()
     signal startChat()
-    // docs/TODO.md ESC task — re-emitted up to Dashboard, then AgentPanel's
+    // the Escape task — re-emitted up to Dashboard, then AgentPanel's
     // keyScope; see Widgets/TextField.qml's `escaped()`.
     signal blurred()
 

@@ -5,7 +5,7 @@ import qs.Widgets as Widgets
 import "../../Bar/glyphs.js" as Glyphs
 
 // Migrated from the old standalone NotificationsOverlay window (retired —
-// see docs/VERIFICATION.md) into a plain BarPopout "which" card, same
+// into a plain BarPopout "which" card, same
 // shape as every other module here. A DND switch (with 30m/1h/4h quick-
 // triggers), then the notification list grouped by date, then by source
 // within each date — both tiers collapsible (dates default expanded,
