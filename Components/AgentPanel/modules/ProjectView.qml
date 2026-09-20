@@ -86,9 +86,9 @@ Item {
                 }
             }
 
-            // Style pass 2026-09-15 (reported directly: "managing projects
+            // (reported directly: "managing projects
             // is a generic form of fields with no hierarchy and grammar").
-            // Every section below used to be the exact same shape — a
+            // Every section below the exact same shape — a
             // plain `kind: "title"` heading followed by rows — with
             // nothing to tell them apart at a glance or let a user
             // collapse the ones they are not touching right now. Wrapped
@@ -239,7 +239,7 @@ Item {
                 }
             }
 
-            // project chats — style pass 2026-09-14: same gap as
+            // project chats — : same gap as
             // Panels/tabs/agent/Dashboard.qml's own ChatRow had (see its
             // comment) — the star only ever displayed pin state, nothing
             // here called the real Services.Agent.setChatPinned(). Same fix.

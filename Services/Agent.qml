@@ -80,7 +80,7 @@ Singleton {
     // Lazy, not eager: nothing starts the unit at shell startup
     // (Component.onCompleted above only reads health, never activates) — only
     // actually opening the panel does, and only when the service isn't already
-    // running. Fires on every open where the service is down, not just the first,
+    // running. Fires on every open where the service is down, not just the first
     // so it also doubles as recovery if the service dies while the panel stays
     // closed. Once `available` is true, later opens skip this — no retry loop, no
     // repeated `systemctl start` calls. Gated on `healthChecked`, not just
@@ -205,10 +205,8 @@ Singleton {
                 } catch (e) {}
             }
         }
-        // A failed session creation used to fail silently — no id, no error — and a
-        // message queued behind it (pendingSend, see send() below) lost outright with
-        // the Send button spinning forever. Surface it the same way a failed
-        // prompt-send already does (root.lastError).
+        // A failed session creation surfaces the same way a failed prompt-send
+        // already does (root.lastError).
         onExited: (code) => {
             newSessProc.running = false
             if (!newSessProc._gotId && pendingSend.armed) {
@@ -229,7 +227,7 @@ Singleton {
         newSessProc.running = true
     }
     // opencode assigns a raw default title server-side before a real one exists
-    // ("New session - 2026-09-14T15:27:36.713Z") — a millisecond- precision ISO
+    // ("New session - YYYY-MM-DDTHH:MM:SS.fffZ") — a millisecond- precision ISO
     // 8601 timestamp nobody should have to read. Reformatted here for DISPLAY
     // only; every call site that shows a session/chat title routes through this so
     // none can show the raw form while another shows it reformatted. The stored
@@ -280,7 +278,7 @@ Singleton {
                             out.push({ role: info.role || "assistant", text: text.trim() })
                             continue
                         }
-                        // A turn that failed upstream (provider billing/ auth/rate-limit rejection,
+                        // A turn that failed upstream (provider billing/ auth/rate-limit rejection
                         // ...) comes back from opencode with an empty parts array and info.error
                         // populated. Used to be dropped silently, which made a rejected turn
                         // indistinguishable from a hang; surface it as its own bubble instead.
@@ -468,7 +466,7 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 // `phi agent memory show` prints the current file and the literal "+"-prefixed
-                // lines it would append. Split them so the panel can render the literal diff,
+                // lines it would append. Split them so the panel can render the literal diff
                 // never a summary.
                 const cur = [], add = []
                 let phase = ""
@@ -557,7 +555,7 @@ Singleton {
         unitProc.running = true
     }
     // The real loading signal for the "Start service" button — just the systemctl
-    // call, not the health re-check its own onExited chains into (checkingHealth,
+    // call, not the health re-check its own onExited chains into (checkingHealth
     // above). Sharing one flag between the two buttons would light up "Recheck"'s
     // spinner on a plain Start click and vice versa.
     readonly property bool activating: unitProc.running

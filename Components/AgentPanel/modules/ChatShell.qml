@@ -18,7 +18,7 @@ Item {
     signal blurred()
 
     property string selectedProject: ""
-    // Interface rework Phase 4 (Requested: "a toggleable sidebar with projects and
+    // (Requested: "a toggleable sidebar with projects and
     // chat list"). Session-only view state — collapses the sidebar's WIDTH to zero
     // rather than unloading it, so no scroll position/search text is lost across a
     // toggle. See `sidebar`'s own Behavior and `sidebarToggle` below.
@@ -72,7 +72,7 @@ Item {
                     width: parent.width
                     spacing: root.gap
 
-                    // new chat / new project — the two primary actions, always at the very top,
+                    // new chat / new project — the two primary actions, always at the very top
                     // above search: this is a sidebar you start a new thing from at least as often
                     // as you search it.
                     Row {
@@ -273,24 +273,24 @@ Item {
         }
     }
 
-    // Interface rework Phase 4 (Requested: "a toggleable sidebar"). A sibling of
+    // (Requested: "a toggleable sidebar"). A sibling of
     // the Row above rather than a child of it — a Row forcibly positions every
     // direct child along its own flow axis — so it tracks `sidebar`'s own moving
     // right edge from outside the Row via `mapToItem` instead of a raw
     // cross-hierarchy anchor (the same technique, and the same reasoning, as
     // Chat.qml's own personaCard: no anchor-direction risk to get wrong between
     // items that are not strict siblings). Stays reachable at any width, sidebar
-    // fully expanded or fully collapsed to zero. 2026-09-19 (agent instruction:
+    // fully expanded or fully collapsed to zero. (agent instruction:
     // "in the chat view make the dashboard toggleable with an icon"): SmallButton
     // carrying a text "‹"/"›" chevron label; now the same bare Widgets.IconButton
     // grammar this shell's other minor always-visible controls use (BarPopout's
     // media/ network rows, AgentPanel's settings corner icon), MDI's
-    // page-layout-with-left-sidebar pictogram (nf-md-page_layout_sidebar_left,
+    // page-layout-with-left-sidebar pictogram (nf-md-page_layout_sidebar_left
     // Glyphs.dashboard — verified against nerd-fonts' glyphnames.json, not
     // recalled from memory). The one glyph serves both states, coloured the way
     // BarPopout's shuffle button shows its own on/off: accent while the dashboard
     // is visible, muted while collapsed. Keeps an explicit chWidth-sized square
-    // hit box around the bare glyph — the same comfort floor the nav squares got,
+    // hit box around the bare glyph — the same comfort floor the nav squares got
     // and the reason the old control floored height at controlHeight.
     Widgets.IconButton {
         id: sidebarToggle
@@ -308,7 +308,7 @@ Item {
     }
 
     // the star glyph only ever DISPLAYED pin state before that pass; Pin/Close are
-    // real Services.Agent calls now. `open()` is gone — selecting a chat no longer
+    // real Services.Agent calls now. `open()` is gone — selecting a chat
     // navigates anywhere, the main pane just updates in place.
     component ChatRow: Row {
         id: chatRow

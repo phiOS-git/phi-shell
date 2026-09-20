@@ -11,7 +11,7 @@ Item {
     readonly property var infra: Services.AgentInfra
     property string personality: ""
 
-    // Out-of-plan: the "Agent offline" state used to be one sentence covering five
+    // Out-of-plan: the "Agent offline" state one sentence covering five
     // different real causes (no key, broker down, engine down/failed, engine
     // active but not answering yet). AgentInfra already polls every one of those
     // facts for the Settings section — reuse it here so the panel says which one
@@ -154,10 +154,10 @@ Item {
                     onEscaped: root.renamingTitle = false
                 }
                 // Services/Agent.qml's own setChatTitle(id, title) had no UI path to it
-                // anywhere in this panel at all. Only offered once a real session exists —
+                // anywhere in this panel at all. Only offered once a real session exists
                 // nothing to rename in the "new chat" state. A plain SmallButton, not wrapped:
                 // Row already skips an invisible child when laying out, and `renameBtn.width`
-                // below (the title/field's own width calc) reads the same either way —
+                // below (the title/field's own width calc) reads the same either way
                 // visibility does not zero a Item's width.
                 Widgets.SmallButton {
                     id: renameBtn
@@ -169,7 +169,7 @@ Item {
                         // The RAW title, not the reformatted display string above — pre-filling the
                         // synthetic "New chat · 14 Sep, 15:27" text would let it get saved back as a
                         // real, permanent title the next time this is committed. Still opencode's own
-                        // raw-timestamp default at this point, so start the field empty instead,
+                        // raw-timestamp default at this point, so start the field empty instead
                         // prompting a real title rather than proposing a bad one.
                         const raw = root.currentTitle(true)
                         renameField.text = /^New session - /.test(raw) ? "" : raw
@@ -177,7 +177,7 @@ Item {
                         renameField.forceEditFocus()
                     }
                 }
-                // Full chat-panel rework 2026-09-15: the header's own "Settings" button is
+                // Full chat-panel rework : the header's own "Settings" button is
                 // gone — Panels/AgentPanel.qml's nav rail already grew a Settings icon
                 // reachable from every section (this session's own earlier pass), so this
                 // second way to reach the identical destination, always visible on screen at
@@ -188,7 +188,7 @@ Item {
                 // the main action.
                 Widgets.SmallButton {
                     id: newBtn; label: "New"
-                    // Same leaveProject()-first guard as ChatShell.qml's own "New chat" button —
+                    // Same leaveProject()-first guard as ChatShell.qml's own "New chat" button
                     // this is a second way to reach the same action, so it needs the same fix or
                     // the project stays silently active whichever button is clicked.
                     onClicked: root.agent.activeProject.length > 0 ? root.agent.leaveProject() : root.agent.newSession()
@@ -204,7 +204,7 @@ Item {
                     id: switchRow
                     spacing: root.chWidth * Config.Appearance.space1
                     // agent.switchTarget is the DESTINATION of an in-flight switch, not
-                    // agent.activeProject — that still holds the OLD value until the switch lands,
+                    // agent.activeProject — that still holds the OLD value until the switch lands
                     // which would show "new project" even while leaving one.
                     Widgets.StyledText { kind: "label"; text: "Rebuilding the containment for the " + (root.agent.switchTarget.length > 0 ? "new project" : "unfiled chat") }
                     Widgets.Dots {}
@@ -245,7 +245,7 @@ Item {
                     // a plain `TextInput` cannot wrap or hold a second line at all — a real
                     // limitation for anything longer than one short sentence, and out of step with
                     // every mainstream chat composer's own Enter-sends / Shift+Enter-newline
-                    // convention. `TextEdit` grows with its content (capped at `_maxLines` lines,
+                    // convention. `TextEdit` grows with its content (capped at `_maxLines` lines
                     // then scrolls internally via `fieldScroll`) instead of clipping or forcing
                     // one line.
                     Flickable {
@@ -269,7 +269,7 @@ Item {
                             color: Config.Appearance.textPrimary
                             selectByMouse: true
                             // Enter sends (matching the single-line TextInput this replaces); Shift+Enter
-                            // inserts a real newline — TextEdit's own default behaviour for a bare Enter,
+                            // inserts a real newline — TextEdit's own default behaviour for a bare Enter
                             // so only the un-modified case needs intercepting.
                             Keys.onPressed: (event) => {
                                 if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
@@ -311,7 +311,7 @@ Item {
             // real chat app (Slack, Discord, ChatGPT) has already had to fix. Now only
             // autoscrolls if the user already at (or within ~2 lines of) the bottom BEFORE
             // this change — `_prevContentHeight` is the previous height, captured
-            // deliberately instead of comparing against `contentHeight`'s own new value,
+            // deliberately instead of comparing against `contentHeight`'s own new value
             // which would always read "not at the bottom" right after growing (the content
             // grew out from under a contentY that has not had a chance to move yet).
             property real _prevContentHeight: 0
@@ -375,7 +375,7 @@ Item {
             }
         }
 
-        // Persona/personality picker popover (2026-09-15, reported directly: "large
+        // Persona/personality picker popover (, reported directly: "large
         // buttons block the input area" — the old version an inline Flow of full-size
         // StyledButtons that pushed the whole composer down whenever opened, sometimes
         // wrapping to several rows for a handful of personalities). Positioned in
@@ -413,9 +413,9 @@ Item {
                         onClicked: { root.personality = modelData; root.personaOpen = false }
                     }
                 }
-                // Full chat-panel rework 2026-09-15: this used to route to the separate
+                // Full chat-panel rework : this used to route to the separate
                 // "dashboard" destination so the user could click into a project to edit its
-                // personalities — that destination no longer exists (ChatShell.qml's sidebar,
+                // personalities — that destination exists (ChatShell.qml's sidebar
                 // where Projects live, is always visible next to this popover now), so there
                 // is nowhere left to "navigate" to and this button is gone. Editing a
                 // personality is just clicking the project in the sidebar that's already on
@@ -435,7 +435,7 @@ Item {
         }
     }
 
-    // this used to clear the field UNCONDITIONALLY after calling agent.send() —
+    // this the field UNCONDITIONALLY after calling agent.send()
     // but Services.Agent.send() itself no-ops while a turn is already in flight
     // (`if (sendProc.running ...) return`, by design, correctly preventing a real
     // double-send race at the backend). The UI side of that guard missing

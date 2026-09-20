@@ -10,7 +10,7 @@ import "WidgetStates.js" as WidgetStates
 // Bar/modules/PhiAgent.qml's own processing indicator), not a shimmer
 // sweep — a gradient animation would be a heavier, more decorative effect
 // than this design language's restrained motion taxonomy allows for
-// something this frequent and this passive: every list in this shell that
+// something this frequent and inert: every list in this shell that
 // scans (Wi-Fi, Bluetooth) or shells out (Updates) can be waiting on this
 // at once, so it has to stay genuinely quiet.
 

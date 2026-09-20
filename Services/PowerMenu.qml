@@ -53,7 +53,7 @@ Singleton {
     }
 
     // Purely a "how long is a second press still a double-tap" window
-    // now — no longer gates when the menu itself appears (see
+    // now — gates when the menu itself appears (see
     // _onTrigger()'s own comment above).
     Timer {
         id: doubleTapWindow

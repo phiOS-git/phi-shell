@@ -33,7 +33,7 @@ import "../../../Widgets/WidgetStates.js" as WidgetStates
 // Referenced by id (root.text / root.mine) from the nested StyledText, not
 // a bare `text` (StyledText owns its own `text`) or `parent` — the same
 // indirection Panels/tabs/Notifications.qml documents.
-// Critical self-review pass 2026-09-15 (no user report — looking for real
+// pass (no user report — looking for real
 // chat-UX gaps rather than waiting to be told about them): two were found.
 // Neither needed a new dependency:
 // - Markdown rendering. An agent reply routinely contains **bold**

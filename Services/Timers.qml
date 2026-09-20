@@ -129,7 +129,7 @@ Singleton {
     Timer { id: testStopTimer; interval: 2000; onTriggered: root._stopRingtone() }
 
     // The next epoch-ms at which (hour:minute) occurs, always computed from
-    // the REAL current time, never by walking forward from a previously
+    // the REAL current time, never by walking forward from a
     // computed (and possibly very stale, e.g. after the machine was
     // suspended for days) targetMs — a bounded 7-day forward scan, so a
     // long-suspended machine gets exactly the next real occurrence, not a

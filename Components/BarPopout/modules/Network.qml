@@ -7,7 +7,7 @@ import "../../../Widgets/Format.js" as Format
 
 // Folds Wifi.qml/Ethernet.qml's own content into one card, plus
 // Tailscale/VPN/Firewall — Bar/modules/Network.qml only ever opens
-// "network" as of interface rework Phase 2, so those standalone keys are
+// "network" as of , so those standalone keys are
 // unreachable from any bar icon (kept dormant, not deleted). Each
 // sub-section gets its own settings deep-link since this merges four
 // independent Settings destinations into one card — the shared card

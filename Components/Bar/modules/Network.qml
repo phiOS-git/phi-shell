@@ -21,7 +21,7 @@ import "../glyphs.js" as Glyphs
 // Wi-Fi fan) rather than a fabricated distinct icon state.
 // Reuses the shared "network" bar-popout key rather than inventing a new
 // one. The "wifi"/"ethernet" popout keys and Bar/modules/{Network,Wifi
-// Ethernet}.qml are left untouched but no longer reachable from a bar icon.
+// Ethernet}.qml are left untouched but reachable from a bar icon.
 
 Widgets.Segment {
     id: root

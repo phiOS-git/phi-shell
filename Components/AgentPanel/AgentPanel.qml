@@ -8,17 +8,14 @@ import qs.Widgets as Widgets
 import "modules" as Modules
 import "../Bar/glyphs.js" as Glyphs
 
-// The shell-summoned phi agent surface: a left-edge dock that slides in,
+// The shell-summoned phi agent surface: a left-edge dock that slides in
 // with three sections — Chat, Coding sessions, Status — on a header tab
 // strip, plus a settings deep link at the strip's right end. A dedicated
 // surface, not a registry instance; the surface type is code written once.
-//
-// Chat is one persistent sidebar-plus-conversation layout (Modules.ChatShell),
+// Chat is one persistent sidebar-plus-conversation layout (Modules.ChatShell)
 // not a separate list and conversation destination.
-//
 // Every call goes through Services/Modules.qml, the one client point.
-//
-// Entry points, all via Services/AgentPanel.qml: the bar Φ segment,
+// Entry points, all via Services/AgentPanel.qml: the bar Φ segment
 // Super+P (hyprland.lua.tmpl `ipc call agent toggle`), and
 // Settings › AI Agent › Open agent panel.
 
@@ -29,7 +26,7 @@ PanelWindow {
     readonly property var agent: Services.Agent
 
     // section: "chat" | "code" | "status". Chat is the landing section;
-    // `_autoOpenArmed` below then opens whichever conversation was touched last,
+    // `_autoOpenArmed` below then opens whichever conversation was touched last
     // so a returning user lands in it rather than an empty composer.
     property string section: "chat"
 
@@ -82,7 +79,7 @@ PanelWindow {
             if (root.section === "code") root.agent.refreshCodingSessions()
         }
     }
-    // Resolves `_autoOpenArmed` once real chat data exists. Sorts by `updated`,
+    // Resolves `_autoOpenArmed` once real chat data exists. Sorts by `updated`
     // the one field every entry carries, rather than trusting list order. An
     // empty list just disarms — the Chat section's own empty state is correct.
     Connections {
@@ -124,7 +121,7 @@ PanelWindow {
         (root.section === "status" && root.agent.totalPendingProposals > 0) ? wideWidth : baseWidth
 
     // The dim must not cover either status bar. Every dim surface here is
-    // WlrLayer.Overlay, which layer-shell always stacks above the bar's Top layer,
+    // WlrLayer.Overlay, which layer-shell always stacks above the bar's Top layer
     // so changing layers is the wrong lever. Instead the scrim is a plain child of
     // this same window, inset top and bottom by the bars' published heights
     // (Services.BarMetrics), leaving both visibly undimmed with no cross-layer risk.
@@ -171,7 +168,7 @@ PanelWindow {
         Item {
             id: dock
             anchors.top: parent.top
-            // features-change (item 2): the same small inset (panelGap) on
+            // (item 2): the same small inset (panelGap) on
             // all four sides — below the bar and off the three screen edges.
             anchors.topMargin: Services.BarMetrics.height + Config.Appearance.panelGap
             anchors.bottom: parent.bottom

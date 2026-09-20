@@ -17,8 +17,8 @@ PanelWindow {
     property var results: []
     property int highlightedIndex: 0
 
-    // The keyword Tab has "locked" (empty when nothing is locked). Once set,
-    // queryText no longer holds the keyword itself — locking strips it from the
+    // The keyword Tab has "locked" (empty when nothing is locked). Once set
+    // queryText holds the keyword itself — locking strips it from the
     // visible field, leaving only the remainder being typed; _runQuery()
     // reconstructs "key + remainder" for the actual `phi query` argv and adds
     // --prefix key so only that category's provider(s) answer.
@@ -101,7 +101,7 @@ PanelWindow {
     // opacity; `visible` stays true until that fade-out finishes.
     visible: root.shown || fadeRoot.opacity > 0
 
-    // Needed for keyboard input to reach searchField/commandField at all —
+    // Needed for keyboard input to reach searchField/commandField at all
     // Services/LayerFocus.qml's own header for why.
     Services.LayerFocus { target: root }
 
@@ -147,7 +147,7 @@ PanelWindow {
     }
 
     // Retries once a slow provider's own ActionLoading result has had a real
-    // chance to resolve (CurrencyProvider's detached refresh child,
+    // chance to resolve (CurrencyProvider's detached refresh child
     // phi/internal/query/currency.go, typically finishes well under this). Generic
     // — any future ActionLoading-returning provider gets this for free, no
     // per-provider retry logic needed here.
@@ -199,7 +199,7 @@ PanelWindow {
     // What the list and the keyboard navigation actually read: the browse list
     // when nothing is typed and no prefix is locked, the ranked `phi query`
     // results otherwise. A locked prefix never falls back to the browse list even
-    // with an empty remainder — results are restricted to that prefix's category,
+    // with an empty remainder — results are restricted to that prefix's category
     // which the unfiltered app-browse list isn't.
     readonly property var displayResults: (root.lockedPrefix.length === 0 && root.queryText.trim().length === 0)
         ? root.browseResults : root.results
@@ -232,7 +232,7 @@ PanelWindow {
                     try {
                         const parsed = JSON.parse(this.text)
                         if (Array.isArray(parsed)) {
-                            // Stale response guard: this Process spawned for queryProc.queryArg/prefixArg,
+                            // Stale response guard: this Process spawned for queryProc.queryArg/prefixArg
                             // but the user may have kept typing — or locked/ unlocked a prefix — since.
                             // Both must still match the current state, not just the text, or a response
                             // computed before a lock (or after an unlock) could render into the wrong UI
@@ -403,14 +403,14 @@ PanelWindow {
         width: root.launcherWidth
         // root.maxPanelHeight, not panel's own (now possibly smaller) height: this
         // Item draws nothing itself, it only exists to position panel, so holding its
-        // height at the fixed maximum keeps the vertical-centre calculation above —
+        // height at the fixed maximum keeps the vertical-centre calculation above
         // and so panel's top edge, since panel sits at panelWrap's origin below — from
         // moving as panel's actual content shrinks or grows. The reserved space below
         // a shorter panel simply stays empty and invisible rather than showing as
         // blank box.
         height: root.maxPanelHeight
 
-        // Sized to panel's actual height, not panelWrap's full reservation above —
+        // Sized to panel's actual height, not panelWrap's full reservation above
         // otherwise a click just below a shrunk panel would be swallowed here instead
         // of falling through to fadeRoot's MouseArea, which closes the launcher on a
         // click outside the (visible) box.
@@ -437,7 +437,7 @@ PanelWindow {
             spacing: root.chWidth * Config.Appearance.space2
 
             // Level 0: the input line — a "φ : " prefix, then the field. Always present so
-            // Escape/typing history is never lost while a sub-view sits on top; hidden,
+            // Escape/typing history is never lost while a sub-view sits on top; hidden
             // not destroyed.
             Item {
                 id: inputRow
@@ -561,7 +561,7 @@ PanelWindow {
                     Keys.onUpPressed: root.moveHighlight(-1)
                     Keys.onEscapePressed: root.setShown(false)
                     Keys.onReturnPressed: root.activate(root.displayResults[root.highlightedIndex])
-                    // Tab locks the prefix currently leading the typed text. Only meaningful once,
+                    // Tab locks the prefix currently leading the typed text. Only meaningful once
                     // from the unlocked state — the keyword is stripped from the field the moment
                     // it locks, so there's never a leading keyword left to detect a second time.
                     Keys.onTabPressed: {
@@ -694,7 +694,7 @@ PanelWindow {
                             // launchers this shape take (rofi/wofi/Spotlight/ Raycast), so Enter activates
                             // whatever the pointer is over — deliberately NOT the same choice
                             // Overview.qml's own hover fix makes (kept separate from keyboard selection
-                            // there), since that's a grid a user tabs through independently of the mouse,
+                            // there), since that's a grid a user tabs through independently of the mouse
                             // not a single flowing list like this one.
                             HoverHandler {
                                 cursorShape: Qt.PointingHandCursor
@@ -850,7 +850,7 @@ PanelWindow {
     }
     } // panelWrap
 
-    // The rich-result card. Sits to the right of the runner box, top- aligned,
+    // The rich-result card. Sits to the right of the runner box, top- aligned
     // only when the highlighted result carries a `rich` payload — the result list
     // and its navigation are untouched. On a narrow screen it drops below the box
     // instead of running off-edge.
