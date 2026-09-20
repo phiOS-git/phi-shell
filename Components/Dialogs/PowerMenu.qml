@@ -9,13 +9,11 @@ import "." as Local
 // Services/PowerMenu.qml owns the shown/double-tap state — this file is
 // presentation only. Layer-shell/scrim/fade plumbing copied verbatim from
 // Components/Dialogs/ConfirmDialog.qml.
-//
 // A bare horizontal PowerActionsRow pill row directly on the scrim.
 // Reboot/shutdown still go through the existing Services.ConfirmDialog
-// "this cannot be undone" step (Services.PowerActions.needsConfirm()) —
+// "this cannot be undone" step (Services.PowerActions.needsConfirm())
 // PowerActionsRow's own `chosen` signal only decides whether to interpose
 // that step, the mechanism itself is untouched.
-//
 // `pills.focusFirst()` runs every time this overlay actually becomes
 // shown, not just once at startup — this window is created once and only
 // ever shown/hidden via opacity (never destroyed), so
@@ -47,7 +45,7 @@ PanelWindow {
         strong: true
     }
     // A second identical scrim layer stacked on the first: this overlay
-    // sits on top of the real, likely bright desktop — windows, terminals,
+    // sits on top of the real, likely bright desktop — windows, terminals
     // whatever was on screen — so `strong` alone (80% black, the darkest
     // existing token) still lets more of it show through than wanted.
     // Two 80%-opaque layers stack to ~96% transmittance, reusing the

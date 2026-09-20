@@ -6,7 +6,6 @@ import Quickshell
 // centrally since a per-window surface can't own a list of its own
 // siblings. Components/ImageWindow.qml (one delegate per entry, via a
 // Variants block in shell.qml) renders it.
-//
 // Multi-instance shape: deliberately does NOT follow the single `shown`
 // boolean every other toggled surface in this shell uses — opening two
 // images must give two independent windows, not one surface the second
@@ -15,7 +14,6 @@ import Quickshell
 // block. The array here is data this file owns and mutates itself
 // (open()/close() below), unlike a host-provided list like
 // Quickshell.screens.
-//
 // Each entry is `{ id, path }` and never mutated after creation — no
 // central x/y/width/height/fullscreen fields. Components/ImageWindow.qml
 // uses Quickshell's real FloatingWindow type: a genuine xdg-toplevel with
@@ -34,7 +32,7 @@ Singleton {
 
     property int _nextId: 0
 
-    // path: an absolute filesystem path (no "file://" prefix —
+    // path: an absolute filesystem path (no "file://" prefix
     // Components/ImageWindow.qml's own Image element adds that itself).
     function open(path) {
         if (!path || path.length === 0) return ""

@@ -3,10 +3,8 @@ import qs.Config as Config
 
 // The calm option: a slow parallax drift of faint points, twinkling. From
 // scratch in a Canvas.
-//
 // Screensaver animation, an exception confined to the lock surface and
 // stopped on conceal via `running`.
-//
 // Colour: tokens only — points sit between fg-3 and fg-1 by depth, the
 // nearest few tinted toward `accent`. Cheap: ~140 filled rects a frame.
 

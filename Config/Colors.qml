@@ -8,7 +8,6 @@ import Quickshell.Io
 // own QML source file forces Quickshell to fully re-evaluate it, destroying
 // every binding and any in-flight state — so a theme-variant switch used to
 // reset the whole shell when colour lived there too.
-//
 // This file is also `pragma Singleton`, but its own source never changes.
 // What changes on a variant switch is Config/Colors.json, a plain generated
 // file read here via FileView with `watchChanges: true`. Rewriting that
@@ -16,13 +15,11 @@ import Quickshell.Io
 // reactive update — so every existing binding (via Config/Appearance.qml)
 // just re-evaluates against the new values, and any `Behavior on color`
 // already on a widget crossfades the change for free.
-//
 // Properties are plain, not readonly, because onLoaded reassigns them on
 // every `phi theme set` while this process keeps running. Seeded here with
 // the dark variant's real values so the very first paint — before
 // Colors.json has ever been read — still renders real colours instead of
 // transparent.
-//
 // Only Config/Appearance.qml reads this file directly; everything else
 // reads Appearance.
 

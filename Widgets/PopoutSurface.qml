@@ -8,10 +8,9 @@ import qs.Services as Services
 // full-screen transparent PanelWindow holding one anchored, fading card.
 // Each caller supplies only what differs — its own `shown` state, the
 // card's resolved width/height, where it anchors, and its content — this
-// file owns the window chrome (exclusiveZone double-count fix below,
+// file owns the window chrome (exclusiveZone double-count fix below
 // fade, click-outside dismiss, keyboard focus, Escape) once instead of
 // each caller repeating it.
-//
 // `default property alias content` routes straight into the inner
 // Widgets.Panel's own content slot, so a caller's children — visual or
 // not (an IpcHandler, a Timer) — land inside the card exactly as if they

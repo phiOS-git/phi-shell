@@ -5,10 +5,9 @@ import qs.Services as Services
 // One owner for the shown/content state of the single shared full-screen
 // dialog surface (Components/Dialogs/ConfirmDialog.qml), same one-owner
 // shape as Services/AgentPanel.qml, Services/Calendar.qml.
-//
 // Any caller anywhere in the shell opens it with `open({...})`; the caller
-// hands over what to show and a plain JS callback for the confirm action —
-// this file never knows what "reboot" or "disable battery saving" means,
+// hands over what to show and a plain JS callback for the confirm action
+// this file never knows what "reboot" or "disable battery saving" means
 // the same separation Services/PowerActions.qml keeps between the action
 // and whatever asks for it.
 Singleton {
@@ -42,7 +41,7 @@ Singleton {
     property var _onConfirm: null
 
     // opts: { title, message, confirmLabel, cancelLabel, onConfirm }.
-    // confirmLabel/cancelLabel default to "Confirm"/"Cancel" when omitted —
+    // confirmLabel/cancelLabel default to "Confirm"/"Cancel" when omitted
     // most callers (destructive system actions) want the action's own name
     // there instead ("Reboot", "Shut down").
     function open(opts) {

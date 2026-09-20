@@ -6,7 +6,6 @@ import qs.Services as Services
 
 // Super+L opens a power menu (lock, suspend, hibernate, shutdown, reboot);
 // a second press within the window instantly locks instead.
-//
 // Deliberately a NEW file and IPC target, not an addition to
 // Components/Lock/Lock.qml's own `lockIpc` — that file's `target: "lock"`
 // handler is the ONE place `locked` ever flips true (fail-closed, no
@@ -16,7 +15,6 @@ import qs.Services as Services
 // file calls Services.PowerActions.lock() for the instant-lock case
 // instead, the same indirection the bar popout's power card already goes
 // through.
-//
 // Hyprland's side stays dumb: one unconditional bind, one IPC call, every
 // press. All double-tap timing lives here in a plain QML Timer.
 Singleton {

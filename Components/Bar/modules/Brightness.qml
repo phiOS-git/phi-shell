@@ -9,13 +9,11 @@ import qs.Widgets as Widgets
 // The XF86MonBrightness keys are one way to change it; a click here opens
 // the shared bar popout, which owns a real draggable Widgets.Meter slider
 // plus the night-mode toggle.
-//
 // The glyph is Widgets/BrightnessIcon — a plain brightness glyph with no
 // day/night morph. `fillLevel` (brightness percent/100, animated) is the
 // only thing this module drives.
-//
-// `fillLevel` is set IMPERATIVELY (Connections + Component.onCompleted),
-// not as a binding (`property real fillLevel: Brightness.percent / 100`),
+// `fillLevel` is set IMPERATIVELY (Connections + Component.onCompleted)
+// not as a binding (`property real fillLevel: Brightness.percent / 100`)
 // despite the Behavior below reading as if it should apply either way. It
 // doesn't, reliably: a binding re-evaluation writes the new value
 // directly rather than being intercepted by Behavior the way a plain

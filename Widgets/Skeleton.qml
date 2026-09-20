@@ -3,10 +3,9 @@ import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
 // A reusable loading-skeleton placeholder for async lists. One placeholder
-// "row" — the same rounded-rect footprint a Widgets/ListRow takes at rest,
+// "row" — the same rounded-rect footprint a Widgets/ListRow takes at rest
 // so swapping one for a real row once data arrives reads as a
 // continuation, not a layout jump.
-//
 // Motion category A (an ongoing, ambient "breathe", same as
 // Bar/modules/PhiAgent.qml's own processing indicator), not a shimmer
 // sweep — a gradient animation would be a heavier, more decorative effect
@@ -54,8 +53,8 @@ Item {
                 radius: Config.Appearance.radiusBase
                 // `panelHover`'s 8%-mix wash reads as essentially invisible
                 // against a card already sitting on `surface1`/`surface2`
-                // (every list this widget is used from — Wi-Fi, Bluetooth,
-                // Updates — lives inside one of this shell's own cards),
+                // (every list this widget is used from — Wi-Fi, Bluetooth
+                // Updates — lives inside one of this shell's own cards)
                 // which defeats the point of a placeholder row. `surface2`
                 // is the same clearly-visible recessed-but-present shade
                 // Settings/sections/Local.SettingsGroup.qml uses for the

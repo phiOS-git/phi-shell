@@ -5,12 +5,11 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 
-// The single shared surface for Services/ConfirmDialog.qml's state,
+// The single shared surface for Services/ConfirmDialog.qml's state
 // declared once in shell.qml — same layer-shell/scrim/centered-panel/
 // LayerFocus plumbing as Components/Cheatsheet.qml.
-//
 // Deliberately no click-outside-to-close, unlike Cheatsheet/Settings: a
-// confirmation is meant to block until the user picks Confirm or Cancel,
+// confirmation is meant to block until the user picks Confirm or Cancel
 // not to be dismissed by a stray click — Escape (mapped to Cancel, the
 // non-destructive choice) is the only way out besides the two buttons.
 PanelWindow {
@@ -105,7 +104,7 @@ PanelWindow {
                         label: Services.ConfirmDialog.confirmLabel
                         active: true
                         // StyledButton has no keyboard handling of its own
-                        // (its TapHandler only reacts to pointer input) —
+                        // (its TapHandler only reacts to pointer input)
                         // without this, Tab-ing here and pressing Return
                         // would do nothing, since `card` above deliberately
                         // has no Return handler for this to fall through to.

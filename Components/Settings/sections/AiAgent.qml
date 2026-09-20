@@ -7,13 +7,12 @@ import "../modules" as Modules
 
 // Activation (toggle, connection status, active project, pending memory
 // proposals), plus everything else scoped to genuinely runtime state:
-//   - Real runtime CONTROLS: A1 activation, open panel, refresh.
-//   - Read-only RUNTIME status: systemd unit state, broker request meter.
-//   - Read-only CONFIG readout: broker.json / opencode.json / the egress
-//     whitelist — shown with intent, never an edit control (those files
-//     are dotfiles-tracked; editing them here would fight `git pull`).
-//
-// Deliberately NOT here: a start/stop control for the A2 remote surface,
+// - Real runtime CONTROLS: A1 activation, open panel, refresh.
+// - Read-only RUNTIME status: systemd unit state, broker request meter.
+// - Read-only CONFIG readout: broker.json / opencode.json / the egress
+// whitelist — shown with intent, never an edit control (those files
+// are dotfiles-tracked; editing them here would fight `git pull`).
+// Deliberately NOT here: a start/stop control for the A2 remote surface
 // and a default-personality control (both need a config write, not
 // runtime state).
 

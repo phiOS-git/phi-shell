@@ -8,12 +8,11 @@ import qs.Widgets as Widgets
 // owns the discharge-rate and low-percent thresholds as settable
 // properties, this file only reads the one boolean verdict. `error` for
 // the near-empty case and `warn` for the high-discharge-rate one.
-//
 // The glyph is Widgets/BatteryIcon via `iconDelegate` — a real percentage
 // fill and a breathing bolt while charging, not a stepped icon swap
 // between fixed battery glyphs. `iconColor` and `fillColor` below both
-// get the SAME `root.contentColor`, which already incorporates `tone` —
-// the low/anomaly threshold recolours the whole icon, not just the fill,
+// get the SAME `root.contentColor`, which already incorporates `tone`
+// the low/anomaly threshold recolours the whole icon, not just the fill
 // matching every other icon in this bar.
 Widgets.Segment {
     id: root
