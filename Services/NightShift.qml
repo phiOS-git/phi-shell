@@ -5,21 +5,19 @@ import Quickshell.Io
 import qs.Config as Config
 
 // Drives hyprsunset via `hyprctl hyprsunset` IPC:
-//   hyprctl hyprsunset temperature <K>   warm shift to K
-//   hyprctl hyprsunset identity          no shift (True Tone's "off" state
-//                                        and the plain on/off toggle's own
-//                                        off state both resolve here)
-//
+// hyprctl hyprsunset temperature <K> warm shift to K
+// hyprctl hyprsunset identity no shift (True Tone's "off" state
+// and the plain on/off toggle's own
+// off state both resolve here)
 // Owns toggle.night-mode / toggle.true-tone / nightmode.temp itself, the
 // same way Services/Notifications.qml owns toggle.dnd — the settings panel
 // calls this file's functions rather than Config.Settings directly, so
 // there is one place, not two, that knows what changing night-mode/
 // True-Tone/temperature actually does.
-//
 // True Tone reads ambient lux from /sys/bus/iio/devices/iio:device0/
 // in_illuminance_raw on a timer, mapped to a target temperature by a plain
 // linear heuristic this file invents (dark room -> warm 2700K, bright
-// daylight -> neutral 6500K). UNVERIFIED against real hardware — the
+// daylight -> neutral 6500K). against real hardware — the
 // sysfs attribute name and the mapping curve have never been checked
 // against a captured raw value. The attribute-name probe below tries the
 // two common IIO conventions (in_illuminance_raw, in_illuminance_input)
@@ -36,15 +34,14 @@ Singleton {
 
     // A clock-driven alternative to flipping `enabled` by hand, distinct
     // from True Tone above (which reacts to ambient light, not the clock).
-    //
     // "off": `enabled` is purely manual.
     // "auto": a fixed default window (autoStartHour..autoEndHour) turns it
-    //   on/off automatically. No location/sunset calculation exists
-    //   anywhere in this repo (that needs geolocation this project has no
-    //   source for), so "auto" is a fixed evening-to-morning default
-    //   rather than something computed.
+    // on/off automatically. No location/sunset calculation exists
+    // anywhere in this repo (that needs geolocation this project has no
+    // source for), so "auto" is a fixed evening-to-morning default
+    // rather than something computed.
     // "custom": same automatic toggling, using scheduleStartHour/
-    //   scheduleEndHour instead of the fixed default.
+    // scheduleEndHour instead of the fixed default.
     property string scheduleMode: "off"
     readonly property int autoStartHour: 20
     readonly property int autoEndHour: 7
@@ -86,7 +83,7 @@ Singleton {
     }
 
     // Re-run on every schedule-affecting change and every scheduleTimer
-    // tick. A window that wraps midnight (start > end, the normal case —
+    // tick. A window that wraps midnight (start > end, the normal case
     // "auto"'s own 20..7 default included) is "on outside [end, start)";
     // one that doesn't (start < end) is "on inside [start, end)". Equal
     // start/end is treated as always-on — the only reading of a zero-width
@@ -106,7 +103,7 @@ Singleton {
 
     // No triggeredOnStart: the very first evaluation is already covered by
     // _afterLoad() below, once all three schedule keys (mode, start, end)
-    // have actually finished loading — firing here too, before they load,
+    // have actually finished loading — firing here too, before they load
     // would risk one evaluation against the still-default start/end hours.
     Timer {
         id: scheduleTimer

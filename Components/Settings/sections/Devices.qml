@@ -8,22 +8,20 @@ import "../modules" as Modules
 // Groups: Audio output, Audio input, Monitors, Pointer, Battery, Chroma.
 // The bar popout is the one place lock/suspend/hibernate/logout/reboot/
 // shutdown live — no duplicate "Power" group here.
-//
 // Audio device SELECTION is real: Services/AudioBridge.qml exposes the
 // sink/source node lists and writes Pipewire's
-// preferredDefaultAudioSink/Source. Monitors and Pointer stay read-only —
+// preferredDefaultAudioSink/Source. Monitors and Pointer stay read-only
 // monitor config is runtime state, not editable from here, and pointer
 // sensitivity lives in hyprland.lua.
-//
 // Chroma (razer only, Config.Capabilities.chroma):
-//   - Lighting on/off + static colour.
-//   - Per-key colours: a Widgets/KeyboardMap grid sized from the device's
-//     own matrix; click a cell, pick a colour, solid only — no animation.
-//   - Integrations: battery (power-key colour from the charge level),
-//     notifications (function-row blink on arrival, not in DND), neovim
-//     (mode tint via an nvim autocmd → `qs ipc call chroma nvimMode`).
-//     Each has an accordion of its own settings. See Services/Chroma.qml
-//     for the single-compositor architecture and the DBus names.
+// - Lighting on/off + static colour.
+// - Per-key colours: a Widgets/KeyboardMap grid sized from the device's
+// own matrix; click a cell, pick a colour, solid only — no animation.
+// - Integrations: battery (power-key colour from the charge level)
+// notifications (function-row blink on arrival, not in DND), neovim
+// (mode tint via an nvim autocmd → `qs ipc call chroma nvimMode`).
+// Each has an accordion of its own settings. See Services/Chroma.qml
+// for the single-compositor architecture and the DBus names.
 
 Column {
     id: root
@@ -299,7 +297,7 @@ Column {
             }
         }
 
-        // Components/Dialogs/BatteryAlert.qml is the presentation,
+        // Components/Dialogs/BatteryAlert.qml is the presentation
         // Services/PowerBridge.qml owns the two thresholds (0..1
         // fractions internally, shown here as whole percent to match
         // every other percent the user sees).
@@ -353,7 +351,7 @@ Column {
     }
 
     // ================================================================
-    // Chroma  (razer)
+    // Chroma (razer)
     // ================================================================
     Modules.SettingsGroup {
         title: "Chroma keyboard"

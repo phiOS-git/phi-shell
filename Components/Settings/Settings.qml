@@ -8,22 +8,19 @@ import qs.Widgets as Widgets
 import "./sections" as Sections
 import "./modules/options.js" as Options
 
-// The settings panel. Section content is data-driven from sections.json —
+// The settings panel. Section content is data-driven from sections.json
 // adding a section is a one-file registry change, not a code change (same
 // pattern as Bar.qml's modules.json). Left-hand vertical section list
 // (rather than a horizontal tab strip) since the section count doesn't fit
 // one row at any reasonable width.
-//
-// Every section reads Config.Settings (phi state) or a Services/ bridge —
+// Every section reads Config.Settings (phi state) or a Services/ bridge
 // none write into a repository path.
-//
 // Search HIGHLIGHTS matches rather than filtering the section list, so
 // nothing already open ever disappears. Enter acts on the top-ranked result
 // from Settings/options.js: a whole section selects it, a specific option
 // reveals it (select the section, scroll to the row, pulse it). The same
 // reveal path is exposed over IPC (`qs ipc call settings reveal <id>`) for
 // a "Show in settings" button elsewhere in the shell.
-//
 // Bound to Super+S in dotfiles.
 
 PanelWindow {
@@ -424,7 +421,7 @@ PanelWindow {
             Flickable {
                 id: contentFlick
                 anchors.left: navSep.right
-                // Symmetric left/right gutters, not just a left margin —
+                // Symmetric left/right gutters, not just a left margin
                 // otherwise the pane reads as "more space on the left".
                 anchors.leftMargin: root.gap
                 anchors.right: parent.right

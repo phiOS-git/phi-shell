@@ -11,7 +11,6 @@ import "../../../Widgets/WidgetStates.js" as WidgetStates
 // once. Reads the active MPRIS player from Services.Mpris; `active` is
 // driven by the consuming card so the one-second progress timer and the
 // marquee drift only run while the card is actually on screen.
-//
 // The MPRIS source (identity) line is clickable and focuses the player's
 // own window: it scans Services.HyprlandBridge.toplevels for a window
 // whose app id matches the player's desktopEntry (then identity) and
@@ -156,7 +155,6 @@ Column {
     // play next" controls apart from the queue-state toggles. Every
     // button is 5 ch tall, the play/pause target, so no neighbour reads
     // as vertically off-line beside it.
-    //
     // Shuffle and repeat appear only when the active player supports them
     // ("if available") and are hidden otherwise; the row then centres what
     // remains. IconButton has no disabled/active look of its own, so each
@@ -255,7 +253,7 @@ Column {
             Behavior on opacity {
                 NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
             }
-            // Off → Playlist ("repeat all") → Track ("repeat one") → Off,
+            // Off → Playlist ("repeat all") → Track ("repeat one") → Off
             // the same cycle reference players use.
             onActivated: {
                 const p = Services.Mpris.active

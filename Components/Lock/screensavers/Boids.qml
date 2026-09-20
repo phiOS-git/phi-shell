@@ -4,20 +4,17 @@ import qs.Config as Config
 // A Reynolds flocking simulation (separation + alignment + cohesion, the
 // textbook "boids" algorithm), drawn as small triangle-arrow heads
 // oriented along each boid's own heading, coloured by its current speed.
-//
 // Toroidal wraparound at the edges (same choice Lock/Starfield.qml's own
 // points make) rather than a bounce or an avoid-the-edge steering force
 // — simpler, and a screensaver background never needs the flock to visibly
 // "notice" the screen edge. Neighbour distance is computed toroidally too
 // (the nearest copy across a wrapped edge, not the raw straight-line
 // distance) so the flock reads as one continuous group across the seam.
-//
 // No persistent-trail buffer: this effect's Canvas is composited over the
 // real lock-screen wallpaper, not a solid background, so the classic
 // "fade the previous frame toward black" trail trick would fade toward
 // black specifically, not toward transparency — visibly wrong on a light
 // wallpaper. Left out rather than shipped wrong.
-//
 // Colour: tokens only — every boid eases between `info` (slow) and
 // `accent` (near top speed), the same accent/info pairing every other
 // effect in this file uses for its own two-colour drift.
@@ -49,7 +46,7 @@ Item {
     // maps these ids to labels and triggers).
     readonly property var features: ["verification", "lockout"]
 
-    // The one exposed knob; the three Reynolds rule weights stay fixed,
+    // The one exposed knob; the three Reynolds rule weights stay fixed
     // tuned constants, the same way LavaLamp's own morph amplitude is
     // folded into its one "wobble" multiplier rather than each exposed
     // separately.

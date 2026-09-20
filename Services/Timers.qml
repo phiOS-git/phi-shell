@@ -10,12 +10,10 @@ import qs.Config as Config
 // runner provider (internal/query/timer.go) that hands the shell a plain
 // `qs ipc call timer ...` command to run, the same shape
 // SystemActionsProvider already uses for its own shell-owned actions.
-//
 // Timers (relative, "5 minutes from now") and alarms (absolute wall-clock
 // time, optionally repeating on specific weekdays) share one `items` list
 // and one firing/ringtone/overlay mechanism rather than two independent
 // subsystems.
-//
 // Persisted as one JSON object at Config.Paths.timersFile — a collection
 // plus its own small ringtone-prefs object, same combined shape
 // Services/Chroma.qml uses for chroma.json. Not `phi state` (its closed
@@ -31,7 +29,7 @@ Singleton {
     property var items: []
 
     // Ringtone. Defaults to "message", the same default
-    // Services/Notifications.qml already ships and confirmed present —
+    // Services/Notifications.qml already ships and confirmed present
     // not a nicer-sounding but unverified name, since a silent alarm is
     // the worst failure this feature could have.
     property string soundName: "message"
@@ -208,7 +206,7 @@ Singleton {
         onExited: (exitCode) => {
             ringtoneProc.running = false
             if (exitCode !== 0) {
-                // Do not loop on a command that is failing every time —
+                // Do not loop on a command that is failing every time
                 // the exact tight-respawn-loop class Services/Tailscale.qml's
                 // own header already documents for an unconditional re-arm.
                 if (root.soundError.length === 0)
@@ -226,8 +224,8 @@ Singleton {
         }
     }
 
-    // --- IPC (registered here, not shell.qml: this is a true singleton,
-    // registered exactly once regardless of where the IpcHandler lives —
+    // --- IPC (registered here, not shell.qml: this is a true singleton
+    // registered exactly once regardless of where the IpcHandler lives
     // same shape as Services/PowerMenu.qml's own "powerMenu" handler) -----
     IpcHandler {
         target: "timer"

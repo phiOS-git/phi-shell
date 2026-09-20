@@ -17,13 +17,11 @@ import qs.Config as Config
 // in-flight state. This file only has to call `phi theme set` at the
 // right time; the crossfade is Config/Appearance.qml's existing
 // `Behavior on color` bindings picking up the new colours for free.
-//
 // Same schedule shape as Services/NightShift.qml (off / auto / custom, a
 // fixed evening-to-morning default window, no location/sunset source), and
 // the same storage mechanism: `theme.schedule` / `theme.schedule-start` /
 // `theme.schedule-end` are real `phi state` keys, read/written through
 // Config/Settings.qml exactly as NightShift.qml does its own schedule keys.
-//
 // One deliberate difference from NightShift.qml: `phi theme set` re-
 // renders every themed target, so _evaluateSchedule() must call it only on
 // an actual transition. The comparison is against this file's own
@@ -34,11 +32,10 @@ import qs.Config as Config
 // singleton's own state mid-switch. `_appliedVariant` only ever advances
 // via _setVariant() itself, after `phi theme set` exits 0 — a failed
 // switch keeps retrying next tick, a successful one is not repeated.
-//
-// Manual-override design (deliberate divergence from NightShift.qml,
+// Manual-override design (deliberate divergence from NightShift.qml
 // which has an open bug where a manual toggle gets silently overridden by
 // its next scheduled check): this file avoids the whole bug class rather
-// than tracking an override window. The only manual-switch entry point,
+// than tracking an override window. The only manual-switch entry point
 // Settings/sections/Theme.qml's Dark/Light buttons, is disabled
 // (`enabled: scheduleMode === "off"`) whenever a schedule is active — so
 // there's no way to make a conflicting manual choice while "auto"/"custom"
@@ -50,10 +47,10 @@ Singleton {
 
     // "off": manual only, unchanged from before this feature.
     // "auto": a fixed default window (autoStartHour..autoEndHour) switches
-    //   the variant automatically — dark in the evening, light in the
-    //   morning.
+    // the variant automatically — dark in the evening, light in the
+    // morning.
     // "custom": same automatic switching, using scheduleStartHour/
-    //   scheduleEndHour instead of the fixed default.
+    // scheduleEndHour instead of the fixed default.
     property string scheduleMode: "off"
     readonly property int autoStartHour: 20
     readonly property int autoEndHour: 7

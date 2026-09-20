@@ -6,12 +6,10 @@ import Quickshell.Networking
 
 // Thin wrapper over Quickshell.Networking — the one file outside Config/
 // allowed to touch this service surface.
-//
 // `Networking` is the NetworkManager-backed singleton, `Networking.devices`
 // an ObjectModel<NetworkDevice> with a `type` of Wifi or Wired. This wraps
 // NOT "the network module" (that's Tailscale, a separate CLI-driven
 // concept) but specifically the local Wi-Fi radio.
-//
 // A NetworkDevice's own `networks` model holds every network it has seen;
 // the connected one (if any) is found by its `connected` flag, not
 // assumed to be index 0 — `Network.name` is that network's SSID, not the
@@ -83,14 +81,12 @@ Singleton {
 
     // --- available-network scan + connect ---------------------------------
     // A Network exposes name/device/connected/known/state only — no signal
-    // strength, no security type. `nmcli` is the only source for either —
+    // strength, no security type. `nmcli` is the only source for either
     // the same tool the pre-existing "Manage networks…" button already
     // shells out to via `nmtui`.
-    //
     // Terse mode (`-t -e yes`) escapes literal `:` and `\` inside a field
     // with a backslash — `_splitTerseLine()` undoes that rather than a
     // naive `.split(":")`, since an SSID can itself contain a colon.
-    //
     // SECURITY: deliberately no way to connect to a new secured network
     // from here. `nmcli device wifi connect <ssid> password <pw>` puts the
     // password on the process argv, world-readable via /proc/<pid>/cmdline
@@ -136,7 +132,7 @@ Singleton {
         return false
     }
 
-    // `nmcli device wifi rescan` returns as soon as the scan is REQUESTED,
+    // `nmcli device wifi rescan` returns as soon as the scan is REQUESTED
     // not once results are ready — a fixed delay before reading the list
     // back is a real approximation (this project has no way to observe
     // NetworkManager's actual scan-complete signal without a real D-Bus
@@ -187,7 +183,7 @@ Singleton {
                     const entry = { ssid: ssid, signal: signal, secured: secured, connected: connected, known: root._isKnownSsid(ssid) }
                     let idx = -1
                     for (let j = 0; j < list.length; j++) { if (list[j].ssid === ssid) { idx = j; break } }
-                    // De-duplicate by SSID (multiple access points/BSSIDs,
+                    // De-duplicate by SSID (multiple access points/BSSIDs
                     // e.g. a mesh, can share one) — keep the strongest
                     // signal seen, or whichever row nmcli marks connected.
                     if (idx === -1) list.push(entry)
@@ -213,7 +209,7 @@ Singleton {
 
     // Only for a network with no secret to supply: already-known (nmcli
     // reuses its saved profile) or genuinely open. A secured, not-yet-
-    // known network is deliberately NOT reachable through this function —
+    // known network is deliberately NOT reachable through this function
     // see the header comment above for why.
     function connectToKnownNetwork(ssid) {
         if (!root.present || root.busy) return
@@ -231,7 +227,7 @@ Singleton {
         // order is not guaranteed, so reading connectError from within
         // onExited to decide a fallback message would be a race. If
         // nmcli fails with no stderr text at all, connectError stays
-        // empty and only `busy` going false signals the attempt ended —
+        // empty and only `busy` going false signals the attempt ended
         // an accepted, narrow gap, not a silent hang.
         onExited: {
             connectProc.running = false

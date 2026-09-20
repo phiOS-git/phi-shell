@@ -6,24 +6,21 @@ import "WidgetStates.js" as WidgetStates
 // background, a border and a radius, all from design tokens, with a
 // single content slot. Popover is built on top of this rather than
 // duplicating the same three properties a second time.
-//
 // All seven transverse states apply meaningfully here: a panel is a real
 // surface with a background/border/opacity to recolour, so hover/active/
-// focus/invalid/loading/disabled all have a genuine, if simple, look —
+// focus/invalid/loading/disabled all have a genuine, if simple, look
 // unlike Separator or Scrim, which are pure decoration. Whether hover or
 // active ever fires is the consumer's choice: Panel exposes plain settable
 // flags rather than its own hit-testing, since not every static surface is
 // interactive (a popover's body is; a settings section's frame might not
 // be) — sizing is likewise left to the consumer, same as a plain
 // Rectangle: this widget does not guess a content-based implicit size.
-//
 // The background/border colour recipe reads WidgetStates' `ambient:
 // "shaded"` branch (bg-1/2/3 shades and the dedicated border/borderStrong
 // hairline tokens) — see Widgets/WidgetStates.js's own comment on that
 // branch for why it's a separate branch from the generic B&W inversion.
-//
 // Per-corner radii (`cornerRadius*`) each default to plain `radius`, so a
-// Panel nobody has touched stays exactly uniform. When the four differ,
+// Panel nobody has touched stays exactly uniform. When the four differ
 // the background swaps from the cheap native `Rectangle` to
 // Widgets/AsymmetricPanel (Canvas-drawn, see that file's own header for
 // why); when they still agree — the default, and most call sites — Panel
@@ -111,7 +108,7 @@ Item {
     readonly property color _borderColor: (!root.invalid && root.borderColorOverride.a > 0) ? root.borderColorOverride : root.stateColors.border
     readonly property color _bgColor: (!root.invalid && root.bgColorOverride.a > 0) ? root.bgColorOverride : root.stateColors.bg
 
-    // Fast path: every Panel whose four corners still agree (the default,
+    // Fast path: every Panel whose four corners still agree (the default
     // and every call site as of this phase) keeps the plain native
     // Rectangle it always drew.
     Rectangle {

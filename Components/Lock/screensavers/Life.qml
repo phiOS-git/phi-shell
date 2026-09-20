@@ -4,7 +4,6 @@ import qs.Config as Config
 // Conway's Game of Life, a classic terminal-screensaver effect. Same
 // `running`/`intensity`/Timer-at-`motionCTypeStep` contract as
 // Lock/Starfield.qml.
-//
 // The shared `motionCTypeStep` tick (the same one every other lock
 // effect redraws on) is far too fast for a generation step — Life would
 // look like flicker, not a recognisable pattern. Rather than invent a
@@ -13,7 +12,6 @@ import qs.Config as Config
 // ticks (a frame-skip ratio, not a duration) — the Canvas still redraws
 // every tick so cells can fade smoothly between generations rather than
 // snapping instantly on/off.
-//
 // Toroidal (wraparound) neighbour counting, standard B3/S23 rules. A
 // board that dies out completely (a real, common Life outcome) re-seeds
 // itself rather than leaving a blank lock screen indefinitely.
@@ -25,7 +23,7 @@ Item {
     property real intensity: 0.85
     // Life has no continuous per-tick delta to scale the way every other
     // effect does (its motion is discrete generation steps, not smooth
-    // motion) — speed instead scales the frame-skip ratio itself,
+    // motion) — speed instead scales the frame-skip ratio itself
     // inversely: doubling speed halves stepEveryTicks, so generations
     // advance twice as often.
     property real speed: 1.0
@@ -54,7 +52,7 @@ Item {
     // identical property; 1.0 keeps the original fixed 48×27 grid.
     property real resolution: 1.0
     // The initial random-alive probability each seed() (and re-seed on a
-    // dead board) uses — was a hardcoded 0.28. Higher reads as a denser,
+    // dead board) uses — was a hardcoded 0.28. Higher reads as a denser
     // more chaotic starting pattern; lower as sparser, more likely to
     // settle into stable still-lifes quickly.
     property real seedDensity: 0.28

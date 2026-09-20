@@ -6,8 +6,8 @@ import "../Bar/glyphs.js" as Glyphs
 import "../../Widgets/WidgetStates.js" as WidgetStates
 
 // A horizontal row of icon+label power-action pills. Hover fills each
-// pill with its action's own semantic tone — shutdown error-red,
-// logout/reboot warn-amber, suspend info-blue, lock/hibernate accent —
+// pill with its action's own semantic tone — shutdown error-red
+// logout/reboot warn-amber, suspend info-blue, lock/hibernate accent
 // and the glyph and label flip to that tone's paired text token
 // (errorText, warnText, …) so they stay readable on the fill. At rest the
 // pill is a bare icon+label in textMuted; the keyboard-focus pill keeps
@@ -15,20 +15,17 @@ import "../../Widgets/WidgetStates.js" as WidgetStates
 // readable. Hover is therefore a background effect, not a glyph recolor:
 // the colour identity belongs to the pill, not to each icon. This file is
 // presentation and action-dispatch only.
-//
 // Shared by both surfaces that offer power actions, so they can't
 // visually disagree about what one action looks like:
-//   - Components/Dialogs/PowerMenu.qml (SUPER+L, before locking) —
-//     includes "lock".
-//   - Components/Lock/Lock.qml (already locked, no authentication
-//     required to use this row) — omits "lock", since locking an
-//     already-locked screen is meaningless.
-//
+// - Components/Dialogs/PowerMenu.qml (SUPER+L, before locking)
+// includes "lock".
+// - Components/Lock/Lock.qml (already locked, no authentication
+// required to use this row) — omits "lock", since locking an
+// already-locked screen is meaningless.
 // Confirmation for reboot/shutdown goes through the same
 // Services.ConfirmDialog step both callers already used before this
 // component existed (Services.PowerActions.needsConfirm()) — `onChosen`
 // below only decides whether to interpose that step, never bypasses it.
-//
 // The accent fill IS the real keyboard-focus state, not a separate
 // static "default/primary" marker independent of Tab focus (`active:
 // pill.keyboardFocus` below, short-circuiting WidgetStates.resolve() past
@@ -37,11 +34,10 @@ import "../../Widgets/WidgetStates.js" as WidgetStates
 // the caller select the first pill the moment the surface appears, so
 // something is always visibly selected without waiting for a first Tab
 // press.
-//
 // This row stays plain `activeFocusOnTab: true` for every caller: Lock.qml
-// briefly removed these pills from the tab chain to fix a Tab-focus trap,
+// briefly removed these pills from the tab chain to fix a Tab-focus trap
 // but that made the row keyboard-unreachable — the actual fix lives in
-// Lock.qml's own password field instead (it opts into the tab chain too,
+// Lock.qml's own password field instead (it opts into the tab chain too
 // closing the loop field → pills → back to field).
 
 Row {
@@ -144,7 +140,7 @@ Row {
 
             // The action's semantic tone is a HOVER background, not a
             // resting glyph colour: on hover the whole pill fills with the
-            // tone (shutdown red, logout/reboot amber, suspend blue,
+            // tone (shutdown red, logout/reboot amber, suspend blue
             // lock/hibernate accent) and the glyph and label flip to that
             // tone's paired text token, so the identity is carried by the
             // pill, not by a static icon fill. Rest stays neutral
