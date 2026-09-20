@@ -26,16 +26,13 @@ Column {
     property string pendingVariant: Config.Appearance.variant
     readonly property string testString: "0008 iIlL1 g9qCGQ ~ -+=>"
 
-    // Keeps pendingVariant in sync when the variant changes from outside this
-    // row's own click handler — the schedule can switch it on its own timer.
+    // Sync when variant changes from outside (e.g., schedule timer).
     Connections {
         target: Config.Appearance
         function onVariantChanged() { root.pendingVariant = Config.Appearance.variant }
     }
 
-    // The token key whose editor panel is open. One at a time across every
-    // colour group, so at most one editor panel is ever slid open under the
-    // grids.
+    // Open editor panel token key: one at a time per color group.
     property string _openColor: ""
 
     function setVariant(v) {
@@ -51,7 +48,7 @@ Column {
         }
     }
 
-    // Rows listen to this to re-seed their fields after "Reset all".
+    // Rows listen to re-seed fields after "Reset all".
     QtObject {
         id: resetSignal
         signal fired()
@@ -59,16 +56,13 @@ Column {
 
     // --- reusable rows ---------------------------------------------------
 
-    // A grid of swatches with one editor panel that slides open beneath the
-    // group. `swatches`: list of {key, label, contrast} where key is a token
-    // name, contrast opts into the live `phi theme contrast` check.
+    // Grid of swatches + one editor panel. swatches: {key, label, contrast}.
     component ColorGroup: Modules.SettingsGroup {
         id: cg
         property var swatches: []
 
-        // The swatch entry in THIS group that is open, or null. ColorEditor
-        // keeps the last non-null one through the close animation — panel does
-        // not blank while it collapses.
+        // Swatch entry in this group that is open, or null. ColorEditor holds
+        // last non-null through close animation.
         readonly property var _openEntry: {
             for (var i = 0; i < cg.swatches.length; i++)
                 if (cg.swatches[i].key === root._openColor) return cg.swatches[i]
@@ -77,9 +71,7 @@ Column {
 
         Item { width: 1; height: Math.round(root.chWidth * Config.Appearance.space1) }
 
-        // The swatch grid. Each tile is fixed size — the grid never reflows on
-        // edit. Each registers its `theme.colors.<key>` optionId — search
-        // selection still lands on an individual colour.
+        // Fixed-size swatch grid. Each registers `theme.colors.<key>` optionId.
         Flow {
             x: root.gap
             width: parent.width - root.gap * 2
@@ -101,9 +93,7 @@ Column {
                         && Services.SettingsPanel.query.length > 0
                         && sw.tokenKey.length > 0
                         && Options.matches(sw.optionId, Services.SettingsPanel.query)
-                    // This tile had an open/selected wash, a search-match wash
-                    // and a pulse-on-reveal — every state except the one that
-                    // tells you it is clickable before you click.
+                    // Open/selected/search/pulse washes — all states except "clickable".
                     readonly property bool _hovered: swHover.hovered || sw.activeFocus
 
                     width: Math.round(root.chWidth * 24)
@@ -187,11 +177,8 @@ Column {
 
                     TapHandler { onTapped: root._openColor = sw._open ? "" : sw.tokenKey }
 
-                    // A raw Rectangle+TapHandler composition is not
-                    // Tab-reachable by default, unlike the shared Widgets/
-                    // controls — without this, keyboard navigation through
-                    // Settings → Theme silently skipped the whole colour
-                    // swatch grid.
+                    // Rectangle+TapHandler not Tab-reachable by default; without
+                    // this, keyboard nav skips the whole swatch grid.
                     activeFocusOnTab: true
                     Keys.onReturnPressed: root._openColor = sw._open ? "" : sw.tokenKey
                     Keys.onSpacePressed: root._openColor = sw._open ? "" : sw.tokenKey
@@ -219,12 +206,11 @@ Column {
         }
     }
 
-    // The single editor panel a ColorGroup slides open under its grid.
+    // Editor panel one ColorGroup slides open under its grid.
     component ColorEditor: Rectangle {
         id: ce
         property var entry: null
-        // Hold the last non-null entry — panel keeps its content while the
-        // Reveal collapses on close.
+        // Hold last non-null entry: panel content persists during close.
         property var _shownEntry: null
         onEntryChanged: if (ce.entry) ce._shownEntry = ce.entry
         readonly property string tokenKey: ce._shownEntry ? (ce._shownEntry.key || "") : ""
@@ -294,7 +280,7 @@ Column {
         }
     }
 
-    // one motion-duration override row (category period / step / duration)
+    // Motion-duration override row (category, period, step, duration).
     component MotionRow: Modules.SettingsRow {
         id: mr
         property string mkey: ""
@@ -363,12 +349,8 @@ Column {
                 spacing: root.gap
                 Widgets.TextField {
                     id: ff
-                    // The field stays — a power user who already knows the
-                    // exact family name can still just type it — but "Browse…"
-                    // reveals every font Qt actually has installed
-                    // (Qt.fontFamilies(), a plain Qt API — no subprocess
-                    // needed, unlike Widgets/SoundPicker's directory scan),
-                    // filterable, tap to select.
+                    // Field stays for power users. Browse… reveals installed fonts
+                    // (Qt.fontFamilies(), no subprocess like SoundPicker).
                     width: parent.width - browseBtn.implicitWidth - parent.spacing
                     mono: false
                     placeholder: "Font family name"
@@ -401,10 +383,8 @@ Column {
                     Widgets.Panel {
                         id: fontListPanel
                         width: parent.width
-                        // Enumerated once when the list is first opened, not
-                        // re-queried on every keystroke — Qt.fontFamilies() is
-                        // a real OS font-enumeration call, not a cheap
-                        // constant, and only the FILTER needs to be live.
+                        // Enumerated once on open, not per-keystroke: Qt.fontFamilies()
+                        // is expensive; only filter is live.
                         property var _allFamilies: []
                         Component.onCompleted: fontListPanel._allFamilies = Qt.fontFamilies()
                         readonly property var _matches: fontListPanel._allFamilies.filter(
@@ -494,12 +474,8 @@ Column {
         }
     }
 
-    // A tile-shaped loading placeholder for the wallpaper grids: the same
-    // quiet "breathe" (motion category A) Widgets/Skeleton.qml uses, filling
-    // whichever tile it sits on, so the thumbnail still decoding — or a
-    // dynamic.heic preview still converting — reads as "loading" rather than a
-    // blank white box. `visible` gates it; once hidden the breathe animation
-    // stops with it.
+    // Tile-shaped loading placeholder: quiet "breathe" (category A), fills tile
+    // so decoding/converting thumbnails read as "loading" not blank.
     component WallpaperTileSkeleton: Rectangle {
         id: wts
         anchors.fill: parent
@@ -524,12 +500,9 @@ Column {
         }
     }
 
-    // One static wallpaper tile in the picker grid: thumbnail, hover / active
-    // border, keyboard reachability and the breathing placeholder while
-    // decoding — shared by the flat row of root-folder files and every
-    // subfolder section, so both look identical. `loading` gates the source: a
-    // collapsed section passes false, and nothing decodes until the section
-    // opens.
+    // Static wallpaper tile: thumbnail, hover/active border, keyboard nav,
+    // breathing placeholder. Shared by flat row and subfolders. loading gates
+    // source: false on collapsed, nothing decodes until open.
     component StaticWallpaperTile: Rectangle {
         id: sTile
         required property string modelData
@@ -554,14 +527,13 @@ Column {
             asynchronous: true
             sourceSize.width: 256
         }
-        // Breathing placeholder while the thumbnail decodes, so the tile reads as
-        // loading instead of a blank box.
+        // Breathing placeholder so tile reads as loading while thumbnail decodes.
         WallpaperTileSkeleton {
             visible: sTile.loading && sImg.status === Image.Loading
         }
         HoverHandler { id: sHover; cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: Services.Background.setImage(sTile.modelData) }
-        // Same Tab-reachability fix as the colour swatches / "none" tile.
+        // Same Tab-reachability fix as color swatches.
         activeFocusOnTab: true
         Keys.onReturnPressed: Services.Background.setImage(sTile.modelData)
         Keys.onSpacePressed: Services.Background.setImage(sTile.modelData)
@@ -747,12 +719,8 @@ Column {
             tokenKey: "panel-radius"; title: "Panel corner radius"; step: 1; suffix: "px"; from: 0; to: 24
             description: "Corner rounding of those same below-the-bar surfaces."
         }
-        // Not a TokenNumberRow/ThemeOverrides value like its siblings — those
-        // only ever affect phi-shell's own rendering, but this one has to
-        // reach kitty, so it goes through `phi state` (Services/Terminal.qml)
-        // and a real `phi theme set` re-render instead, reusing this section's
-        // own `setVariant` plumbing to apply immediately rather than only on
-        // the next manual theme switch.
+        // Not a TokenNumberRow value: reaches kitty via `phi state`
+        // (Services/Terminal.qml), not ThemeOverrides.
         Modules.SettingsRow {
             optionId: "theme.shape.terminal-padding"
             title: "Terminal window padding"
@@ -772,7 +740,7 @@ Column {
     Modules.SettingsGroup {
         title: "Animations"
         optionId: "theme.animations"
-        caption: "The four style-plan motion categories. Category B is every state transition — panels, drawers, workspaces, notifications — so its duration and curve reach the whole shell. A is the agent's tracking indicator, C the rare boot/unlock effects, D ambient (off by default)."
+        caption: "Four motion categories. B: state transitions (reach whole shell). A: tracking. C: boot/unlock. D: ambient (off by default).\"
 
         MotionRow { mkey: "motion-b-duration"; title: "B — transition duration"; seedMs: Config.Appearance.motionBDuration }
 
@@ -924,8 +892,7 @@ Column {
             }
         }
 
-        // dim / flashlight options slide in/out with the effect choice rather
-        // than the sub-rows popping.
+        // Dim/flashlight options slide with effect choice, not pop.
         Widgets.Reveal {
             shown: Services.Spotlight.effect === "dim" || Services.Spotlight.effect === "flashlight"
             Modules.SettingsRow {
@@ -953,7 +920,7 @@ Column {
             }
         }
 
-        // crosshair options
+        // Crosshair options.
         Widgets.Reveal {
             shown: Services.Spotlight.effect === "crosshair"
             Modules.SettingsRow {
@@ -974,7 +941,7 @@ Column {
             }
         }
 
-        // ring options
+        // Ring options.
         Widgets.Reveal {
             shown: Services.Spotlight.effect === "ring"
             Modules.SettingsRow {
@@ -1072,10 +1039,9 @@ Column {
         }
     }
 
-    // --- Lock screen -----------------------------------------
-    // The screensaver backdrop behind the lock screen.
-    // Stored in Config/LockPrefs.qml ($XDG_STATE_HOME/phi/lock.json), read by Lock/Lock.qml.
-    // Runtime UI state, not a design token — same category as the spotlight size.
+    // --- Lock screen -+
+    // Screensaver backdrop. Config/LockPrefs.qml ($XDG_STATE_HOME/phi/lock.json),
+    // read by Lock/Lock.qml. Runtime UI state, like spotlight size.
     Modules.SettingsGroup {
         title: "Lock screen"
         optionId: "theme.lockscreen"
@@ -1106,9 +1072,8 @@ Column {
             }
         }
 
-        // Speed applies to whichever effect is picked; Intensity is scoped to
-        // the CURRENTLY selected effect specifically, each with its own stored
-        // value and its own default.
+        // Speed applies to any effect. Intensity scoped to current effect,
+        // each with stored value and default.
         Modules.SettingsRow {
             visible: Config.LockPrefs.effect !== "none"
             title: "Speed"
@@ -1125,29 +1090,22 @@ Column {
             title: "Intensity"
             description: "Specific to the currently-selected effect — Matrix and Lava lamp are deliberately faint by default, Starfield and Plasma are not."
             Widgets.NumberField {
-                // Plain binding: QML tracks property reads through function
-                // calls, so this re-evaluates correctly on either property
-                // change. NumberField's onValueChanged re-syncs on external
-                // changes (unless mid-edit).
+                // Plain binding: QML tracks reads through function calls;
+                // re-evaluates on property change.
                 value: Config.LockPrefs.intensityFor(Config.LockPrefs.effect)
                 from: 0.05; to: 1.0; step: 0.05; decimals: 2
                 onCommitted: (v) => Config.LockPrefs.setIntensity(Config.LockPrefs.effect, v)
             }
         }
 
-        // One settings block per effect, visible only while that effect is the
-        // one actually selected — showing all six effects' own extra knobs at
-        // once would just be clutter, when only one of them can ever be active
-        // at a time anyway.
+        // One settings block per effect. Showing all six would be clutter when
+        // only one can be active at a time.
         Modules.SettingsRow {
             visible: Config.LockPrefs.effect === "lava"
             title: "Lava lamp"
             description: "More blobs read as a denser, busier field. Wobble scales how much each blob squashes/stretches and drifts sideways as it rises."
-            // The default compact layout right-aligns a content-sized control
-            // slot, sized to fit ONE small control. This row's slot instead
-            // holds a whole Column of label+field pairs (Blob count, Wobble)
-            // (needs the full-width `wide` layout or it overflows past the
-            // dialog's own right edge).
+            // Default layout right-aligns to fit one control. This row\'s slot
+            // holds multiple label+field pairs (needs `wide` layout).
             wide: true
             Column {
                 width: parent.width
@@ -1206,7 +1164,7 @@ Column {
             visible: Config.LockPrefs.effect === "life"
             title: "Life"
             description: "Grid resolution changes the cell size; seed density is how much of the board starts alive when a generation is (re)seeded."
-            // Same overflow, same fix as the Lava lamp row above.
+            // Same overflow fix as Lava lamp row above.
             wide: true
             Column {
                 width: parent.width
@@ -1243,10 +1201,8 @@ Column {
         }
     }
 
-    // A live instance of the selected lock effect, not a screenshot. Effects
-    // scale off width/height. Life and MatrixRain are expensive continuous
-    // renders, so the preview is gated on `previewLive` and toggled by the user;
-    // selecting a different effect turns it back on.
+    // Live lock effect instance (not screenshot). Life/MatrixRain expensive;
+    // preview gated on `previewLive`, re-enabled by effect change.
     Modules.SettingsGroup {
         id: screensaverPreviewGroup
         title: "Screensaver preview"
@@ -1254,16 +1210,12 @@ Column {
         visible: Config.LockPrefs.effect !== "none"
 
         property bool previewLive: false
-        // Auto-shows the preview the moment the selection actually changes.
-        // Explicit id reference, not a bare `parent` — Connections is a plain
-        // QtObject, not an Item, so its own `parent` is not reliably the
-        // enclosing Modules.SettingsGroup the way an Item's would be.
+        // Auto-show preview on selection change. Explicit id (Connections
+        // is QtObject, not Item; parent not reliable).
         Connections {
             target: Config.LockPrefs
-            // A changed selection is exactly the moment a live look is wanted,
-            // and a fresh effect starts from a fresh simulated auth state —
-            // the same way a real lock never surfaces with a mid-verification
-            // or mid-cooldown state still running.
+            // Selection change = moment for live look. Fresh effect = fresh
+            // simulated auth (like real lock).
             function onEffectChanged() {
                 screensaverPreviewGroup.previewLive = true
                 screensaverPreviewGroup.fxValidating = false
@@ -1282,9 +1234,8 @@ Column {
         property int fxLockoutRemaining: 0
         readonly property real fxLockoutProgress: screensaverPreviewGroup.fxLockoutSeconds > 0
             ? fxLockoutRemaining / screensaverPreviewGroup.fxLockoutSeconds : 0
-        // The same category-A pulse Lock.qml's field border runs through a
-        // real verification; the effects' `validationProgress` reads this, so the
-        // preview breathes in step with the real screen.
+        // Category-A pulse like Lock.qml field border. Effects read
+        // validationProgress; preview breathes in sync.
         property real fxValidationPulse: 0.0
         SequentialAnimation on fxValidationPulse {
             running: screensaverPreviewGroup.fxValidating
@@ -1301,16 +1252,14 @@ Column {
             }
         }
 
-        // Simulated PAM round-trip length — a real-world duration, not a
-        // motion token.
+        // Simulated PAM round-trip: real-world duration, not motion token.
         Timer {
             id: verifySim
             interval: 2000
             onTriggered: screensaverPreviewGroup.fxValidating = false
         }
 
-        // The 30s lockout cooldown, counting down exactly like Lock.qml's own
-        // lockoutCountdown timer.
+        // 30s lockout cooldown, like Lock.qml lockoutCountdown.
         Timer {
             id: lockoutSim
             interval: 1000
@@ -1325,17 +1274,15 @@ Column {
             }
         }
 
-        // Same typeof-guarded broadcast Lock.qml's _pulseScreensaver uses: an
-        // effect without triggerValidation() (all but Plasma) is simply never
-        // called.
+        // typeof-guarded broadcast like Lock.qml: effects without
+        // triggerValidation() never called.
         function _pulsePreview(success) {
             var fx = previewLoader.item
             if (fx && typeof fx.triggerValidation === "function") fx.triggerValidation(success)
         }
 
-        // Feature catalogue helpers for the test buttons: the label, the
-        // active highlight, the enable guard and the trigger for each feature
-        // id a screensaver declares in its `features` list.
+        // Feature catalogue helpers: label, active, enable, trigger for each
+        // feature declared in screensaver `features` list.
         function _featureLabel(id) {
             switch (id) {
             case "verification":
