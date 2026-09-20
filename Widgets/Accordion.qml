@@ -20,7 +20,7 @@ Column {
     property bool loading: false
     default property alias content: body.data
     // An optional header-trailing action (a "clear" button, say). Empty by
-    // default so every existing caller (Devices.qml, Updates.qml) is
+    // default so every existing caller (Devices.qml, Packages.qml) is
     // unaffected.
     property alias trailingAction: trailingSlot.data
 

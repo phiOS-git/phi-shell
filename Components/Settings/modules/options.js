@@ -30,7 +30,8 @@ var SECTIONS = [
     { id: "notifications", title: "Notifications", keywords: "do not disturb dnd rules per app toast sound chroma blink priority" },
     { id: "security",      title: "Security",      keywords: "clamav antivirus scan quarantine signatures face unlock howdy secrets keepass vault" },
     { id: "aiAgent",       title: "AI Agent",      keywords: "phi agent activation project personality broker opencode model provider key egress whitelist systemd units memory proposals" },
-    { id: "updates",       title: "Updates",       keywords: "packages system state version pacman aur npm flatpak appimage phi-packages check upgrade" }
+    { id: "updates",       title: "Updates",       keywords: "system state version check upgrade" },
+    { id: "packages",      title: "Packages",      keywords: "pacman aur npm flatpak appimage phi-packages external tc t2 t3 t4 container audit findings drift leak integrity checksum fingerprint accept tier status declare" }
 ];
 
 // One row per control the panel exposes. `title` is what the user reads on
@@ -122,7 +123,11 @@ var OPTIONS = [
 
     // --- Updates --------------------------------------------
     { id: "updates.system",           title: "System state",           keywords: "version phios phi phi-packages" },
-    { id: "updates.packages",         title: "Packages",               keywords: "pacman aur npm flatpak appimage phi list manager" }
+
+    // --- Packages --------------------------------------------
+    { id: "packages.audit",    title: "Audit",    keywords: "external tc t2 t3 t4 findings drift leak integrity checksum fingerprint root accept declare tier status" },
+    { id: "packages.managers", title: "Packages", keywords: "pacman aur npm flatpak appimage phi external tc t2 t3 t4 list manager tier status" },
+    { id: "packages.findings", title: "Findings", keywords: "drift leak integrity checksum undeclared missing changed audit" }
 ];
 
 function _all() { return SECTIONS.concat(OPTIONS); }

@@ -4,17 +4,18 @@ import qs.Config as Config
 import qs.Widgets as Widgets
 import "../modules" as Modules
 
-// Split into two groups:
-// - System state: the versions of phi, phios-dotfiles and each installed
-// phi-* package (`phi pkg state --json`).
-// - Packages: one collapsible list per manager. phi / pacman / AUR come
-// from `phi pkg list --json` (bucketed by category); AppImage lists
-// ~/Applications (`phi pkg list --manager appimage --json`); npm and
-// flatpak are labelled placeholders until their listers land.
-// READ-ONLY. Nothing here runs `phi update` or `pacman` — that verb is
-// real, interactive and privileged, and belongs to a terminal the user
-// runs themselves. `phi pkg check` in a terminal is the way to see
-// available updates.
+// System state only: the versions of phi, phios-dotfiles and each installed
+// phi-* package (`phi pkg state --json`). The package-manager listings and
+// the external-package audit live in Sections.Packages now — this section
+// keeps just the version table and the update flow.
+//
+// The panel may perform non-interactive, unprivileged actions. It never
+// runs an interactive privileged transaction: `pacman -Syu` and `phi
+// update` need a TTY for conflict and provider prompts, so they stay in a
+// terminal the user runs themselves. This is not a new precedent — `phi
+// vpn` and `phi firewall` are already driven from Settings through `sudo
+// -n` drop-ins; the boundary was never "the GUI never acts", only "never an
+// interactive privileged one".
 
 Column {
     id: root
@@ -30,22 +31,14 @@ Column {
     readonly property real chWidth: ch.width
 
     property var components: []
-    property var allEntries: []
-    property var appimages: []
     property bool loading: false
 
     function refresh() {
         root.loading = true
         stateProc.running = true
-        listProc.running = true
-        appimageProc.running = true
     }
 
     Component.onCompleted: refresh()
-
-    function _entriesFor(cat) {
-        return (root.allEntries || []).filter((e) => e.Category === cat)
-    }
 
     Process {
         id: stateProc
@@ -57,56 +50,6 @@ Column {
                 catch (e) { root.components = [] }
                 root.loading = false
             }
-        }
-    }
-    Process {
-        id: listProc
-        command: ["phi", "pkg", "list", "--json"]
-        onExited: listProc.running = false
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try { root.allEntries = JSON.parse(this.text) || [] }
-                catch (e) { root.allEntries = [] }
-            }
-        }
-    }
-    Process {
-        id: appimageProc
-        command: ["phi", "pkg", "list", "--manager", "appimage", "--json"]
-        onExited: appimageProc.running = false
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    var l = JSON.parse(this.text)
-                    root.appimages = (l && l.Entries) ? l.Entries : []
-                } catch (e) { root.appimages = [] }
-            }
-        }
-    }
-
-    // --- one manager's collapsible list -----------------------------
-    component ManagerBlock: Widgets.Accordion {
-        id: mb
-        property var entries: []
-        property string placeholder: ""
-        title: "…"
-        width: parent ? parent.width : 0
-
-        Repeater {
-            model: mb.entries
-            Widgets.ListRow {
-                required property var modelData
-                width: mb.width
-                label: modelData.Name
-                value: modelData.Version || ""
-            }
-        }
-        Widgets.StyledText {
-            width: mb.width
-            visible: mb.entries.length === 0
-            wrapMode: Text.WordWrap
-            kind: "label"; sizeStep: 0
-            text: mb.placeholder.length > 0 ? mb.placeholder : "None."
         }
     }
 
@@ -137,43 +80,6 @@ Column {
             visible: root.components.length === 0 && !root.loading
             kind: "label"; sizeStep: 0
             text: "No component versions could be read (phi not on PATH?)."
-        }
-    }
-
-    // ================================================================
-    // Packages
-    // ================================================================
-    Modules.SettingsGroup {
-        advanced: true
-        title: "Packages"
-        optionId: "updates.packages"
-        caption: "Read-only. See available updates with `phi pkg check` in a terminal; apply them with `phi update`."
-
-        ManagerBlock {
-            title: "phi-packages (" + root._entriesFor("phi-packages").length + ")"
-            entries: root._entriesFor("phi-packages")
-        }
-        ManagerBlock {
-            title: "pacman — core/extra (" + root._entriesFor("T0 (core/extra)").length + ")"
-            entries: root._entriesFor("T0 (core/extra)")
-        }
-        ManagerBlock {
-            title: "AUR (" + root._entriesFor("AUR").length + ")"
-            entries: root._entriesFor("AUR")
-            placeholder: "Empty — AUR packages are not allowed. A non-empty list here is a policy violation."
-        }
-        ManagerBlock {
-            title: "npm (global)"
-            placeholder: "Not implemented yet — list with `npm ls -g --depth 0`."
-        }
-        ManagerBlock {
-            title: "flatpak"
-            placeholder: "Not implemented yet — list with `flatpak list --app`."
-        }
-        ManagerBlock {
-            title: "AppImage — ~/Applications (" + root.appimages.length + ")"
-            entries: root.appimages
-            placeholder: "No .AppImage files in ~/Applications."
         }
     }
 }

@@ -186,6 +186,7 @@ PanelWindow {
         case "security": return securityComponent
         case "aiAgent": return aiAgentComponent
         case "updates": return updatesComponent
+        case "packages": return packagesComponent
         default:
             console.warn("phi-shell: Settings section type not recognized: " + type)
             return null
@@ -201,6 +202,7 @@ PanelWindow {
     Component { id: securityComponent; Sections.Security {} }
     Component { id: aiAgentComponent; Sections.AiAgent {} }
     Component { id: updatesComponent; Sections.Updates {} }
+    Component { id: packagesComponent; Sections.Packages {} }
 
     Widgets.Scrim {
         anchors.fill: parent

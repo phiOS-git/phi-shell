@@ -7,5 +7,6 @@
     { "type": "notifications", "title": "Notifications", "keywords": "do not disturb dnd rules per app chroma blink toasts sound test clear history retention" },
     { "type": "security", "title": "Security", "keywords": "clamav antivirus scan quarantine signatures face unlock howdy secrets keepass vault microphone camera sensor permission killswitch privacy" },
     { "type": "aiAgent", "title": "AI Agent", "keywords": "phi agent activation project personality broker opencode model provider key egress whitelist systemd units memory proposals" },
-    { "type": "updates", "title": "Updates", "keywords": "packages pacman aur t4 phi-packages check upgrade" }
+    { "type": "updates", "title": "Updates", "keywords": "system state version check upgrade" },
+    { "type": "packages", "title": "Packages", "keywords": "pacman aur npm flatpak appimage phi-packages external tc t2 t3 t4 container audit findings drift leak integrity checksum fingerprint accept tier status declare" }
 ]
