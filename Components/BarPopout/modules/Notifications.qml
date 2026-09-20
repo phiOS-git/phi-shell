@@ -4,13 +4,12 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../../Bar/glyphs.js" as Glyphs
 
-// Migrated from the old standalone NotificationsOverlay window (retired —
+// Migrated from the old standalone NotificationsOverlay window (retired
 // into a plain BarPopout "which" card, same
 // shape as every other module here. A DND switch (with 30m/1h/4h quick-
 // triggers), then the notification list grouped by date, then by source
-// within each date — both tiers collapsible (dates default expanded,
+// within each date — both tiers collapsible (dates default expanded
 // sources default collapsed).
-//
 // This card keeps its own inline title row rather than the shared
 // Modules/Header.qml (Services/BarPopout.qml's title("notifications")
 // returns "" for exactly this reason) since it predates that shared
@@ -41,7 +40,7 @@ Item {
         text: "0"
     }
     readonly property real chWidth: chMetrics.width
-    // gap  — tight, inside a card / between a label and its control.
+    // gap — tight, inside a card / between a label and its control.
     // blockGap — the rhythm between this card's top-level blocks.
     readonly property real gap: chWidth * Config.Appearance.space1
     readonly property real blockGap: chWidth * Config.Appearance.space2
@@ -86,7 +85,7 @@ Item {
 
     // "Today, yesterday, this week, older". "This week" is read as a
     // rolling 2-6-days-ago window (today/yesterday already cover the
-    // first two, "older" starts at 7 days) rather than a calendar week —
+    // first two, "older" starts at 7 days) rather than a calendar week
     // no start-of-week convention (Monday vs. Sunday) is picked anywhere
     // else in this shell.
     readonly property var dateGroups: {
@@ -131,7 +130,7 @@ Item {
         contentHeight: column.implicitHeight
         clip: true
 
-        // This card's own top-level blocks (DND row, Active header/list,
+        // This card's own top-level blocks (DND row, Active header/list
         // each date group) cascade in after the popout card itself is
         // visible — the card's own fade is Widgets/PopoutSurface's own
         // fadeRoot, unchanged here.
@@ -199,7 +198,7 @@ Item {
                     }
                 }
 
-                // The label flush left, the remaining time flush right —
+                // The label flush left, the remaining time flush right
                 // the same full-width label/value grammar ListRow and the
                 // other modules use — the value bold (kind "title") mono
                 // so the countdown reads at a glance.
@@ -425,7 +424,7 @@ Item {
                             spacing: 0
 
                             // --- per-app (source) sub-group, nested inside
-                            // this date bucket — collapsed by default,
+                            // this date bucket — collapsed by default
                             // same collapse chevron/hover-wash grammar the
                             // date tier above already uses.
                             Repeater {

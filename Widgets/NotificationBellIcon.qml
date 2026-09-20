@@ -2,15 +2,13 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// Same dumb/reusable icon family as the rest of Widgets/*Icon —
+// Same dumb/reusable icon family as the rest of Widgets/*Icon
 // Bar/modules/Notifications.qml owns the Services/Notifications.qml reads.
-//
 // The animation IS the glyph moving, rather than an overlay drawn on top
 // of it: a flash overlay added as a Rectangle child after
 // Widgets/Segment.qml's own internal `layout` Item paints on top of the
 // glyph and partially obscures it. Rendering through `iconDelegate`
 // instead removes that whole overlay mechanism.
-//
 // `dnd` crossfades between the bell and bell-slashed glyphs (two Nerd
 // Font shapes, same verified-against-glyphnames.json rune each already
 // was) plus a small scale pop on the transition — a bare crossfade alone
@@ -42,7 +40,7 @@ Item {
     // Bell PUA codepoints — Nerd Font Material Design Icons, same set
     // Bar/glyphs.js already draws every bar icon from. Duplicated here
     // rather than importing glyphs.js (a Bar/-scoped file; Widgets/ stays
-    // independent of it, matching every sibling icon in this family,
+    // independent of it, matching every sibling icon in this family
     // which take their symbol from the caller instead of reading it
     // themselves).
     readonly property string _bellGlyph: String.fromCodePoint(0xF009A)     // nf-md-bell

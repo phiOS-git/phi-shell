@@ -5,11 +5,10 @@ import qs.Widgets as Widgets
 import "." as Local
 
 // The agent panel's ProjectView section (project
-// detail). Name, description, instruction list, context files (materiali/),
+// detail). Name, description, instruction list, context files (materiali/)
 // folders of interest (read-only real dirs), default personality, project
 // chats.
-//
-// features-change round 3 (panel style pass): the six section headers are
+// the six section headers are
 // `kind: "title"` (DemiBold ink), matching every other panel heading; the
 // three add-a-path rows use Widgets/TextField; micro-gaps are derived
 // tokens (`tightGap`), no literal `spacing: 2`.
@@ -25,7 +24,7 @@ Item {
     // keyScope; see Widgets/TextField.qml's `escaped()`.
     signal blurred()
 
-    // Style pass 2026-09-15: AgentPanel.qml's own keyScope contract. Always
+    // AgentPanel.qml's own keyScope contract. Always
     // true while this view is the active section (Dashboard delegates to
     // it whenever a project is open) — goBack() itself picks which of the
     // two nested levels (the personality editor, or this view itself) to
@@ -270,7 +269,7 @@ Item {
                             label: chatRow.pinned ? "Unpin" : "Pin"
                             onClicked: root.agent.setChatPinned(chatRow.chatId, !chatRow.pinned)
                         }
-                        // Style pass 2026-09-14: same Services.Agent.closeSession()
+                        // same Services.Agent.closeSession()
                         // gap as Dashboard.qml's own ChatRow — see its comment.
                         Widgets.SmallButton {
                             id: closeBtn

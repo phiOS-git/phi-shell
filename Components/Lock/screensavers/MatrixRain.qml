@@ -4,20 +4,16 @@ import qs.Config as Config
 // A falling-glyph field for the lock screen background, with a slowly
 // drifting brightness band. Written from scratch in a Canvas — no
 // external tool or package.
-//
 // Screensaver animation, an exception confined to the lock screen and
 // stopped the moment the surface begins to conceal (`running` is cleared
 // by Lock.qml), so it never animates over a live desktop.
-//
 // Colour: design tokens only, and the two-colour B&W grammar holds — the
 // trail runs fg-3 → fg-2, the leading glyph and any glyph inside the
 // drifting band lift toward `accent`. No literal colour, and no green.
-//
 // Charset: ASCII plus Greek (φ Φ λ π Σ …). Source Code Pro covers both.
 // NOT katakana — phiOS ships noto-fonts as Greek + Latin only, so
 // katakana would render as tofu.
-//
-// UNVERIFIED (no compositor here): Canvas throughput at this cell count,
+// (no compositor here): Canvas throughput at this cell count
 // and whether QQuickContext2D.fillStyle takes a `color` object directly.
 // `cell` and the frame interval are the two dials if it needs to be lighter.
 

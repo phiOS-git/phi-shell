@@ -38,7 +38,7 @@ Singleton {
     readonly property string spotlightPrefsFile: root.stateDir + "/spotlight.json"
 
     // Clipboard capture is plain POSIX sh with no JSON writer, so structure
-    // lives in the filesystem: one <id>.data + <id>.mime pair per entry,
+    // lives in the filesystem: one <id>.data + <id>.mime pair per entry
     // `latest` holds the newest id so a single watched file can signal a
     // new arrival without polling. pins.json/rules.json are the pieces
     // Quickshell itself writes.

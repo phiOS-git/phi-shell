@@ -13,16 +13,14 @@ import "../glyphs.js" as Glyphs
 // children when positioning, so this costs nothing visually, and it's
 // what keeps a workspace switch (which only flips one `active` flag) from
 // rebuilding every Segment and resetting its hover/colour animation.
-//
 // btop and Steam live on plain numbered workspaces (12 and 11, pinned by
 // hyprland.lua) — the Hyprland-side pinning is untouched by this file.
 // Every workspace, 11/12 included, shows its plain number, styled as "a
-// list of clickable squares, with hover and active states, a thin border,
+// list of clickable squares, with hover and active states, a thin border
 // no background. The selected workspace has slightly more width and uses
 // inverted colors": `ambient: "workspace"` supplies the resting-border +
 // inverted-active colour recipe, `widthBoost` the width increase.
-//
-// The scratchpad toggle below is a bare dispatch with no highlight,
+// The scratchpad toggle below is a bare dispatch with no highlight
 // because the special workspace and a numeric one can both read as
 // "active" at once — a lit toggle would lie half the time. Left on plain
 // `ambient: "isle"` (not "workspace") since it has no number and no
@@ -44,7 +42,7 @@ Item {
 
     // Horizontal only: applying this to implicitHeight too would inflate
     // the whole bar's height (Bar.qml's height is
-    // Math.max(..., leftIsle.implicitHeight, rightIsle.implicitHeight),
+    // Math.max(..., leftIsle.implicitHeight, rightIsle.implicitHeight)
     // shared by both isles and both bars), not just the breathing room
     // around this one list.
     readonly property real padding: chMetrics.width * Config.Appearance.space1
@@ -107,7 +105,6 @@ Item {
         // `workspace.toggle_special("scratch")`; MOD+SHIFT+A moves the
         // focused window into it). No `active` state — the special
         // workspace can read as active alongside a numeric one.
-        //
         // Uses the Lua-call dispatch form, `hl.dsp.workspace.
         // toggle_special("scratch")`, not the traditional dispatcher-
         // string form — this build's Lua config rejects the latter (see
@@ -118,7 +115,7 @@ Item {
             glyph: Glyphs.console
             label: ""
             onActivated: Services.HyprlandBridge.toggleScratchPad()
-            //.dispatch('hl.dsp.workspace.toggle_special("scratch")')
+            // .dispatch('hl.dsp.workspace.toggle_special("scratch")')
         }
     }
 }

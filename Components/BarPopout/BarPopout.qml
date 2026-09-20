@@ -11,7 +11,6 @@ import "modules" as Modules
 // ("power") tracks its left edge instead, via Services.BarPopout's own
 // anchorEdge (right-edge alignment would push a card opened from near the
 // screen's left edge almost entirely off-screen).
-//
 // Every Modules/ section stays instantiated for the shell's whole
 // session — never Loader-swapped — so each keeps its own local state
 // (Modules/Status.qml's tiling-mode highlight, live countdowns) across
@@ -39,7 +38,7 @@ Widgets.PopoutSurface {
     cardX: root.anchorEdge === "left" ? Services.BarPopout.anchorLeftX : Services.BarPopout.anchorRightX
 
     // notifications/clipboard are the two wide, tall exceptions to the
-    // standard chWidth-based card: notifications' history can run long,
+    // standard chWidth-based card: notifications' history can run long
     // clipboard's search results always want a real scrollable area, so
     // both size off the screen instead of a fixed character count.
     readonly property bool _wideCard: root.which === "notifications" || root.which === "clipboard"

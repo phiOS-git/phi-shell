@@ -10,7 +10,6 @@ import qs.Widgets as Widgets
 // Services/Keybinds.qml) — never a saved copy, and there is deliberately
 // no editing UI: a binding changed in hyprland.lua and reloaded shows up
 // here on the very next open because there's no second place holding it.
-//
 // A search field, auto-focused on open; Esc or a click outside the panel
 // closes it. Rows are grouped by context (Services.Keybinds.groups — the
 // same derivation the settings panel's Keybindings section renders), each
@@ -78,7 +77,7 @@ PanelWindow {
     readonly property var groupedLeft: root.grouped.filter((g, i) => i % 2 === 0)
     readonly property var groupedRight: root.grouped.filter((g, i) => i % 2 === 1)
 
-    // Spacing goes around the whole combination and its "+" separators,
+    // Spacing goes around the whole combination and its "+" separators
     // not between every character. keyLabel() already joins the parts
     // with " + ".
     function keyChips(bind) {

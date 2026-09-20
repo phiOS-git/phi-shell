@@ -7,24 +7,20 @@ import "./options.js" as Options
 // The one way a settings control exists: a titled row with an optional
 // description, a control slot, an optional per-row reset, and — the
 // reason it's a type and not a plain Row — it
-//   1. registers its `optionId` with Services/SettingsPanel so a search
-//      result or `qs ipc call settings reveal <id>` can scroll to it, and
-//   2. highlights itself (a wash) whenever the live search query matches
-//      it, WITHOUT being hidden — search highlights results rather than
-//      filtering them out.
-//
+// 1. registers its `optionId` with Services/SettingsPanel so a search
+// result or `qs ipc call settings reveal <id>` can scroll to it, and
+// 2. highlights itself (a wash) whenever the live search query matches
+// it, WITHOUT being hidden — search highlights results rather than
+// filtering them out.
 // Layout:
-//   default    — title + description on the left, control content-sized
-//                and right-aligned.
-//   wide: true — control full-width below the title (a colour picker, a
-//                keyboard map, a chart, a font preview).
-//
+// default — title + description on the left, control content-sized
+// and right-aligned.
+// wide: true — control full-width below the title (a colour picker, a
+// keyboard map, a chart, a font preview).
 // "reset" sits under the label on the LEFT, out of the control's way, so
 // the control never moves; the row just grows a line taller.
-//
 // The row's own height eases so a "reset" appearing, a description
 // changing, or a `wide` control growing/shrinking slides rather than jumps.
-//
 // `pulse()` is the reveal's arrival flash — a short symmetric fade, never
 // ScrambleText.
 
@@ -37,7 +33,7 @@ Item {
     property bool resettable: false
     property bool wide: false
     // The "advanced options" switch (Services.SettingsPanel.showAdvanced).
-    // A row marked advanced stays out of the layout — not merely dimmed —
+    // A row marked advanced stays out of the layout — not merely dimmed
     // until that's on, UNLESS a live search already matches it: searching
     // for an advanced setting by name must still find it, the same
     // "search surfaces, never hides" rule Options.matches()/`highlighted`
@@ -95,7 +91,7 @@ Item {
     property bool _settled: false
     // Eases the row's own height so a "reset" line, a changed description
     // or a growing `wide` control slides in rather than snapping.
-    // `_settled` keeps the first layout (and section switches) instant —
+    // `_settled` keeps the first layout (and section switches) instant
     // only later height changes animate.
     Behavior on implicitHeight {
         enabled: root._settled

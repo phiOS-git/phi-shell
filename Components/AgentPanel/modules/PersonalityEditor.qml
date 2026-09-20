@@ -8,8 +8,7 @@ import qs.Widgets as Widgets
 // IS the user (§8.2 "scrive solo l'utente"); personalita/ stays read-only
 // inside the mount. Writes go through `phi agent personality` for validation
 // and agent.md regeneration.
-//
-// features-change round 3 (panel style pass): the name field is
+// the name field is
 // Widgets/TextField (with its `invalid` tint for the slug check); a new
 // personality opens with an empty field, not the "+" sentinel; the list
 // gap is a derived token.
@@ -31,7 +30,7 @@ Item {
 
     property string editing: ""   // "" = list; a name = editing that one; "+" = new
 
-    // Style pass 2026-09-15: AgentPanel.qml's own keyScope contract (see
+    // AgentPanel.qml's own keyScope contract (see
     // that file's Keys.onEscapePressed). Always true while this editor is
     // the active overlay — mirrors the "‹" button's own two-case logic
     // exactly (line below): back out of an in-progress edit first, then
@@ -51,7 +50,7 @@ Item {
     }
     function open(name) {
         root.editing = name
-        // "+" is the sentinel for a new personality — the field starts empty,
+        // "+" is the sentinel for a new personality — the field starts empty
         // not pre-filled with the sentinel.
         nameField.text = (name === "+") ? "" : name
         promptArea.text = ""
@@ -103,7 +102,7 @@ Item {
                     id: nameField
                     width: 24 * root.chWidth
                     anchors.verticalCenter: parent.verticalCenter
-                    // Style pass 2026-09-14: this was `readOnly` for every
+                    // this was `readOnly` for every
                     // existing personality — Services.Agent.personalityRename()
                     // is a real, complete function (`phi agent personality
                     // rename <old> <new>`) that had no way to reach it at
@@ -174,10 +173,10 @@ Item {
                     visible: root.editing !== "+"
                     label: "Delete"
                     invalid: true
-                    // Style pass 2026-09-14: this deleted a personality (its
+                    // this deleted a personality (its
                     // whole system prompt included) on a single click, no
                     // confirmation at all — the one destructive settings
-                    // action in this shell without it, unlike VPN "Forget",
+                    // action in this shell without it, unlike VPN "Forget"
                     // "Clear all keys" and "Clear all notifications", all of
                     // which already go through this same ConfirmDialog per
                     // standing directive ("sensible

@@ -8,22 +8,19 @@ import "../glyphs.js" as Glyphs
 // Bottom-bar right isle: a single consolidated network module covering
 // wifi/ethernet as one main glyph plus per-status Tailscale, VPN and
 // firewall badges, rather than a separate module per connection type.
-//
 // Connection-type policy: ethernet wins over Wi-Fi whenever a wired NIC
 // exists at all (present, not necessarily connected) — a desktop with
 // both reads its wired port as "the real connection"; Wi-Fi's own on/
 // searching/off states only apply when there is no wired NIC.
-//
 // NOT built — no real data source anywhere in this codebase:
-//   - a genuine "connected but no internet" reachability check (X-overlay)
-//   - a genuine Wi-Fi-radio-disabled vs. simply-disconnected distinction
-//     (Services/WifiBridge.qml exposes `present`/`connected`/`connecting`
-//     only, no radio-enabled flag)
+// - a genuine "connected but no internet" reachability check (X-overlay)
+// - a genuine Wi-Fi-radio-disabled vs. simply-disconnected distinction
+// (Services/WifiBridge.qml exposes `present`/`connected`/`connecting`
+// only, no radio-enabled flag)
 // Both fall back to the same plain "off" reading (the resting, low-opacity
 // Wi-Fi fan) rather than a fabricated distinct icon state.
-//
 // Reuses the shared "network" bar-popout key rather than inventing a new
-// one. The "wifi"/"ethernet" popout keys and Bar/modules/{Network,Wifi,
+// one. The "wifi"/"ethernet" popout keys and Bar/modules/{Network,Wifi
 // Ethernet}.qml are left untouched but no longer reachable from a bar icon.
 
 Widgets.Segment {
@@ -133,7 +130,6 @@ Widgets.Segment {
         // to the right and never shifts. Every gap — badge-to-badge and
         // badge-to-main — is the same `_badgeGap`, so when several badges
         // are up the icons read as one evenly-spaced set.
-        //
         // `width: implicitWidth` is required, not a nicety: Segment loads
         // this delegate through a plain Loader that only imposes a size on
         // the loaded item when the Loader itself has an explicit size

@@ -11,16 +11,16 @@ import qs.Services as Services
 // A real implementation would be a reactive detect-then-kill loop
 // (Pipewire capture-stream nodes for the microphone — Services/
 // AudioBridge.qml's `micInUse` already has the mechanism — and
-// /proc/*/fd scanning for /dev/video* for the camera, no precedent yet),
+// /proc/*/fd scanning for /dev/video* for the camera, no precedent yet)
 // not true prior restraint. What's below is honest about which parts are
 // real:
-//   - `activeUsers` is always `[]` — nothing populates it yet.
-//   - `requestPermission(appId, appName, sensor)` is real (sets
-//     `pendingPrompt`, the dialog responds to it) but nothing calls it
-//     automatically — Settings' own "send a test prompt" control is the
-//     only caller today, clearly labelled as a UI preview.
-//   - `killApp(pid)` really does send SIGTERM — inert in practice only
-//     because `activeUsers` is always empty, not because the call is fake.
+// - `activeUsers` is always `[]` — nothing populates it yet.
+// - `requestPermission(appId, appName, sensor)` is real (sets
+// `pendingPrompt`, the dialog responds to it) but nothing calls it
+// automatically — Settings' own "send a test prompt" control is the
+// only caller today, clearly labelled as a UI preview.
+// - `killApp(pid)` really does send SIGTERM — inert in practice only
+// because `activeUsers` is always empty, not because the call is fake.
 // `rules` (persisted always/never decisions) and `micEnabled`/
 // `cameraEnabled` (the master per-sensor killswitches) are genuinely
 // real: `micEnabled` bridges to Services.AudioBridge's real input-mute
