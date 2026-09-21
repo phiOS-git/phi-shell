@@ -192,6 +192,22 @@ Item {
         value: titleHover.hovered
     }
 
+    // Right-click a resettable row for "Reset to default". The menu window is
+    // created on first use, not once per row.
+    TapHandler {
+        acceptedButtons: Qt.RightButton
+        enabled: root.resettable
+        onTapped: {
+            rowMenu.active = true
+            rowMenu.item.open(root, [{ label: "Reset to default", onActivated: () => root.reset() }])
+        }
+    }
+    Loader {
+        id: rowMenu
+        active: false
+        sourceComponent: Component { Widgets.ContextMenu {} }
+    }
+
     Item {
         id: slot
         anchors.right: parent.right
