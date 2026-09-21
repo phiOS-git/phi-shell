@@ -110,6 +110,19 @@ Item {
         return new Date(ts).toLocaleString(Qt.locale(), "ddd HH:mm")
     }
 
+    // Opens what an active notification is about, dismisses it, closes the card.
+    function _openActive(n) {
+        Services.Notifications.openSource(n.appName, n)
+        try { n.dismiss() } catch (e) { n.tracked = false }
+        Services.BarPopout.hide()
+    }
+    // Opens what a history entry was about, deletes the entry, closes the card.
+    function _openHistory(entry) {
+        Services.Notifications.openSource(entry.appName, null)
+        Services.Notifications.clearEntry(entry)
+        Services.BarPopout.hide()
+    }
+
     Flickable {
         id: flick
         anchors.fill: parent
@@ -265,6 +278,8 @@ Item {
                                 anchors.rightMargin: root.gap
                                 wrapMode: Text.Wrap
                                 text: modelData.appName + " — " + modelData.summary
+                                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                TapHandler { onTapped: root._openActive(modelData) }
                             }
                             Widgets.SmallButton {
                                 id: dismissActive
@@ -281,6 +296,8 @@ Item {
                             wrapMode: Text.Wrap
                             visible: modelData.body.length > 0
                             text: modelData.body
+                            HoverHandler { cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: root._openActive(modelData) }
                         }
                         Row {
                             spacing: root.chWidth * Config.Appearance.space2
@@ -519,6 +536,8 @@ Item {
                                                         sizeStep: 0
                                                         elide: Text.ElideRight
                                                         text: histRow.modelData.summary
+                                                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                                        TapHandler { onTapped: root._openHistory(histRow.modelData) }
                                                     }
                                                     Widgets.StyledText {
                                                         id: itemTime
