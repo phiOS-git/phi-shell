@@ -813,10 +813,9 @@ Column {
             title: "Night shift"
             description: Services.NightShift.scheduleMode === "off"
                 ? "Warms the display in the evening."
-                : "Controlled by the schedule below."
+                : "Follows the schedule below — toggling here holds until its next change."
             Widgets.Toggle {
                 checked: Services.NightShift.enabled
-                enabled: Services.NightShift.scheduleMode === "off"
                 onToggled: (v) => Services.NightShift.setEnabled(v)
             }
         }

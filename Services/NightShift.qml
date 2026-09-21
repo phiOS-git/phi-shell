@@ -26,6 +26,14 @@ Singleton {
     property int scheduleStartHour: 20
     property int scheduleEndHour: 7
 
+    // The schedule's own last decision, tracked separately from root.enabled
+    // so a manual setEnabled() in between two boundaries doesn't get
+    // reasserted by the next scheduleTimer tick. `var`, not `bool`: null
+    // means "not yet decided this cycle" and must compare unequal to both
+    // true and false, forcing the next _evaluateSchedule() to sync for real
+    // instead of silently agreeing with a coincidental false.
+    property var _scheduleAutoState: null
+
     function setEnabled(v) {
         root.enabled = v
         Config.Settings.set("toggle.night-mode", v ? "true" : "false")
@@ -35,6 +43,11 @@ Singleton {
     function setScheduleMode(m) {
         root.scheduleMode = m
         Config.Settings.set("nightmode.schedule", m, root._warnIfRejected)
+        // An explicit mode switch (including re-entering "auto"/"custom"
+        // after "off") always resyncs to the live automatic decision, same
+        // as a fresh load — _evaluateSchedule() only skips forward once
+        // _scheduleAutoState already reflects the mode now in effect.
+        root._scheduleAutoState = null
         root._evaluateSchedule()
     }
 
@@ -67,6 +80,15 @@ Singleton {
     // silently dead setting nobody can reach by adjusting the fields (24 is
     // not a selectable hour, so "always off" has no equal-hour representation
     // to give it instead).
+    //
+    // Compares against _scheduleAutoState (the schedule's own last decision),
+    // not root.enabled: a manual setEnabled() from the bar, status popout or
+    // settings between two boundaries makes root.enabled diverge from
+    // _scheduleAutoState on purpose, and must hold until the window itself
+    // opens or closes rather than being overwritten on the next tick. Once a
+    // boundary is actually crossed, this forces root.enabled back to the
+    // schedule's decision regardless of that divergence, which is how
+    // automatic control resumes.
     function _evaluateSchedule() {
         if (root.scheduleMode === "off") return
         const start = root.scheduleMode === "auto" ? root.autoStartHour : root.scheduleStartHour
@@ -75,7 +97,9 @@ Singleton {
         const shouldBeOn = start === end ? true
             : start > end ? (hour >= start || hour < end)
             : (hour >= start && hour < end)
-        if (shouldBeOn !== root.enabled) root.setEnabled(shouldBeOn)
+        if (shouldBeOn === root._scheduleAutoState) return
+        root._scheduleAutoState = shouldBeOn
+        root.setEnabled(shouldBeOn)
     }
 
     // No triggeredOnStart: the very first evaluation is already covered by
