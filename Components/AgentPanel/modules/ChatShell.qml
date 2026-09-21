@@ -146,6 +146,7 @@ Item {
                                 Repeater {
                                     model: modelData.Hits || []
                                     delegate: Widgets.ListRow {
+                                        interactive: true
                                         required property var modelData
                                         width: parent.width
                                         label: modelData.Title
@@ -185,6 +186,7 @@ Item {
                             Repeater {
                                 model: root.agent.projects || []
                                 delegate: Widgets.ListRow {
+                                    interactive: true
                                     required property var modelData
                                     width: sideCol.width
                                     label: modelData
@@ -284,6 +286,7 @@ Item {
         readonly property bool isCurrent: chatRow.chatId === root.agent.currentSessionId && root.selectedProject.length === 0
 
         Widgets.ListRow {
+            interactive: true
             width: chatRow.width - pinBtn.implicitWidth - closeBtn.implicitWidth - chatRow.spacing * 2
             label: root.agent.formatSessionTitle(chatRow.rec.Title || chatRow.rec.title || chatRow.chatId)
             value: (chatRow.rec.Project && chatRow.rec.Project !== "_unfiled") ? chatRow.rec.Project : ""

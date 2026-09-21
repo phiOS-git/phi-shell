@@ -69,6 +69,7 @@ Item {
             Repeater {
                 model: root.agent.personalities || []
                 delegate: Widgets.ListRow {
+                    interactive: true
                     required property var modelData
                     width: parent.width
                     label: modelData

@@ -65,6 +65,7 @@ Widgets.StaggerReveal {
         Repeater {
             model: Services.AudioBridge.sinks
             Widgets.ListRow {
+                interactive: true
                 thin: true
                 required property var modelData
                 width: parent.width

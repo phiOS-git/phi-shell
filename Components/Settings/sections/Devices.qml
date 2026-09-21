@@ -38,6 +38,7 @@ Column {
         Repeater {
             model: dl.devices
             Widgets.ListRow {
+                interactive: true
                 required property var modelData
                 width: dl.width
                 label: Services.AudioBridge.nodeLabel(modelData)

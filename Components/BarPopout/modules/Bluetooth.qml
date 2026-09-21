@@ -36,6 +36,7 @@ Widgets.StaggerReveal {
         Repeater {
             model: Services.BluetoothBridge.adapterDevices ? Services.BluetoothBridge.adapterDevices.values : []
             Widgets.ListRow {
+                interactive: true
                 thin: true
                 required property var modelData
                 width: parent.width

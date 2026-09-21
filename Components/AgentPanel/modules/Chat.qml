@@ -188,6 +188,7 @@ Item {
 
             // memory-proposal cue (non-blocking)
             Widgets.ListRow {
+                interactive: true
                 width: parent.width
                 visible: root.agent.totalPendingProposals > 0
                 label: root.agent.totalPendingProposals + " memory proposal(s) pending"

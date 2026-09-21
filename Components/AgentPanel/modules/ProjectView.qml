@@ -113,6 +113,7 @@ Item {
                 Repeater {
                     model: root.meta.instructions || []
                     delegate: Widgets.ListRow {
+                        interactive: true
                         required property var modelData
                         width: parent.width
                         label: modelData
@@ -150,6 +151,7 @@ Item {
                 Repeater {
                     model: root.agent.materials || []
                     delegate: Widgets.ListRow {
+                        interactive: true
                         required property var modelData
                         width: parent.width
                         label: modelData
@@ -186,6 +188,7 @@ Item {
                 Repeater {
                     model: root.meta.folders || []
                     delegate: Widgets.ListRow {
+                        interactive: true
                         required property var modelData
                         width: parent.width
                         label: modelData
@@ -250,6 +253,7 @@ Item {
                         readonly property string chatId: chatRow.modelData.ID || chatRow.modelData.id
 
                         Widgets.ListRow {
+                            interactive: true
                             width: chatRow.width - pinBtn.implicitWidth - closeBtn.implicitWidth - chatRow.spacing * 2
                             label: root.agent.formatSessionTitle(chatRow.modelData.Title || chatRow.modelData.title || chatRow.chatId)
                             glyph: chatRow.pinned ? "★" : ""

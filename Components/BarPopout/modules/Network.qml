@@ -228,6 +228,7 @@ Widgets.StaggerReveal {
         Repeater {
             model: Services.Vpn.tunnels
             Widgets.ListRow {
+                interactive: true
                 thin: true
                 required property var modelData
                 width: parent.width
@@ -278,6 +279,7 @@ Widgets.StaggerReveal {
             Repeater {
                 model: Services.Firewall.presetNames
                 Widgets.ListRow {
+                    interactive: true
                     thin: true
                     required property string modelData
                     width: parent.width

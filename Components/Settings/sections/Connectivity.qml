@@ -66,6 +66,7 @@ Column {
                 Repeater {
                     model: Services.BluetoothBridge.devices ? Services.BluetoothBridge.devices.values : []
                     Widgets.ListRow {
+                        interactive: true
                         required property var modelData
                         width: parent.width
                         label: modelData.name || "(unnamed)"
@@ -366,6 +367,7 @@ Column {
                 Repeater {
                     model: Services.Firewall.rules
                     Widgets.ListRow {
+                        interactive: true
                         required property var modelData
                         width: parent.width
                         label: modelData.port + "/" + modelData.proto

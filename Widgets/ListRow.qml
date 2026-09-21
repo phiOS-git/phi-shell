@@ -28,6 +28,9 @@ Item {
     readonly property bool keyboardFocus: activeFocus
 
     signal activated()
+    // A row that does something on click. Off by default: a read-only row
+    // takes no hover, pointer, focus or tap, so it never looks clickable.
+    property bool interactive: false
 
     readonly property string resolvedState: WidgetStates.resolve({
         enabled: root.enabled, hovered: root.hovered, pressed: root.pressed,
@@ -79,7 +82,7 @@ Item {
         + labelText.implicitWidth
         + (valueText.visible ? root.gap + valueText.implicitWidth : 0)
         + (root.thin ? 0 : root.inset)
-    activeFocusOnTab: true
+    activeFocusOnTab: root.interactive
     opacity: WidgetStates.opacityFor(resolvedState) * root.restEmphasis
 
     // Original look: full-row-width Rectangle, present at every state (color changes).
@@ -159,19 +162,19 @@ Item {
 
     HoverHandler {
         id: hoverHandler
-        enabled: root.enabled && !root.loading
+        enabled: root.interactive && root.enabled && !root.loading
         cursorShape: Qt.PointingHandCursor
     }
 
     TapHandler {
         id: tapHandler
-        enabled: root.enabled && !root.loading
+        enabled: root.interactive && root.enabled && !root.loading
         onTapped: root.activated()
     }
 
     // Keyboard activation (same as StyledButton).
-    Keys.onReturnPressed: if (root.enabled && !root.loading) root.activated()
-    Keys.onSpacePressed: if (root.enabled && !root.loading) root.activated()
+    Keys.onReturnPressed: if (root.interactive && root.enabled && !root.loading) root.activated()
+    Keys.onSpacePressed: if (root.interactive && root.enabled && !root.loading) root.activated()
 
     Behavior on opacity {
         NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }

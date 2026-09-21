@@ -90,6 +90,7 @@ Item {
             model: Services.WifiBridge.scannedNetworks
 
             delegate: ListRow {
+                interactive: true
                 // Thin: compact look; see ListRow.qml for why not the default.
                 thin: true
                 width: col.width

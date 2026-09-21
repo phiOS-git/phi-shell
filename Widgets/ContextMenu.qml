@@ -89,6 +89,7 @@ PopupWindow {
                 onCountChanged: root._measureWidth()
 
                 ListRow {
+                    interactive: true
                     required property var modelData
                     width: root._rowWidth
                     label: modelData.label

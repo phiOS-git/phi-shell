@@ -386,6 +386,7 @@ PanelWindow {
                         model: root.registryRows
 
                         Widgets.ListRow {
+                            interactive: true
                             required property var modelData
                             required property int index
                             width: navCol.width

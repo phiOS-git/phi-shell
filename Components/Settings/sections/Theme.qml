@@ -421,6 +421,7 @@ Column {
                                 Repeater {
                                     model: fontListPanel._matches
                                     Widgets.ListRow {
+                                        interactive: true
                                         required property string modelData
                                         width: parent.width
                                         label: modelData
