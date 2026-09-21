@@ -1,7 +1,7 @@
 # phi-shell — the desktop shell
 
 QML on Quickshell 0.3.1. One shell process for the whole session — status
-bars, popouts, launcher, lock screen, settings, notifications, overview,
+bars, popouts, launcher, lock screen, settings, notifications, app switcher,
 screenshot, magnifier, OSD — not a set of independent components.
 
 **You cannot run this.** There is no compositor in an agent session, so every
@@ -72,8 +72,8 @@ Notifications and clipboard are popout cards, not their own windows.
 
 The rest: a launcher that is a **renderer only** — ranking, providers and
 actions live in `phi query`, and its modes are data; a lock screen on
-`ext-session-lock` with native PAM and a selectable ambient backdrop; a window
-overview unified with Alt+Tab; home-built screenshot, OCR and QR with
+`ext-session-lock` with native PAM and a selectable ambient backdrop; an app
+switcher unified with Alt+Tab; home-built screenshot, OCR and QR with
 `wf-recorder` for video; a native floating image window; the AI agent panel;
 the settings panel; toasts; OSD; magnifier; cursor spotlight; and a desktop
 context menu.
