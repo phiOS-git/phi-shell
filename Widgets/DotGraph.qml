@@ -39,7 +39,7 @@ Item {
 
         onPaint: {
             const ctx = getContext("2d")
-            ctx.reset()
+            ctx.clearRect(0, 0, width, height)
             const step = root._dot + root._gap
             const cols = Math.floor((width + root._gap) / step)
             const rows = Math.floor((height + root._gap) / step)

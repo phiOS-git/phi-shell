@@ -128,6 +128,7 @@ Singleton {
         if (!values) return false
         for (let i = 0; i < values.length; i++) {
             const t = values[i]
+            if (!t.address) continue
             const cls = String((t.wayland && t.wayland.appId) || t.title || "").toLowerCase()
             if (cls.length === 0) continue
             for (let j = 0; j < needles.length; j++) {

@@ -16,8 +16,9 @@ import qs.Config as Config
 // (Config.Paths.spotlightPrefsFile), not `phi state`'s closed scalar set. The
 // pre-existing `spotlight.size` phi-state key is read once as a seed so an
 // existing choice carries over. Hold-to-show, not a persistent toggle:
-// show()/hide() are hyprland.lua's SUPER+G press / bare-g release binds;
-// toggle() is kept for the settings Toggle.
+// show()/hide() come from shell.qml's spotlight IPC, which Hyprland's Super
+// binds drive (press Super twice and hold); toggle() is kept for the settings
+// Toggle.
 
 Singleton {
     id: root

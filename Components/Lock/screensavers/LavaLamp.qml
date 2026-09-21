@@ -109,7 +109,7 @@ Item {
 
         onPaint: {
             const ctx = getContext("2d")
-            ctx.reset()
+            ctx.clearRect(0, 0, width, height)
             const wax = root._wax()
             const solid = Qt.rgba(wax.r, wax.g, wax.b, root.intensity)
             const rim = Qt.rgba(wax.r, wax.g, wax.b, root.intensity * 0.4)
