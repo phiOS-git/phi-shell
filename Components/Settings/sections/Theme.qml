@@ -892,7 +892,7 @@ Column {
     // --- Cursor spotlight --------------------------------------
     Modules.SettingsGroup {
         title: "Cursor spotlight"
-        caption: "Hold Super+G to show it; the toggle here is sticky. Dim and flashlight dim the screen around a clear circle; crosshair and ring just mark the pointer and never dim."
+        caption: "Double-press Super and hold to show it; the toggle here is sticky. Dim and flashlight dim the screen around a clear circle; crosshair and ring just mark the pointer and never dim."
 
         Modules.SettingsRow {
             optionId: "theme.spotlight"

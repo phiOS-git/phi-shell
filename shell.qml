@@ -179,6 +179,24 @@ ShellRoot {
         function toggle(): void {
             Services.Spotlight.toggle();
         }
+        // Super pressed twice within a quarter motion-A period and held shows
+        // the spotlight; releasing Super hides it (hyprland.lua.tmpl).
+        property real _lastSuperDown: 0
+        property bool _bySuper: false
+        function superDown(): void {
+            const now = Date.now();
+            if (now - _lastSuperDown < Config.Appearance.motionAPeriod / 4) {
+                _bySuper = true;
+                Services.Spotlight.show();
+            }
+            _lastSuperDown = now;
+        }
+        function superUp(): void {
+            if (_bySuper) {
+                _bySuper = false;
+                Services.Spotlight.hide();
+            }
+        }
     }
 
     Tools.Screenshot {

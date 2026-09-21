@@ -5,8 +5,8 @@ import Quickshell.Wayland
 import qs.Config as Config
 import qs.Services as Services
 
-// A cursor-locator overlay. `shown` is driven by Services/Spotlight (Super+G
-// hold, or the settings toggle); the effect and its options are also on that
+// A cursor-locator overlay. `shown` is driven by Services/Spotlight (Super pressed
+// twice and held, or the settings toggle); the effect and its options are on that
 // singleton. The dim/flashlight vignette is a SMALL Canvas "sprite" (a radial
 // gradient, transparent centre → solid scrim rim) painted ONCE and only
 // re-painted when a size/intensity option changes, never on cursor movement —
