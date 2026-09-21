@@ -1,5 +1,6 @@
 pragma Singleton
 import Quickshell
+import Quickshell.Io
 import Quickshell.Services.Mpris
 
 // Thin wrapper over Quickshell.Services.Mpris — the one file outside Config/
