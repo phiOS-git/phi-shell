@@ -230,7 +230,7 @@ Item {
     function _clipboardMenuItems(entry) {
         const pinned = Services.Clipboard.isPinned(entry.id)
         return [
-            { label: "Restore", onActivated: () => {
+            { label: "Copy", onActivated: () => {
                 Services.Clipboard.restore(entry.id, entry.mime)
                 Services.BarPopout.hide()
             } },
