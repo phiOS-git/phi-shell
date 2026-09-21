@@ -3,15 +3,15 @@ import Quickshell.Io
 import qs.Config as Config
 
 // Lists installed freedesktop sound names (/usr/share/sounds/freedesktop/
-// stereo/*.oga) as a row of selectable chips, rather than asking the user to
-// type a name from memory into a bare TextField. Tapping one both selects it
-// AND plays it once, so picking is also previewing. `committed(name)` fires on
+// stereo/*.oga) in a Select dropdown, rather than asking the user to type a
+// name from memory into a bare TextField. Picking one both selects it AND
+// plays it once, so picking is also previewing. `committed(name)` fires on
 // selection, the same controlled-component shape every other picker in this
 // library uses (Toggle, ColorField, …) — the caller still owns the real value
 // and its own persistence.
 //
 // The freedesktop set is a real package (sound-theme-freedesktop) that may not
-// be installed — an empty scan just means an empty chip row, not an error; the
+// be installed — an empty scan just hides the dropdown, not an error; the
 // caller's own custom-path fallback (a plain TextField, kept alongside this)
 // still works from a bare path either way.
 
@@ -44,21 +44,13 @@ Column {
         }
     }
 
-    Flow {
-        width: parent.width
-        spacing: root.gap
-
-        Repeater {
-            model: root._names
-            StyledButton {
-                required property string modelData
-                label: modelData
-                active: root.value === modelData
-                onClicked: {
-                    root.committed(modelData)
-                    root.previewed(modelData)
-                }
-            }
+    Select {
+        visible: root._names.length > 0
+        options: root._names
+        value: root.value
+        onActivated: (name) => {
+            root.committed(name)
+            root.previewed(name)
         }
     }
 
