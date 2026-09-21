@@ -58,7 +58,7 @@ Column {
 
         Modules.SettingsRow {
             title: "Play a sound on arrival"
-            description: "Silent during Do Not Disturb and for muted apps, like the toast."
+            description: "Silent during Do Not Disturb and for muted apps."
             Widgets.Toggle {
                 checked: Services.Notifications.soundEnabled
                 onToggled: (v) => Services.Notifications.setSoundEnabled(v)
@@ -66,7 +66,7 @@ Column {
         }
         Modules.SettingsRow {
             title: "Sound"
-            description: "Pick an installed sound — tapping one previews it. Or give an absolute path to a custom audio file below."
+            description: "Picking a sound plays it. Or give an absolute path below."
             wide: true
             Column {
                 width: parent.width
@@ -120,7 +120,7 @@ Column {
         Modules.SettingsRow {
             wide: true
             title: "Keep history for"
-            description: "Notifications older than this are cleared automatically, on start and hourly. Forever keeps everything."
+            description: "Older notifications are cleared automatically."
             Column {
                 width: parent.width
                 spacing: root.gap
@@ -155,7 +155,7 @@ Column {
         }
         Modules.SettingsRow {
             title: "Toast duration"
-            description: "Seconds a toast stays on screen. 0 follows each notification's own timeout."
+            description: "0 follows each notification's own timeout."
             Widgets.NumberField {
                 value: Services.Notifications.toastSeconds
                 step: 1; suffix: " s"; from: 0; to: 60
@@ -224,7 +224,7 @@ Column {
         Modules.SettingsRow {
             optionId: "notifications.chroma"
             title: "Keyboard blink on notification"
-            description: "Mirrors the Chroma integration toggle in the Devices section — one value."
+            description: "The same setting as Devices › Chroma."
             Widgets.Toggle {
                 checked: Services.Chroma.integrations.notifications === true
                 onToggled: (v) => Services.Chroma.setIntegration("notifications", v)
@@ -255,7 +255,7 @@ Column {
         Modules.SettingsRow {
             advanced: true
             title: "Ringtone"
-            description: "Pick an installed sound — tapping one previews it. Loops until dismissed. Or give an absolute path below."
+            description: "Picking a sound plays it; it loops until dismissed. Or give an absolute path below."
             wide: true
             Column {
                 width: parent.width
