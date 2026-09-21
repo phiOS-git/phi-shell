@@ -75,6 +75,8 @@ Item {
     readonly property bool keyboardFocus: activeFocus
 
     signal activated()
+    // Right-click: a module's quick toggle, never its popout.
+    signal secondaryActivated()
 
     // Screen x of this button's RIGHT edge, so a popout can hang directly
     // under it instead of in the corner. Guarded: mapToItem(null) can throw
@@ -337,6 +339,14 @@ Item {
         // release tolerance is correct for a mouse too.
         margin: root.paddingV
         onTapped: root.activated()
+    }
+
+    TapHandler {
+        enabled: root.enabled && !root.loading
+        acceptedButtons: Qt.RightButton
+        gesturePolicy: TapHandler.ReleaseWithinBounds
+        margin: root.paddingV
+        onTapped: root.secondaryActivated()
     }
 
     // Same keyboard-activation fix as Widgets/StyledButton.qml. Every consumer

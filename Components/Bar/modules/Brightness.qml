@@ -51,6 +51,7 @@ Widgets.Segment {
     }
 
     onActivated: Services.BarPopout.toggle("brightness", root.rightX())
+    onSecondaryActivated: Services.NightShift.setEnabled(!Services.NightShift.enabled)
 
     Component.onCompleted: {
         Services.Brightness.refresh()

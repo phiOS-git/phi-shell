@@ -61,4 +61,5 @@ Widgets.Segment {
     }
 
     onActivated: Services.BarPopout.toggle("volume", root.rightX())
+    onSecondaryActivated: Services.AudioBridge.toggleMute()
 }

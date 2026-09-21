@@ -88,4 +88,5 @@ Widgets.Segment {
     }
 
     onActivated: Services.BarPopout.toggle("battery", root.rightX())
+    onSecondaryActivated: Services.PowerBridge.setBatterySaverActive(!Services.PowerBridge.batterySaverActive)
 }

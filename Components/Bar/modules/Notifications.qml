@@ -30,6 +30,7 @@ Widgets.Segment {
     tone: root.hasPending ? "info" : ""
 
     onActivated: Services.BarPopout.toggleNotifications()
+    onSecondaryActivated: Services.Notifications.toggleDnd()
 
     property real dndAmount: 0
     Behavior on dndAmount {
