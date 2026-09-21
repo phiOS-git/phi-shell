@@ -176,9 +176,10 @@ PanelWindow {
     }
     
     // Auto-hidden while the active window on this screen is fullscreen, with
-    // an edge-reveal on hover. The window keeps its geometry always, so
-    // hoverHandler can still catch a pointer at the screen edge while hidden;
-    // only exclusiveZone and the content's `y` change.
+    // an edge-reveal on hover. Hyprland draws a fullscreen window above the
+    // Top layer, so the bar moves to Overlay meanwhile; while hidden its input
+    // shrinks to `revealEdge`, so it catches the pointer at the screen edge
+    // without swallowing clicks meant for the fullscreen window.
     readonly property var _activeToplevel: Services.ToplevelBridge.activeToplevel
     // Manual loop, not `.includes()`: `screens` is a QList Q_PROPERTY and not
     // every Array method is guaranteed on how Qt marshals it into JS.
@@ -212,6 +213,15 @@ PanelWindow {
     // every tiled window and reflow back on unlock. Only the content's `y`
     // reacts to the wider `concealed` condition.
     exclusiveZone: bar.autoHidden ? 0 : bar.height
+    WlrLayershell.layer: bar.activeIsFullscreenHere ? WlrLayer.Overlay : WlrLayer.Top
+    mask: Region { item: bar.autoHidden ? revealEdge : barContent }
+
+    Item {
+        id: revealEdge
+        width: parent.width
+        height: Math.max(1, Config.Appearance.borderWidthStrong)
+        y: bar.edge === "top" ? 0 : parent.height - height
+    }
 
     // Covers the PanelWindow itself, which stays pinned at its edge and never
     // moves, so "hover near the edge" works for both top and bottom bars from
@@ -222,7 +232,9 @@ PanelWindow {
     
     Item {
         id: barContent
-        anchors.fill: parent
+        // Sized, not anchored: anchors would override the `y` slide below.
+        width: parent.width
+        height: parent.height
         // A bottom bar slides down (+height), the mirror of the top bar's
         // -height: both move the content clear toward the edge it belongs to.
         y: bar.concealed ? (bar.edge === "top" ? -bar.height : bar.height) : 0
