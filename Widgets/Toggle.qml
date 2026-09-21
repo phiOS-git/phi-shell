@@ -2,19 +2,16 @@ import QtQuick
 import qs.Config as Config
 import "WidgetStates.js" as WidgetStates
 
-// The standard two-state switch: a rectangular track at radius-small with a
-// square knob that slides left (off) → right (on). The B&W grammar is
-// unchanged: the on-state is a full inversion (WidgetStates.surfaceColors
-// "active" → track inverts to the opposite colour, knob takes the main
-// colour), so an on Toggle reads as inverted exactly like every other active
-// control. `active` in the shared state model is `checked`. Controlled
-// component, not self-mutating: a tap emits toggled(!checked) and leaves
-// `checked` untouched — every caller binds `checked` to an external source of
-// truth (a Services/*.qml singleton's reactive property) and flips it from
-// `onToggled`. Assigning `checked` here would drop that binding on the first
-// tap. The design scale's space tokens are non-linear past space4
-// (1,2,3,4,6,8ch) — `space5` names the FIFTH step, not "5ch". `space4` (4ch)
-// against the 2ch (`space2`) height gives the track its 2:1 ratio.
+// Two-state switch: track at radius-small, knob slides left (off) / right
+// (on). On/off differ only in the track's fill — neutral off, `accent` on
+// (see WidgetStates.js's "toggle" ambient) — knob and borders stay one
+// colour, opacity is 1 except disabled (WidgetStates.INACTIVE_OPACITY).
+// Controlled component: a tap emits toggled(!checked), never assigns
+// `checked` — every caller binds it to an external source of truth and
+// flips it from `onToggled`. `pressed` is left out of resolvedState below
+// so a bare press can't recolour the track ahead of `checked` itself
+// flipping. `space4` (4ch) against `space2`'s height (2ch) gives the track
+// its 2:1 ratio.
 
 Item {
     id: root
@@ -30,13 +27,15 @@ Item {
     signal toggled(bool checked)
 
     readonly property string resolvedState: WidgetStates.resolve({
-        enabled: root.enabled, hovered: root.hovered, pressed: root.pressed,
+        enabled: root.enabled, hovered: root.hovered,
+        pressed: false, // see header: a bare press must not recolour the track
         active: root.checked, keyboardFocus: root.keyboardFocus,
         loading: root.loading, invalid: root.invalid
     })
-    // See WidgetStates.js's own "toggle" ambient branch for why a plain B&W
-    // panel inversion wasn't enough here.
-    readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState, "toggle")
+    // `checked` is also passed straight through — WidgetStates.js's "toggle"
+    // ambient needs it even where resolvedState alone (disabled, loading)
+    // would hide it.
+    readonly property var stateColors: WidgetStates.surfaceColors(Config.Appearance, resolvedState, "toggle", root.checked)
 
     // design/tokens.common.sh stores space-N in `ch`, not px — see
     // WidgetStates.js's chToPixels() comment.
@@ -56,18 +55,21 @@ Item {
 
     readonly property real _inset: Math.max(1, Config.Appearance.borderWidthStrong)
     readonly property real _knob: height - _inset * 2
+    // Hover widens the knob toward its direction of travel instead of
+    // recolouring it (fill/border stay constant). A named fraction of the
+    // knob's own size — a quarter is clearly visible with slack to spare.
+    readonly property real _hoverGrowRatio: 0.25
+    readonly property real _knobWidth: root._knob + (root.hovered ? root._knob * root._hoverGrowRatio : 0)
 
-    // Track colour, track border colour, knob position and knob colour all
-    // read the identical `Config.Appearance.motionBDuration`/`motionBCurve`
-    // pair below, so they stay in lockstep if that token ever changes.
+    // Track fill, track border, knob position/size and knob fill all share
+    // the same motion-B duration/curve, so they move in lockstep.
     Rectangle {
         id: track
         anchors.fill: parent
         radius: Config.Appearance.radiusSmall
         color: root.stateColors.bg
-        // The hairline token, not the bulkier generic one — see
-        // WidgetStates.js's "toggle" ambient for the matching border-colour
-        // change.
+        // Hairline token, not the bulkier generic one — see WidgetStates.js's
+        // "toggle" ambient for why this stays one colour across on and off.
         border.width: Config.Appearance.borderWidthStrong
         border.color: root.stateColors.border
 
@@ -80,17 +82,29 @@ Item {
 
         Rectangle {
             id: knob
-            width: root._knob
+            // Reads root._knobWidth, not own width, so x/width stay in
+            // lockstep and the resting edge never drifts mid-transition.
+            width: root._knobWidth
             height: root._knob
             radius: Config.Appearance.radiusSmall
             y: root._inset
-            x: root.checked ? parent.width - width - root._inset : root._inset
+            x: root.checked ? parent.width - root._knobWidth - root._inset : root._inset
             color: root.stateColors.fg
+            // Stroke, not just a fill — see WidgetStates.js's "toggle"
+            // ambient for why the knob needs one to stay legible on `accent`.
+            border.width: root._inset
+            border.color: root.stateColors.border
 
             Behavior on x {
                 NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
             }
+            Behavior on width {
+                NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+            }
             Behavior on color {
+                ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+            }
+            Behavior on border.color {
                 ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
             }
         }

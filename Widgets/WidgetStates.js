@@ -65,59 +65,38 @@ function resolve(flags) {
 //     hairline (barButtonBorder), so each control reads as a discrete
 //     button on the wallpaper. The selected state is the same
 //     opposite-bg / main-text inversion a panel uses.
-function surfaceColors(appearance, resolvedState, ambient) {
-    // ambient: "toggle" — Widgets/Toggle's own on/off switch. The generic
-    // B&W full-inversion look every other selectable/active control here
-    // shares (a StyledButton's `active`, a Segment's `active`, a settings
-    // tab) means "this is the current selection" — a different semantic
-    // than a binary preference switch's own "on", and sharing one look for
-    // both made a checked Toggle hard to tell from an unchecked one at a
-    // glance, since the track is only 2:1 and both states drew the exact
-    // same border colour. On now fills solid with `accent` — this shell's
-    // one Tier-2 colour, otherwise reserved for a real semantic threshold,
-    // same reasoning `ambient: "isle"`'s own `active` case below already
-    // gives for reaching for accent over B&W inversion to show the
-    // selected state — with the knob in `accentText` (the token already
-    // built to read against accent, ThemeOverrides-aware).
+function surfaceColors(appearance, resolvedState, ambient, checked) {
+    // ambient: "toggle" — Widgets/Toggle's own on/off switch. `checked`
+    // decides the track's fill alone: `offBg` off, `accent` — this shell's
+    // one Tier-2 colour, otherwise reserved for a real semantic threshold —
+    // on. Every other value here (knob fill/border, track border) stays the
+    // same token regardless of `checked`, except "invalid", so on/off reads
+    // as one colour change. `resolvedState` alone can't carry that: "disabled"
+    // and "loading" outrank "active" in resolve(), so a disabled-but-on
+    // control (Night Shift under a schedule) still shows accent, dimmed.
+    // Hover has no colour step of its own — the knob's hover affordance is
+    // geometric (Toggle.qml).
     //
-    // Two real gotchas to keep in mind if this ever changes:
-    //   - `hover` reads `appearance.colorOpposite` for fg/border, not
-    //     `colorMain` — `colorMain` is NOT an ink colour, it's
-    //     `root.background` itself (`panelBackground` is literally
-    //     `root.colorMain`). Every other ambient's own hover case reaches
-    //     for `colorOpposite` (the real ink token) for exactly this
-    //     "full contrast on hover" purpose.
-    //   - off's track is never literally `"transparent"`: on a dark theme,
-    //     where the panel behind it is itself near-black, a transparent
-    //     track reads as solid black, visually indistinguishable from the
-    //     ON state's own near-black `accentText` knob dominating the right
-    //     side of the (small, 2:1) track. `offWash` (`appearance.panelHover`,
-    //     the same solid background-mixed-toward-ink tint every hover wash
-    //     elsewhere in this shell uses — a genuine solid colour rather than
-    //     an alpha blend, so it never visually depends on whatever sits
-    //     behind the switch) is a permanent, low-emphasis fill instead, and
-    //     never `colorMain` itself, so it can never blend into the very
-    //     panel it sits on.
+    // `offBg` is never literally transparent: on a near-black dark panel a
+    // transparent track is indistinguishable from a resting knob on it. The
+    // knob also needs its own `borderStrong` stroke: `accent` sits as far
+    // from bg-0 as `offBg` sits close to it, so no flat fill reads against
+    // both track colours at once.
     if (ambient === "toggle") {
-        var offWash = appearance.panelHover
+        var offBg = appearance.panelHover
         switch (resolvedState) {
-        case "active":
-            return { bg: appearance.accent, fg: appearance.accentText, border: appearance.accent }
         case "invalid":
-            return { bg: offWash, fg: appearance.error, border: appearance.error }
+            return { bg: offBg, fg: appearance.error, border: appearance.error }
         case "focus":
-            return { bg: offWash, fg: appearance.colorOpposite, border: appearance.focusRing }
-        case "hover":
-            // Border alone reads the dedicated hairline token — `fg` (the
-            // knob) keeps the full-contrast `colorOpposite` needed for
-            // real visibility; the track OUTLINE doesn't need full B&W
-            // contrast too for the switch to read clearly on hover.
-            return { bg: offWash, fg: appearance.colorOpposite, border: appearance.borderStrong }
+            // Reads `checked` too, though unreachable today — "active"
+            // (checked) outranks "focus" in resolve().
+            return { bg: checked ? appearance.accent : offBg,
+                     fg: appearance.colorOpposite, border: appearance.focusRing }
         default:
-            // The resting track outline reads off the actual border-role
-            // token, not the muted-TEXT token, since it's a non-text
-            // stroke.
-            return { bg: offWash, fg: appearance.textMuted, border: appearance.borderStrong }
+            // default/hover/active/loading/disabled all land here and read
+            // the track fill straight off `checked` (see comment above).
+            return { bg: checked ? appearance.accent : offBg,
+                     fg: appearance.colorOpposite, border: appearance.borderStrong }
         }
     }
 
@@ -246,11 +225,11 @@ function surfaceColors(appearance, resolvedState, ambient) {
     // wallpaper/scrim, one of them marked with a solid accent fill. The
     // accent FILL on `active` is a deliberate exception to this shell's
     // usual "accent is fine detail only" rule — the same exception this
-    // file's own `ambient: "toggle"` active case carries, for the same
-    // reason: one real state that has to read at a glance, not a
-    // structural "this is a heading" role. Every other state stays bare
-    // (no resting box at all, unlike `toggle`'s own default, which keeps a
-    // permanent `offWash` fill) — plain icon+text on the wallpaper,
+    // file's own `ambient: "toggle"` carries for its own checked/on fill,
+    // for the same reason: one real state that has to read at a glance,
+    // not a structural "this is a heading" role. Every other state stays
+    // bare (no resting box at all, unlike `toggle`'s own off state, which
+    // keeps a permanent `offBg` fill) — plain icon+text on the wallpaper,
     // nothing boxed.
     //
     // The caller (PowerActionsRow.qml) passes its own real keyboard-focus
