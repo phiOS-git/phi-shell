@@ -26,9 +26,10 @@ Singleton {
     property real ramPercent: 0
     property real cpuPercent: 0
     property real cpuTempC: 0
-    property real diskUsedPercent: 0
-    property string diskFree: ""
-    property string diskTotal: ""
+    // One entry per real mounted filesystem: { mount, usedPercent, free,
+    // total } (free/total in GiB). Pseudo and boot mounts are dropped, and a
+    // device mounted more than once (Btrfs subvolumes) is listed once.
+    property var disks: []
 
     readonly property int capacity: 40
     property var cpuSamples: []
@@ -63,18 +64,28 @@ Singleton {
             "awk '/MemTotal/{t=$2} /MemAvailable/{a=$2} END{printf \"MEM_TOTAL=%d\\nMEM_AVAIL=%d\\n\", t, a}' /proc/meminfo",
             "awk '/^cpu /{printf \"CPU_IDLE=%d\\nCPU_TOTAL=%d\\n\", $5, $2+$3+$4+$5+$6+$7+$8}' /proc/stat",
             "cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null | awk '{printf \"CPU_TEMP=%d\\n\", $1/1000}'",
-            "df -P / | awk 'NR==2{printf \"DISK_USED_PCT=%d\\nDISK_FREE=%.1f\\nDISK_TOTAL=%.1f\\n\", substr($5,1,length($5)-1), $4/1024/1024, $2/1024/1024}'",
+            "df -P -x tmpfs -x devtmpfs -x efivarfs -x overlay -x squashfs 2>/dev/null | awk 'NR>1 && $6 !~ /^\\/(boot|efi|run|proc|sys|dev)(\\/|$)/ && !seen[$1]++ {printf \"DISK=%s|%d|%.1f|%.1f\\n\", $6, substr($5,1,length($5)-1), $4/1024/1024, $2/1024/1024}'",
         ].join("; ")]
         onExited: poll.running = false
         stdout: StdioCollector {
             onStreamFinished: {
                 const vals = {}
+                const disks = []
                 const lines = this.text.split("\n")
                 for (let i = 0; i < lines.length; i++) {
                     const eq = lines[i].indexOf("=")
                     if (eq < 0) continue
-                    vals[lines[i].slice(0, eq)] = lines[i].slice(eq + 1)
+                    const key = lines[i].slice(0, eq)
+                    const value = lines[i].slice(eq + 1)
+                    if (key === "DISK") {
+                        const f = value.split("|")
+                        if (f.length === 4) disks.push({ mount: f[0], usedPercent: parseFloat(f[1]),
+                            free: f[2] + " GiB", total: f[3] + " GiB" })
+                    } else {
+                        vals[key] = value
+                    }
                 }
+                root.disks = disks
 
                 const memTotal = parseFloat(vals.MEM_TOTAL)
                 const memAvail = parseFloat(vals.MEM_AVAIL)
@@ -102,10 +113,6 @@ Singleton {
                     root.cpuTempSamples = root._push(root.cpuTempSamples, temp)
                 }
 
-                const diskPct = parseFloat(vals.DISK_USED_PCT)
-                if (!isNaN(diskPct)) root.diskUsedPercent = diskPct
-                if (vals.DISK_FREE) root.diskFree = vals.DISK_FREE + " GiB"
-                if (vals.DISK_TOTAL) root.diskTotal = vals.DISK_TOTAL + " GiB"
             }
         }
     }

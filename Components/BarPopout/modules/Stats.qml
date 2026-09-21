@@ -4,7 +4,7 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../../../Widgets/Format.js" as Format
 
-// Bar/modules/Stats.qml's card: network, disk, RAM/CPU/GPU usage, CPU temp +
+// Bar/modules/Stats.qml's card: network, RAM/CPU/GPU/disk usage, CPU temp +
 // fan profiles, GPU temp, and a "More details" btop launcher.
 
 Widgets.StaggerReveal {
@@ -38,7 +38,7 @@ Widgets.StaggerReveal {
     Widgets.OverlaySection {
         width: parent.width
         Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Network" }
-        Widgets.AreaChart {
+        Widgets.DotGraph {
             width: parent.width
             height: root.chWidth * 5
             values: Services.NetStats.downSamples
@@ -54,25 +54,7 @@ Widgets.StaggerReveal {
         }
     }
 
-    // --- disk usage -------------------------------------------------------
-    Widgets.OverlaySection {
-        width: parent.width
-        Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Disk" }
-        Widgets.Meter {
-            width: parent.width
-            value: Services.SysStats.diskUsedPercent / 100
-            fillColor: Config.Appearance.textPrimary
-        }
-        Widgets.StyledText {
-            kind: "label"; sizeStep: 0
-            text: Math.round(Services.SysStats.diskUsedPercent) + "% used"
-                + (Services.SysStats.diskFree.length > 0
-                    ? " · " + Services.SysStats.diskFree + " free of " + Services.SysStats.diskTotal
-                    : "")
-        }
-    }
-
-    // --- RAM / CPU / GPU usage --------------------------------------------
+    // --- RAM / CPU / GPU / disk usage --------------------------------------
     Widgets.OverlaySection {
         width: parent.width
         Widgets.StyledText { kind: "title"; sizeStep: 0; text: "Usage" }
@@ -93,13 +75,25 @@ Widgets.StaggerReveal {
             value: Services.GpuStats.utilPercent / 100
             fillColor: Config.Appearance.textPrimary
         }
+        Repeater {
+            model: Services.SysStats.disks
+            Column {
+                required property var modelData
+                width: parent.width
+                Widgets.ListRow {
+                    thin: true; width: parent.width; label: modelData.mount
+                    value: Math.round(modelData.usedPercent) + "% · " + modelData.free + " free"
+                }
+                Widgets.Meter { width: parent.width; value: modelData.usedPercent / 100; fillColor: Config.Appearance.textPrimary }
+            }
+        }
     }
 
     // --- CPU temp + graph + fan profiles -----------------------------------
     Widgets.OverlaySection {
         width: parent.width
         Widgets.StyledText { kind: "title"; sizeStep: 0; text: "CPU" }
-        Widgets.AreaChart {
+        Widgets.DotGraph {
             width: parent.width
             height: root.chWidth * 5
             values: Services.SysStats.cpuTempSamples
@@ -144,10 +138,12 @@ Widgets.StaggerReveal {
         width: parent.width
         visible: Config.Capabilities.nvidiaGpu
         Widgets.StyledText { kind: "title"; sizeStep: 0; text: "GPU" }
-        Widgets.AreaChart {
+        Widgets.DotGraph {
             width: parent.width
             height: root.chWidth * 5
             values: Services.GpuStats.tempSamples
+            // Mirrors the CPU graph above, as btop does.
+            direction: "down"
             maxHint: 100
         }
         Widgets.StyledText { kind: "label"; sizeStep: 0; text: Services.GpuStats.tempC + "°C" }
