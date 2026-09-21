@@ -154,6 +154,15 @@ Column {
             }
         }
         Modules.SettingsRow {
+            title: "Toast duration"
+            description: "Seconds a toast stays on screen. 0 follows each notification's own timeout."
+            Widgets.NumberField {
+                value: Services.Notifications.toastSeconds
+                step: 1; suffix: " s"; from: 0; to: 60
+                onCommitted: (v) => Services.Notifications.setToastSeconds(v)
+            }
+        }
+        Modules.SettingsRow {
             title: "Clear now"
             Widgets.StyledButton {
                 label: "Clear all notifications"
