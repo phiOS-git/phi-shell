@@ -387,7 +387,46 @@ PanelWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     mono: true
                     sizeStep: 2
-                    text: root.inputPrefix
+                    // The Φ slot is drawn by prefixGlyph; a space keeps the width.
+                    text: " " + root.inputPrefix.slice(1)
+                }
+
+                // Φ, or the locked tag's glyph in its colour, crossfading.
+                Item {
+                    id: prefixGlyph
+                    readonly property string tagGlyph: Prefixes.glyph(root.lockedPrefix)
+                    property string shownTagGlyph: ""
+                    onTagGlyphChanged: if (tagGlyph.length > 0) shownTagGlyph = tagGlyph
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: glyphMetrics.width
+                    height: prefixLabel.height
+                    TextMetrics {
+                        id: glyphMetrics
+                        font.family: Config.Appearance.fontMono
+                        font.pixelSize: Config.Appearance.fontSize2
+                        text: root.inputPrefix.charAt(0)
+                    }
+                    Widgets.StyledText {
+                        anchors.centerIn: parent
+                        mono: true
+                        sizeStep: 2
+                        text: root.inputPrefix.charAt(0)
+                        opacity: prefixGlyph.tagGlyph.length > 0 ? 0 : 1
+                        Behavior on opacity {
+                            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                        }
+                    }
+                    Widgets.StyledIcon {
+                        anchors.centerIn: parent
+                        sizeStep: 2
+                        glyph: prefixGlyph.shownTagGlyph
+                        color: Prefixes.color(Config.Appearance, root.lockedPrefix)
+                        opacity: prefixGlyph.tagGlyph.length > 0 ? 1 : 0
+                        Behavior on opacity {
+                            NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                        }
+                    }
                 }
 
                 // Locked keyword chip: filled-rounded-rect (like result selection),

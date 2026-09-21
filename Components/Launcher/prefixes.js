@@ -20,19 +20,26 @@
 // narrower rule about what StyledText's own `tone` property accepts, not
 // a ban on using the accent token elsewhere.
 var PREFIXES = [
-    { key: "web",     label: "Web",       tone: "info" },
-    { key: "wiki",    label: "Wikipedia", tone: "info" },
-    { key: "yt",      label: "YouTube",   tone: "info" },
-    { key: "arch",    label: "Arch Wiki", tone: "info" },
-    { key: "rddt",    label: "Reddit",    tone: "info" },
-    { key: "ask",     label: "Ask AI",    tone: "accent" },
-    { key: "math",    label: "Math",      tone: "accent" },
-    { key: "convert", label: "Convert",   tone: "accent" },
-    { key: "file",    label: "File",      tone: "success" },
-    { key: "app",     label: "App",       tone: "success" },
-    { key: "run",     label: "Run",       tone: "success" },
-    { key: "phi",     label: "phi",       tone: "warn" },
+    { key: "web",     label: "Web",       tone: "info", glyph: 0xF059F },
+    { key: "wiki",    label: "Wikipedia", tone: "info", glyph: 0xF05AC },
+    { key: "yt",      label: "YouTube",   tone: "info", glyph: 0xF05C3 },
+    { key: "arch",    label: "Arch Wiki", tone: "info", glyph: 0xF303 },
+    { key: "rddt",    label: "Reddit",    tone: "info", glyph: 0xF044D },
+    { key: "ask",     label: "Ask AI",    tone: "accent", glyph: 0xF167A },
+    { key: "math",    label: "Math",      tone: "accent", glyph: 0xF00EC },
+    { key: "convert", label: "Convert",   tone: "accent", glyph: 0xF04E1 },
+    { key: "file",    label: "File",      tone: "success", glyph: 0xF0224 },
+    { key: "app",     label: "App",       tone: "success", glyph: 0xF003B },
+    { key: "run",     label: "Run",       tone: "success", glyph: 0xF018D },
+    { key: "phi",     label: "phi",       tone: "warn", glyph: 0 },
 ]
+
+// The runner's Φ becomes the locked tag's glyph (Nerd Font codepoints; 0
+// keeps Φ, as the `phi` tag does).
+function glyph(key) {
+    var p = find(key)
+    return p && p.glyph ? String.fromCodePoint(p.glyph) : ""
+}
 
 function find(key) {
     for (var i = 0; i < PREFIXES.length; i++) {
