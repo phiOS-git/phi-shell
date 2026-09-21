@@ -14,7 +14,7 @@ import qs.Services as Services
 // HiDPI screen. The rest of the screen is four plain scrim Rectangles that
 // resize to tile around the sprite square, so moving the cursor only updates
 // x/y/width/height bindings on GPU- composited items, no CPU repaint at all.
-// Crosshair / ring effects are 1-2 Rectangles and never dim. WlrLayer.Overlay,
+// Crosshair / ring effects are plain Rectangles and never dim. WlrLayer.Overlay,
 // mapped only while shown, so it comes up ABOVE an already-open
 // settings/notification/chat panel (all also Overlay). The lock screen
 // (WlSessionLock, a different protocol) still wins. `mask: Region {}` is fully
@@ -129,10 +129,13 @@ PanelWindow {
         // sprite: painted once; requestPaint() only on option change.
         Canvas {
             id: sprite
-            width: vig.outer * 2
+            // Whole pixels: a Canvas backing store rounds its size down, so a
+            // fractional size or position leaves an unpainted (lit) last row
+            // and column between the sprite and the scrim bands.
+            width: Math.ceil(vig.outer * 2)
             height: width
-            x: vig.cx - width / 2
-            y: vig.cy - height / 2
+            x: Math.round(vig.cx - width / 2)
+            y: Math.round(vig.cy - height / 2)
             onPaint: {
                 const ctx = getContext("2d")
                 ctx.clearRect(0, 0, width, height)
@@ -181,35 +184,64 @@ PanelWindow {
     Component { id: flashlightComponent; Vignette { hard: true; cx: root.cursorX; cy: root.cursorY } }
 
     // --- crosshair: two hairlines, no dim -----------------------------
+    // Each line is two-tone — a text-colour core over a background-colour
+    // outline — so it stays visible on light and dark content alike.
     Component {
         id: crosshairComponent
         Item {
             id: xh
             anchors.fill: parent
+            opacity: Services.Spotlight.crosshairOpacity / 100
             readonly property int th: Services.Spotlight.crosshairThickness
-            readonly property color lineColor: Qt.rgba(Config.Appearance.textPrimary.r,
-                Config.Appearance.textPrimary.g, Config.Appearance.textPrimary.b,
-                Services.Spotlight.crosshairOpacity / 100)
+            readonly property int outline: Math.max(1, Config.Appearance.borderWidth)
+            readonly property int outer: xh.th + xh.outline * 2
             Rectangle {
-                x: root.cursorX - xh.th / 2; y: 0
-                width: xh.th; height: xh.height
-                color: xh.lineColor
+                x: Math.round(root.cursorX - xh.outer / 2); y: 0
+                width: xh.outer; height: xh.height
+                color: Config.Appearance.colorMain
             }
             Rectangle {
-                x: 0; y: root.cursorY - xh.th / 2
+                x: 0; y: Math.round(root.cursorY - xh.outer / 2)
+                width: xh.width; height: xh.outer
+                color: Config.Appearance.colorMain
+            }
+            Rectangle {
+                x: Math.round(root.cursorX - xh.th / 2); y: 0
+                width: xh.th; height: xh.height
+                color: Config.Appearance.textPrimary
+            }
+            Rectangle {
+                x: 0; y: Math.round(root.cursorY - xh.th / 2)
                 width: xh.width; height: xh.th
-                color: xh.lineColor
+                color: Config.Appearance.textPrimary
             }
         }
     }
 
     // --- ring: a stroked circle, no dim -------------------------------
+    // Closes once from ringRadius onto the cursor each time the overlay gets
+    // its first position, then stays gone. Motion A: cursor-tracking feedback.
     Component {
         id: ringComponent
         Item {
+            id: ringItem
             anchors.fill: parent
+            property real progress: 0   // 1 → 0 as the ring closes
+            NumberAnimation {
+                id: ringShrink
+                target: ringItem; property: "progress"
+                from: 1; to: 0
+                duration: Config.Appearance.motionAPeriod
+                easing.type: Easing.Linear
+            }
+            Connections {
+                target: root
+                function onHasPositionChanged() { if (root.hasPosition) ringShrink.restart() }
+            }
+            Component.onCompleted: if (root.hasPosition) ringShrink.restart()
             Rectangle {
-                width: Services.Spotlight.ringRadius * 2
+                visible: ringItem.progress > 0
+                width: Services.Spotlight.ringRadius * 2 * ringItem.progress
                 height: width
                 radius: width / 2
                 x: root.cursorX - width / 2
