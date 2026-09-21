@@ -84,7 +84,7 @@ Widgets.StaggerReveal {
                     label: "Network"
                     value: Services.WifiBridge.connected ? Services.WifiBridge.ssid : "not connected"
                 }
-                Widgets.AreaChart {
+                Widgets.DotGraph {
                     width: parent.width
                     height: root.chWidth * 5
                     values: Services.NetStats.downSamples

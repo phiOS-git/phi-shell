@@ -129,7 +129,7 @@ Column {
             Column {
                 width: parent.width
                 spacing: root._gap
-                Widgets.AreaChart {
+                Widgets.DotGraph {
                     width: parent.width
                     height: root._ch * 6
                     values: Services.NetStats.downSamples

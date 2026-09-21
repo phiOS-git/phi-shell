@@ -29,7 +29,7 @@ Column {
         width: parent.width
         active: root.active
     }
-    Widgets.AreaChart {
+    Widgets.DotGraph {
         width: parent.width
         height: root.chWidth * 5
         values: Services.NetStats.downSamples
