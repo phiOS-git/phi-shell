@@ -41,10 +41,18 @@ Item {
         anchors.right: toggle.left
         anchors.rightMargin: Config.Appearance.space2 * root.chWidth
         anchors.verticalCenter: parent.verticalCenter
+
+        // The label is part of the switch: hover previews it, a click flips it.
+        HoverHandler {
+            id: labelHover
+            cursorShape: Qt.PointingHandCursor
+        }
+        TapHandler { onTapped: if (toggle.enabled) root.toggled(!root.checked) }
     }
 
     Toggle {
         id: toggle
+        labelHovered: labelHover.hovered
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         checked: root.checked

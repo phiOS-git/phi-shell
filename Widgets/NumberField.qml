@@ -23,6 +23,8 @@ Row {
 
     signal committed(real value)
 
+    function forceEditFocus() { field.forceEditFocus() }
+
     spacing: WidgetStates.chToPixels(Config.Appearance.space1, chWidth)
 
     TextMetrics {

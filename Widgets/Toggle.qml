@@ -20,7 +20,10 @@ Item {
     property bool loading: false
     property bool invalid: false
 
-    readonly property bool hovered: hoverHandler.hovered
+    // Set by a label bound to this switch (ToggleRow, SettingsRow) so hovering
+    // the label previews the switch's own hover.
+    property bool labelHovered: false
+    readonly property bool hovered: hoverHandler.hovered || root.labelHovered
     readonly property bool pressed: tapHandler.pressed
     readonly property bool keyboardFocus: activeFocus
 

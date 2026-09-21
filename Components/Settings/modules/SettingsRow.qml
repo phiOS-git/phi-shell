@@ -132,6 +132,23 @@ Item {
             width: parent.width
             text: root.title
             elide: Text.ElideRight
+
+            // The title labels a single switch or field in the slot: hover
+            // previews the switch, a click flips it or focuses the field.
+            HoverHandler {
+                id: titleHover
+                enabled: root._labelled !== null
+                cursorShape: Qt.PointingHandCursor
+            }
+            TapHandler {
+                enabled: root._labelled !== null
+                onTapped: {
+                    const c = root._labelled
+                    if (!c.enabled) return
+                    if (c.labelHovered !== undefined) c.toggled(!c.checked)
+                    else c.forceEditFocus()
+                }
+            }
         }
         Widgets.StyledText {
             visible: root.description.length > 0
@@ -156,6 +173,22 @@ Item {
     // under the label when `wide`. Only `right` + `top` are anchored — the
     // width is explicit either way, so nothing ever gets an `undefined` anchor
     // or an `undefined` (→ NaN) width.
+    // The slot's control when it is one switch (Toggle) or one field
+    // (TextField, NumberField); null otherwise.
+    readonly property var _labelled: {
+        const c = slot.children.length === 1 ? slot.children[0] : null
+        if (c === null) return null
+        if (c.labelHovered !== undefined && c.checked !== undefined) return c
+        if (typeof c.forceEditFocus === "function") return c
+        return null
+    }
+    Binding {
+        when: root._labelled !== null && root._labelled.labelHovered !== undefined
+        target: root._labelled
+        property: "labelHovered"
+        value: titleHover.hovered
+    }
+
     Item {
         id: slot
         anchors.right: parent.right
