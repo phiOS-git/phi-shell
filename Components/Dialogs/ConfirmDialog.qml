@@ -28,6 +28,10 @@ PanelWindow {
 
     Services.LayerFocus { target: root }
 
+    // Keyboard starts on Cancel, the safe choice: Tab cycles the buttons and
+    // Enter/Space activate the focused one.
+    onShownChanged: if (root.shown) Qt.callLater(() => cancelButton.forceActiveFocus())
+
     Widgets.Scrim {
         anchors.fill: parent
         shown: root.shown
@@ -111,6 +115,7 @@ PanelWindow {
                         onClicked: Services.ConfirmDialog.confirm()
                     }
                     Widgets.StyledButton {
+                        id: cancelButton
                         label: Services.ConfirmDialog.cancelLabel
                         Keys.onReturnPressed: clicked()
                         Keys.onEscapePressed: Services.ConfirmDialog.cancel()

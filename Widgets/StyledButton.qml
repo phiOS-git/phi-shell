@@ -88,6 +88,9 @@ Item {
     TapHandler {
         id: tapHandler
         enabled: root.enabled && !root.loading
+        // Same as Widgets/Segment.qml: the default DragThreshold cancels a
+        // finger tap that drifts a few pixels, so touch presses never click.
+        gesturePolicy: TapHandler.ReleaseWithinBounds
         onTapped: root.clicked()
     }
 

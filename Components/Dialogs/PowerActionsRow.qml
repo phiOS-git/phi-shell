@@ -153,6 +153,8 @@ Row {
             }
             TapHandler {
                 id: tapHandler
+                // See Widgets/Segment.qml: the default policy drops touch taps.
+                gesturePolicy: TapHandler.ReleaseWithinBounds
                 onTapped: root.chosen(pill.modelData)
             }
             Keys.onReturnPressed: root.chosen(pill.modelData)
