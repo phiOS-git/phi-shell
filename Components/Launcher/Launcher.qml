@@ -77,6 +77,11 @@ PanelWindow {
     }
     readonly property real inputPrefixWidth: prefixMetrics.width
 
+    // `ask` questions run long: the field wraps and grows up to this many
+    // lines, then scrolls with the cursor.
+    readonly property bool _askMode: root.lockedPrefix === "ask"
+    readonly property int askMaxLines: 6
+
     // PanelWindow has no opacity; fade lives on fadeRoot instead (see
     // Components/Toast.qml). visible stays true until fade-out finishes.
     visible: root.shown || fadeRoot.opacity > 0
@@ -378,13 +383,24 @@ PanelWindow {
             Item {
                 id: inputRow
                 width: parent.width
-                height: searchField.implicitHeight
+                height: root._askMode
+                    ? Math.min(searchField.implicitHeight, prefixMetrics.height * root.askMaxLines)
+                    : searchField.implicitHeight
+                clip: root._askMode
                 visible: root.atRoot
+
+                // The first text line: prompt, tag chip and clear glyph centre on it,
+                // so they stay on the top line when an `ask` question wraps.
+                Item {
+                    id: firstLine
+                    width: parent.width
+                    height: prefixMetrics.height
+                }
 
                 Widgets.StyledText {
                     id: prefixLabel
                     anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.verticalCenter: firstLine.verticalCenter
                     mono: true
                     sizeStep: 2
                     // The Φ slot is drawn by prefixGlyph; a space keeps the width.
@@ -398,7 +414,7 @@ PanelWindow {
                     property string shownTagGlyph: ""
                     onTagGlyphChanged: if (tagGlyph.length > 0) shownTagGlyph = tagGlyph
                     anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.verticalCenter: firstLine.verticalCenter
                     width: glyphMetrics.width
                     height: prefixLabel.height
                     TextMetrics {
@@ -436,7 +452,7 @@ PanelWindow {
                     visible: root.lockedPrefix.length > 0
                     anchors.left: prefixLabel.right
                     anchors.leftMargin: visible ? root.chWidth * Config.Appearance.space2 : 0
-                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.verticalCenter: firstLine.verticalCenter
                     width: visible ? chipBg.width : 0
                     height: chipBg.height
                     clip: true
@@ -493,7 +509,7 @@ PanelWindow {
                     glyph: "×"
                     sizeStep: 2
                     anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.verticalCenter: firstLine.verticalCenter
                     color: clearHover.hovered ? Config.Appearance.textPrimary : Config.Appearance.textMuted
                     Behavior on color {
                         ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
@@ -513,7 +529,14 @@ PanelWindow {
                     anchors.leftMargin: root.inputPrefixWidth + (prefixChip.visible ? prefixChip.width + prefixChip.anchors.leftMargin : 0)
                     anchors.right: clearGlyph.visible ? clearGlyph.left : parent.right
                     anchors.rightMargin: clearGlyph.visible ? root.chWidth * Config.Appearance.space1 : 0
-                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.verticalCenter: root._askMode ? undefined : parent.verticalCenter
+                    // With `ask`, long questions wrap; past the row's line limit the field
+                    // shifts up to keep the cursor's line in view.
+                    y: root._askMode
+                        ? Math.max(inputRow.height - height,
+                            Math.min(0, inputRow.height - cursorRectangle.y - cursorRectangle.height))
+                        : 0
+                    wrapMode: root._askMode ? TextInput.WrapAtWordBoundaryOrAnywhere : TextInput.NoWrap
                     font.family: Config.Appearance.fontMono
                     font.pixelSize: Config.Appearance.fontSize2
                     color: Config.Appearance.textPrimary
