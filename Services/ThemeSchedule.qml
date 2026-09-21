@@ -9,6 +9,11 @@ import qs.Config as Config
 // shape like NightShift.qml (off/auto/custom, fixed default, no location).
 // Tracks _appliedVariant (not variant) to avoid re-running phi theme set on
 // every tick or racing mid-switch. Manual override disabled when schedule active.
+// scheduleMode also has an outside writer: a confirmed `phi theme set` turns
+// theme.schedule off itself (internal/theme.ScheduleConfirm in the phi repo)
+// so a manual override sticks instead of being flipped back at the next
+// boundary — scheduleFile below watches that same file so this process
+// notices without a restart.
 
 Singleton {
     id: root
@@ -74,6 +79,33 @@ Singleton {
             proc.running = false
             if (exitCode === 0) root._appliedVariant = proc._target
             else console.warn("phi-shell: scheduled phi theme set failed, exit " + exitCode)
+        }
+    }
+
+    // Watches Paths.themeScheduleFile directly (not Config.Settings, which
+    // only ever does one-shot process-spawn reads) — same mechanism as
+    // Config/Colors.qml's own watchChanges FileView, needed for the same
+    // reason: this file has a writer outside this process. Guarded by
+    // _loadedCount so a change picked up before the initial bootstrap below
+    // has finished only updates scheduleMode, never calls _evaluateSchedule
+    // early against scheduleStartHour/EndHour still at their defaults.
+    FileView {
+        id: scheduleFile
+        path: Config.Paths.themeScheduleFile
+        watchChanges: true
+        // watchChanges alone only fires fileChanged, not loaded — reload()
+        // forces the re-read (same pairing Config/Colors.qml uses).
+        onFileChanged: scheduleFile.reload()
+        onLoaded: {
+            const v = scheduleFile.text().trim()
+            if ((v === "off" || v === "auto" || v === "custom") && v !== root.scheduleMode) {
+                root.scheduleMode = v
+                if (root._loadedCount >= 3) root._evaluateSchedule()
+            }
+        }
+        onLoadFailed: function (error) {
+            // Normal until theme.schedule is set for the first time —
+            // scheduleMode stays at its "off" default.
         }
     }
 

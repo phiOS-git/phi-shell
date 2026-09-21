@@ -56,6 +56,12 @@ Singleton {
 
     // Theme token overrides. Owned by Config/ThemeOverrides.qml.
     readonly property string themeOverridesFile: root.stateDir + "/theme-overrides.json"
+    // `phi state`'s own flat-file-per-key mapping for theme.schedule (dot
+    // replaced with dash, phi/internal/state's own filename() rule) — not a
+    // JSON blob like the others here, a bare "off"/"auto"/"custom" plus a
+    // trailing newline. Watched directly by Services/ThemeSchedule.qml so a
+    // `phi theme set` run outside this process is noticed live.
+    readonly property string themeScheduleFile: root.stateDir + "/theme-schedule"
     // Lock screen ambient-effect choice.
     readonly property string lockPrefsFile: root.stateDir + "/lock.json"
     // Bar clock format prefs.
