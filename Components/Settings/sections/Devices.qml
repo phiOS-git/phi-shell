@@ -91,7 +91,6 @@ Column {
 
         Modules.SettingsRow {
             title: "Output device"
-            description: "The system default sink. Switching takes effect immediately."
             wide: true
             DeviceList {
                 devices: Services.AudioBridge.sinks
@@ -141,7 +140,6 @@ Column {
 
         Modules.SettingsRow {
             title: "Input device"
-            description: "The system default source. Monitor loopbacks are hidden."
             wide: true
             DeviceList {
                 devices: Services.AudioBridge.sources
@@ -231,7 +229,6 @@ Column {
 
         Modules.SettingsRow {
             title: "Show the charge percentage in the status bar"
-            description: "The battery icon otherwise carries the value only as a fill, with the number a click away in its own overlay."
             Widgets.Toggle {
                 checked: Services.PowerBridge.showPercentInBar
                 onToggled: (v) => Services.PowerBridge.setShowPercentInBar(v)
@@ -239,7 +236,6 @@ Column {
         }
         Modules.SettingsRow {
             title: "Play a sound when the charger is plugged in"
-            description: "Fires once per plug-in event."
             Widgets.Toggle {
                 checked: Services.PowerBridge.chargingSoundEnabled
                 onToggled: (v) => Services.PowerBridge.setChargingSoundEnabled(v)
@@ -247,7 +243,7 @@ Column {
         }
         Modules.SettingsRow {
             title: "Sound"
-            description: "Pick an installed sound — tapping one previews it. Or give an absolute path below."
+            description: "Picking a sound plays it. Or give an absolute path below."
             wide: true
             Column {
                 width: parent.width
@@ -291,7 +287,7 @@ Column {
         // the user sees).
         Modules.SettingsRow {
             title: "Warn threshold"
-            description: "A full-screen alert appears when the battery drops below this level while unplugged."
+            description: "A full-screen alert below this level while unplugged."
             Widgets.NumberField {
                 value: Math.round(Services.PowerBridge.alertWarnThreshold * 100)
                 step: 1; suffix: "%"; from: 1; to: 100
@@ -300,7 +296,7 @@ Column {
         }
         Modules.SettingsRow {
             title: "Danger threshold"
-            description: "A more urgent version of the same alert appears at this even lower level."
+            description: "A more urgent alert at this lower level."
             Widgets.NumberField {
                 value: Math.round(Services.PowerBridge.alertDangerThreshold * 100)
                 step: 1; suffix: "%"; from: 1; to: 100
@@ -309,7 +305,6 @@ Column {
         }
         Modules.SettingsRow {
             title: "Test alert"
-            description: "Shows the full-screen alert without waiting for the battery to actually drop."
             Row {
                 spacing: root.gap
                 Widgets.StyledButton {
@@ -350,7 +345,6 @@ Column {
 
         Modules.SettingsRow {
             title: "Lighting"
-            description: "Master on/off for the keyboard backlight."
             Widgets.Toggle {
                 checked: Services.Chroma.enabled
                 onToggled: (v) => Services.Chroma.setEnabled(v)
@@ -360,7 +354,7 @@ Column {
         Modules.SettingsRow {
             optionId: "devices.chroma.color"
             title: "Static colour"
-            description: "The base fill. Every key is this colour unless an override or an integration paints over it."
+            description: "Every key's colour unless overridden."
             wide: true
             Widgets.ColorField {
                 value: Services.Chroma.color
@@ -371,7 +365,6 @@ Column {
         Modules.SettingsRow {
             optionId: "devices.chroma.advanced"
             title: "Per-key colours"
-            description: "Give individual keys their own fixed colour. Solid colour only — no lighting animation."
             Widgets.Toggle {
                 checked: Services.Chroma.advanced
                 onToggled: (v) => Services.Chroma.setAdvanced(v)
@@ -446,7 +439,6 @@ Column {
             optionId: "devices.chroma.integrations"
             wide: true
             title: "Integrations"
-            description: "Small behaviours layered over the base colour. Each stays off until you turn it on."
             Column {
                 width: parent.width
                 spacing: root.gap

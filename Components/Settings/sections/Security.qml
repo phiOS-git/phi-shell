@@ -137,7 +137,7 @@ Column {
 
         Modules.SettingsRow {
             title: "Clear clipboard history"
-            description: "Deletes every clipboard entry except pinned ones. This cannot be undone."
+            description: "Pinned entries are kept. Cannot be undone."
             Widgets.StyledButton {
                 label: "Clear history"
                 onClicked: Services.ConfirmDialog.open({
@@ -172,7 +172,8 @@ Column {
         }
         Modules.SettingsRow {
             title: "Camera"
-            description: "No camera device backend exists yet — this toggle records the choice, it does not gate hardware access yet."
+            description: "Placeholder: records the choice but does not gate the camera yet."
+            descriptionTone: "warn"
             Widgets.Toggle {
                 checked: Services.SensorPermissions.cameraEnabled
                 onToggled: (v) => Services.SensorPermissions.setCameraEnabled(v)
@@ -181,7 +182,7 @@ Column {
 
         Modules.SettingsRow {
             title: "Permission rules"
-            description: "Apps you've granted \"Always\" or \"Never\" to. Ask-every-time apps have no rule and aren't listed."
+            description: "Apps with an Always or Never rule."
             wide: true
             Column {
                 width: parent.width
@@ -215,7 +216,7 @@ Column {
 
         Modules.SettingsRow {
             title: "Preview the permission prompt"
-            description: "Sends a one-off test request — not a real app, just exercises the dialog end to end."
+            description: "Shows the permission prompt for a test request."
             Row {
                 spacing: root.gap
                 Widgets.SmallButton {

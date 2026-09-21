@@ -16,6 +16,8 @@ Item {
     property string optionId: ""
     property string title: ""
     property string description: ""
+    // "warn" for a description reporting a placeholder or unfinished feature.
+    property string descriptionTone: ""
     property bool resettable: false
     property bool wide: false
     // Advanced rows out of layout unless search matches (search never hides).
@@ -156,6 +158,7 @@ Item {
             wrapMode: Text.WordWrap
             kind: "label"
             sizeStep: 0
+            tone: root.descriptionTone
             text: root.description
         }
 

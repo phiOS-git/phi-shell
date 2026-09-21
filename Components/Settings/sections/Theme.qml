@@ -595,7 +595,6 @@ Column {
         Modules.SettingsRow {
             optionId: "theme.schedule"
             title: "Schedule"
-            description: "Switch dark and light automatically instead of by hand."
             wide: true
             Row {
                 spacing: root.gap
@@ -741,11 +740,11 @@ Column {
         TokenNumberRow { tokenKey: "radius-large"; title: "Radius, large (runner)"; step: 1; suffix: "px"; from: 0; to: 24 }
         TokenNumberRow {
             tokenKey: "panel-gap"; title: "Panel gap"; step: 1; suffix: "px"; from: 0; to: 24
-            description: "Inset the notification and chat docks, the calendar and the bar popouts keep from the bar and the screen edges."
+            description: "Gap between floating panels and the bar or screen edges."
         }
         TokenNumberRow {
             tokenKey: "panel-radius"; title: "Panel corner radius"; step: 1; suffix: "px"; from: 0; to: 24
-            description: "Corner rounding of those same below-the-bar surfaces."
+            description: "Corner rounding of floating panels."
         }
         // Not a TokenNumberRow/ThemeOverrides value like its siblings — those
         // only ever affect phi-shell's own rendering, but this one has to
@@ -756,7 +755,7 @@ Column {
         Modules.SettingsRow {
             optionId: "theme.shape.terminal-padding"
             title: "Terminal window padding"
-            description: "kitty's own window_padding_width. Applies to new windows; already-open ones pick it up on their next theme re-render."
+            description: "Applies to new kitty windows."
             Widgets.NumberField {
                 value: Services.Terminal.padding
                 step: 4; suffix: "px"; from: 0; to: 120
@@ -822,7 +821,6 @@ Column {
         }
         Modules.SettingsRow {
             title: "Schedule"
-            description: "Turn night shift on and off automatically instead of by hand."
             wide: true
             Row {
                 spacing: root.gap
@@ -899,7 +897,6 @@ Column {
         Modules.SettingsRow {
             optionId: "theme.spotlight"
             title: "Cursor spotlight"
-            description: "Locate the pointer on a large or busy screen."
             Widgets.Toggle {
                 checked: Services.Spotlight.shown
                 onToggled: (v) => (v ? Services.Spotlight.show() : Services.Spotlight.hide())
@@ -1003,7 +1000,7 @@ Column {
         Modules.SettingsRow {
             optionId: "theme.magnifier"
             title: "Magnifier loupe"
-            description: "A circular lens on the pointer. Super+Z toggles it; Super + = / Super + - change zoom, Super+Shift + those the lens size (Super+scroll too, where supported)."
+            description: "Super+Z toggles it. Super + = / - zoom; with Shift, the lens size."
             Widgets.Toggle {
                 checked: Services.Magnifier.shown
                 onToggled: (v) => (v ? Services.Magnifier.show() : Services.Magnifier.hide())
@@ -1036,7 +1033,6 @@ Column {
 
         Modules.SettingsRow {
             title: "12-hour clock"
-            description: "Show the bar clock as 1-12 with AM/PM instead of 0-23."
             Widgets.Toggle {
                 checked: Config.ClockPrefs.hour12
                 onToggled: (v) => Config.ClockPrefs.setHour12(v)
@@ -1051,7 +1047,7 @@ Column {
         }
         Modules.SettingsRow {
             title: "Date"
-            description: "Adds the date before the time in the bar. Short is day/month (13/09); long adds the weekday name and year (Sat 13 Sep 2026)."
+            description: "Short: 13/09. Long: Sat 13 Sep 2026."
             Row {
                 spacing: root.gap
                 Repeater {
@@ -1080,7 +1076,6 @@ Column {
         optionId: "theme.lockscreen"
         Modules.SettingsRow {
             title: "Screensaver"
-            description: "The backdrop behind the lock screen."
             wide: true
             Flow {
                 width: parent.width
@@ -1111,7 +1106,6 @@ Column {
         Modules.SettingsRow {
             visible: Config.LockPrefs.effect !== "none"
             title: "Speed"
-            description: "Applies to whichever screensaver is selected above."
             Widgets.NumberField {
                 value: Config.LockPrefs.speed
                 from: 0.25; to: 3.0; step: 0.25; decimals: 2
@@ -1122,7 +1116,6 @@ Column {
         Modules.SettingsRow {
             visible: Config.LockPrefs.effect !== "none"
             title: "Intensity"
-            description: "Specific to the currently-selected effect — Matrix and Lava lamp are deliberately faint by default, Starfield and Plasma are not."
             Widgets.NumberField {
                 // Plain binding: QML tracks property reads through function
                 // calls, so this re-evaluates correctly on either property
@@ -1141,7 +1134,7 @@ Column {
         Modules.SettingsRow {
             visible: Config.LockPrefs.effect === "lava"
             title: "Lava lamp"
-            description: "More blobs read as a denser, busier field. Wobble scales how much each blob squashes/stretches and drifts sideways as it rises."
+            description: "Wobble spreads the blob sizes."
             // The default compact layout right-aligns a content-sized slot
             // sized for ONE small control. This row's slot holds a whole
             // Column of label+field pairs (Blob count, Wobble), so it needs
@@ -1173,7 +1166,6 @@ Column {
         Modules.SettingsRow {
             visible: Config.LockPrefs.effect === "matrix"
             title: "Matrix"
-            description: "Column density — higher packs the columns closer together."
             Widgets.NumberField {
                 value: Config.LockPrefs.paramFor("matrix", "density", 1.0)
                 from: 0.4; to: 2.0; step: 0.2; decimals: 1; suffix: "×"
@@ -1183,7 +1175,6 @@ Column {
         Modules.SettingsRow {
             visible: Config.LockPrefs.effect === "starfield"
             title: "Starfield"
-            description: "How many points drift across the field at once."
             Widgets.NumberField {
                 value: Config.LockPrefs.paramFor("starfield", "starCount", 140)
                 from: 30; to: 400; step: 10
@@ -1193,7 +1184,7 @@ Column {
         Modules.SettingsRow {
             visible: Config.LockPrefs.effect === "plasma"
             title: "Plasma"
-            description: "Grid resolution — higher is finer detail at a higher redraw cost."
+            description: "Higher is finer and costs more to draw."
             Widgets.NumberField {
                 value: Config.LockPrefs.paramFor("plasma", "resolution", 1.0)
                 from: 0.5; to: 2.0; step: 0.25; decimals: 2; suffix: "×"
@@ -1203,7 +1194,7 @@ Column {
         Modules.SettingsRow {
             visible: Config.LockPrefs.effect === "life"
             title: "Life"
-            description: "Grid resolution changes the cell size; seed density is how much of the board starts alive when a generation is (re)seeded."
+            description: "Seed density is how much of the board starts alive."
             // Same overflow, same fix as the Lava lamp row above.
             wide: true
             Column {
@@ -1232,7 +1223,6 @@ Column {
         Modules.SettingsRow {
             visible: Config.LockPrefs.effect === "boids"
             title: "Boids"
-            description: "How many boids flock together."
             Widgets.NumberField {
                 value: Config.LockPrefs.paramFor("boids", "boidCount", 40)
                 from: 10; to: 120; step: 5
@@ -1534,7 +1524,6 @@ Column {
         Modules.SettingsRow {
             optionId: "theme.wallpaper.color"
             title: "Solid colour"
-            description: "The base layer beneath the image."
             Widgets.ColorField {
                 value: Services.Background.color
                 onCommitted: (hex) => Services.Background.setColor(hex)
@@ -1594,7 +1583,6 @@ Column {
         Modules.SettingsRow {
             optionId: "theme.wallpaper.image"
             title: "Image"
-            description: "An image over the solid colour."
             wide: true
             Column {
                 width: parent.width
@@ -1732,7 +1720,6 @@ Column {
         Modules.SettingsRow {
             optionId: "theme.wallpaper.dynamic"
             title: "Dynamic wallpaper"
-            description: "Rotate the wallpaper by time of day and season."
             Widgets.Toggle {
                 checked: Services.DynamicWallpaper.enabled
                 onToggled: (v) => Services.DynamicWallpaper.setEnabled(v)

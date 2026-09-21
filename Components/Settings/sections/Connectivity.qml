@@ -51,7 +51,6 @@ Column {
 
         Modules.SettingsRow {
             title: "Adapter"
-            description: "Turn the radio on or off."
             Widgets.Toggle {
                 checked: Services.BluetoothBridge.adapterEnabled
                 onToggled: (v) => Services.BluetoothBridge.setEnabled(v)
@@ -164,7 +163,7 @@ Column {
             shown: !vpnGroup.hasTunnels
             Modules.SettingsRow {
                 title: "Tunnel"
-                description: "No WireGuard tunnels found. Import a .conf below, or bring one up with wg-quick."
+                description: "No WireGuard tunnels. Import a .conf below."
                 Widgets.Toggle { checked: false; enabled: false }
             }
         }
@@ -216,7 +215,7 @@ Column {
         Modules.SettingsRow {
             wide: true
             title: "Import a config"
-            description: "Copies the .conf into ~/.config/phi/wireguard (0600, outside every repo). The private key stays on this machine."
+            description: "Copied to ~/.config/phi/wireguard, readable only by you."
             Column {
                 width: parent.width
                 spacing: root._gap
