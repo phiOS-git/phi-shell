@@ -22,7 +22,7 @@ PanelWindow {
     onRecordingChanged: Services.ScreenshotState.recording = root.recording
 
     anchors { top: true; bottom: true; left: true; right: true }
-    // Raise to Overlay + exclusiveZone -1 (like Overview) to cover status bar.
+    // Raise to Overlay + exclusiveZone -1 (like AppSwitcher) to cover status bar.
     exclusiveZone: -1
     color: "transparent"
     visible: root.selecting || root.resultText.length > 0

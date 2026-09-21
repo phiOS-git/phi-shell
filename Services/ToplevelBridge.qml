@@ -4,7 +4,7 @@ import Quickshell.Wayland
 
 // Thin wrapper over Quickshell.Wayland's ToplevelManager — the one file
 // outside Config/ allowed to touch this service surface. Every consumer
-// (Components/Overview.qml, ...) reads this, never Quickshell.Wayland
+// (Components/AppSwitcher.qml, ...) reads this, never Quickshell.Wayland
 // directly.
 //
 // wlr-foreign-toplevel-management (cross-compositor), not Quickshell.Hyprland:

@@ -17,7 +17,7 @@ import qs.Widgets as Widgets
 // HyprlandWorkspace method, not a HyprlandToplevel one; focusing a window goes
 // through Services.HyprlandBridge.focusWindow() instead. Icon resolution: the
 // same DesktopEntries.heuristicLookup(wmClass) + Quickshell.iconPath(...) pair
-// Components/Overview.qml uses. A window whose class resolves no desktop entry
+// Components/AppSwitcher.qml uses. A window whose class resolves no desktop entry
 // falls back to a single glyph-less initial letter — the text IS the icon
 // content, not text next to an icon.
 

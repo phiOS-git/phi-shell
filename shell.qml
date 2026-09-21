@@ -63,7 +63,7 @@ ShellRoot {
         screen: Quickshell.screens[0]
     }
 
-    Components.Overview {
+    Components.AppSwitcher {
         screen: Quickshell.screens[0]
     }
 

@@ -676,7 +676,7 @@ PanelWindow {
 
                             // Hover moves keyboard highlight to match (conventional for
                             // launchers). Enter activates pointer position (unlike
-                            // Overview.qml, which is a tabbed grid).
+                            // AppSwitcher.qml, which is a tabbed grid).
                             HoverHandler {
                                 cursorShape: Qt.PointingHandCursor
                                 onHoveredChanged: if (hovered) root.highlightedIndex = opt.index

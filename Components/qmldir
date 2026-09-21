@@ -15,8 +15,8 @@ Cheatsheet 1.0 Cheatsheet.qml
 Toast 1.0 Toast.qml
 Osd 1.0 Osd.qml
 Background 1.0 Background.qml
-Overview 1.0 Overview.qml
 ImageWindow 1.0 ImageWindow.qml
+AppSwitcher 1.0 AppSwitcher.qml
 
 # TODO : improve imports
 ConfirmDialog 1.0 Dialogs/ConfirmDialog.qml

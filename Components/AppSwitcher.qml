@@ -7,7 +7,7 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 
 // One window-switching surface covering both Alt+Tab and a persistent
-// gesture-opened overview:
+// gesture-opened app switcher:
 //
 //   - Alt+Tab enters the "alttab" Hyprland submap and cycles; releasing Alt
 //     focuses the selection and closes, Escape cancels. That wiring lives in
@@ -71,14 +71,6 @@ PanelWindow {
         function open(): void { root._open(false) }
         function close(): void { root._close() }
         function toggle(): void { root.shown ? root._close() : root._open(false) }
-    }
-
-    // Back-compat: the old "overview" target, for any un-updated bind.
-    IpcHandler {
-        target: "overview"
-        function toggle(): void { root.shown ? root._close() : root._open(false) }
-        function open(): void { root._open(false) }
-        function close(): void { root._close() }
     }
 
     // --- window snapshot --------------------------------------------------
