@@ -15,9 +15,7 @@ import qs.Widgets as Widgets
 // one level down, `.wayland.appId`, on the wrapped Wayland toplevel handle
 // (see `_wmClass`'s own comment below). It also has no `.activate()` that's a
 // HyprlandWorkspace method, not a HyprlandToplevel one; focusing a window goes
-// through `hl.dsp.focus({ window = "address:..." })` over
-// Services.HyprlandBridge.dispatch instead, the same fix
-// Components/Overview.qml's own `_focusWindow` needed. Icon resolution: the
+// through Services.HyprlandBridge.focusWindow() instead. Icon resolution: the
 // same DesktopEntries.heuristicLookup(wmClass) + Quickshell.iconPath(...) pair
 // Components/Overview.qml uses. A window whose class resolves no desktop entry
 // falls back to a single glyph-less initial letter — the text IS the icon
@@ -97,8 +95,11 @@ Item {
                 label: winBtn._iconPath.length > 0 ? "" : winBtn._fallbackLetter
                 iconDelegate: winBtn._iconPath.length > 0 ? iconComponent : null
 
-                onActivated: Services.HyprlandBridge.dispatch(
-                    'hl.dsp.focus({ window = "address:' + winBtn.modelData.address + '" })')
+                // An app icon is an Image, which the isle's accent-text active
+                // state cannot tint, so the focused window gets the accent fill.
+                accentWhenActive: true
+
+                onActivated: Services.HyprlandBridge.focusWindow(winBtn.modelData.address)
 
                 Component {
                     id: iconComponent

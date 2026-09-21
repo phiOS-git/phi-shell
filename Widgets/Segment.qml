@@ -65,9 +65,9 @@ Item {
     // Segment keeps the body size.
     property int sizeStep: root._bar ? 0 : 2
 
-    // The Φ agent segment's active (processing) state is accent, not the B&W
-    // inversion every other selected control uses — the one deliberate
-    // exception, set only by Bar/modules/PhiAgent.qml.
+    // Accent fill for the active state instead of the usual treatment: the Φ
+    // agent segment (processing) and the window list, whose image icons
+    // cannot show the isle's accent-text active state.
     property bool accentWhenActive: false
 
     readonly property bool hovered: hoverHandler.hovered

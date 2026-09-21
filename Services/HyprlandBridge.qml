@@ -112,6 +112,15 @@ Singleton {
         return targetId
     }
 
+    // Quickshell's toplevel `address` comes from Hyprland's event stream,
+    // which omits the `0x` the focus dispatcher requires; hyprctl's JSON
+    // includes it. Accepts either form.
+    function focusWindow(address) {
+        const a = String(address || "")
+        if (a.length === 0) return
+        dispatch('hl.dsp.focus({ window = "address:' + (a.startsWith("0x") ? a : "0x" + a) + '" })')
+    }
+
     function toggleScratchPad() {
         return dispatch('hl.dsp.workspace.toggle_special("scratch")')
     }

@@ -49,8 +49,7 @@ Column {
                     const needle = needles[j]
                     if (cls === needle || cls.indexOf(needle) >= 0 || needle.indexOf(cls) >= 0) {
                         if (t.address && t.address.length > 0) {
-                            Services.HyprlandBridge.dispatch(
-                                'hl.dsp.focus({ window = "address:' + t.address + '" })')
+                            Services.HyprlandBridge.focusWindow(t.address)
                             return
                         }
                     }
