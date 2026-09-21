@@ -34,10 +34,9 @@ Widgets.Separator {
     // the icons/labels either side of it, not a dimmed border shade.
     full: true
 
-    // Matches an isle Segment's own vertical padding (space-1 in ch, halved —
-    // Widgets/Segment.qml's `paddingV`) so the divider spans the full button
-    // height either side of it, rather than floating as a short hairline
-    // inside them.
-    readonly property real _paddingV: Config.Appearance.space1 * chMetrics.width * 0.5
+    // Matches an isle Segment's vertical padding (Widgets/Segment.qml's
+    // `paddingV`, space-1 in ch) so the divider spans the full button height
+    // either side of it, rather than floating as a short hairline.
+    readonly property real _paddingV: Config.Appearance.space1 * chMetrics.width
     implicitHeight: chMetrics.height + _paddingV * 2
 }

@@ -139,6 +139,8 @@ PanelWindow {
             root._front.source = "file://" + want
             return
         }
+        // An interrupted clear may have left the shown image part-faded.
+        root._front.opacity = 1
         root._back.opacity = 0
         root._back.z = 1
         root._front.z = 0
