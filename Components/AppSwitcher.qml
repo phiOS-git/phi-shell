@@ -222,6 +222,17 @@ PanelWindow {
         return -1
     }
 
+    // A three-finger workspace swipe while open changes the real active
+    // workspace without a focus change (an empty workspace has no toplevel to
+    // fire onActiveToplevelChanged), so this is the other half of following
+    // Hyprland: move the view, and the selection if that workspace has a
+    // window.
+    onActiveWorkspaceIdChanged: if (root.shown && root.activeWorkspaceId > 0 && root.activeWorkspaceId !== root.viewedWorkspaceId) {
+        const w = root.windows.find(x => x.wsId === root.activeWorkspaceId)
+        if (w) root.selectedAddress = w.address
+        else root.viewedWorkspaceId = root.activeWorkspaceId
+    }
+
     // The grid's model: root.windows filtered to the viewed workspace, in
     // snapshot order. `groups` and `flat` above still drive Alt+Tab's cycle
     // order across every workspace; only what is drawn changes here.
@@ -230,6 +241,31 @@ PanelWindow {
         for (let i = 0; i < root.windows.length; i++)
             if (root.windows[i].wsId === root.viewedWorkspaceId) out.push(root.windows[i])
         return out
+    }
+
+    // Follows Hyprland's real focus while the surface is open, so a focus
+    // change from outside it (a swipe, a keybind) moves the selection too.
+    Connections {
+        target: Services.HyprlandBridge
+        enabled: root.shown
+        function onActiveToplevelChanged() { root._followSystemFocus() }
+    }
+
+    function _followSystemFocus() {
+        const t = Services.HyprlandBridge.activeToplevel
+        if (!t) return
+        // Quickshell's toplevel address omits the `0x` hyprctl's JSON
+        // carries; strip it from both sides before comparing.
+        const addr = String(t.address || "").replace(/^0x/, "")
+        for (let i = 0; i < root.windows.length; i++) {
+            if (root.windows[i].address.replace(/^0x/, "") === addr) {
+                root.selectedAddress = root.windows[i].address
+                return
+            }
+        }
+        // No match — a window opened after the snapshot. Follow the
+        // workspace at least, since the window itself has no box to select.
+        root.viewedWorkspaceId = root.activeWorkspaceId
     }
 
     // --- open / close / cycle ------------------------------------------
@@ -381,44 +417,62 @@ PanelWindow {
                 Repeater {
                     model: root.viewedWindows
 
-                    Widgets.Panel {
+                    Item {
                         id: box
                         required property var modelData
                         width: root.cellW
                         height: root.cellH
-                        padding: root.chWidth * Config.Appearance.space3
-                        active: box.modelData.address === root.selectedAddress
-                        hovered: boxHover.hovered
+                        // B&W-inversion selection grammar below needs its own
+                        // flag: Panel's `active` alone no longer decides the
+                        // look, since a nested Panel only pads its own
+                        // content — the hit area has to sit outside it.
+                        readonly property bool selected: box.modelData.address === root.selectedAddress
 
                         readonly property var desktopEntry:
                             DesktopEntries.heuristicLookup(box.modelData.cls)
                         readonly property string iconPath: box.desktopEntry !== null
                             ? Quickshell.iconPath(box.desktopEntry.icon, true) : ""
 
-                        Column {
-                            anchors.centerIn: parent
-                            width: parent.width
-                            spacing: root.chWidth * Config.Appearance.space1
+                        Widgets.Panel {
+                            id: boxPanel
+                            anchors.fill: parent
+                            padding: root.chWidth * Config.Appearance.space3
+                            active: box.selected
+                            hovered: boxHover.hovered
+                            // Full B&W inversion for the selected box, not
+                            // Panel's softer default "active" look — this is
+                            // the shell's shared selection grammar.
+                            bgColorOverride: box.selected ? Config.Appearance.colorOpposite : "transparent"
+                            borderColorOverride: box.selected ? Config.Appearance.colorOpposite : "transparent"
 
-                            Image {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                visible: box.iconPath.length > 0
-                                source: box.iconPath
-                                width: root.chWidth * Config.Appearance.space5
-                                height: width
-                                fillMode: Image.PreserveAspectFit
-                            }
-
-                            Widgets.StyledText {
+                            Column {
+                                anchors.centerIn: parent
                                 width: parent.width
-                                horizontalAlignment: Text.AlignHCenter
-                                elide: Text.ElideRight
-                                maximumLineCount: 1
-                                color: box.contentColor
-                                text: box.modelData.title
+                                spacing: root.chWidth * Config.Appearance.space1
+
+                                Image {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    visible: box.iconPath.length > 0
+                                    source: box.iconPath
+                                    width: root.chWidth * Config.Appearance.space5
+                                    height: width
+                                    fillMode: Image.PreserveAspectFit
+                                }
+
+                                Widgets.StyledText {
+                                    width: parent.width
+                                    horizontalAlignment: Text.AlignHCenter
+                                    elide: Text.ElideRight
+                                    maximumLineCount: 1
+                                    color: box.selected ? Config.Appearance.colorMain : boxPanel.contentColor
+                                    text: box.modelData.title
+                                }
                             }
                         }
 
+                        // Siblings of the Panel, not nested in it: Panel routes
+                        // its default content into a padded inner item, which
+                        // would shrink the hit area to less than the full box.
                         HoverHandler { id: boxHover; cursorShape: Qt.PointingHandCursor }
                         TapHandler {
                             onTapped: {
