@@ -89,8 +89,13 @@ Singleton {
     function clearAll() {
         root.history = []
         root._persist()
-        // also release any still-live notifications
-        var live = server.trackedNotifications ? server.trackedNotifications.values : []
+        // also release any still-live notifications. .slice() snapshots the
+        // list first: dismiss()/tracked=false removes that entry from the
+        // live trackedNotifications model as we go, which would shift every
+        // later index and skip every other entry if we walked `values`
+        // in place (the same hazard the closed handler below avoids by
+        // snapshotting root.history before mutating it).
+        var live = server.trackedNotifications ? server.trackedNotifications.values.slice() : []
         for (var i = 0; i < live.length; i++) {
             try { live[i].dismiss() } catch (e) { live[i].tracked = false }
         }
