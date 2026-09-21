@@ -146,7 +146,8 @@ Widgets.Segment {
                     glyph: Glyphs.vpn
                     sizeStep: Math.max(0, root.sizeStep - 1)
                     color: root.contentColor
-                    visible: root.vpnUp
+                    // Kept visible until faded out, so turning off animates too.
+                    visible: opacity > 0
                     opacity: root.vpnAmount
                     Behavior on opacity {
                         NumberAnimation {
@@ -161,7 +162,7 @@ Widgets.Segment {
                     glyph: Glyphs.firewall
                     sizeStep: Math.max(0, root.sizeStep - 1)
                     color: root.contentColor
-                    visible: root.fwUp
+                    visible: opacity > 0
                     opacity: root.fwAmount
                     Behavior on opacity {
                         NumberAnimation {
