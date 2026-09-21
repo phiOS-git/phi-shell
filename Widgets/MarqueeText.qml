@@ -1,9 +1,14 @@
 import QtQuick
 import qs.Config as Config
 
-// Horizontal scrolling text when overflow. Category D motion: slow drift.
-// Timer-driven cycle: leading hold (motionAPeriod), scroll to far-left
-// (duration scaled by overflow), end hold, loop. Text that fits stays static.
+// Horizontal scrolling text when overflow. Category A motion: continuous,
+// linear drift at a constant speed derived from motionAPeriod and the
+// label's own character width — the same motionAPeriod token already used
+// for the holds.
+// Timer-driven cycle: leading hold at rest (motionAPeriod), linear drift to
+// the far end (duration scaled from motionAPeriod and the label's own
+// character width, not overflow distance directly), end hold
+// (motionAPeriod / 2), snap back to rest, loop. Text that fits stays static.
 // TODO: unverified at real frame timing.
 
 Item {
@@ -22,6 +27,18 @@ Item {
     // Label has no width so it overflows freely; scroll drives its x.
     readonly property bool _overflows: root.text.length > 0 && label.implicitWidth > root.width
     readonly property real _dist: Math.max(1, label.implicitWidth - root.width)
+
+    // Average glyph width from the label's own layout (implicit width over
+    // character count) rather than a separate font probe — the label is
+    // already laid out with the real font and text.
+    readonly property real _charWidth: root.text.length > 0
+        ? label.implicitWidth / root.text.length : 1
+
+    // Drift speed, named rather than left as a bare literal in the duration
+    // expression below: one label character crosses per quarter
+    // motion-A period, i.e. ~2.5 characters/second at the default 1600ms
+    // period — slow enough to read as ambient drift rather than a jump.
+    readonly property int _driftPeriodDivisor: 4
 
     // 0=leading hold, 1=scrolling, 2=end hold. Start at 2 so first _sync
     // enters cycle from top.
@@ -50,7 +67,10 @@ Item {
         property: "x"
         from: 0
         to: -root._dist
-        duration: Math.max(1, Config.Appearance.motionDDuration * (root._dist / Math.max(1, root.width)))
+        // Time-per-character (motionAPeriod / _driftPeriodDivisor) times the
+        // number of character-widths the drift has to cover.
+        duration: Math.max(1, root._dist / Math.max(1, root._charWidth)
+            * (Config.Appearance.motionAPeriod / root._driftPeriodDivisor))
         easing.type: Easing.Linear
         onFinished: root._advance()
     }
@@ -67,8 +87,11 @@ Item {
             holdTimer.interval = Config.Appearance.motionAPeriod / 2
             holdTimer.start()
         } else {
-            // End hold done; loop back to leading hold.
+            // End hold done; snap back to rest and hold there again. Reset
+            // here, not only at the top of the scroll — the leading hold has
+            // to be at rest.
             root._phase = 0
+            label.x = 0
             holdTimer.interval = Config.Appearance.motionAPeriod
             holdTimer.start()
         }
