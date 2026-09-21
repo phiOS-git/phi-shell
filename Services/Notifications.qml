@@ -40,12 +40,15 @@ Singleton {
     property string soundName: "message"   // freedesktop theme name, or an absolute path
     property int soundVolume: 100           // 0-100
     property string soundError: ""
+    // Seconds a toast stays up; 0 follows each notification's own timeout.
+    property int toastSeconds: 0
 
     function setRetentionDays(n) {
         root.retentionDays = Math.max(0, Math.round(n))
         root._persistPrefs()
         root._pruneOld()
     }
+    function setToastSeconds(n) { root.toastSeconds = Math.max(0, Math.min(60, Math.round(n))); root._persistPrefs() }
     function setSoundEnabled(b) { root.soundEnabled = !!b; root._persistPrefs() }
     function setSoundName(s) { root.soundName = String(s || "").trim(); root._persistPrefs() }
     function setSoundVolume(n) { root.soundVolume = Math.max(0, Math.min(100, Math.round(n))); root._persistPrefs() }
@@ -236,7 +239,7 @@ Singleton {
         // notification instead of closing it, would otherwise leave
         // activeToast non-null forever — wedging every later toast behind
         // it in toastQueue with no way to advance.
-        toastTimer.interval = next.expireTimeout > 0 ? next.expireTimeout : root.defaultExpireMs
+        toastTimer.interval = root.toastSeconds > 0 ? root.toastSeconds * 1000 : (next.expireTimeout > 0 ? next.expireTimeout : root.defaultExpireMs)
         toastTimer.restart()
     }
 
@@ -263,8 +266,25 @@ Singleton {
     function _persistPrefs() {
         prefsFile.setText(JSON.stringify({
             retentionDays: root.retentionDays,
+            toastSeconds: root.toastSeconds,
             sound: { enabled: root.soundEnabled, name: root.soundName, volume: root.soundVolume }
         }, null, 2))
+    }
+
+    // Invoking the default action is how apps open what the notification is
+    // about; otherwise focus the app's window.
+    function openSource(appName, notification) {
+        if (notification && notification.actions) {
+            const actions = notification.actions
+            for (let i = 0; i < actions.length; i++) {
+                if (actions[i].identifier === "default") {
+                    actions[i].invoke()
+                    return
+                }
+            }
+        }
+        Services.HyprlandBridge.focusApp(
+            [String(appName || "").toLowerCase(), String((notification && notification.desktopEntry) || "").toLowerCase()].filter(s => s.length > 0))
     }
 
     Timer {
@@ -436,6 +456,7 @@ Singleton {
                 const p = JSON.parse(prefsFile.text())
                 if (p && typeof p === "object") {
                     if (typeof p.retentionDays === "number") root.retentionDays = p.retentionDays
+                    if (typeof p.toastSeconds === "number") root.toastSeconds = p.toastSeconds
                     if (p.sound && typeof p.sound === "object") {
                         if (typeof p.sound.enabled === "boolean") root.soundEnabled = p.sound.enabled
                         if (typeof p.sound.name === "string") root.soundName = p.sound.name
