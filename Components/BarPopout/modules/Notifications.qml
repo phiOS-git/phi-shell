@@ -116,6 +116,18 @@ Item {
         try { n.dismiss() } catch (e) { n.tracked = false }
         Services.BarPopout.hide()
     }
+    // Right-click menu on a notification: delete it, or mute its app.
+    function _cardMenu(atItem, appName, remove) {
+        const muted = Services.Notifications.ruleFor(appName).mute
+        const app = appName && appName.length > 0 ? appName : "this app"
+        cardMenu.open(atItem, [
+            { label: "Delete", onActivated: remove },
+            { label: (muted ? "Unmute " : "Mute ") + app,
+              onActivated: () => Services.Notifications.setRule(appName, "mute", !muted) },
+        ])
+    }
+    Widgets.ContextMenu { id: cardMenu }
+
     // Opens what a history entry was about, deletes the entry, closes the card.
     function _openHistory(entry) {
         Services.Notifications.openSource(entry.appName, null)
@@ -259,9 +271,17 @@ Item {
                 model: Services.Notifications.active
 
                 Widgets.Panel {
+                    id: activeCard
                     required property var modelData
                     width: column.width
                     height: activeLayout.implicitHeight + padding * 2
+
+                    TapHandler {
+                        acceptedButtons: Qt.RightButton
+                        onTapped: root._cardMenu(activeLayout, activeCard.modelData.appName, () => {
+                            try { activeCard.modelData.dismiss() } catch (e) { activeCard.modelData.tracked = false }
+                        })
+                    }
 
                     Column {
                         id: activeLayout
@@ -526,6 +546,12 @@ Item {
                                                     required property var modelData
                                                     width: parent.width
                                                     implicitHeight: Math.max(itemSummary.implicitHeight, itemClear.implicitHeight) + root.gap
+
+                                                    TapHandler {
+                                                        acceptedButtons: Qt.RightButton
+                                                        onTapped: root._cardMenu(histRow, histRow.modelData.appName,
+                                                            () => Services.Notifications.clearEntry(histRow.modelData))
+                                                    }
 
                                                     Widgets.StyledText {
                                                         id: itemSummary
