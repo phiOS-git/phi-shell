@@ -16,7 +16,7 @@ import qs.Widgets as Widgets
 //     closes it.
 //   - a click on a window box focuses it and closes; a click on the dim
 //     closes without changing focus.
-//   - a click on a workspace pill PANS the view to that workspace without
+//   - a click on a workspace card PANS the view to that workspace without
 //     closing or touching Hyprland's real focus.
 //
 // The grid draws one workspace at a time — `viewedWorkspaceId`, which panning
@@ -198,7 +198,7 @@ PanelWindow {
     //   - every Alt+Tab cycle and the open-time selection, through
     //     onSelectedAddressChanged, reusing selectedWorkspaceId rather than a
     //     second way to find the selected window's workspace;
-    //   - a workspace-pill click through _panTo(), which sets this directly and
+    //   - a workspace-card click through _panTo(), which sets this directly and
     //     leaves selectedAddress alone.
     //
     // The two can genuinely disagree — panning to workspace 3 while the
@@ -345,7 +345,7 @@ PanelWindow {
             Services.HyprlandBridge.dispatch("hl.dsp.focus({ window = \"address:" + addr + "\" })")
     }
 
-    // A workspace-pill click pans the view: nothing dispatches to Hyprland and
+    // A workspace-card click pans the view: nothing dispatches to Hyprland and
     // nothing closes, only `viewedWorkspaceId` changes. The window-focus path
     // is unaffected — _focusWindow already switches workspace and focuses in
     // one dispatch.
@@ -533,30 +533,72 @@ PanelWindow {
             Repeater {
                 model: Services.HyprlandBridge.workspaces
 
-                Widgets.Segment {
-                    id: wsPill
+                // A card, not a bar pill: bigger, with its own background, a
+                // clear selected state, and its windows as small icons.
+                Item {
+                    id: wsCard
                     required property var modelData
-                    // Matches Bar/modules/Workspaces.qml's own pills — same
-                    // control in two places should look identical.
-                    ambient: "workspace"
-                    widthBoost: wsPill.active ? root.chWidth * Config.Appearance.space2 : 0
-                    squared: true
-                    visible: wsPill.modelData.id > 0
-                    label: wsPill.modelData.name.length > 0
-                        ? wsPill.modelData.name : String(wsPill.modelData.id)
+                    visible: wsCard.modelData.id > 0
                     // Highlights viewedWorkspaceId, what the grid is actually
-                    // showing, not selectedWorkspaceId. The two agree except
-                    // just after a pan; `tone` below is the weaker cue for
-                    // where Hyprland will be if the surface closes without a
-                    // pick.
-                    active: wsPill.modelData.id === root.viewedWorkspaceId
-                    // Folds "really active" into the same pill as a subtler
-                    // signal rather than a second full highlight, which would
-                    // fight for attention in so small a strip. Shown only when
-                    // the two diverge.
-                    tone: (wsPill.modelData.id === root.activeWorkspaceId
-                        && wsPill.modelData.id !== root.viewedWorkspaceId) ? "info" : ""
-                    onActivated: root._panTo(wsPill.modelData.id)
+                    // showing, not selectedWorkspaceId — the two agree except
+                    // just after a pan.
+                    readonly property bool viewed: wsCard.modelData.id === root.viewedWorkspaceId
+                    // Where Hyprland will be if the surface closes without a
+                    // pick, when that differs from what's being viewed.
+                    readonly property bool reallyActive:
+                        wsCard.modelData.id === root.activeWorkspaceId && !wsCard.viewed
+                    readonly property var wins:
+                        root.windows.filter((w) => w.wsId === wsCard.modelData.id)
+                    width: Math.max(root.chWidth * Config.Appearance.space5 * 2,
+                        cardRow.implicitWidth + root.chWidth * Config.Appearance.space2 * 2)
+                    height: root.chWidth * Config.Appearance.space5
+
+                    Widgets.Panel {
+                        anchors.fill: parent
+                        hovered: wsHover.hovered
+                        // Same B&W-inversion grammar as the window boxes;
+                        // "really active" is a subtler accent edge instead.
+                        bgColorOverride: wsCard.viewed ? Config.Appearance.colorOpposite : "transparent"
+                        borderColorOverride: wsCard.viewed
+                            ? Config.Appearance.colorOpposite
+                            : (wsCard.reallyActive ? Config.Appearance.accent : "transparent")
+                    }
+
+                    Row {
+                        id: cardRow
+                        anchors.centerIn: parent
+                        spacing: root.chWidth * Config.Appearance.space1
+
+                        Widgets.StyledText {
+                            mono: true
+                            color: wsCard.viewed ? Config.Appearance.colorMain : Config.Appearance.textPrimary
+                            text: wsCard.modelData.name.length > 0
+                                ? wsCard.modelData.name : String(wsCard.modelData.id)
+                        }
+
+                        Repeater {
+                            model: wsCard.wins
+
+                            Image {
+                                id: winIcon
+                                required property var modelData
+                                // Same DesktopEntries + Quickshell.iconPath
+                                // resolution the window boxes use.
+                                readonly property var desktopEntry:
+                                    DesktopEntries.heuristicLookup(winIcon.modelData.cls)
+                                readonly property string iconPath: winIcon.desktopEntry !== null
+                                    ? Quickshell.iconPath(winIcon.desktopEntry.icon, true) : ""
+                                visible: winIcon.iconPath.length > 0
+                                source: winIcon.iconPath
+                                width: root.chWidth * Config.Appearance.space2
+                                height: width
+                                fillMode: Image.PreserveAspectFit
+                            }
+                        }
+                    }
+
+                    HoverHandler { id: wsHover; cursorShape: Qt.PointingHandCursor }
+                    TapHandler { onTapped: root._panTo(wsCard.modelData.id) }
                 }
             }
         }
