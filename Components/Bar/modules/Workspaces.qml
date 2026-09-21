@@ -76,15 +76,15 @@ Item {
 
         }
 
-        // Scratchpad toggle: no active state (special workspace can read as
-        // active alongside numeric). Lua-call dispatch, not traditional form.
+        // Scratchpad toggle, active while the scratchpad is shown on this
+        // bar's monitor.
         Widgets.Segment {
             ambient: "isle"
             squared: true
             glyph: Glyphs.console
             label: ""
+            active: Services.HyprlandBridge.scratchpadShownOn(root.screen.name)
             onActivated: Services.HyprlandBridge.toggleScratchPad()
-            // .dispatch('hl.dsp.workspace.toggle_special("scratch")')
         }
     }
 }

@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Io
 
 // Thin wrapper over Quickshell.Hyprland — one place if API breaks. Per-monitor
 // filtering is each module's job (compare monitor.name against screen.name).
@@ -123,6 +124,52 @@ Singleton {
 
     function toggleScratchPad() {
         return dispatch('hl.dsp.workspace.toggle_special("scratch")')
+    }
+
+    // Special workspace shown per monitor name ("" when none). Quickshell's
+    // Hyprland model ignores the `activespecial` event, so this reads
+    // Hyprland's event socket directly, seeded once from `hyprctl monitors`.
+    // No reconnect: the shell is started by and lives with Hyprland.
+    property var specialByMonitor: ({})
+
+    function scratchpadShownOn(monitorName) {
+        return root.specialByMonitor[monitorName] === "special:scratch"
+    }
+
+    function _setSpecial(monitorName, workspaceName) {
+        const next = Object.assign({}, root.specialByMonitor)
+        next[monitorName] = workspaceName
+        root.specialByMonitor = next
+    }
+
+    Socket {
+        path: Quickshell.env("XDG_RUNTIME_DIR") + "/hypr/"
+            + Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") + "/.socket2.sock"
+        connected: true
+        // `activespecial>>NAME,MONITOR`; NAME is empty when hidden.
+        parser: SplitParser {
+            onRead: (line) => {
+                if (!line.startsWith("activespecial>>")) return
+                const body = line.substring("activespecial>>".length)
+                const comma = body.lastIndexOf(",")
+                if (comma >= 0) root._setSpecial(body.substring(comma + 1), body.substring(0, comma))
+            }
+        }
+    }
+
+    Process {
+        running: true
+        command: ["hyprctl", "monitors", "-j"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const next = {}
+                    for (const m of JSON.parse(this.text))
+                        next[m.name] = m.specialWorkspace ? m.specialWorkspace.name : ""
+                    root.specialByMonitor = next
+                } catch (e) {}
+            }
+        }
     }
 
 }
