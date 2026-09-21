@@ -122,6 +122,26 @@ Singleton {
         dispatch('hl.dsp.focus({ window = "address:' + (a.startsWith("0x") ? a : "0x" + a) + '" })')
     }
 
+    // Focuses the first toplevel whose app id (or title) matches any needle; shared "focus this app's window" lookup.
+    function focusApp(needles) {
+        const values = root.toplevels ? root.toplevels.values : null
+        if (!values) return false
+        for (let i = 0; i < values.length; i++) {
+            const t = values[i]
+            const cls = String((t.wayland && t.wayland.appId) || t.title || "").toLowerCase()
+            if (cls.length === 0) continue
+            for (let j = 0; j < needles.length; j++) {
+                const n = String(needles[j] || "").toLowerCase()
+                if (n.length === 0) continue
+                if (cls === n || cls.indexOf(n) >= 0 || n.indexOf(cls) >= 0) {
+                    root.focusWindow(t.address)
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
     function toggleScratchPad() {
         return dispatch('hl.dsp.workspace.toggle_special("scratch")')
     }

@@ -37,27 +37,7 @@ Column {
         const needles = []
         if (p.desktopEntry && p.desktopEntry.length > 0) needles.push(p.desktopEntry.toLowerCase())
         if (p.identity && p.identity.length > 0) needles.push(p.identity.toLowerCase())
-        const model = Services.HyprlandBridge.toplevels
-        const values = model ? model.values : null
-        if (values) {
-            for (let i = 0; i < values.length; i++) {
-                const t = values[i]
-                // Real app id is .wayland.appId; title is secondary match source.
-                const cls = String((t.wayland && t.wayland.appId) || t.title || "").toLowerCase()
-                if (cls.length === 0) continue
-                for (let j = 0; j < needles.length; j++) {
-                    const needle = needles[j]
-                    if (cls === needle || cls.indexOf(needle) >= 0 || needle.indexOf(cls) >= 0) {
-                        if (t.address && t.address.length > 0) {
-                            Services.HyprlandBridge.focusWindow(t.address)
-                            return
-                        }
-                    }
-                }
-            }
-        }
-        // No window match; fallback to MPRIS raise().
-        if (p.canRaise) p.raise()
+        if (!Services.HyprlandBridge.focusApp(needles) && p.canRaise) p.raise()
     }
 
     // --- identity / track info ------------------------------------------
