@@ -12,6 +12,11 @@ Singleton {
 
     readonly property int historyLimit: 200
     readonly property var active: server.trackedNotifications
+    // Fallback lifetime when a notification's own expireTimeout is unset
+    // (0 means "server decides" per the spec). Named once and shared by the
+    // real expiry timer below and the toast guard timer, rather than two
+    // independent literals that could drift apart.
+    readonly property int defaultExpireMs: 8000
 
     // activeCount recomputes on insert/remove (binding unreliable). clearAll() zeros.
     property int activeCount: root.active ? root.active.values.length : 0
@@ -214,6 +219,7 @@ Singleton {
     }
 
     function dismissToast() {
+        toastTimer.stop()
         root.activeToast = null
         _advanceQueue()
     }
@@ -223,6 +229,25 @@ Singleton {
         const next = root.toastQueue[0]
         root.toastQueue = root.toastQueue.slice(1)
         root.activeToast = next
+        // Owns the toast's visible lifetime independently of this
+        // notification's own `closed` signal. `closed` is the normal path
+        // (see the connection in onNotification below), but a sender that
+        // never acknowledges the close request, or that replaces this
+        // notification instead of closing it, would otherwise leave
+        // activeToast non-null forever — wedging every later toast behind
+        // it in toastQueue with no way to advance.
+        toastTimer.interval = next.expireTimeout > 0 ? next.expireTimeout : root.defaultExpireMs
+        toastTimer.restart()
+    }
+
+    // One-shot, (re)started by _advanceQueue() for whichever notification is
+    // current. Only ever clears activeToast/advances the queue — never
+    // calls dismiss()/expire(), so it cannot cut the notification's own
+    // lifetime short or drop it from the Active list ahead of schedule.
+    Timer {
+        id: toastTimer
+        repeat: false
+        onTriggered: root.dismissToast()
     }
 
     function _pushHistory(entry) {
@@ -307,7 +332,7 @@ Singleton {
             }
 
             // Every tracked notification expires (DND-silenced never toasts).
-            const timeoutMs = notification.expireTimeout > 0 ? notification.expireTimeout : 8000
+            const timeoutMs = notification.expireTimeout > 0 ? notification.expireTimeout : root.defaultExpireMs
             expireTimerComponent.createObject(root, { targetNotification: notification, delay: timeoutMs })
 
             notification.closed.connect((reason) => {
@@ -321,14 +346,17 @@ Singleton {
                 root.history = next
                 root._persist()
 
-                // Release to server; active holds only open notifications.
-                notification.tracked = false
-
+                // Read/compare `notification` here before releasing it below
+                // — untracking is what hands it back to the server, so the
+                // identity check and the queue filter must run first.
                 if (root.activeToast === notification) {
                     root.dismissToast()
                 } else {
                     root.toastQueue = root.toastQueue.filter((n) => n !== notification)
                 }
+
+                // Release to server; active holds only open notifications.
+                notification.tracked = false
             })
         }
     }
