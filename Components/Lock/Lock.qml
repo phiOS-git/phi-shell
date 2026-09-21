@@ -224,6 +224,11 @@ WlSessionLock {
 
         color: Config.Appearance.background
 
+        // Set by the first key press, click or pointer movement; reveals the
+        // password field (see passwordGate).
+        property bool inputSeen: false
+        property point _pointerStart: Qt.point(-1, -1)
+
         // passwordField is always enabled, so it can take focus as soon as the
         // surface exists. One per screen; only one is input-focused at a time.
         Component.onCompleted: {
@@ -315,6 +320,19 @@ WlSessionLock {
         LockLocal.LockTransition {
             id: transition
             anchors.fill: parent
+
+            // The first hover point is where the pointer already was when the
+            // surface mapped; only movement past a small tolerance counts.
+            HoverHandler {
+                onPointChanged: {
+                    const p = point.position
+                    if (surface._pointerStart.x < 0) { surface._pointerStart = p; return }
+                    if (Math.abs(p.x - surface._pointerStart.x) + Math.abs(p.y - surface._pointerStart.y)
+                            > Config.Appearance.fontSize1)
+                        surface.inputSeen = true
+                }
+            }
+            PointHandler { onActiveChanged: if (active) surface.inputSeen = true }
             // Blocks of the centred column in reveal order; each owns an
             // opacity and small-rise cascade on category B over the envelope.
             // The notification area is deliberately excluded — it is empty at
@@ -554,119 +572,133 @@ WlSessionLock {
                     }
                 }
 
-                Widgets.Panel {
-                    id: passwordPanel
+                // Pre-input state: the field stays hidden, though focused so the
+                // first keystroke still types, until a key press, a click or a
+                // real pointer movement on this screen.
+                Item {
+                    id: passwordGate
                     width: parent.width
-                    height: passwordField.implicitHeight + padding * 2
-                    // A terminal input has a hard edge, not a rounded card —
-                    // the sharpest radius the grammar carries.
-                    radius: Config.Appearance.radiusSmall
-                    // Panel's default border is loud, like a settings card —
-                    // wrong here, where nothing else is boxed. Softened to the
-                    // low-contrast border pair. `invalid` is untouched, so a
-                    // real error stays full strength. While `validating` the
-                    // override lerps border→borderStrong on the category-A
-                    // pulse.
-                    borderColorOverride: root.validating
-                        ? Qt.rgba(
-                            Config.Appearance.border.r
-                                + (Config.Appearance.borderStrong.r - Config.Appearance.border.r) * validationPulse,
-                            Config.Appearance.border.g
-                                + (Config.Appearance.borderStrong.g - Config.Appearance.border.g) * validationPulse,
-                            Config.Appearance.border.b
-                                + (Config.Appearance.borderStrong.b - Config.Appearance.border.b) * validationPulse,
-                            Config.Appearance.border.a
-                                + (Config.Appearance.borderStrong.a - Config.Appearance.border.a) * validationPulse)
-                        : Config.Appearance.border
-                    borderWidthOverride: Config.Appearance.borderWidth
-                    // invalid alone suffices: WidgetStates.resolve() already
-                    // ranks invalid over loading, so adding `loading` would be
-                    // a silent no-op. Gated on `!validating` so the previous
-                    // attempt's stale error does not paint the field red while
-                    // a new attempt is still being verified.
-                    invalid: (root.errorText.length > 0 || root.lockedOut) && !root.validating
-
-                    // A short, deliberate shake on every failed attempt,
-                    // triggered once per errorText change rather than
-                    // continuously, so it never fires on ordinary typing.
-                    transform: Translate { id: shakeT; x: 0 }
-                    SequentialAnimation {
-                        id: shakeAnim
-                        loops: 1
-                        NumberAnimation { target: shakeT; property: "x"; to: -fieldCell.width * 0.6; duration: 45 }
-                        NumberAnimation { target: shakeT; property: "x"; to: fieldCell.width * 0.6; duration: 90 }
-                        NumberAnimation { target: shakeT; property: "x"; to: -fieldCell.width * 0.4; duration: 90 }
-                        NumberAnimation { target: shakeT; property: "x"; to: 0; duration: 60 }
-                    }
-                    Connections {
-                        target: root
-                        function onErrorTextChanged() { if (root.errorText.length > 0) shakeAnim.restart() }
+                    height: passwordPanel.height
+                    opacity: surface.inputSeen ? 1 : 0
+                    Behavior on opacity {
+                        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
                     }
 
-                    TextInput {
-                        id: passwordField
+                    Widgets.Panel {
+                        id: passwordPanel
                         width: parent.width
-                        enabled: !root.lockedOut
-                        // Editing is blocked for the verification only, caret
-                        // and border pulsing in step. Typing into an
-                        // already-submitted password is noise, and the ~2s
-                        // wait is long enough that accepting edits would read
-                        // as broken. Scoped to `validating` alone, never to
-                        // PAM's conversational state.
-                        readOnly: root.validating
-                        // A closed tab loop: the field opts into the tab
-                        // chain, so Tab cycles field → pills → field (QtQuick
-                        // wraps within a FocusScope). Every stop stays
-                        // reachable; dropping the power row from the chain
-                        // would strand it.
-                        activeFocusOnTab: true
-                        // Old-terminal input: mono role, solid block caret,
-                        // `*` masking — the same bullet the Plymouth prompt
-                        // draws, so both auth surfaces read as one.
-                        font.family: Config.Appearance.fontMono
-                        font.pixelSize: Config.Appearance.fontSize2
-                        color: passwordPanel.contentColor
-                        passwordCharacter: "*"
-                        selectByMouse: false
-                        cursorDelegate: Rectangle {
-                            width: fieldCell.width
-                            height: fieldCell.height
-                            color: passwordPanel.contentColor
-                            // While `validating` the blink pauses and the
-                            // caret pulses 0.35→1 with the border, putting the
-                            // verification inside the field, not only on its
-                            // edge.
-                            opacity: root.validating ? 0.35 + 0.65 * validationPulse : 1.0
-                            visible: passwordField.activeFocus && (root.validating || caret.on)
-                        }
-                        onTextChanged: {
-                            caret.on = true
-                            if (passwordField.activeFocus)
-                                caretBlink.restart()
-                        }
-                        // `root.pam.` explicitly: this object lives inside
-                        // `surface: Component`, instantiated per screen, so it
-                        // crosses a Component boundary where a bare `pam`
-                        // would be ambiguous.
-                        echoMode: root.pam.responseVisible ? TextInput.Normal : TextInput.Password
-                        // Deliberately NOT `enabled:
-                        // root.pam.responseRequired`. Gating usability on
-                        // PAM's conversation state makes "PAM hasn't asked
-                        // yet" and "PAM can never start" look identical — a
-                        // dead field either way. The field always accepts
-                        // typing; Keys.onReturnPressed guards the thing that
-                        // matters, never forwarding a response PAM did not ask
-                        // for.
+                        height: passwordField.implicitHeight + padding * 2
+                        // A terminal input has a hard edge, not a rounded card —
+                        // the sharpest radius the grammar carries.
+                        radius: Config.Appearance.radiusSmall
+                        // Panel's default border is loud, like a settings card —
+                        // wrong here, where nothing else is boxed. Softened to the
+                        // low-contrast border pair. `invalid` is untouched, so a
+                        // real error stays full strength. While `validating` the
+                        // override lerps border→borderStrong on the category-A
+                        // pulse.
+                        borderColorOverride: root.validating
+                            ? Qt.rgba(
+                                Config.Appearance.border.r
+                                    + (Config.Appearance.borderStrong.r - Config.Appearance.border.r) * validationPulse,
+                                Config.Appearance.border.g
+                                    + (Config.Appearance.borderStrong.g - Config.Appearance.border.g) * validationPulse,
+                                Config.Appearance.border.b
+                                    + (Config.Appearance.borderStrong.b - Config.Appearance.border.b) * validationPulse,
+                                Config.Appearance.border.a
+                                    + (Config.Appearance.borderStrong.a - Config.Appearance.border.a) * validationPulse)
+                            : Config.Appearance.border
+                        borderWidthOverride: Config.Appearance.borderWidth
+                        // invalid alone suffices: WidgetStates.resolve() already
+                        // ranks invalid over loading, so adding `loading` would be
+                        // a silent no-op. Gated on `!validating` so the previous
+                        // attempt's stale error does not paint the field red while
+                        // a new attempt is still being verified.
+                        invalid: (root.errorText.length > 0 || root.lockedOut) && !root.validating
 
-                        Keys.onReturnPressed: {
-                            if (!root.lockedOut && root.pam.responseRequired) {
-                                root.pam.respond(text)
-                                // Starts the validating state — the field
-                                // pulses and the line below says "Verifying…"
-                                // until PAM's `completed`/`error` clears it.
-                                root.validating = true
+                        // A short, deliberate shake on every failed attempt,
+                        // triggered once per errorText change rather than
+                        // continuously, so it never fires on ordinary typing.
+                        transform: Translate { id: shakeT; x: 0 }
+                        SequentialAnimation {
+                            id: shakeAnim
+                            loops: 1
+                            NumberAnimation { target: shakeT; property: "x"; to: -fieldCell.width * 0.6; duration: 45 }
+                            NumberAnimation { target: shakeT; property: "x"; to: fieldCell.width * 0.6; duration: 90 }
+                            NumberAnimation { target: shakeT; property: "x"; to: -fieldCell.width * 0.4; duration: 90 }
+                            NumberAnimation { target: shakeT; property: "x"; to: 0; duration: 60 }
+                        }
+                        Connections {
+                            target: root
+                            function onErrorTextChanged() { if (root.errorText.length > 0) shakeAnim.restart() }
+                        }
+
+                        TextInput {
+                            id: passwordField
+                            width: parent.width
+                            enabled: !root.lockedOut
+                            // Editing is blocked for the verification only, caret
+                            // and border pulsing in step. Typing into an
+                            // already-submitted password is noise, and the ~2s
+                            // wait is long enough that accepting edits would read
+                            // as broken. Scoped to `validating` alone, never to
+                            // PAM's conversational state.
+                            readOnly: root.validating
+                            // A closed tab loop: the field opts into the tab
+                            // chain, so Tab cycles field → pills → field (QtQuick
+                            // wraps within a FocusScope). Every stop stays
+                            // reachable; dropping the power row from the chain
+                            // would strand it.
+                            activeFocusOnTab: true
+                            // Old-terminal input: mono role, solid block caret,
+                            // `*` masking — the same bullet the Plymouth prompt
+                            // draws, so both auth surfaces read as one.
+                            font.family: Config.Appearance.fontMono
+                            font.pixelSize: Config.Appearance.fontSize2
+                            color: passwordPanel.contentColor
+                            passwordCharacter: "*"
+                            selectByMouse: false
+                            cursorDelegate: Rectangle {
+                                width: fieldCell.width
+                                height: fieldCell.height
+                                color: passwordPanel.contentColor
+                                // While `validating` the blink pauses and the
+                                // caret pulses 0.35→1 with the border, putting the
+                                // verification inside the field, not only on its
+                                // edge.
+                                opacity: root.validating ? 0.35 + 0.65 * validationPulse : 1.0
+                                visible: passwordField.activeFocus && (root.validating || caret.on)
                             }
-                            text = ""
+                            onTextChanged: {
+                                caret.on = true
+                                if (passwordField.activeFocus)
+                                    caretBlink.restart()
+                            }
+                            // `root.pam.` explicitly: this object lives inside
+                            // `surface: Component`, instantiated per screen, so it
+                            // crosses a Component boundary where a bare `pam`
+                            // would be ambiguous.
+                            echoMode: root.pam.responseVisible ? TextInput.Normal : TextInput.Password
+                            // Deliberately NOT `enabled:
+                            // root.pam.responseRequired`. Gating usability on
+                            // PAM's conversation state makes "PAM hasn't asked
+                            // yet" and "PAM can never start" look identical — a
+                            // dead field either way. The field always accepts
+                            // typing; Keys.onReturnPressed guards the thing that
+                            // matters, never forwarding a response PAM did not ask
+                            // for.
+
+                            Keys.onPressed: (event) => { surface.inputSeen = true; event.accepted = false }
+                            Keys.onReturnPressed: {
+                                if (!root.lockedOut && root.pam.responseRequired) {
+                                    root.pam.respond(text)
+                                    // Starts the validating state — the field
+                                    // pulses and the line below says "Verifying…"
+                                    // until PAM's `completed`/`error` clears it.
+                                    root.validating = true
+                                }
+                                text = ""
+                            }
                         }
                     }
                 }
