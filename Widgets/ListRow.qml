@@ -72,8 +72,8 @@ Item {
     implicitHeight: Math.max(labelText.implicitHeight, valueText.implicitHeight)
         + WidgetStates.chToPixels(root.thin ? Config.Appearance.space1 : Config.Appearance.space2, chWidth)
         * (root.thin ? 1 : 2)
-    // ContextMenu Column sizes from layout.implicitWidth; leaving this unset
-    // collapses the row and whole menu to zero width.
+    // Widgets/ContextMenu.qml measures this directly to size its popup window;
+    // leaving it unset collapses the row and whole menu to zero width.
     implicitWidth: (root.thin ? 0 : root.inset)
         + (leading.visible ? leading.implicitWidth + root.gap : 0)
         + labelText.implicitWidth
