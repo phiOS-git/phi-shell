@@ -8,7 +8,7 @@ import qs.Widgets as Widgets
 // Native background layer (no hyprpaper/swww). Per-screen. Composited from
 // three layers: solid base, optional texture, optional image with fit mode.
 // State in Services/Background.qml. Image driven by displayImage (dynamic or
-// static user pick), crossfades on change via two stacked Images (wallPrev/Cur).
+// static user pick), crossfades on change via two alternating Images.
 // Uses motionB crossfade like rest of shell.
 
 PanelWindow {
@@ -67,11 +67,12 @@ PanelWindow {
             cache: false
         }
 
-        // Layer 3: wallpaper image, crossfaded. wallCur is current, wallPrev holds
-        // outgoing while new loads (async). Not a binding: _swapImage() copies
-        // outgoing to wallPrev, clears on crossfade end.
+        // Layer 3: wallpaper image. Two alternating Images: the shown one stays
+        // loaded while the next loads (asynchronously) into the other, which
+        // fades in on top only once it is Ready — so a change never flashes
+        // the colour layer through. See _swapImage().
         Image {
-            id: wallPrev
+            id: wallA
             anchors.fill: parent
             source: ""
             asynchronous: true
@@ -79,20 +80,19 @@ PanelWindow {
             transformOrigin: Item.Center
             fillMode: root._imageFillMode
             scale: root._imageScale
+            onStatusChanged: root._onLoaded(wallA)
         }
-
-        // Front image. Driven by _swapImage() not binding (crossfade needs old
-        // source captured first). Default opacity 1: first appears instantly.
         Image {
-            id: wallCur
+            id: wallB
             anchors.fill: parent
             source: ""
-            opacity: 1
+            opacity: 0
             asynchronous: true
             cache: false
             transformOrigin: Item.Center
             fillMode: root._imageFillMode
             scale: root._imageScale
+            onStatusChanged: root._onLoaded(wallB)
         }
     }
 
@@ -116,52 +116,64 @@ PanelWindow {
     readonly property real _imageScale: (Services.Background.mode === "contain" || Services.Background.mode === "repeat")
         ? Math.max(0.1, Services.Background.scale) : 1.0
 
+    // `_front` is the Image on screen; the other is the one loading or idle.
+    property Item _front: wallA
+    readonly property Item _back: root._front === wallA ? wallB : wallA
+
     function _swapImage() {
         const want = root._wanted
         if (want === root._applied) return
-        const first = root._applied.length === 0
-        const clearing = want.length === 0
-        // Outgoing texture stays under wallCur: fades out (swap) or away (clear).
-        if (!first) wallPrev.source = wallCur.source
-        if (clearing) {
-            // No new texture: fade out, drop both sources (onFinished).
-            root._applied = want
-            wallCur.opacity = 1
+        root._applied = want
+        imageCrossfade.stop()
+        if (want.length === 0) {
+            // Clearing: drop any pending load, fade the shown image out, free it.
+            root._back.source = ""
+            imageCrossfade.target = root._front
             imageCrossfade.to = 0
             imageCrossfade.restart()
             return
         }
-        wallCur.source = "file://" + want
-        if (first) {
-            // Nothing to crossfade from: appear at once, stop any in-flight fade.
-            imageCrossfade.stop()
-            wallPrev.source = ""
-            wallCur.opacity = 1
-            root._applied = want
+        if (root._front.source.toString().length === 0) {
+            // Nothing on screen to fade from: show the first image at once.
+            root._front.opacity = 1
+            root._front.source = "file://" + want
             return
         }
-        // Real swap: new source in wallCur, old underneath in wallPrev — fade in.
-        root._applied = want
-        wallCur.opacity = 0
+        root._back.opacity = 0
+        root._back.z = 1
+        root._front.z = 0
+        root._back.source = "file://" + want
+    }
+
+    // The back Image finished loading: fade it in over the shown one. A load
+    // error keeps the current image.
+    function _onLoaded(img) {
+        if (img !== root._back || img.source.toString().length === 0) return
+        if (img.status === Image.Error) { img.source = ""; return }
+        if (img.status !== Image.Ready) return
+        imageCrossfade.target = img
         imageCrossfade.to = 1
         imageCrossfade.restart()
     }
 
     NumberAnimation {
         id: imageCrossfade
-        target: wallCur
         property: "opacity"
-        to: 1
         duration: Config.Appearance.motionBDuration
         easing.type: Easing.Bezier
         easing.bezierCurve: Config.Appearance.motionBCurve
         onFinished: {
             if (imageCrossfade.to === 0) {
-                // Image removed: free both textures, reset for next load.
-                wallCur.source = ""
-                wallCur.opacity = 1
+                // Cleared: free the texture, ready for the next first image.
+                imageCrossfade.target.source = ""
+                imageCrossfade.target.opacity = 1
+                return
             }
-            wallPrev.source = ""
+            // Faded in: it becomes the front, and the old one is freed.
+            const old = root._front
+            root._front = imageCrossfade.target
+            old.source = ""
+            old.opacity = 0
         }
     }
 
