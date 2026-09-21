@@ -11,12 +11,17 @@ import "WidgetStates.js" as WidgetStates
 // hover/pressed/active/keyboardFocus have no meaning for a line nothing can
 // click or focus, and are not wired to any visual effect — a genuinely honest
 // "not applicable", not a silently faked one.
+//
+// `full` swaps the dimmed border shade for `barText` (the bar's own resting
+// content colour) — opt-in so every panel/popout Separator keeps its usual
+// hairline look; only Bar/modules/Separator.qml sets it.
 
 Item {
     id: root
 
     property bool vertical: false
     property bool strong: false
+    property bool full: false
     property bool loading: false
     property bool invalid: false
     // Present for the seven-state contract; no visual effect here (see file
@@ -39,7 +44,8 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: root.invalid ? Config.Appearance.error
-             : (root.strong ? Config.Appearance.borderStrong : Config.Appearance.border)
+             : (root.full ? Config.Appearance.barText
+             : (root.strong ? Config.Appearance.borderStrong : Config.Appearance.border))
     }
 
     Behavior on opacity {

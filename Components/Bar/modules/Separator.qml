@@ -8,16 +8,15 @@ import qs.Widgets as Widgets
 // bar-module shape (a `required screen`, so Bar.qml's uniform
 // Component-per-type wiring in componentFor() doesn't need a special case for
 // it). Edge-agnostic: the same file/type registers for both
-// Bar/modules-top.json and Bar/modules-bottom.json. Sized to the same
-// TextMetrics-derived content height every other bar module measures itself
-// against, rather than to the isle's own implicitHeight — reading that back
-// from a Loader/Row parent here would be circular (the isle's height is itself
-// derived from its children's heights). Vertical centering against the Row's
-// real height lives one level up in Bar.qml's own Loader (the actual
-// Row-managed child) — a plain `y` binding here against `parent.height`
-// doesn't work, since `parent` is this module's own wrapping Loader, which
-// mirrors its OWN height back with no explicit size set. Nothing to do here;
-// implicitHeight is enough.
+// Bar/modules-top.json and Bar/modules-bottom.json. Sized off the same
+// TextMetrics-derived measurement every other bar module uses, rather than to
+// the isle's own implicitHeight — reading that back from a Loader/Row parent
+// here would be circular (the isle's height is itself derived from its
+// children's heights). Vertical centering against the Row's real height lives
+// one level up in Bar.qml's own Loader (the actual Row-managed child) — a
+// plain `y` binding here against `parent.height` doesn't work, since `parent`
+// is this module's own wrapping Loader, which mirrors its OWN height back with
+// no explicit size set. Nothing to do here; implicitHeight is enough.
 Widgets.Separator {
     id: root
 
@@ -31,6 +30,14 @@ Widgets.Separator {
     }
 
     vertical: true
-    strong: true
-    implicitHeight: chMetrics.height
+    // `full`, not `strong`: the bar divider reads at the same ink strength as
+    // the icons/labels either side of it, not a dimmed border shade.
+    full: true
+
+    // Matches an isle Segment's own vertical padding (space-1 in ch, halved —
+    // Widgets/Segment.qml's `paddingV`) so the divider spans the full button
+    // height either side of it, rather than floating as a short hairline
+    // inside them.
+    readonly property real _paddingV: Config.Appearance.space1 * chMetrics.width * 0.5
+    implicitHeight: chMetrics.height + _paddingV * 2
 }
