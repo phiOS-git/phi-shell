@@ -287,7 +287,9 @@ Singleton {
         root._evaluateBatterySaver()
     }
 
-    // Manual switch for future toggle UI; nothing calls this yet.
+    // Manual switch — Components/BarPopout/modules/Battery.qml's toggle calls
+    // this; the override-holding logic below is what keeps that toggle from
+    // being overridden by the very next _evaluateBatterySaver() call.
     function setBatterySaverActive(b) {
         b = !!b
         if (b && !root.discharging) root._saverOverrideWhileCharging = true
