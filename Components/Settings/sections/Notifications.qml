@@ -157,12 +157,11 @@ Column {
             title: "Clear now"
             Widgets.StyledButton {
                 label: "Clear all notifications"
-                onClicked: Services.ConfirmDialog.open({
-                    title: "Clear all notifications",
-                    message: "Deletes the whole notification history now. This cannot be undone.",
-                    confirmLabel: "Clear all",
-                    onConfirm: () => Services.Notifications.clearAll()
-                })
+                // Immediate, no confirmation — same action, same wording as
+                // the popout card's own "Clear all" (BarPopout/modules/
+                // Notifications.qml), kept consistent rather than leaving
+                // this the only path that still confirms.
+                onClicked: Services.Notifications.clearAll()
             }
         }
     }

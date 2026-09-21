@@ -233,12 +233,11 @@ Item {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     label: "Clear all"
-                    onClicked: Services.ConfirmDialog.open({
-                        title: "Clear all notifications",
-                        message: "Deletes the whole notification history now. This cannot be undone.",
-                        confirmLabel: "Clear all",
-                        onConfirm: () => Services.Notifications.clearAll()
-                    })
+                    // Immediate, no confirmation: the shared ConfirmDialog
+                    // also hides Services.BarPopout (Services/ConfirmDialog.qml
+                    // closes every other panel while shown), which would close
+                    // this very card out from under the click.
+                    onClicked: Services.Notifications.clearAll()
                 }
             }
 
@@ -377,13 +376,8 @@ Item {
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
                             label: "clear"
-                            onClicked: Services.ConfirmDialog.open({
-                                title: "Clear notifications",
-                                message: "Deletes " + dateGrp.modelData.items.length + " notification(s) from \""
-                                    + dateGrp.modelData.label + "\" now. This cannot be undone.",
-                                confirmLabel: "Clear",
-                                onConfirm: () => Services.Notifications.clearEntries(dateGrp.modelData.items)
-                            })
+                            // Immediate, no confirmation (see clearAllBtn above).
+                            onClicked: Services.Notifications.clearEntries(dateGrp.modelData.items)
                         }
                     }
 
@@ -479,13 +473,8 @@ Item {
                                             anchors.right: parent.right
                                             anchors.verticalCenter: parent.verticalCenter
                                             label: "clear"
-                                            onClicked: Services.ConfirmDialog.open({
-                                                title: "Clear notifications",
-                                                message: "Deletes all history for \"" + appGrp.modelData.app + "\" in \""
-                                                    + dateGrp.modelData.label + "\" now. This cannot be undone.",
-                                                confirmLabel: "Clear",
-                                                onConfirm: () => Services.Notifications.clearEntries(appGrp.modelData.items)
-                                            })
+                                            // Immediate, no confirmation (see clearAllBtn above).
+                                            onClicked: Services.Notifications.clearEntries(appGrp.modelData.items)
                                         }
                                     }
 
