@@ -37,11 +37,14 @@ Widgets.Segment {
     // Hover readout: the connection's own name (a wired NIC has no name to
     // show, only a link) plus live throughput. Services/NetStats.qml samples
     // only while watched, so this segment holds a watch for as long as the
-    // pointer rests on it — the readout is never a stale or zero value, and
-    // nothing polls while the icon is not hovered.
+    // pointer rests on it, and nothing polls while the icon is not hovered.
+    // The rate is shown only once a sample has landed during this hover
+    // (_freshRates): the values left over from an earlier watch are stale.
     property bool _watchingRates: false
+    property bool _freshRates: false
     onHoveredChanged: {
         if (root.hovered && !root._watchingRates) {
+            root._freshRates = false
             Services.NetStats.watch()
             root._watchingRates = true
         } else if (!root.hovered && root._watchingRates) {
@@ -50,9 +53,16 @@ Widgets.Segment {
         }
     }
     Component.onDestruction: if (root._watchingRates) Services.NetStats.unwatch()
+    // NetStats appends to downSamples only from a real byte delta, so a
+    // change here is a genuine fresh sample.
+    Connections {
+        target: Services.NetStats
+        enabled: root._watchingRates
+        function onDownSamplesChanged() { root._freshRates = true }
+    }
     readonly property string _connectionName: root.usingEthernet
         ? "Wired" : Services.WifiBridge.ssid
-    readonly property string _rateText: Services.NetStats.iface.length > 0
+    readonly property string _rateText: root._freshRates && Services.NetStats.iface.length > 0
         ? ("↓ " + Format.rate(Services.NetStats.downKbps) + "  ↑ " + Format.rate(Services.NetStats.upKbps))
         : ""
     hoverInfo: root.anyConnected
