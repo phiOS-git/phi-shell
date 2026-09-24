@@ -48,16 +48,18 @@ function find(key) {
     return null
 }
 
-// detect reports the known prefix keyword leading text, case-insensitively,
-// only once there is at least one more character after the separating
-// space — "web" alone is not yet a request to lock, matching every routed
-// Go provider's own "keyword + space" convention (internal/query/*.go).
+// detect reports the known prefix keyword leading text, case-insensitively.
+// The text (trimmed of outer whitespace) must either equal the keyword
+// exactly — Tab locking before any remainder is typed — or start with
+// "keyword ", matching every routed Go provider's own "keyword + space"
+// convention (internal/query/*.go). Called only from Launcher.qml's
+// Keys.onTabPressed.
 function detect(text) {
-    var lower = text.toLowerCase()
+    var trimmed = text.trim().toLowerCase()
     for (var i = 0; i < PREFIXES.length; i++) {
-        var lead = PREFIXES[i].key + " "
-        if (lower.indexOf(lead) === 0 && text.length > lead.length) {
-            return PREFIXES[i].key
+        var key = PREFIXES[i].key
+        if (trimmed === key || trimmed.indexOf(key + " ") === 0) {
+            return key
         }
     }
     return ""

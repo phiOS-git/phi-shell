@@ -21,6 +21,7 @@ Singleton {
     onWhichChanged: if (root.which.length > 0) {
         Services.AgentPanel.hide()
         Services.SettingsPanel.hide()
+        Services.Launcher.hide()
         Services.HyprlandBridge.leaveReservedWorkspace()
     }
 

@@ -34,11 +34,15 @@ PanelWindow {
     readonly property bool atRoot: views.length === 0
     readonly property var currentView: root.views.length > 0 ? root.views[root.views.length - 1] : null
 
-    // Full-screen transparent window: click outside dismisses. exclusiveZone -1
-    // + Overlay means clicks on the bar strip close it.
+    // Full-screen transparent window, but input only reaches the runner box:
+    // Services.OverlayGrab dismisses on an outside click and the mask keeps
+    // clicks outside `panel` from being swallowed by this window at all. The
+    // bars stay whitelisted in that grab, so a bar icon still works while the
+    // runner is open; opening a popout closes it through Services.Launcher.
     anchors { top: true; bottom: true; left: true; right: true }
     exclusiveZone: -1
     color: "transparent"
+    mask: Region { item: panel }
 
     Component.onCompleted: {
         if (root.WlrLayershell) root.WlrLayershell.layer = WlrLayer.Overlay
@@ -96,6 +100,13 @@ PanelWindow {
         function close(): void { root.setShown(false) }
     }
 
+    // A bar popout opening (Services/BarPopout.qml) requests the runner close
+    // so only one of these surfaces is open at a time.
+    Connections {
+        target: Services.Launcher
+        function onHideRequested() { root.setShown(false) }
+    }
+
     // Resets are imperative (searchField.text = ""), never bound: assigning to
     // a bound property breaks the binding on first write, and later resets
     // never reach the field. commandField needs the same approach.
@@ -106,7 +117,9 @@ PanelWindow {
         Services.Launcher.shown = v
         if (v) {
             searchField.forceActiveFocus()
+            Services.OverlayGrab.open(root, function () { root.setShown(false) })
         } else {
+            Services.OverlayGrab.close(root)
             searchField.text = ""
             root.queryText = ""
             root.results = []
@@ -139,8 +152,12 @@ PanelWindow {
 
     onQueryTextChanged: queryDebounce.restart()
 
+    // Unlocked and empty means nothing to query (bare `phi query ""` returns
+    // no results by design); locked and empty still queries, with an empty
+    // remainder, so a freshly-locked tag shows that keyword's own results
+    // right away instead of waiting for the user to type.
     function _runQuery() {
-        if (root.queryText.length === 0) {
+        if (root.queryText.length === 0 && root.lockedPrefix.length === 0) {
             root.results = []
             root.highlightedIndex = 0
             return
@@ -169,10 +186,12 @@ PanelWindow {
         return out
     }
 
-    // Browse list when empty and unlocked, phi query results otherwise. A
-    // locked prefix never falls back to browse (even empty) — restricted to
-    // that category.
-    readonly property var displayResults: (root.lockedPrefix.length === 0 && root.queryText.trim().length === 0)
+    // Browse list when empty and unlocked, and also when empty and locked to
+    // "app" — DesktopEntries browsing IS the "app" tag's own empty-remainder
+    // list. Any other locked tag with an empty remainder shows whatever phi
+    // returned for the bare keyword, which may legitimately be empty.
+    readonly property var displayResults: (root.queryText.trim().length === 0
+            && (root.lockedPrefix.length === 0 || root.lockedPrefix === "app"))
         ? root.browseResults : root.results
 
     // Rich payload of the highlighted result, if any. Drives the side card.
@@ -298,17 +317,19 @@ PanelWindow {
         root.highlightedIndex = next
     }
 
-    // Tab locks the leading keyword: strips it from field (becomes chip) and
-    // restricts results to that category.
+    // Tab locks the leading keyword: strips it (and outer whitespace, and any
+    // spaces separating it from the remainder) from the field, becomes a
+    // chip, and restricts results to that category. detect() already
+    // guarantees the trimmed field either equals key or starts with "key ".
     function _lockPrefix(key) {
         root.lockedPrefix = key
         root._lastBackspaceAt = 0
-        const lead = key + " "
-        if (searchField.text.toLowerCase().indexOf(lead) === 0) {
-            // Imperative, not binding: onTextChanged already syncs queryText;
-            // a second assignment would be redundant.
-            searchField.text = searchField.text.slice(lead.length)
-        }
+        root.highlightedIndex = 0
+        const trimmed = searchField.text.trim()
+        const rest = trimmed.toLowerCase() === key ? "" : trimmed.slice(key.length).replace(/^ +/, "")
+        // Imperative, not binding: onTextChanged already syncs queryText;
+        // a second assignment would be redundant.
+        searchField.text = rest
     }
 
     // Two cancel paths: chip "×" (direct) or two backspace presses (empty field).
@@ -342,12 +363,6 @@ PanelWindow {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
-        // Click outside the runner box closes it.
-        MouseArea {
-            anchors.fill: parent
-            onClicked: root.setShown(false)
-        }
-
     Item {
         id: panelWrap
         // Centered, biased slightly above center.
@@ -358,10 +373,6 @@ PanelWindow {
         // Use maxPanelHeight (not panel's actual height) to keep panel's top
         // edge fixed when content shrinks/grows. Reserved space stays invisible.
         height: root.maxPanelHeight
-
-        // MouseArea sized to panel's actual height, not panelWrap's full
-        // reservation: click outside panel falls through to fadeRoot (closes it).
-        MouseArea { anchors.top: parent.top; width: parent.width; height: panel.height }
 
     Widgets.Panel {
         id: panel
@@ -537,6 +548,7 @@ PanelWindow {
                             Math.min(0, inputRow.height - cursorRectangle.y - cursorRectangle.height))
                         : 0
                     wrapMode: root._askMode ? TextInput.WrapAtWordBoundaryOrAnywhere : TextInput.NoWrap
+                    clip: true
                     font.family: Config.Appearance.fontMono
                     font.pixelSize: Config.Appearance.fontSize2
                     color: Config.Appearance.textPrimary
