@@ -11,6 +11,13 @@ import "./options.js" as Options
 Item {
     id: root
 
+    // Marks this Item as a group for Settings.qml's index-panel walk
+    // (Components/Settings/modules/SectionIndex.qml) — a plain, cheap way to
+    // pick every Modules.SettingsGroup (ColorGroup included, since it extends
+    // this component) out of a loaded section's children without an
+    // instanceof check across a QML type boundary.
+    readonly property bool isSettingsGroup: true
+
     property string title: ""
     property string caption: ""
     property string optionId: ""
@@ -29,7 +36,7 @@ Item {
     property bool advanced: false
 
     width: parent ? parent.width : 0
-    visible: !root.advanced || Services.SettingsPanel.showAdvanced || root.highlighted
+    visible: !root.advanced || Services.SettingsPanel.showAdvanced || root.highlighted || root.containsMatch
     implicitHeight: outerCol.implicitHeight + root._pad * 2
     height: root.implicitHeight
 
@@ -46,6 +53,32 @@ Item {
         && Services.SettingsPanel.query.length > 0
         && root.optionId.length > 0
         && Options.matches(root.optionId, Services.SettingsPanel.query)
+
+    // True when a control inside this group matches the search even though
+    // the group itself has no optionId to match on (the four Colours — …
+    // groups in Theme.qml: only their individual swatches are catalogued).
+    // Without this, marking a group `advanced` could hide a match search
+    // just found — advanced is meant to fold up an uninteresting group, not
+    // hide the thing being searched for. Walks `body` (the row content, not
+    // the title/caption chrome) so any descendant exposing `highlighted` (a
+    // Modules.SettingsRow, a nested Modules.SettingsGroup) or the private
+    // `_highlighted` a plain control uses (Theme.qml's ColorGroup swatches)
+    // counts. Components/Settings/modules/SectionIndex.qml reuses this same
+    // walk for its own match style, so "does this group match" has one
+    // definition.
+    readonly property bool containsMatch: Services.SettingsPanel.shown
+        && Services.SettingsPanel.query.length > 0
+        && root._walk(body)
+
+    function _walk(item) {
+        if (!item) return false
+        if (item.highlighted === true || item._highlighted === true) return true
+        var kids = item.children || []
+        for (var i = 0; i < kids.length; i++) {
+            if (root._walk(kids[i])) return true
+        }
+        return false
+    }
 
     Component.onCompleted: if (optionId.length > 0) {
         if (!Options.known(optionId))

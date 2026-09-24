@@ -643,50 +643,6 @@ Column {
         }
     }
 
-    // --- Colours ------------------------------------------------------
-    // Grouped by context, each a ColorGroup — a stable swatch grid plus one
-    // slide-open editor panel (see the component).
-    ColorGroup {
-        title: "Colours — structure"
-        caption: "Two structural colours (background, primary text) carry the whole shell; the surfaces step up from the background for stacked panels."
-        swatches: [
-            { key: "bg-0", label: "Background", contrast: false },
-            { key: "bg-1", label: "Surface +1", contrast: false },
-            { key: "bg-2", label: "Surface +2", contrast: false },
-            { key: "bg-3", label: "Surface +3", contrast: false }
-        ]
-    }
-
-    ColorGroup {
-        title: "Colours — text"
-        swatches: [
-            { key: "fg-0", label: "Text (primary)", contrast: true },
-            { key: "fg-1", label: "Text, secondary", contrast: true },
-            { key: "fg-2", label: "Text, muted", contrast: true },
-            { key: "fg-3", label: "Text, faint", contrast: false }
-        ]
-    }
-
-    ColorGroup {
-        title: "Colours — borders"
-        swatches: [
-            { key: "border", label: "Border", contrast: false },
-            { key: "border-strong", label: "Border, strong", contrast: false }
-        ]
-    }
-
-    ColorGroup {
-        title: "Colours — accent & status"
-        caption: "The accent is fine detail only — titles, the keyboard focus ring, the agent's working state. The status colours appear only when a real threshold is crossed."
-        swatches: [
-            { key: "accent", label: "Accent", contrast: true },
-            { key: "error", label: "Error", contrast: true },
-            { key: "warn", label: "Warning", contrast: true },
-            { key: "success", label: "Success", contrast: true },
-            { key: "info", label: "Info", contrast: true }
-        ]
-    }
-
     Modules.SettingsGroup {
         title: "Colour preview"
         preview: true
@@ -714,6 +670,566 @@ Column {
                     Widgets.StyledText { tone: "success"; text: "success" }
                     Widgets.StyledText { tone: "info"; text: "info" }
                 }
+            }
+        }
+    }
+
+    // --- Colours ------------------------------------------------------
+    // Grouped by context, each a ColorGroup — a stable swatch grid plus one
+    // slide-open editor panel (see the component).
+    ColorGroup {
+        title: "Colours — structure"
+        advanced: true
+        caption: "Two structural colours (background, primary text) carry the whole shell; the surfaces step up from the background for stacked panels."
+        swatches: [
+            { key: "bg-0", label: "Background", contrast: false },
+            { key: "bg-1", label: "Surface +1", contrast: false },
+            { key: "bg-2", label: "Surface +2", contrast: false },
+            { key: "bg-3", label: "Surface +3", contrast: false }
+        ]
+    }
+
+    ColorGroup {
+        title: "Colours — text"
+        advanced: true
+        swatches: [
+            { key: "fg-0", label: "Text (primary)", contrast: true },
+            { key: "fg-1", label: "Text, secondary", contrast: true },
+            { key: "fg-2", label: "Text, muted", contrast: true },
+            { key: "fg-3", label: "Text, faint", contrast: false }
+        ]
+    }
+
+    ColorGroup {
+        title: "Colours — borders"
+        advanced: true
+        swatches: [
+            { key: "border", label: "Border", contrast: false },
+            { key: "border-strong", label: "Border, strong", contrast: false }
+        ]
+    }
+
+    ColorGroup {
+        title: "Colours — accent & status"
+        advanced: true
+        caption: "The accent is fine detail only — titles, the keyboard focus ring, the agent's working state. The status colours appear only when a real threshold is crossed."
+        swatches: [
+            { key: "accent", label: "Accent", contrast: true },
+            { key: "error", label: "Error", contrast: true },
+            { key: "warn", label: "Warning", contrast: true },
+            { key: "success", label: "Success", contrast: true },
+            { key: "info", label: "Info", contrast: true }
+        ]
+    }
+
+    // --- Wallpaper ------------------------------------------------
+    // Three groups by context — the base layers, the image and how it fills
+    // the screen, and the dynamic rotation — so options that belong together
+    // sit together instead of being scattered down one long wall of rows.
+    Modules.SettingsGroup {
+        title: "Wallpaper — base"
+        caption: "The solid colour underneath the picture, with an optional grain."
+        Component.onCompleted: {
+            Services.Background.refreshAvailable()
+            Services.DynamicWallpaper.refresh()
+        }
+
+        Modules.SettingsRow {
+            optionId: "theme.wallpaper.color"
+            title: "Solid colour"
+            Widgets.ColorField {
+                value: Services.Background.color
+                onCommitted: (hex) => Services.Background.setColor(hex)
+            }
+        }
+
+        Modules.SettingsRow {
+            optionId: "theme.wallpaper.texture"
+            title: "Texture"
+            description: Services.Background.textureApplies
+                ? "A generated grain over the solid colour."
+                : "Only with no image or contain/repeat."
+            enabled: Services.Background.textureApplies
+            Column {
+                spacing: root.gap
+                Row {
+                    spacing: 6
+                    Widgets.StyledButton {
+                        label: "none"
+                        active: Services.Background.texture.length === 0
+                        onClicked: Services.Background.setTexture("", Services.Background.textureIntensity)
+                    }
+                    Repeater {
+                        model: Config.Appearance.textureModes
+                        Widgets.StyledButton {
+                            required property string modelData
+                            label: modelData
+                            active: Services.Background.texture === modelData
+                            onClicked: Services.Background.setTexture(modelData, Services.Background.textureIntensity)
+                        }
+                    }
+                }
+                Row {
+                    spacing: root.gap
+                    visible: Services.Background.texture.length > 0
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Intensity" }
+                    Widgets.Meter {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: root.chWidth * 14
+                        interactive: true
+                        value: Services.Background.textureIntensity / 100
+                        onReleased: (v) => Services.Background.setTextureIntensity(Math.round(v * 100))
+                    }
+                    Widgets.StyledText {
+                        anchors.verticalCenter: parent.verticalCenter
+                        mono: true; text: Services.Background.textureIntensity + "%"
+                    }
+                }
+            }
+        }
+    }
+
+    Modules.SettingsGroup {
+        title: "Wallpaper — image"
+        caption: "Pick a picture, then how it fills the screen."
+
+        Modules.SettingsRow {
+            optionId: "theme.wallpaper.image"
+            title: "Image"
+            wide: true
+            Column {
+                width: parent.width
+                spacing: root.gap
+
+                // "No image" tile, always available, outside the sections.
+                Flow {
+                    width: parent.width
+                    spacing: 6
+
+                    Rectangle {
+                        id: noneTile
+                        width: root.chWidth * 12; height: root.chWidth * 8
+                        radius: Config.Appearance.radiusSmall
+                        color: Config.Appearance.surface1
+                        border.width: Config.Appearance.borderWidth
+                        // A hairline brightens on hover, distinct from the
+                        // accent border that marks the CURRENT selection, so
+                        // "hovering" and "selected" never read as the same
+                        // thing.
+                        border.color: Services.Background.image.length === 0
+                            ? Config.Appearance.accent
+                            : ((noneHover.hovered || noneTile.activeFocus) ? Config.Appearance.borderStrong : Config.Appearance.border)
+                        Behavior on border.color {
+                            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                        }
+                        Widgets.StyledText { anchors.centerIn: parent; kind: "label"; sizeStep: 0; text: "none" }
+                        HoverHandler { id: noneHover; cursorShape: Qt.PointingHandCursor }
+                        TapHandler { onTapped: Services.Background.clearImage() }
+                        // Same Tab-reachability fix as the colour swatches
+                        // above.
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: Services.Background.clearImage()
+                        Keys.onSpacePressed: Services.Background.clearImage()
+                    }
+
+                    // The wallpaper folder's loose top-level files sit flat,
+                    // next to "none"; only subfolders collapse.
+                    Repeater {
+                        model: Services.Background.rootImages
+                        delegate: StaticWallpaperTile {
+                            loading: true
+                        }
+                    }
+                }
+
+                // One collapsible section per subfolder of the wallpaper
+                // folder. A closed section loads nothing: a tile only gets a
+                // source once its section is open (is what stops a large
+                // folder from decoding every thumbnail at once). The loose
+                // top-level files are not a section — they sit flat beside
+                // "none".
+                Repeater {
+                    model: Services.Background.groups.filter(g => g.name !== "General")
+                    delegate: Widgets.Accordion {
+                        id: section
+                        required property var modelData
+                        title: modelData.name
+                        content:
+                            Flow {
+                                width: parent.width
+                                spacing: 6
+                                Repeater {
+                                    model: section.modelData.images
+                                    delegate: StaticWallpaperTile {
+                                        loading: section.expanded
+                                    }
+                                }
+                            }
+                    }
+                }
+
+                Row {
+                    width: parent.width
+                    spacing: root.gap
+                    Widgets.TextField {
+                        id: wpPath
+                        width: parent.width - addBtn.implicitWidth - openBtn.implicitWidth - root.gap * 2
+                        mono: false
+                        placeholder: "Path to an image…"
+                        onCommitted: root._addWallpaper(text)
+                    }
+                    Widgets.StyledButton { id: addBtn; label: "Add"; onClicked: root._addWallpaper(wpPath.text) }
+                    Widgets.StyledButton {
+                        id: openBtn
+                        label: "Open folder"
+                        onClicked: Quickshell.execDetached(["xdg-open", Config.Paths.wallpaperDir])
+                    }
+                }
+            }
+        }
+
+        Modules.SettingsRow {
+            optionId: "theme.wallpaper.mode"
+            title: "Fit mode"
+            enabled: Services.Background.image.length > 0
+            Row {
+                spacing: 6
+                Repeater {
+                    model: ["cover", "contain", "stretch", "repeat"]
+                    Widgets.StyledButton {
+                        required property string modelData
+                        label: modelData
+                        active: Services.Background.mode === modelData
+                        onClicked: Services.Background.setMode(modelData)
+                    }
+                }
+            }
+        }
+
+        Modules.SettingsRow {
+            optionId: "theme.wallpaper.scale"
+            title: "Scale"
+            description: "Zoom for contain and repeat."
+            enabled: Services.Background.image.length > 0
+                && (Services.Background.mode === "contain" || Services.Background.mode === "repeat")
+            Widgets.NumberField {
+                value: Services.Background.scale
+                step: 0.1; decimals: 1; from: 0.1; to: 4.0
+                onCommitted: (v) => Services.Background.setScale(v)
+            }
+        }
+    }
+
+    // --- Dynamic wallpaper ----------------------------------------
+    // Entries under wallpapers/dynamic/ that rotate the wallpaper by daytime,
+    // season and (future) weather.
+    // All state lives in Services/DynamicWallpaper.qml — this group only reads it and calls its setters.
+    // While it is on, the image shown becomes the entry's most specific image for the current slot;
+    // while off, or paused by battery saver, the static pick apply unchanged.
+    Modules.SettingsGroup {
+        title: "Wallpaper — dynamic"
+        caption: "Rotate the wallpaper by time of day and season."
+
+        Modules.SettingsRow {
+            optionId: "theme.wallpaper.dynamic"
+            title: "Dynamic wallpaper"
+            Widgets.Toggle {
+                checked: Services.DynamicWallpaper.enabled
+                onToggled: (v) => Services.DynamicWallpaper.setEnabled(v)
+            }
+        }
+
+        Modules.SettingsRow {
+            optionId: "theme.wallpaper.dynamic.folder"
+            title: "Entry"
+            description: "A folder of state images, or a single dynamic .heic (solar or 24-hour timeline) right in wallpapers/dynamic/."
+            enabled: Services.DynamicWallpaper.enabled
+            wide: true
+            Column {
+                width: parent.width
+                spacing: root.gap
+                Flow {
+                    width: parent.width
+                    spacing: 6
+                    Repeater {
+                        model: Services.DynamicWallpaper.available
+                        delegate: Rectangle {
+                            id: dynTile
+                            required property var modelData
+                            width: root.chWidth * 12; height: root.chWidth * 8
+                            radius: Config.Appearance.radiusSmall
+                            color: Config.Appearance.surface1
+                            clip: true
+                            border.width: Config.Appearance.borderWidth
+                            border.color: Services.DynamicWallpaper.activeName === modelData.name
+                                ? Config.Appearance.accent
+                                : ((dynHover.hovered || dynTile.activeFocus) ? Config.Appearance.borderStrong : Config.Appearance.border)
+                            Behavior on border.color {
+                                ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                            }
+
+                            // What this entry previews: a folder cycles
+                            // through the raster images it holds, one every
+                            // 1.5s while hovered; a bare.heic shows its
+                            // converted first frame.
+                            readonly property var frames: modelData.kind === "folder"
+                                ? modelData.images
+                                : (Services.DynamicWallpaper.previews[modelData.name]
+                                    ? [Services.DynamicWallpaper.previews[modelData.name]] : [])
+                            property int cycleIdx: 0
+                            property bool frontIsA: true
+                            // True once any frame has actually painted on
+                            // either layer; the skeleton then never shows
+                            // again, even while hover-cycling swaps frames.
+                            property bool _everReady: false
+                            // A preview that never converts (an undecodable
+                            // heic) stops breathing after this long instead of
+                            // looking like it is loading forever. Long enough
+                            // to cover a queued backlog of several big heic
+                            // conversions.
+                            property bool _giveUp: false
+
+                            Timer {
+                                id: previewWait
+                                interval: 15000
+                                running: dynTile.frames.length === 0 && !dynTile._everReady && !dynTile._giveUp
+                                onTriggered: dynTile._giveUp = true
+                            }
+
+                            Component.onCompleted:
+                                if (modelData.kind === "file") Services.DynamicWallpaper.ensureFilePreview(modelData.name)
+
+                            // Two stacked layers; each cycle loads the next
+                            // frame into the hidden one and crossfades, then
+                            // the layers swap roles.
+                            Image {
+                                id: dynA
+                                anchors.fill: parent
+                                anchors.margins: Config.Appearance.borderWidth
+                                source: dynTile.frames.length > 0
+                                    ? "file://" + dynTile.frames[dynTile.cycleIdx % dynTile.frames.length] : ""
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                                sourceSize.width: 256
+                                onStatusChanged: if (status === Image.Ready) dynTile._everReady = true
+                                Behavior on opacity {
+                                    NumberAnimation { duration: Config.Appearance.motionBDuration * 2; easing.type: Easing.InOutQuad }
+                                }
+                            }
+                            Image {
+                                id: dynB
+                                anchors.fill: parent
+                                anchors.margins: Config.Appearance.borderWidth
+                                opacity: 0
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                                sourceSize.width: 256
+                                onStatusChanged: if (status === Image.Ready) dynTile._everReady = true
+                                Behavior on opacity {
+                                    NumberAnimation { duration: Config.Appearance.motionBDuration * 2; easing.type: Easing.InOutQuad }
+                                }
+                            }
+
+                            // Breathing placeholder until this tile has
+                            // something to paint: the.heic preview is still
+                            // converting, or the first frame is still
+                            // decoding. Once any frame has painted, hover-
+                            // cycling swaps cached frames and the placeholder
+                            // stays gone.
+                            WallpaperTileSkeleton {
+                                visible: (dynTile.frames.length === 0 && !dynTile._giveUp)
+                                    || (dynTile.frames.length > 0 && !dynTile._everReady
+                                        && (dynTile.frontIsA ? dynA.status === Image.Loading : dynB.status === Image.Loading))
+                            }
+
+                            Timer {
+                                id: cycleTimer
+                                interval: 1500
+                                repeat: true
+                                onTriggered: {
+                                    var n = dynTile.frames.length
+                                    if (n < 2) return
+                                    var next = (dynTile.cycleIdx + 1) % n
+                                    if (dynTile.frontIsA) {
+                                        dynB.source = "file://" + dynTile.frames[next]
+                                        dynA.opacity = 0
+                                        dynB.opacity = 1
+                                    } else {
+                                        dynA.source = "file://" + dynTile.frames[next]
+                                        dynB.opacity = 0
+                                        dynA.opacity = 1
+                                    }
+                                    dynTile.frontIsA = !dynTile.frontIsA
+                                    dynTile.cycleIdx = next
+                                }
+                            }
+
+                            HoverHandler {
+                                id: dynHover
+                                cursorShape: Qt.PointingHandCursor
+                                onHoveredChanged: {
+                                    if (dynHover.hovered) { if (dynTile.frames.length > 1) cycleTimer.start() }
+                                    else cycleTimer.stop()
+                                }
+                            }
+                            TapHandler { onTapped: Services.DynamicWallpaper.setActive(modelData.name) }
+                            activeFocusOnTab: true
+                            Keys.onReturnPressed: Services.DynamicWallpaper.setActive(modelData.name)
+                            Keys.onSpacePressed: Services.DynamicWallpaper.setActive(modelData.name)
+
+                            // Name caption on a bottom band, so an entry with
+                            // no previews (an empty folder) still reads as
+                            // selectable.
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                height: root.chWidth * 2
+                                color: Config.Appearance.surface2
+                                opacity: 0.85
+                                Widgets.StyledText {
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: root.chWidth
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: root.chWidth
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    kind: "label"; sizeStep: 0
+                                    text: modelData.name
+                                    elide: Text.ElideRight
+                                }
+                            }
+                        }
+                    }
+                    Widgets.StyledText {
+                        visible: Services.DynamicWallpaper.available.length === 0
+                        kind: "label"; sizeStep: 0
+                        text: "Nothing here yet — add a folder or a .heic under wallpapers/dynamic/."
+                    }
+                }
+                Widgets.SmallButton {
+                    label: "Open dynamic folder"
+                    onClicked: Quickshell.execDetached(["xdg-open", Config.Paths.dynamicWallpaperDir])
+                }
+            }
+        }
+
+        Modules.SettingsRow {
+            optionId: "theme.wallpaper.dynamic.dawn"
+            title: "Sunrise starts at"
+            description: "Dawn runs one hour from this hour."
+            enabled: Services.DynamicWallpaper.enabled
+            Widgets.NumberField {
+                value: Services.DynamicWallpaper.dawnHour
+                step: 1; suffix: ":00"; from: 0; to: 23
+                onCommitted: (v) => Services.DynamicWallpaper.setDawnHour(v)
+            }
+        }
+
+        Modules.SettingsRow {
+            optionId: "theme.wallpaper.dynamic.dusk"
+            title: "Sunset starts at"
+            description: "Dusk runs one hour from this hour."
+            enabled: Services.DynamicWallpaper.enabled
+            Widgets.NumberField {
+                value: Services.DynamicWallpaper.duskHour
+                step: 1; suffix: ":00"; from: 0; to: 23
+                onCommitted: (v) => Services.DynamicWallpaper.setDuskHour(v)
+            }
+        }
+
+        // Read-only status — a cheap way to see what the matcher resolved
+        // without waiting for a boundary: the slot, the season/weather
+        // considered, and the filename actually painted. Only meaningful while
+        // the feature is on, so it hides (not dims) when off.
+        Modules.SettingsRow {
+            visible: Services.DynamicWallpaper.enabled
+            title: "Now showing"
+            description: root._dynamicStatus()
+            wide: true
+        }
+
+    }
+
+    // --- Night shift ---------------------------------------------
+    Modules.SettingsGroup {
+        title: "Night shift"
+        Modules.SettingsRow {
+            optionId: "theme.nightshift"
+            title: "Night shift"
+            description: Services.NightShift.scheduleMode === "off"
+                ? "Warms the display in the evening."
+                : "Follows the schedule below — toggling here holds until its next change."
+            Widgets.Toggle {
+                checked: Services.NightShift.enabled
+                onToggled: (v) => Services.NightShift.setEnabled(v)
+            }
+        }
+        Modules.SettingsRow {
+            title: "Schedule"
+            wide: true
+            Row {
+                spacing: root.gap
+                Repeater {
+                    model: [
+                        { key: "off", label: "Off" },
+                        { key: "auto", label: "Automatic" },
+                        { key: "custom", label: "Custom hours" }
+                    ]
+                    Widgets.StyledButton {
+                        required property var modelData
+                        label: modelData.label
+                        active: Services.NightShift.scheduleMode === modelData.key
+                        onClicked: Services.NightShift.setScheduleMode(modelData.key)
+                    }
+                }
+            }
+        }
+        Widgets.Reveal {
+            shown: Services.NightShift.scheduleMode === "auto"
+            Modules.SettingsRow {
+                title: "Automatic window"
+                description: "Fixed default — " + Services.NightShift.autoStartHour + ":00 to "
+                    + Services.NightShift.autoEndHour + ":00. Not location-based: this shell has no source for a real sunset/sunrise time, so it's a sensible fixed evening-to-morning window rather than one computed per day. Use Custom hours to pick your own."
+                wide: true
+            }
+        }
+        Widgets.Reveal {
+            shown: Services.NightShift.scheduleMode === "custom"
+            Modules.SettingsRow {
+                title: "Starts at"
+                Widgets.NumberField {
+                    value: Services.NightShift.scheduleStartHour
+                    step: 1; suffix: ":00"; from: 0; to: 23
+                    onCommitted: (v) => Services.NightShift.setScheduleStartHour(Math.round(v))
+                }
+            }
+            Modules.SettingsRow {
+                title: "Ends at"
+                Widgets.NumberField {
+                    value: Services.NightShift.scheduleEndHour
+                    step: 1; suffix: ":00"; from: 0; to: 23
+                    onCommitted: (v) => Services.NightShift.setScheduleEndHour(Math.round(v))
+                }
+            }
+        }
+        Modules.SettingsRow {
+            title: "True Tone"
+            description: Config.Capabilities.ambientLight
+                ? "Drive colour temperature from ambient light instead of a fixed value."
+                : "No ambient light sensor on this host — True Tone has nothing to read."
+            Widgets.Toggle {
+                checked: Services.NightShift.trueTone
+                enabled: Config.Capabilities.ambientLight
+                onToggled: (v) => Services.NightShift.setTrueTone(v)
+            }
+        }
+        Modules.SettingsRow {
+            title: "Target temperature"
+            description: "Used when True Tone is off."
+            Widgets.NumberField {
+                value: Services.NightShift.targetTemp
+                step: 250; suffix: "K"; from: 2500; to: 6500
+                onCommitted: (v) => Services.NightShift.setTemp(Math.round(v))
             }
         }
     }
@@ -803,225 +1319,6 @@ Column {
         MotionRow { mkey: "motion-c-type-step"; title: "C — typing step"; seedMs: Config.Appearance.motionCTypeStep }
         MotionRow { mkey: "motion-c-scramble"; title: "C — scramble duration"; seedMs: Config.Appearance.motionCScramble }
         MotionRow { mkey: "motion-d-duration"; title: "D — ambient duration"; seedMs: Config.Appearance.motionDDuration }
-    }
-
-    // --- Night shift ---------------------------------------------
-    Modules.SettingsGroup {
-        title: "Night shift"
-        Modules.SettingsRow {
-            optionId: "theme.nightshift"
-            title: "Night shift"
-            description: Services.NightShift.scheduleMode === "off"
-                ? "Warms the display in the evening."
-                : "Follows the schedule below — toggling here holds until its next change."
-            Widgets.Toggle {
-                checked: Services.NightShift.enabled
-                onToggled: (v) => Services.NightShift.setEnabled(v)
-            }
-        }
-        Modules.SettingsRow {
-            title: "Schedule"
-            wide: true
-            Row {
-                spacing: root.gap
-                Repeater {
-                    model: [
-                        { key: "off", label: "Off" },
-                        { key: "auto", label: "Automatic" },
-                        { key: "custom", label: "Custom hours" }
-                    ]
-                    Widgets.StyledButton {
-                        required property var modelData
-                        label: modelData.label
-                        active: Services.NightShift.scheduleMode === modelData.key
-                        onClicked: Services.NightShift.setScheduleMode(modelData.key)
-                    }
-                }
-            }
-        }
-        Widgets.Reveal {
-            shown: Services.NightShift.scheduleMode === "auto"
-            Modules.SettingsRow {
-                title: "Automatic window"
-                description: "Fixed default — " + Services.NightShift.autoStartHour + ":00 to "
-                    + Services.NightShift.autoEndHour + ":00. Not location-based: this shell has no source for a real sunset/sunrise time, so it's a sensible fixed evening-to-morning window rather than one computed per day. Use Custom hours to pick your own."
-                wide: true
-            }
-        }
-        Widgets.Reveal {
-            shown: Services.NightShift.scheduleMode === "custom"
-            Modules.SettingsRow {
-                title: "Starts at"
-                Widgets.NumberField {
-                    value: Services.NightShift.scheduleStartHour
-                    step: 1; suffix: ":00"; from: 0; to: 23
-                    onCommitted: (v) => Services.NightShift.setScheduleStartHour(Math.round(v))
-                }
-            }
-            Modules.SettingsRow {
-                title: "Ends at"
-                Widgets.NumberField {
-                    value: Services.NightShift.scheduleEndHour
-                    step: 1; suffix: ":00"; from: 0; to: 23
-                    onCommitted: (v) => Services.NightShift.setScheduleEndHour(Math.round(v))
-                }
-            }
-        }
-        Modules.SettingsRow {
-            title: "True Tone"
-            description: Config.Capabilities.ambientLight
-                ? "Drive colour temperature from ambient light instead of a fixed value."
-                : "No ambient light sensor on this host — True Tone has nothing to read."
-            Widgets.Toggle {
-                checked: Services.NightShift.trueTone
-                enabled: Config.Capabilities.ambientLight
-                onToggled: (v) => Services.NightShift.setTrueTone(v)
-            }
-        }
-        Modules.SettingsRow {
-            title: "Target temperature"
-            description: "Used when True Tone is off."
-            Widgets.NumberField {
-                value: Services.NightShift.targetTemp
-                step: 250; suffix: "K"; from: 2500; to: 6500
-                onCommitted: (v) => Services.NightShift.setTemp(Math.round(v))
-            }
-        }
-    }
-
-    // --- Cursor spotlight --------------------------------------
-    Modules.SettingsGroup {
-        title: "Cursor spotlight"
-        caption: "Double-press Super and hold to show it; the toggle here is sticky. Dim and flashlight dim the screen around a clear circle; crosshair and ring just mark the pointer and never dim."
-
-        Modules.SettingsRow {
-            optionId: "theme.spotlight"
-            title: "Cursor spotlight"
-            Widgets.Toggle {
-                checked: Services.Spotlight.shown
-                onToggled: (v) => (v ? Services.Spotlight.show() : Services.Spotlight.hide())
-            }
-        }
-        Modules.SettingsRow {
-            title: "Effect"
-            wide: true
-            Flow {
-                width: parent.width
-                spacing: root.gap
-                Repeater {
-                    model: Services.Spotlight.effects
-                    Widgets.StyledButton {
-                        required property string modelData
-                        label: modelData
-                        active: Services.Spotlight.effect === modelData
-                        onClicked: Services.Spotlight.setEffect(modelData)
-                    }
-                }
-            }
-        }
-
-        // dim / flashlight options slide in/out with the effect choice rather
-        // than the sub-rows popping.
-        Widgets.Reveal {
-            shown: Services.Spotlight.effect === "dim" || Services.Spotlight.effect === "flashlight"
-            Modules.SettingsRow {
-                title: "Circle size"
-                Row {
-                    spacing: root.gap
-                    Repeater {
-                        model: ["small", "medium", "large"]
-                        Widgets.StyledButton {
-                            required property string modelData
-                            label: modelData
-                            active: Services.Spotlight.size === modelData
-                            onClicked: Services.Spotlight.setSize(modelData)
-                        }
-                    }
-                }
-            }
-            Modules.SettingsRow {
-                title: "Dim strength"
-                Widgets.NumberField {
-                    value: Services.Spotlight.intensity
-                    step: 5; suffix: "%"; from: 0; to: 100
-                    onCommitted: (v) => Services.Spotlight.setIntensity(v)
-                }
-            }
-        }
-
-        // crosshair options
-        Widgets.Reveal {
-            shown: Services.Spotlight.effect === "crosshair"
-            Modules.SettingsRow {
-                title: "Line thickness"
-                Widgets.NumberField {
-                    value: Services.Spotlight.crosshairThickness
-                    step: 1; suffix: "px"; from: 1; to: 8
-                    onCommitted: (v) => Services.Spotlight.setCrosshairThickness(v)
-                }
-            }
-            Modules.SettingsRow {
-                title: "Line opacity"
-                Widgets.NumberField {
-                    value: Services.Spotlight.crosshairOpacity
-                    step: 5; suffix: "%"; from: 5; to: 100
-                    onCommitted: (v) => Services.Spotlight.setCrosshairOpacity(v)
-                }
-            }
-        }
-
-        // ring options
-        Widgets.Reveal {
-            shown: Services.Spotlight.effect === "ring"
-            Modules.SettingsRow {
-                title: "Ring radius"
-                Widgets.NumberField {
-                    value: Services.Spotlight.ringRadius
-                    step: 5; suffix: "px"; from: 20; to: 240
-                    onCommitted: (v) => Services.Spotlight.setRingRadius(v)
-                }
-            }
-            Modules.SettingsRow {
-                title: "Ring thickness"
-                Widgets.NumberField {
-                    value: Services.Spotlight.ringThickness
-                    step: 1; suffix: "px"; from: 1; to: 12
-                    onCommitted: (v) => Services.Spotlight.setRingThickness(v)
-                }
-            }
-        }
-    }
-
-    // --- Screen magnifier ------------------------------------ The loupe (Magnifier/Magnifier.qml).
-    // Runtime UI state stored through `phi state` by Services/Magnifier, same
-    // category as the spotlight size — not a design token.
-    Modules.SettingsGroup {
-        title: "Screen magnifier"
-        Modules.SettingsRow {
-            optionId: "theme.magnifier"
-            title: "Magnifier loupe"
-            description: "Super+Z toggles it. Super + = / - zoom; with Shift, the lens size."
-            Widgets.Toggle {
-                checked: Services.Magnifier.shown
-                onToggled: (v) => (v ? Services.Magnifier.show() : Services.Magnifier.hide())
-            }
-        }
-        Modules.SettingsRow {
-            title: "Zoom"
-            Widgets.NumberField {
-                value: Services.Magnifier.zoom
-                step: 0.5; suffix: "×"; from: 1.5; to: 6; decimals: 1
-                onCommitted: (v) => Services.Magnifier.setZoom(v)
-            }
-        }
-        Modules.SettingsRow {
-            title: "Lens size"
-            Widgets.NumberField {
-                value: Services.Magnifier.size
-                step: 20; suffix: "px"; from: 180; to: 720
-                onCommitted: (v) => Services.Magnifier.setSize(Math.round(v))
-            }
-        }
     }
 
     // --- Clock ---------------------------------------------------
@@ -1676,432 +1973,139 @@ Column {
         }
     }
 
-    // --- Wallpaper ------------------------------------------------
-    // Three groups by context — the base layers, the image and how it fills
-    // the screen, and the dynamic rotation — so options that belong together
-    // sit together instead of being scattered down one long wall of rows.
+    // --- Cursor spotlight --------------------------------------
     Modules.SettingsGroup {
-        title: "Wallpaper — base"
-        caption: "The solid colour underneath the picture, with an optional grain."
-        Component.onCompleted: {
-            Services.Background.refreshAvailable()
-            Services.DynamicWallpaper.refresh()
-        }
+        title: "Cursor spotlight"
+        caption: "Double-press Super and hold to show it; the toggle here is sticky. Dim and flashlight dim the screen around a clear circle; crosshair and ring just mark the pointer and never dim."
 
         Modules.SettingsRow {
-            optionId: "theme.wallpaper.color"
-            title: "Solid colour"
-            Widgets.ColorField {
-                value: Services.Background.color
-                onCommitted: (hex) => Services.Background.setColor(hex)
+            optionId: "theme.spotlight"
+            title: "Cursor spotlight"
+            Widgets.Toggle {
+                checked: Services.Spotlight.shown
+                onToggled: (v) => (v ? Services.Spotlight.show() : Services.Spotlight.hide())
             }
         }
-
         Modules.SettingsRow {
-            optionId: "theme.wallpaper.texture"
-            title: "Texture"
-            description: Services.Background.textureApplies
-                ? "A generated grain over the solid colour."
-                : "Only with no image or contain/repeat."
-            enabled: Services.Background.textureApplies
-            Column {
-                spacing: root.gap
-                Row {
-                    spacing: 6
-                    Widgets.StyledButton {
-                        label: "none"
-                        active: Services.Background.texture.length === 0
-                        onClicked: Services.Background.setTexture("", Services.Background.textureIntensity)
-                    }
-                    Repeater {
-                        model: Config.Appearance.textureModes
-                        Widgets.StyledButton {
-                            required property string modelData
-                            label: modelData
-                            active: Services.Background.texture === modelData
-                            onClicked: Services.Background.setTexture(modelData, Services.Background.textureIntensity)
-                        }
-                    }
-                }
-                Row {
-                    spacing: root.gap
-                    visible: Services.Background.texture.length > 0
-                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Intensity" }
-                    Widgets.Meter {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: root.chWidth * 14
-                        interactive: true
-                        value: Services.Background.textureIntensity / 100
-                        onReleased: (v) => Services.Background.setTextureIntensity(Math.round(v * 100))
-                    }
-                    Widgets.StyledText {
-                        anchors.verticalCenter: parent.verticalCenter
-                        mono: true; text: Services.Background.textureIntensity + "%"
-                    }
-                }
-            }
-        }
-    }
-
-    Modules.SettingsGroup {
-        title: "Wallpaper — image"
-        caption: "Pick a picture, then how it fills the screen."
-
-        Modules.SettingsRow {
-            optionId: "theme.wallpaper.image"
-            title: "Image"
+            title: "Effect"
             wide: true
-            Column {
+            Flow {
                 width: parent.width
                 spacing: root.gap
-
-                // "No image" tile, always available, outside the sections.
-                Flow {
-                    width: parent.width
-                    spacing: 6
-
-                    Rectangle {
-                        id: noneTile
-                        width: root.chWidth * 12; height: root.chWidth * 8
-                        radius: Config.Appearance.radiusSmall
-                        color: Config.Appearance.surface1
-                        border.width: Config.Appearance.borderWidth
-                        // A hairline brightens on hover, distinct from the
-                        // accent border that marks the CURRENT selection, so
-                        // "hovering" and "selected" never read as the same
-                        // thing.
-                        border.color: Services.Background.image.length === 0
-                            ? Config.Appearance.accent
-                            : ((noneHover.hovered || noneTile.activeFocus) ? Config.Appearance.borderStrong : Config.Appearance.border)
-                        Behavior on border.color {
-                            ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
-                        }
-                        Widgets.StyledText { anchors.centerIn: parent; kind: "label"; sizeStep: 0; text: "none" }
-                        HoverHandler { id: noneHover; cursorShape: Qt.PointingHandCursor }
-                        TapHandler { onTapped: Services.Background.clearImage() }
-                        // Same Tab-reachability fix as the colour swatches
-                        // above.
-                        activeFocusOnTab: true
-                        Keys.onReturnPressed: Services.Background.clearImage()
-                        Keys.onSpacePressed: Services.Background.clearImage()
-                    }
-
-                    // The wallpaper folder's loose top-level files sit flat,
-                    // next to "none"; only subfolders collapse.
-                    Repeater {
-                        model: Services.Background.rootImages
-                        delegate: StaticWallpaperTile {
-                            loading: true
-                        }
-                    }
-                }
-
-                // One collapsible section per subfolder of the wallpaper
-                // folder. A closed section loads nothing: a tile only gets a
-                // source once its section is open (is what stops a large
-                // folder from decoding every thumbnail at once). The loose
-                // top-level files are not a section — they sit flat beside
-                // "none".
                 Repeater {
-                    model: Services.Background.groups.filter(g => g.name !== "General")
-                    delegate: Widgets.Accordion {
-                        id: section
-                        required property var modelData
-                        title: modelData.name
-                        content:
-                            Flow {
-                                width: parent.width
-                                spacing: 6
-                                Repeater {
-                                    model: section.modelData.images
-                                    delegate: StaticWallpaperTile {
-                                        loading: section.expanded
-                                    }
-                                }
-                            }
-                    }
-                }
-
-                Row {
-                    width: parent.width
-                    spacing: root.gap
-                    Widgets.TextField {
-                        id: wpPath
-                        width: parent.width - addBtn.implicitWidth - openBtn.implicitWidth - root.gap * 2
-                        mono: false
-                        placeholder: "Path to an image…"
-                        onCommitted: root._addWallpaper(text)
-                    }
-                    Widgets.StyledButton { id: addBtn; label: "Add"; onClicked: root._addWallpaper(wpPath.text) }
-                    Widgets.StyledButton {
-                        id: openBtn
-                        label: "Open folder"
-                        onClicked: Quickshell.execDetached(["xdg-open", Config.Paths.wallpaperDir])
-                    }
-                }
-            }
-        }
-
-        Modules.SettingsRow {
-            optionId: "theme.wallpaper.mode"
-            title: "Fit mode"
-            enabled: Services.Background.image.length > 0
-            Row {
-                spacing: 6
-                Repeater {
-                    model: ["cover", "contain", "stretch", "repeat"]
+                    model: Services.Spotlight.effects
                     Widgets.StyledButton {
                         required property string modelData
                         label: modelData
-                        active: Services.Background.mode === modelData
-                        onClicked: Services.Background.setMode(modelData)
+                        active: Services.Spotlight.effect === modelData
+                        onClicked: Services.Spotlight.setEffect(modelData)
                     }
                 }
             }
         }
 
-        Modules.SettingsRow {
-            optionId: "theme.wallpaper.scale"
-            title: "Scale"
-            description: "Zoom for contain and repeat."
-            enabled: Services.Background.image.length > 0
-                && (Services.Background.mode === "contain" || Services.Background.mode === "repeat")
-            Widgets.NumberField {
-                value: Services.Background.scale
-                step: 0.1; decimals: 1; from: 0.1; to: 4.0
-                onCommitted: (v) => Services.Background.setScale(v)
+        // dim / flashlight options slide in/out with the effect choice rather
+        // than the sub-rows popping.
+        Widgets.Reveal {
+            shown: Services.Spotlight.effect === "dim" || Services.Spotlight.effect === "flashlight"
+            Modules.SettingsRow {
+                title: "Circle size"
+                Row {
+                    spacing: root.gap
+                    Repeater {
+                        model: ["small", "medium", "large"]
+                        Widgets.StyledButton {
+                            required property string modelData
+                            label: modelData
+                            active: Services.Spotlight.size === modelData
+                            onClicked: Services.Spotlight.setSize(modelData)
+                        }
+                    }
+                }
+            }
+            Modules.SettingsRow {
+                title: "Dim strength"
+                Widgets.NumberField {
+                    value: Services.Spotlight.intensity
+                    step: 5; suffix: "%"; from: 0; to: 100
+                    onCommitted: (v) => Services.Spotlight.setIntensity(v)
+                }
+            }
+        }
+
+        // crosshair options
+        Widgets.Reveal {
+            shown: Services.Spotlight.effect === "crosshair"
+            Modules.SettingsRow {
+                title: "Line thickness"
+                Widgets.NumberField {
+                    value: Services.Spotlight.crosshairThickness
+                    step: 1; suffix: "px"; from: 1; to: 8
+                    onCommitted: (v) => Services.Spotlight.setCrosshairThickness(v)
+                }
+            }
+            Modules.SettingsRow {
+                title: "Line opacity"
+                Widgets.NumberField {
+                    value: Services.Spotlight.crosshairOpacity
+                    step: 5; suffix: "%"; from: 5; to: 100
+                    onCommitted: (v) => Services.Spotlight.setCrosshairOpacity(v)
+                }
+            }
+        }
+
+        // ring options
+        Widgets.Reveal {
+            shown: Services.Spotlight.effect === "ring"
+            Modules.SettingsRow {
+                title: "Ring radius"
+                Widgets.NumberField {
+                    value: Services.Spotlight.ringRadius
+                    step: 5; suffix: "px"; from: 20; to: 240
+                    onCommitted: (v) => Services.Spotlight.setRingRadius(v)
+                }
+            }
+            Modules.SettingsRow {
+                title: "Ring thickness"
+                Widgets.NumberField {
+                    value: Services.Spotlight.ringThickness
+                    step: 1; suffix: "px"; from: 1; to: 12
+                    onCommitted: (v) => Services.Spotlight.setRingThickness(v)
+                }
             }
         }
     }
 
-    // --- Dynamic wallpaper ----------------------------------------
-    // Entries under wallpapers/dynamic/ that rotate the wallpaper by daytime,
-    // season and (future) weather.
-    // All state lives in Services/DynamicWallpaper.qml — this group only reads it and calls its setters.
-    // While it is on, the image shown becomes the entry's most specific image for the current slot;
-    // while off, or paused by battery saver, the static pick apply unchanged.
+    // --- Screen magnifier ------------------------------------ The loupe (Magnifier/Magnifier.qml).
+    // Runtime UI state stored through `phi state` by Services/Magnifier, same
+    // category as the spotlight size — not a design token.
     Modules.SettingsGroup {
-        title: "Wallpaper — dynamic"
-        caption: "Rotate the wallpaper by time of day and season."
-
+        title: "Screen magnifier"
         Modules.SettingsRow {
-            optionId: "theme.wallpaper.dynamic"
-            title: "Dynamic wallpaper"
+            optionId: "theme.magnifier"
+            title: "Magnifier loupe"
+            description: "Super+Z toggles it. Super + = / - zoom; with Shift, the lens size."
             Widgets.Toggle {
-                checked: Services.DynamicWallpaper.enabled
-                onToggled: (v) => Services.DynamicWallpaper.setEnabled(v)
+                checked: Services.Magnifier.shown
+                onToggled: (v) => (v ? Services.Magnifier.show() : Services.Magnifier.hide())
             }
         }
-
         Modules.SettingsRow {
-            optionId: "theme.wallpaper.dynamic.folder"
-            title: "Entry"
-            description: "A folder of state images, or a single dynamic .heic (solar or 24-hour timeline) right in wallpapers/dynamic/."
-            enabled: Services.DynamicWallpaper.enabled
-            wide: true
-            Column {
-                width: parent.width
-                spacing: root.gap
-                Flow {
-                    width: parent.width
-                    spacing: 6
-                    Repeater {
-                        model: Services.DynamicWallpaper.available
-                        delegate: Rectangle {
-                            id: dynTile
-                            required property var modelData
-                            width: root.chWidth * 12; height: root.chWidth * 8
-                            radius: Config.Appearance.radiusSmall
-                            color: Config.Appearance.surface1
-                            clip: true
-                            border.width: Config.Appearance.borderWidth
-                            border.color: Services.DynamicWallpaper.activeName === modelData.name
-                                ? Config.Appearance.accent
-                                : ((dynHover.hovered || dynTile.activeFocus) ? Config.Appearance.borderStrong : Config.Appearance.border)
-                            Behavior on border.color {
-                                ColorAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
-                            }
-
-                            // What this entry previews: a folder cycles
-                            // through the raster images it holds, one every
-                            // 1.5s while hovered; a bare.heic shows its
-                            // converted first frame.
-                            readonly property var frames: modelData.kind === "folder"
-                                ? modelData.images
-                                : (Services.DynamicWallpaper.previews[modelData.name]
-                                    ? [Services.DynamicWallpaper.previews[modelData.name]] : [])
-                            property int cycleIdx: 0
-                            property bool frontIsA: true
-                            // True once any frame has actually painted on
-                            // either layer; the skeleton then never shows
-                            // again, even while hover-cycling swaps frames.
-                            property bool _everReady: false
-                            // A preview that never converts (an undecodable
-                            // heic) stops breathing after this long instead of
-                            // looking like it is loading forever. Long enough
-                            // to cover a queued backlog of several big heic
-                            // conversions.
-                            property bool _giveUp: false
-
-                            Timer {
-                                id: previewWait
-                                interval: 15000
-                                running: dynTile.frames.length === 0 && !dynTile._everReady && !dynTile._giveUp
-                                onTriggered: dynTile._giveUp = true
-                            }
-
-                            Component.onCompleted:
-                                if (modelData.kind === "file") Services.DynamicWallpaper.ensureFilePreview(modelData.name)
-
-                            // Two stacked layers; each cycle loads the next
-                            // frame into the hidden one and crossfades, then
-                            // the layers swap roles.
-                            Image {
-                                id: dynA
-                                anchors.fill: parent
-                                anchors.margins: Config.Appearance.borderWidth
-                                source: dynTile.frames.length > 0
-                                    ? "file://" + dynTile.frames[dynTile.cycleIdx % dynTile.frames.length] : ""
-                                fillMode: Image.PreserveAspectCrop
-                                asynchronous: true
-                                sourceSize.width: 256
-                                onStatusChanged: if (status === Image.Ready) dynTile._everReady = true
-                                Behavior on opacity {
-                                    NumberAnimation { duration: Config.Appearance.motionBDuration * 2; easing.type: Easing.InOutQuad }
-                                }
-                            }
-                            Image {
-                                id: dynB
-                                anchors.fill: parent
-                                anchors.margins: Config.Appearance.borderWidth
-                                opacity: 0
-                                fillMode: Image.PreserveAspectCrop
-                                asynchronous: true
-                                sourceSize.width: 256
-                                onStatusChanged: if (status === Image.Ready) dynTile._everReady = true
-                                Behavior on opacity {
-                                    NumberAnimation { duration: Config.Appearance.motionBDuration * 2; easing.type: Easing.InOutQuad }
-                                }
-                            }
-
-                            // Breathing placeholder until this tile has
-                            // something to paint: the.heic preview is still
-                            // converting, or the first frame is still
-                            // decoding. Once any frame has painted, hover-
-                            // cycling swaps cached frames and the placeholder
-                            // stays gone.
-                            WallpaperTileSkeleton {
-                                visible: (dynTile.frames.length === 0 && !dynTile._giveUp)
-                                    || (dynTile.frames.length > 0 && !dynTile._everReady
-                                        && (dynTile.frontIsA ? dynA.status === Image.Loading : dynB.status === Image.Loading))
-                            }
-
-                            Timer {
-                                id: cycleTimer
-                                interval: 1500
-                                repeat: true
-                                onTriggered: {
-                                    var n = dynTile.frames.length
-                                    if (n < 2) return
-                                    var next = (dynTile.cycleIdx + 1) % n
-                                    if (dynTile.frontIsA) {
-                                        dynB.source = "file://" + dynTile.frames[next]
-                                        dynA.opacity = 0
-                                        dynB.opacity = 1
-                                    } else {
-                                        dynA.source = "file://" + dynTile.frames[next]
-                                        dynB.opacity = 0
-                                        dynA.opacity = 1
-                                    }
-                                    dynTile.frontIsA = !dynTile.frontIsA
-                                    dynTile.cycleIdx = next
-                                }
-                            }
-
-                            HoverHandler {
-                                id: dynHover
-                                cursorShape: Qt.PointingHandCursor
-                                onHoveredChanged: {
-                                    if (dynHover.hovered) { if (dynTile.frames.length > 1) cycleTimer.start() }
-                                    else cycleTimer.stop()
-                                }
-                            }
-                            TapHandler { onTapped: Services.DynamicWallpaper.setActive(modelData.name) }
-                            activeFocusOnTab: true
-                            Keys.onReturnPressed: Services.DynamicWallpaper.setActive(modelData.name)
-                            Keys.onSpacePressed: Services.DynamicWallpaper.setActive(modelData.name)
-
-                            // Name caption on a bottom band, so an entry with
-                            // no previews (an empty folder) still reads as
-                            // selectable.
-                            Rectangle {
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.bottom: parent.bottom
-                                height: root.chWidth * 2
-                                color: Config.Appearance.surface2
-                                opacity: 0.85
-                                Widgets.StyledText {
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: root.chWidth
-                                    anchors.right: parent.right
-                                    anchors.rightMargin: root.chWidth
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    kind: "label"; sizeStep: 0
-                                    text: modelData.name
-                                    elide: Text.ElideRight
-                                }
-                            }
-                        }
-                    }
-                    Widgets.StyledText {
-                        visible: Services.DynamicWallpaper.available.length === 0
-                        kind: "label"; sizeStep: 0
-                        text: "Nothing here yet — add a folder or a .heic under wallpapers/dynamic/."
-                    }
-                }
-                Widgets.SmallButton {
-                    label: "Open dynamic folder"
-                    onClicked: Quickshell.execDetached(["xdg-open", Config.Paths.dynamicWallpaperDir])
-                }
-            }
-        }
-
-        Modules.SettingsRow {
-            optionId: "theme.wallpaper.dynamic.dawn"
-            title: "Sunrise starts at"
-            description: "Dawn runs one hour from this hour."
-            enabled: Services.DynamicWallpaper.enabled
+            title: "Zoom"
             Widgets.NumberField {
-                value: Services.DynamicWallpaper.dawnHour
-                step: 1; suffix: ":00"; from: 0; to: 23
-                onCommitted: (v) => Services.DynamicWallpaper.setDawnHour(v)
+                value: Services.Magnifier.zoom
+                step: 0.5; suffix: "×"; from: 1.5; to: 6; decimals: 1
+                onCommitted: (v) => Services.Magnifier.setZoom(v)
             }
         }
-
         Modules.SettingsRow {
-            optionId: "theme.wallpaper.dynamic.dusk"
-            title: "Sunset starts at"
-            description: "Dusk runs one hour from this hour."
-            enabled: Services.DynamicWallpaper.enabled
+            title: "Lens size"
             Widgets.NumberField {
-                value: Services.DynamicWallpaper.duskHour
-                step: 1; suffix: ":00"; from: 0; to: 23
-                onCommitted: (v) => Services.DynamicWallpaper.setDuskHour(v)
+                value: Services.Magnifier.size
+                step: 20; suffix: "px"; from: 180; to: 720
+                onCommitted: (v) => Services.Magnifier.setSize(Math.round(v))
             }
         }
-
-        // Read-only status — a cheap way to see what the matcher resolved
-        // without waiting for a boundary: the slot, the season/weather
-        // considered, and the filename actually painted. Only meaningful while
-        // the feature is on, so it hides (not dims) when off.
-        Modules.SettingsRow {
-            visible: Services.DynamicWallpaper.enabled
-            title: "Now showing"
-            description: root._dynamicStatus()
-            wide: true
-        }
-
     }
 
     // The global "reset every override" sits as a footer action at the very

@@ -42,52 +42,6 @@ Column {
         return when + "   " + src + "  →  " + proto + " " + dport
     }
 
-    // --- Bluetooth ---------------------------------------------------
-    Modules.SettingsGroup {
-        title: "Bluetooth"
-        optionId: "connectivity.bluetooth"
-        disabled: !Config.Capabilities.bluetooth
-        disabledReason: "No Bluetooth adapter was detected on this machine."
-
-        Modules.SettingsRow {
-            title: "Adapter"
-            Widgets.Toggle {
-                checked: Services.BluetoothBridge.adapterEnabled
-                onToggled: (v) => Services.BluetoothBridge.setEnabled(v)
-            }
-        }
-        Modules.SettingsRow {
-            wide: true
-            title: "Connected devices"
-            Column {
-                width: parent.width
-                spacing: root._gap
-                Repeater {
-                    model: Services.BluetoothBridge.devices ? Services.BluetoothBridge.devices.values : []
-                    Widgets.ListRow {
-                        interactive: true
-                        required property var modelData
-                        width: parent.width
-                        label: modelData.name || "(unnamed)"
-                        value: "disconnect"
-                        onActivated: Services.BluetoothBridge.disconnectDevice(modelData)
-                    }
-                }
-                Widgets.StyledText {
-                    visible: !Services.BluetoothBridge.anyConnected
-                    kind: "label"; sizeStep: 0; text: "Nothing connected."
-                }
-            }
-        }
-        Modules.SettingsRow {
-            title: "Pair a new device"
-            Widgets.StyledButton {
-                label: "Open bluetuith…"
-                onClicked: Quickshell.execDetached(["kitty", "-e", "bluetuith"])
-            }
-        }
-    }
-
     // --- Wi-Fi -----------------------------------------------------
     Modules.SettingsGroup {
         title: "Wi-Fi"
@@ -143,6 +97,52 @@ Column {
                     Widgets.StyledText { kind: "label"; sizeStep: 0
                         text: "ping " + (Services.NetStats.pingMs >= 0 ? Services.NetStats.pingMs + " ms" : "—") }
                 }
+            }
+        }
+    }
+
+    // --- Bluetooth ---------------------------------------------------
+    Modules.SettingsGroup {
+        title: "Bluetooth"
+        optionId: "connectivity.bluetooth"
+        disabled: !Config.Capabilities.bluetooth
+        disabledReason: "No Bluetooth adapter was detected on this machine."
+
+        Modules.SettingsRow {
+            title: "Adapter"
+            Widgets.Toggle {
+                checked: Services.BluetoothBridge.adapterEnabled
+                onToggled: (v) => Services.BluetoothBridge.setEnabled(v)
+            }
+        }
+        Modules.SettingsRow {
+            wide: true
+            title: "Connected devices"
+            Column {
+                width: parent.width
+                spacing: root._gap
+                Repeater {
+                    model: Services.BluetoothBridge.devices ? Services.BluetoothBridge.devices.values : []
+                    Widgets.ListRow {
+                        interactive: true
+                        required property var modelData
+                        width: parent.width
+                        label: modelData.name || "(unnamed)"
+                        value: "disconnect"
+                        onActivated: Services.BluetoothBridge.disconnectDevice(modelData)
+                    }
+                }
+                Widgets.StyledText {
+                    visible: !Services.BluetoothBridge.anyConnected
+                    kind: "label"; sizeStep: 0; text: "Nothing connected."
+                }
+            }
+        }
+        Modules.SettingsRow {
+            title: "Pair a new device"
+            Widgets.StyledButton {
+                label: "Open bluetuith…"
+                onClicked: Quickshell.execDetached(["kitty", "-e", "bluetuith"])
             }
         }
     }

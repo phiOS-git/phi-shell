@@ -6,6 +6,7 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 import "./sections" as Sections
+import "./modules" as Modules
 import "./modules/options.js" as Options
 
 // Settings panel. Sections data-driven from sections.json (add section = one
@@ -19,16 +20,33 @@ PanelWindow {
     readonly property bool shown: Services.SettingsPanel.shown
     property int activeIndex: 0
     property var registryRows: []
+    // {title, item}[] for the loaded section's own top-level groups — see
+    // _collectIndexEntries() and the sectionLoader.onLoaded below.
+    property var indexEntries: []
 
     onShownChanged: {
         if (!root.shown) return
         Services.SettingsPanel.query = ""
         searchField.text = ""
-        Services.SystemInfo.refresh()
-        Services.Keybinds.refresh()
         root._applyPendingSection()
         root._applyPendingReveal()
+        // SystemInfo/Keybinds each shell out (hostname/cpu/gpu/disk reads,
+        // `hyprctl binds`) — held back until fadeRoot's own open fade
+        // (below) has finished, so those spawns aren't competing with the
+        // panel's first painted frames. Same duration as that fade, so the
+        // data lands right as the panel finishes appearing rather than a
+        // beat later.
+        refreshDeferTimer.restart()
         Qt.callLater(function () { searchField.forceActiveFocus() })
+    }
+
+    Timer {
+        id: refreshDeferTimer
+        interval: Config.Appearance.motionBDuration
+        onTriggered: {
+            Services.SystemInfo.refresh()
+            Services.Keybinds.refresh()
+        }
     }
 
     // Caller can request section (matched by type or title).
@@ -76,6 +94,38 @@ PanelWindow {
         }
     }
 
+    // Components/Settings/modules/SectionIndex.qml's own entry list: every
+    // visible, titled top-level Modules.SettingsGroup (ColorGroup included —
+    // it extends SettingsGroup) in the loaded section, document order. Run
+    // once per section load (sectionLoader.onLoaded below); each entry then
+    // reads its own group's `visible` live, so an advanced/search change or
+    // Theme.qml's Screensaver preview hiding itself doesn't need a separate
+    // recompute here.
+    function _collectIndexEntries() {
+        var item = sectionLoader.item
+        var out = []
+        if (item && item.children) {
+            for (var i = 0; i < item.children.length; i++) {
+                var c = item.children[i]
+                if (c && c.isSettingsGroup === true && (c.title || "").length > 0)
+                    out.push({ title: c.title, item: c })
+            }
+        }
+        root.indexEntries = out
+    }
+
+    // SectionIndex click target: same "one gap above the group's top, clamped
+    // to the scroll range" math _applyPendingReveal uses for a reveal, reused
+    // here via scrollAnim so both paths land identically.
+    function _scrollToGroup(item) {
+        if (!item) return
+        var target = Math.max(0, Math.min(item.y - root.gap,
+            Math.max(0, contentFlick.contentHeight - contentFlick.height)))
+        scrollAnim.from = contentFlick.contentY
+        scrollAnim.to = target
+        scrollAnim.restart()
+    }
+
     // Nav highlight (not filter): a section entry whose type has a match.
     function sectionMatches(row) {
         return Options.sectionMatches(row.type, Services.SettingsPanel.query)
@@ -116,7 +166,14 @@ PanelWindow {
 
     // Reset scroll on section switch — otherwise a short section opened
     // scrolled past its own end, inheriting the previous section's offset.
-    onActiveIndexChanged: contentFlick.contentY = 0
+    // Also drops the index entries straight away: sectionLoader destroys the
+    // outgoing section's item the moment sourceComponent changes, and every
+    // entry holds a direct reference to one of its groups — onLoaded below
+    // rebuilds the list once the new section is actually ready.
+    onActiveIndexChanged: {
+        contentFlick.contentY = 0
+        root.indexEntries = []
+    }
 
     // Thin, non-interactive scroll-position hint — the content pane (Theme
     // especially) scrolls well past a screen with no other indication there
@@ -416,7 +473,10 @@ PanelWindow {
                 // Symmetric left/right gutters, not just a left margin
                 // otherwise the pane reads as "more space on the left".
                 anchors.leftMargin: root.gap
-                anchors.right: parent.right
+                // Gives way to the index panel when it's shown, so the two
+                // never overlap; the index sits entirely in the space this
+                // pane gives up rather than floating over the content.
+                anchors.right: sectionIndex.visible ? sectionIndex.left : parent.right
                 anchors.rightMargin: root.gap
                 anchors.top: topSep.bottom
                 anchors.topMargin: root.gap
@@ -436,12 +496,74 @@ PanelWindow {
                     easing.type: Easing.OutQuad
                 }
 
+                // Loading placeholder: only instantiated while the section is
+                // actually incubating (Loader { active: … }, not a bare
+                // `visible: false`) — Widgets/Skeleton.qml's own breathing
+                // animation has no `running` gate of its own, so leaving it
+                // merely hidden would keep it ticking for as long as the
+                // panel stays open.
+                Loader {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    active: sectionLoader.status === Loader.Loading
+                    // No explicit `gap` — Widgets/Skeleton.qml already falls
+                    // back to chWidth * space1 on its own when unset, and an
+                    // inline Component here can't reach this file's own
+                    // `root` id without `pragma ComponentBehavior: Bound`.
+                    // `parent` is the Loader itself, not a named outer id, so
+                    // it's fine to reach for from inside this Component —
+                    // same width expression Updates.qml/Packages.qml's own
+                    // Skeleton rows use.
+                    sourceComponent: Widgets.Skeleton {
+                        width: parent ? parent.width : 0
+                        count: 6
+                    }
+                }
+
                 Loader {
                     id: sectionLoader
                     width: parent.width
+                    // Section files are sizeable (Theme.qml especially) — off
+                    // the render thread's incubation keeps the panel's own
+                    // open animation smooth instead of the whole frame
+                    // stalling on one big synchronous instantiation.
+                    asynchronous: true
                     sourceComponent: root.registryRows.length > root.activeIndex
                         ? root.componentFor(root.registryRows[root.activeIndex].type) : null
+                    // Fades the section in once it's actually ready, rather
+                    // than popping in mid-layout the instant incubation ends.
+                    opacity: sectionLoader.status === Loader.Ready ? 1 : 0
+                    Behavior on opacity {
+                        NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                    }
+                    onLoaded: root._collectIndexEntries()
                 }
+            }
+
+            Modules.SectionIndex {
+                id: sectionIndex
+                // Only right/top/bottom are anchored (SectionIndex.qml's
+                // job), so it needs its own implicitWidth explicitly — a
+                // bare Item never adopts implicitWidth as width on its own,
+                // same reason every Widgets.Skeleton caller in this codebase
+                // sets width itself instead of relying on it.
+                width: sectionIndex.implicitWidth
+                anchors.right: parent.right
+                anchors.rightMargin: root.gap
+                anchors.top: topSep.bottom
+                anchors.topMargin: root.gap
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: root.gap
+                available: root.registryRows.length > root.activeIndex
+                    && root.registryRows[root.activeIndex].index === true
+                entries: root.indexEntries
+                contentY: contentFlick.contentY
+                contentHeight: contentFlick.contentHeight
+                viewportHeight: contentFlick.height
+                gap: root.gap
+                query: Services.SettingsPanel.query
+                onActivateRequested: (item) => root._scrollToGroup(item)
             }
 
             ScrollHint { flick: contentFlick }
