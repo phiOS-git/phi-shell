@@ -35,12 +35,14 @@ Singleton {
         if (root.which === key) {
             root.which = ""
         } else {
-            root.which = key
+            // Anchor first: each popout surface latches it the moment `which`
+            // selects it.
             root._setAnchor(x, edge)
+            root.which = key
         }
     }
 
-    function open(key, x, edge) { root.which = key; root._setAnchor(x, edge) }
+    function open(key, x, edge) { root._setAnchor(x, edge); root.which = key }
     function hide() { root.which = "" }
 
     // notifications/clipboard need precise icon position (registered getters).
