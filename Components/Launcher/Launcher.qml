@@ -42,7 +42,12 @@ PanelWindow {
     anchors { top: true; bottom: true; left: true; right: true }
     exclusiveZone: -1
     color: "transparent"
-    mask: Region { item: panel }
+    // The rich-result card sits beside the box, outside `panel`, so it joins
+    // the input region while it is shown.
+    mask: Region {
+        item: panel
+        Region { item: richWrap.visible ? richWrap : null }
+    }
 
     Component.onCompleted: {
         if (root.WlrLayershell) root.WlrLayershell.layer = WlrLayer.Overlay
