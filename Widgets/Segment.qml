@@ -65,17 +65,18 @@ Item {
     // Segment keeps the body size.
     property int sizeStep: root._bar ? 0 : 2
 
-    // Accent fill for the active state instead of the usual treatment: the Φ
-    // agent segment (processing) and the window list, whose image icons
-    // cannot show the isle's accent-text active state.
+    // Accent fill for the active state instead of the usual treatment: the
+    // window list, whose image icons cannot show the isle's accent-text
+    // active state.
     property bool accentWhenActive: false
 
     readonly property bool hovered: hoverHandler.hovered
-    readonly property bool pressed: tapHandler.pressed
+    readonly property bool pressed: tapHandler.pressed || touchHandler.pressed
     readonly property bool keyboardFocus: activeFocus
 
     signal activated()
-    // Right-click: a module's quick toggle, never its popout.
+    // Right-click, or a touchscreen long press: a module's quick toggle,
+    // never its popout.
     signal secondaryActivated()
 
     // Screen x of this button's RIGHT edge, so a popout can hang directly
@@ -315,9 +316,13 @@ Item {
         }
     }
 
+    // Mouse/trackpad/stylus only: touch has no hover state of its own, and
+    // without this restriction a touch press synthesizes one that never
+    // clears once the finger lifts.
     HoverHandler {
         id: hoverHandler
         enabled: root.enabled && !root.loading
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad | PointerDevice.Stylus
         cursorShape: Qt.PointingHandCursor
     }
 
@@ -338,15 +343,34 @@ Item {
         // adjacent buttons. Not gated on touchscreen capability — a forgiving
         // release tolerance is correct for a mouse too.
         margin: root.paddingV
+        // Touch is `touchHandler` below: TapHandler ignores `acceptedButtons`
+        // for a touch tap, so without this a finger would fire this left
+        // activation too.
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad | PointerDevice.Stylus
         onTapped: root.activated()
     }
 
     TapHandler {
         enabled: root.enabled && !root.loading
         acceptedButtons: Qt.RightButton
+        // Same touch exclusion as `tapHandler` above.
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad | PointerDevice.Stylus
         gesturePolicy: TapHandler.ReleaseWithinBounds
         margin: root.paddingV
         onTapped: root.secondaryActivated()
+    }
+
+    // Touch's own right-click equivalent: a tap activates as usual, a long
+    // press does what a right-click does elsewhere. TapHandler never emits
+    // `tapped` after `longPressed`, so the two cannot both fire.
+    TapHandler {
+        id: touchHandler
+        enabled: root.enabled && !root.loading
+        acceptedDevices: PointerDevice.TouchScreen
+        gesturePolicy: TapHandler.ReleaseWithinBounds
+        margin: root.paddingV
+        onTapped: root.activated()
+        onLongPressed: root.secondaryActivated()
     }
 
     // Same keyboard-activation fix as Widgets/StyledButton.qml. Every consumer

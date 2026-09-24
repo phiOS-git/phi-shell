@@ -6,7 +6,7 @@ import qs.Widgets as Widgets
 
 // Processing state: slow opacity breathe. Applied to wrapper Item, not
 // Segment (Segment owns internal opacity binding for disabled/loading fade).
-// Label (Φ) renders via UI font; Tier-1 accent when active.
+// Label (Φ) renders via UI font.
 
 Item {
     id: root
@@ -27,8 +27,6 @@ Item {
         sizeStep: 1
         // Also active when panel is open (shows state even without processing).
         active: root.processing || Services.AgentPanel.shown
-        // Tier-1 accent (one exception to B&W inversion for selected controls).
-        accentWhenActive: true
         // Left isle (leftmost, ahead of workspace list).
         ambient: "isle"
         onActivated: Services.AgentPanel.toggle()

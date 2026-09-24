@@ -5,11 +5,9 @@ import qs.Widgets as Widgets
 import "../glyphs.js" as Glyphs
 
 // MPRIS player glyph (right isle): shows current state (play/pause), hidden
-// when no player. Left click opens media popout; right click plays/pauses.
-// Touch: TapHandler ignores acceptedButtons for touch; discriminate via
-// acceptedDevices. Touchscreen long-press for play/pause (touch "right click"),
-// tap for popout toggle (Segment's left handler). DragThreshold gesture
-// policy lets Segment's own long-press suppress the tap.
+// when no player. Left click (or a touchscreen tap) opens the media popout;
+// right click or a touchscreen long press plays/pauses — both routed through
+// Segment's own secondaryActivated.
 
 Widgets.Segment {
     id: root
@@ -26,24 +24,12 @@ Widgets.Segment {
         : Glyphs.play
 
     onActivated: Services.BarPopout.toggle("media", root.rightX())
+    onSecondaryActivated: { if (root.player !== null) root.player.togglePlaying() }
 
     // Only way to close media popout: close it when player becomes null.
     // Player switch leaves popout open.
     onPlayerChanged: {
         if (root.player === null && Services.BarPopout.which === "media")
             Services.BarPopout.hide()
-    }
-
-    TapHandler {
-        acceptedButtons: Qt.RightButton
-        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad | PointerDevice.Stylus
-        cursorShape: Qt.PointingHandCursor
-        onTapped: { if (root.player !== null) root.player.togglePlaying() }
-    }
-
-    TapHandler {
-        acceptedButtons: Qt.LeftButton
-        acceptedDevices: PointerDevice.TouchScreen
-        onLongPressed: { if (root.player !== null) root.player.togglePlaying() }
     }
 }
