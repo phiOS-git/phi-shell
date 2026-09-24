@@ -40,6 +40,20 @@ Column {
         if (!Services.HyprlandBridge.focusApp(needles) && p.canRaise) p.raise()
     }
 
+    // Some players (browsers, chiefly) report the track's own title as its
+    // album; showing both then reads as a stutter, so the album is dropped
+    // when it duplicates the title (compared trimmed, case-insensitive).
+    function _artistAlbumText() {
+        const p = Services.Mpris.active
+        if (p === null) return ""
+        const artist = p.trackArtist
+        const album = p.trackAlbum
+        const isDuplicate = album.trim().toLowerCase() === p.trackTitle.trim().toLowerCase()
+        const showAlbum = album.length > 0 && !isDuplicate
+        if (artist.length === 0) return showAlbum ? album : ""
+        return showAlbum ? (artist + " — " + album) : artist
+    }
+
     // --- identity / track info ------------------------------------------
 
     // Source row clickable; hover brightens text to show it's actionable.
@@ -72,11 +86,7 @@ Column {
         width: parent.width
         kind: "label"; sizeStep: 0
         running: root.active
-        text: Services.Mpris.active
-            ? (Services.Mpris.active.trackArtist
-                + (Services.Mpris.active.trackAlbum.length > 0
-                    ? " — " + Services.Mpris.active.trackAlbum : ""))
-            : ""
+        text: root._artistAlbumText()
     }
 
     // --- elapsed / total + read-only progress rail ----------------------
