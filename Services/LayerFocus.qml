@@ -36,8 +36,14 @@ QtObject {
     // every real caller outright.
     property var target: null
     property int mode: WlrKeyboardFocus.OnDemand
+    // A popout must stay above a fullscreen window, which Hyprland draws
+    // above the plain Top layer.
+    property bool overlay: false
 
     Component.onCompleted: {
-        if (root.target && root.target.WlrLayershell) root.target.WlrLayershell.keyboardFocus = root.mode
+        if (root.target && root.target.WlrLayershell) {
+            root.target.WlrLayershell.keyboardFocus = root.mode
+            if (root.overlay) root.target.WlrLayershell.layer = WlrLayer.Overlay
+        }
     }
 }

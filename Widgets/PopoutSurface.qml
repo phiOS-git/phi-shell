@@ -13,7 +13,10 @@ import qs.Services as Services
 // property alias content` routes straight into the inner Widgets.Panel's own
 // content slot, so a caller's children — visual or not (an IpcHandler, a
 // Timer) — land inside the card exactly as if they had written the Panel
-// themselves.
+// themselves. Outside clicks are detected through Services.OverlayGrab, the
+// one shell-wide Hyprland focus grab: `mask: Region { item: cardWrap }`
+// keeps this window's own input region to the card, so a click anywhere else
+// on screen reaches whatever is really there instead of this window.
 
 PanelWindow {
     id: root
@@ -54,8 +57,13 @@ PanelWindow {
     exclusiveZone: -1
     color: "transparent"
     visible: root.shown || fadeRoot.opacity > 0
+    mask: Region { item: cardWrap }
 
-    Services.LayerFocus { target: root }
+    Services.LayerFocus { target: root; overlay: true }
+
+    onShownChanged: root.shown ? Services.OverlayGrab.open(root, function () { root.closeRequested() }) : Services.OverlayGrab.close(root)
+    Component.onCompleted: if (root.shown) Services.OverlayGrab.open(root, function () { root.closeRequested() })
+    Component.onDestruction: Services.OverlayGrab.close(root)
 
     Item {
         id: fadeRoot
@@ -64,11 +72,6 @@ PanelWindow {
 
         Behavior on opacity {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            onClicked: root.closeRequested()
         }
 
         Item {
@@ -87,10 +90,6 @@ PanelWindow {
                         : parent.width - width - Config.Appearance.panelGap
             width: root.cardWidth
             height: root.cardHeight
-
-            // Swallow clicks on the card so they don't fall through to the
-            // click-outside MouseArea above.
-            MouseArea { anchors.fill: parent }
 
             Panel {
                 id: panel

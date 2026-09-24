@@ -39,6 +39,7 @@ PanelWindow {
     exclusiveZone: -1
     color: "transparent"
     visible: root.shown || fadeRoot.opacity > 0
+    mask: Region { item: dockHitArea }
 
     IpcHandler {
         target: "agent"
@@ -64,6 +65,7 @@ PanelWindow {
 
     onShownChanged: {
         if (root.shown) {
+            Services.OverlayGrab.open(root, function () { Services.AgentPanel.hide() })
             // Imperative, not `focus: root.shown`: the focus system sets
             // `keyScope.focus = false` when anything else takes focus and
             // never restores the binding. Without this, closing the panel
@@ -76,8 +78,11 @@ PanelWindow {
             root.agent.refreshAllProposals()
             Services.AgentInfra.refresh()
             if (root.section === "code") root.agent.refreshCodingSessions()
+        } else {
+            Services.OverlayGrab.close(root)
         }
     }
+    Component.onDestruction: Services.OverlayGrab.close(root)
     // Resolves `_autoOpenArmed` once real chat data exists. Sorts by `updated`
     // the one field every entry carries, rather than trusting list order. An
     // empty list just disarms — the Chat section's own empty state is correct.
@@ -119,22 +124,6 @@ PanelWindow {
     readonly property real targetWidth:
         (root.section === "status" && root.agent.totalPendingProposals > 0) ? wideWidth : baseWidth
 
-    // The dim must not cover either status bar. Every dim surface here is
-    // WlrLayer.Overlay, which layer-shell always stacks above the bar's Top
-    // layer so changing layers is the wrong lever. Instead the scrim is a
-    // plain child of this same window, inset top and bottom by the bars'
-    // published heights (Services.BarMetrics), leaving both visibly undimmed
-    // with no cross-layer risk.
-    Widgets.Scrim {
-        anchors.top: parent.top
-        anchors.topMargin: Services.BarMetrics.height
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: Services.BarMetrics.bottomHeight
-        shown: root.shown
-    }
-
     Item {
         id: fadeRoot
         anchors.fill: parent
@@ -142,8 +131,6 @@ PanelWindow {
         Behavior on opacity {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
-
-        MouseArea { anchors.fill: parent; onClicked: Services.AgentPanel.hide() }
 
         // Escape closes the panel only when nothing inside holds focus. An
         // Item with `focus: root.shown` holds active focus by default, so
@@ -190,8 +177,6 @@ PanelWindow {
                     NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
                 }
             }
-
-            MouseArea { anchors.fill: parent }
 
             Widgets.Panel {
                 id: dockPanel
@@ -284,6 +269,16 @@ PanelWindow {
                     Component { id: statusComp; Modules.MemoryProposals {} }
                 }
             }
+        }
+
+        // `dock`'s own geometry never changes — it stays anchored at its
+        // resting slot and only slides via `transform`, which the window's
+        // input mask does not track. Anchoring to `dock` instead of masking
+        // it directly gives the mask that untransformed resting slot, which
+        // is exactly where the dock sits on screen whenever it is open.
+        Item {
+            id: dockHitArea
+            anchors.fill: dock
         }
     }
 }

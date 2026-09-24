@@ -77,8 +77,10 @@ PanelWindow {
     Component.onCompleted: {
         if (bar.edge === "top") Services.BarMetrics.report(bar.height)
         else Services.BarMetrics.reportBottom(bar.height)
+        Services.OverlayGrab.registerBar(bar)
     }
-    
+    Component.onDestruction: Services.OverlayGrab.unregisterBar(bar)
+
     property var registryRows: []
     
     readonly property var leftModules: filterSort("left")
@@ -193,7 +195,17 @@ PanelWindow {
     readonly property bool activeIsFullscreenHere: bar._activeToplevel !== null
     && bar._activeToplevel.fullscreen
     && bar._onThisScreen(bar._activeToplevel)
-    readonly property bool autoHidden: bar.activeIsFullscreenHere && !hoverHandler.hovered
+    // shell.qml mounts BarPopout and Calendar once, on Quickshell.screens[0]
+    // only — checked here so a bar on another screen never reads state that
+    // belongs to a popout it cannot host. Bottom-bar keys come from
+    // Services.BarPopout.opensFromBottom(); Calendar only ever opens from the
+    // top bar.
+    readonly property bool _popoutFromThisBar: bar.screen === Quickshell.screens[0]
+    && ((Services.BarPopout.shown && Services.BarPopout.opensFromBottom(Services.BarPopout.which) === (bar.edge === "bottom"))
+        || (bar.edge === "top" && Services.Calendar.shown))
+    // A popout that hangs off this bar must not let the bar itself slide away
+    // once the pointer leaves the bar and moves onto the popout's card.
+    readonly property bool autoHidden: bar.activeIsFullscreenHere && !hoverHandler.hovered && !bar._popoutFromThisBar
     
     // Reuses the fullscreen auto-hide slide for the start/lock/unlock
     // transition rather than a second parallel animation. `startupReveal`
