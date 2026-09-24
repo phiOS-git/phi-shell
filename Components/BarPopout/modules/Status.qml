@@ -382,6 +382,15 @@ Widgets.StaggerReveal {
         }
     }
 
+    // --- capture -----------------------------------------------------------
+    // The six capture options — this directory's Screenshot.qml, embedded
+    // as-is. The top-bar capture icon only shows a capture in flight.
+    Local.Screenshot {
+        width: parent.width
+        chWidth: root.chWidth
+        active: root.active
+    }
+
     // --- tiling options grid --------------------------------------------
     Widgets.OverlaySection {
         width: parent.width

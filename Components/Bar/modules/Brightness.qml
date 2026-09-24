@@ -32,6 +32,8 @@ Widgets.Segment {
     label: ""
     active: Services.BarPopout.which === "brightness"
 
+    hoverInfo: Services.Brightness.percent + "%"
+
     property real fillLevel: 1
     Behavior on fillLevel {
         NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }

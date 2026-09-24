@@ -123,7 +123,10 @@ Scope {
         return which === "brightness" || which === "volume" || root._headerSettingsTarget(which).length > 0
     }
 
-    readonly property var _popoutKeys: ["volume", "media", "screenshot", "brightness",
+    // No "screenshot" key: the capture options are part of the "status"
+    // card (BarPopout/modules/Status.qml embeds modules/Screenshot.qml), and
+    // the top-bar capture icon only shows a capture in flight.
+    readonly property var _popoutKeys: ["volume", "media", "brightness",
         "wifi", "ethernet", "bluetooth", "network", "timer", "stopwatch", "battery",
         "microphone", "camera", "power", "status", "stats", "notifications", "clipboard"]
 
@@ -193,7 +196,6 @@ Scope {
             // it is the live one, exactly like the old single shared surface.
             Component { id: volumeComp;     Modules.Volume     { chWidth: root.chWidth; active: surface.shown } }
             Component { id: mediaComp;      Modules.Media      { chWidth: root.chWidth; active: surface.shown } }
-            Component { id: screenshotComp; Modules.Screenshot { chWidth: root.chWidth; active: surface.shown } }
             Component { id: brightnessComp; Modules.Brightness { chWidth: root.chWidth; active: surface.shown } }
             Component { id: wifiComp;       Modules.Wifi       { chWidth: root.chWidth; active: surface.shown } }
             Component { id: ethernetComp;   Modules.Ethernet   { chWidth: root.chWidth; active: surface.shown } }
@@ -233,7 +235,6 @@ Scope {
                 switch (key) {
                 case "volume": return volumeComp
                 case "media": return mediaComp
-                case "screenshot": return screenshotComp
                 case "brightness": return brightnessComp
                 case "wifi": return wifiComp
                 case "ethernet": return ethernetComp

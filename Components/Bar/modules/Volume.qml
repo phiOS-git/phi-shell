@@ -31,6 +31,8 @@ Widgets.Segment {
     tone: root.muted ? "warn" : ""
     active: Services.BarPopout.which === "volume"
 
+    hoverInfo: root.muted ? "Muted" : (root.percent + "%")
+
     property real level: 0
     Behavior on level {
         NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }

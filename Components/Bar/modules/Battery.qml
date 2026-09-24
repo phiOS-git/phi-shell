@@ -40,6 +40,26 @@ Widgets.Segment {
     tone: root.anomaly ? (root.lowPercent ? "error" : "warn") : (root.saverActive ? "info" : "")
     active: Services.BarPopout.which === "battery"
 
+    // Hover readout: always the real percentage (useful even when the "80%"
+    // bar label is on), plus charging state and — while PowerBridge has a
+    // real UPower estimate for the direction we're going — how long is left.
+    // `charging` already collapses "not discharging" to "charging" the same
+    // way the rest of this file does (see its own declaration above); this
+    // doesn't invent a third state the module has no icon or tone for.
+    function _fmtTimeLeft(secs) {
+        if (isNaN(secs) || secs <= 0) return ""
+        var h = Math.round(secs / 3600)
+        var m = Math.round(secs / 60) % 60
+        return h + "h " + m + "m"
+    }
+    readonly property string _timeLeft: root.charging
+        ? root._fmtTimeLeft(Services.PowerBridge.timeToFull)
+        : root._fmtTimeLeft(Services.PowerBridge.timeToEmpty)
+    hoverInfo: root.present
+        ? (root.percent + "% · " + (root.charging ? "charging" : "discharging")
+            + (root._timeLeft.length > 0 ? " · " + root._timeLeft + " left" : ""))
+        : ""
+
     property real level: 1
     Behavior on level {
         NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }

@@ -4,18 +4,21 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../glyphs.js" as Glyphs
 
-// A right-isle camera glyph; a click opens the Screenshot popout (the
-// six capture options: area, window, fullscreen, OCR, QR, record). The
-// glyph reads capture state off Services/ScreenshotState.qml — the
+// A right-isle indicator for a capture in flight, not a capture launcher —
+// the six capture options (area, window, fullscreen, OCR, QR, record) live
+// in the Status popout (Components/BarPopout/modules/Status.qml). Hidden
+// while idle; a hidden Segment reserves no space in its isle, the same way
+// Battery.qml hides itself with no gap on a battery-less host.
+//
+// The glyph reads capture state off Services/ScreenshotState.qml — the
 // singleton Tools/Screenshot.qml mirrors its own `mode`/`recording` into:
-// - idle: camera
-// - awaiting an area (Tools/Screenshot.qml is in a "select-*" mode
-// area capture or OCR, both drag-a-region interactions): crop
-// - screen recording (wf-recorder running): record_rec, toned error
-// and a left click then STOPS the recording instead of opening the
-// popout — the one-key abort a recording session wants. The stop goes
-// through the same `qs ipc call record stop` external trigger the
-// popout's own record row uses, so both paths stop identically.
+// - awaiting an area (Tools/Screenshot.qml is in a "select-*" mode — area
+// capture or OCR, both drag-a-region interactions): crop
+// - screen recording (wf-recorder running): record_rec, toned error, and a
+// left click then STOPS the recording — the one-key abort a recording
+// session wants. The stop goes through the same `qs ipc call record stop`
+// external trigger the Status popout's own record row uses, so both paths
+// stop identically.
 
 Widgets.Segment {
     id: root
@@ -23,14 +26,13 @@ Widgets.Segment {
     required property ShellScreen screen
 
     ambient: "isle"
-    active: Services.BarPopout.which === "screenshot"
 
     readonly property bool selecting: Services.ScreenshotState.selecting
     readonly property bool recording: Services.ScreenshotState.recording
 
-    glyph: root.recording ? Glyphs.recordRec
-        : (root.selecting ? Glyphs.crop : Glyphs.camera)
-    tone: root.recording ? "error" : (root.selecting ? "info" : "")
+    visible: root.recording || root.selecting
+    glyph: root.recording ? Glyphs.recordRec : Glyphs.crop
+    tone: root.recording ? "error" : "info"
 
     onActivated: {
         if (root.recording) {
@@ -40,8 +42,8 @@ Widgets.Segment {
             // Quickshell.configDir` is required since a bare `qs ipc call`
             // targets the default config, not this named instance.
             Quickshell.execDetached(["qs", "-p", Quickshell.configDir, "ipc", "call", "record", "stop"])
-        } else {
-            Services.BarPopout.toggle("screenshot", root.rightX())
         }
+        // Otherwise an area/OCR/QR selection is pending: the selection
+        // overlay drives that drag, so a click here has nothing to do.
     }
 }

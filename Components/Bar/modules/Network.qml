@@ -4,6 +4,7 @@ import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
 import "../glyphs.js" as Glyphs
+import "../../../Widgets/Format.js" as Format
 
 // Bottom-bar network module: wifi/ethernet main glyph plus Tailscale/VPN/
 // firewall badges. Ethernet wins over Wi-Fi when a wired NIC exists.
@@ -32,6 +33,32 @@ Widgets.Segment {
     active: Services.BarPopout.which === "network"
 
     onActivated: Services.BarPopout.toggle("network", root.rightX())
+
+    // Hover readout: the connection's own name (a wired NIC has no name to
+    // show, only a link) plus live throughput. Services/NetStats.qml samples
+    // only while watched, so this segment holds a watch for as long as the
+    // pointer rests on it — the readout is never a stale or zero value, and
+    // nothing polls while the icon is not hovered.
+    property bool _watchingRates: false
+    onHoveredChanged: {
+        if (root.hovered && !root._watchingRates) {
+            Services.NetStats.watch()
+            root._watchingRates = true
+        } else if (!root.hovered && root._watchingRates) {
+            Services.NetStats.unwatch()
+            root._watchingRates = false
+        }
+    }
+    Component.onDestruction: if (root._watchingRates) Services.NetStats.unwatch()
+    readonly property string _connectionName: root.usingEthernet
+        ? "Wired" : Services.WifiBridge.ssid
+    readonly property string _rateText: Services.NetStats.iface.length > 0
+        ? ("↓ " + Format.rate(Services.NetStats.downKbps) + "  ↑ " + Format.rate(Services.NetStats.upKbps))
+        : ""
+    hoverInfo: root.anyConnected
+        ? ((root._connectionName.length > 0 ? root._connectionName : "Connected")
+            + (root._rateText.length > 0 ? " · " + root._rateText : ""))
+        : ""
 
     property real connectAmount: 0
     Behavior on connectAmount {

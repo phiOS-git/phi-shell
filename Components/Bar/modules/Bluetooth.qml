@@ -28,6 +28,19 @@ Widgets.Segment {
 
     active: Services.BarPopout.which === "bluetooth"
 
+    // Hover readout: every connected device's name, comma-joined (there can
+    // be more than one — `BluetoothBridge.devices` is already filtered to
+    // connected devices, same source `firstConnectedName` reads the first
+    // of), else the plain "on"/"off" power state.
+    readonly property string _connectedNames: {
+        if (!root.anyConnected || Services.BluetoothBridge.devices === null) return ""
+        const names = []
+        const list = Services.BluetoothBridge.devices.values
+        for (let i = 0; i < list.length; i++) names.push(list[i].name)
+        return names.join(", ")
+    }
+    hoverInfo: !root.powered ? "Off" : (root._connectedNames.length > 0 ? root._connectedNames : "On")
+
     property real poweredAmount: 0
     Behavior on poweredAmount {
         NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }

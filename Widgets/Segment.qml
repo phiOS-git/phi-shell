@@ -32,6 +32,14 @@ Item {
     property bool loading: false
     property bool invalid: false
 
+    // Extra detail a caller wants surfaced only on a deliberate, sustained
+    // hover — a battery's real percentage when the bar only shows its icon,
+    // a network's SSID and throughput, and so on. Empty by default: most
+    // Segments (workspaces, window-list entries, settings tabs) have nothing
+    // to add here. See the hover-tooltip mechanism near the end of this file
+    // for how it's shown.
+    property string hoverInfo: ""
+
     // Which surface pair this button sits on — "shaded" (default, e.g. the
     // sidebar tab strip) or "isle" (the status bar's opposite-coloured
     // islands). Passed straight through to surfaceColors().
@@ -383,6 +391,50 @@ Item {
     // presets, …) inherits this for free.
     Keys.onReturnPressed: if (root.enabled && !root.loading) root._activate()
     Keys.onSpacePressed: if (root.enabled && !root.loading) root._activate()
+
+    // --- hover tooltip ----------------------------------------------------
+    // `hoverInfo` shows after a full second of continuous hover, not on
+    // ordinary hover-state entry: the bar's own hover sweep is immediate and
+    // cheap, but a floating window per glance would be noisy — the 1s hold
+    // is what tells them apart. A functional constant (the exact delay the
+    // user asked for), not a design token: nothing in design/ names a hover
+    // threshold.
+    readonly property int _hoverInfoDelay: 1000
+    property bool _hoverInfoShown: false
+
+    onHoveredChanged: {
+        if (root.hovered && root.hoverInfo.length > 0) hoverInfoTimer.restart()
+        else { hoverInfoTimer.stop(); root._hoverInfoShown = false }
+    }
+    // A press (either button, either input path) means the segment is being
+    // acted on, not glanced at — the tooltip has nothing left to add.
+    onPressedChanged: if (root.pressed) root._hoverInfoShown = false
+    // `active` is how every popout-backed Segment already signals "my own
+    // popout is open" (bound by the caller to e.g. `BarPopout.which ===
+    // "battery"`), so reusing it here needs no new coupling to that service.
+    onActiveChanged: if (root.active) root._hoverInfoShown = false
+
+    Timer {
+        id: hoverInfoTimer
+        interval: root._hoverInfoDelay
+        repeat: false
+        onTriggered: root._hoverInfoShown = true
+    }
+
+    // Loaded only for a Segment that actually declares `hoverInfo` — most
+    // never do, so most bar buttons, workspace pills and sidebar tabs never
+    // pay for an idle PopupWindow. Kept loaded (not gated on
+    // `_hoverInfoShown` itself) once created, so BarTooltip's own fade can
+    // play in both directions instead of the Loader tearing it down
+    // mid-animation.
+    Loader {
+        active: root.hoverInfo.length > 0
+        sourceComponent: BarTooltip {
+            anchorItem: root
+            text: root.hoverInfo
+            shown: root._hoverInfoShown
+        }
+    }
 
     Behavior on opacity {
         NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }

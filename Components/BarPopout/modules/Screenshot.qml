@@ -5,18 +5,21 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../../Bar/glyphs.js" as Glyphs
 
-// The Screenshot popout — the six capture options, the same set
-// Tools/Screenshot.qml's own IpcHandlers expose ("screenshot" area/window/
-// fullscreen/ocr/qr, "record" start/stop), so the popout can never drift from
-// what the external `phi screenshot ...` CLI triggers. Laid out as a 3×2 icon
-// grid, the same shape as the tiling-mode grid in
-// BarPopout/modules/Status.qml. Each cell fires through the same self-directed
-// `qs ipc call` shape Services/PowerActions.qml's `lock()` uses, then hides
-// the card — the area/OCR/QR options raise a full-screen selection overlay
-// right after, and closing the card keeps that overlay (and the record
-// session) clean. The record cell flips to "Stop" (and highlights) while
-// recording, mirroring Services/ScreenshotState.qml (the same state the bar
-// button reads).
+// The six capture options — embedded as a section inside the Status popout
+// (BarPopout/modules/Status.qml: `Local.Screenshot { ... }`, this same
+// directory's implicit import) rather than a popout of its own; the top-bar
+// capture icon (Components/Bar/modules/Screenshot.qml) only shows a capture
+// in flight. The set
+// mirrors what Tools/Screenshot.qml's own IpcHandlers expose ("screenshot"
+// area/window/fullscreen/ocr/qr, "record" start/stop), so this can never
+// drift from what the external `phi screenshot ...` CLI triggers. Laid out as
+// a 3×2 icon grid, the same shape as the tiling-mode grid elsewhere in
+// Status.qml. Each cell fires through the same self-directed `qs ipc call`
+// shape Services/PowerActions.qml's `lock()` uses, then hides the popout —
+// the area/OCR/QR options raise a full-screen selection overlay right after,
+// and closing the card keeps that overlay (and the record session) clean.
+// The record cell flips to "Stop" (and highlights) while recording,
+// mirroring Services/ScreenshotState.qml (the same state the bar icon reads).
 
 Widgets.StaggerReveal {
     id: root

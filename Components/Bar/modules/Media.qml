@@ -26,6 +26,15 @@ Widgets.Segment {
     onActivated: Services.BarPopout.toggle("media", root.rightX())
     onSecondaryActivated: { if (root.player !== null) root.player.togglePlaying() }
 
+    // Hover readout: "artist — title", the same em-dash pairing
+    // MediaControls.qml uses for artist/album, minus the artist when the
+    // player doesn't report one.
+    hoverInfo: root.player !== null && root.player.trackTitle.length > 0
+        ? (root.player.trackArtist.length > 0
+            ? (root.player.trackArtist + " — " + root.player.trackTitle)
+            : root.player.trackTitle)
+        : ""
+
     // Only way to close media popout: close it when player becomes null.
     // Player switch leaves popout open.
     onPlayerChanged: {
