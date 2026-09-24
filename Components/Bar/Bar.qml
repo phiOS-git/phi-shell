@@ -172,8 +172,14 @@ PanelWindow {
                 bar.registryRows = []
             }
             // See `startupReveal` for why this waits on THIS signal and still
-            // defers.
-            Qt.callLater(function () { bar.startupReveal = false })
+            // defers. The launch trigger for `playIntro()` rides the same
+            // callback: the Repeaters are populated by the time it runs (see
+            // that property's own comment), which is what every per-module
+            // intro animation below needs before it has anything to animate.
+            Qt.callLater(function () {
+                bar.startupReveal = false
+                bar.playIntro()
+            })
         }
     }
     
@@ -228,6 +234,50 @@ PanelWindow {
     WlrLayershell.layer: bar.activeIsFullscreenHere ? WlrLayer.Overlay : WlrLayer.Top
     mask: Region { item: bar.autoHidden ? revealEdge : barContent }
 
+    // --- Intro sequence -----------------------------------------------
+    // One playback, shared by the launch reveal and every unlock: incrementing
+    // `introToken` is the single trigger every animated surface/module below
+    // watches. It never plays for the fullscreen autohide reveal — nothing
+    // here connects to `autoHidden` — so it never fights that slide.
+    //
+    // Timed on category B (state transition) throughout, matching
+    // `concealed`'s own Behavior on y above, which already treats this
+    // reveal as category B: every duration here is motionBDuration itself or
+    // a plain fraction of it, never an invented ms value; every scale is a
+    // dimensionless ratio, not a size token.
+    // TODO: design/tokens.common.sh lists boot/unlock under category C (typing
+    // or scramble only); reconcile that rule with this category-B sequence.
+    property int introToken: 0
+    function playIntro() { bar.introToken++ }
+
+    readonly property int introSurfaceDuration: Config.Appearance.motionBDuration
+    readonly property int introBuildDuration: Config.Appearance.motionBDuration
+    // Quick settle leg for the per-module overshoot.
+    readonly property int introSettleDuration: Math.round(Config.Appearance.motionBDuration / 3)
+    // Gap before modules start, letting the surface build get a head start.
+    readonly property int introHandoff: Math.round(Config.Appearance.motionBDuration / 2)
+    // Stagger step between adjacent modules in the same isle.
+    readonly property int introStaggerStep: Math.round(Config.Appearance.motionBDuration / 4)
+
+    readonly property real introSurfaceStartScale: 0.92
+    readonly property real introModuleStartScale: 0.9
+    readonly property real introOvershootScale: 1.04
+    // "A few px", scaled off the tightest spacing token like the isle gaps
+    // above. Top bar's modules slide down into place, bottom bar's slide up
+    // — the same direction `barContent`'s own y slide already uses.
+    readonly property real introSlideDistance: bar.chWidth * Config.Appearance.space1
+    readonly property real introSlideStart: bar.edge === "top" ? -bar.introSlideDistance : bar.introSlideDistance
+
+    // `locked` starts false and Lock.qml only ever flips it true then false,
+    // so this signal handler only ever fires on a genuine unlock — never at
+    // startup, and never on the lock itself.
+    Connections {
+        target: Services.LockState
+        function onLockedChanged() {
+            if (!Services.LockState.locked) bar.playIntro()
+        }
+    }
+
     Item {
         id: revealEdge
         width: parent.width
@@ -270,8 +320,27 @@ PanelWindow {
             radiusTopRight: bar.edge === "top" ? _outward : _inward
             radiusBottomLeft: bar.edge === "top" ? _inward : _outward
             radiusBottomRight: bar.edge === "top" ? _inward : _outward
+
+            // Intro phase 1: the bar's one surface (BarIsle paints nothing of
+            // its own — see its header) unfurls vertically from the screen
+            // edge it is pinned to. `xScale` stays fixed at 1 so nothing
+            // moves sideways; only the vertical extent and the fade read as
+            // it builds in. anchors.fill above still drives the actual
+            // geometry, so this never touches layout. Default values are the
+            // RESTING state — only `onIntroTokenChanged` below ever winds
+            // this back to hidden — so a surface that (re)appears outside an
+            // intro play (there is only one of these, but see the per-module
+            // Loaders below for why this matters) always starts at rest.
+            opacity: 1
+            transform: Scale {
+                id: introSurfaceScale
+                origin.x: barBackground.width / 2
+                origin.y: bar.edge === "top" ? 0 : barBackground.height
+                xScale: 1
+                yScale: 1
+            }
         }
-        
+
         Widgets.BarIsle {
             id: leftIsle
             anchors.left: parent.left
@@ -281,7 +350,9 @@ PanelWindow {
             Repeater {
                 model: bar.leftModules
                 delegate: Loader {
+                    id: moduleLoader
                     required property var modelData
+                    required property int index
                     sourceComponent: bar.componentFor(modelData.type)
                     // A module that hides itself sets its own root invisible.
                     // Without mirroring it here the Loader stays visible at
@@ -296,10 +367,50 @@ PanelWindow {
                     // implicitHeight is the max of child `height`, never `y`,
                     // so this cannot feed back into the isle's size.
                     y: parent ? Math.round((parent.height - height) / 2) : 0
+
+                    // Intro phase 2: staggered from the outer edge in — index
+                    // 0 sits nearest the screen edge in this isle's Row order,
+                    // so it builds first. Opacity/scale/transform only, so
+                    // the Row's own x and this Loader's y binding above are
+                    // never touched. Defaults are the RESTING state — only
+                    // `onIntroTokenChanged` below winds them back to hidden —
+                    // so a delegate created outside an intro play (the module
+                    // list is capability-filtered and can repopulate once a
+                    // capability resolves after launch) starts visible rather
+                    // than stuck at opacity 0 until the next unlock.
+                    opacity: 1
+                    scale: 1
+                    transform: Translate { id: introSlide; y: 0 }
+
+                    SequentialAnimation {
+                        id: introAnim
+                        PauseAnimation { duration: bar.introHandoff + moduleLoader.index * bar.introStaggerStep }
+                        ParallelAnimation {
+                            NumberAnimation { target: introSlide; property: "y"; to: 0; duration: bar.introBuildDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                            NumberAnimation { target: moduleLoader; property: "opacity"; to: 1; duration: bar.introBuildDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                            NumberAnimation { target: moduleLoader; property: "scale"; to: bar.introOvershootScale; duration: bar.introBuildDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                        }
+                        // Activation beat: every module gets the same tiny
+                        // overshoot-to-rest rather than singling out "active"
+                        // ones by type — a Loader has no generic way to know
+                        // which module instance counts as active. The ones
+                        // that resolve last (innermost here) are what makes
+                        // the beat read as the sequence settling in.
+                        NumberAnimation { target: moduleLoader; property: "scale"; to: 1; duration: bar.introSettleDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                    }
+                    Connections {
+                        target: bar
+                        function onIntroTokenChanged() {
+                            introSlide.y = bar.introSlideStart
+                            moduleLoader.opacity = 0
+                            moduleLoader.scale = bar.introModuleStartScale
+                            introAnim.restart()
+                        }
+                    }
                 }
             }
         }
-        
+
         Widgets.BarIsle {
             id: rightIsle
             anchors.right: parent.right
@@ -309,7 +420,9 @@ PanelWindow {
             Repeater {
                 model: bar.rightModules
                 delegate: Loader {
+                    id: rModuleLoader
                     required property var modelData
+                    required property int index
                     sourceComponent: bar.componentFor(modelData.type)
                     // See the left isle's Loader — mirror a self-hiding
                     // module's visibility so the Row does not keep a blank
@@ -318,6 +431,36 @@ PanelWindow {
                     // See the left isle's Loader — same generic
                     // vertical-centre fix, same reasoning.
                     y: parent ? Math.round((parent.height - height) / 2) : 0
+
+                    // Intro phase 2 — see the left isle, mirrored: this isle's
+                    // outer edge (nearest the screen edge) is its LAST Row
+                    // index, so that is what builds first here. Defaults are
+                    // the resting state — see the left isle's Loader for why.
+                    opacity: 1
+                    scale: 1
+                    transform: Translate { id: rIntroSlide; y: 0 }
+
+                    SequentialAnimation {
+                        id: rIntroAnim
+                        PauseAnimation { duration: bar.introHandoff + (bar.rightModules.length - 1 - rModuleLoader.index) * bar.introStaggerStep }
+                        ParallelAnimation {
+                            NumberAnimation { target: rIntroSlide; property: "y"; to: 0; duration: bar.introBuildDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                            NumberAnimation { target: rModuleLoader; property: "opacity"; to: 1; duration: bar.introBuildDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                            NumberAnimation { target: rModuleLoader; property: "scale"; to: bar.introOvershootScale; duration: bar.introBuildDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                        }
+                        // See the left isle's Loader — same generic
+                        // activation beat, same reasoning.
+                        NumberAnimation { target: rModuleLoader; property: "scale"; to: 1; duration: bar.introSettleDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                    }
+                    Connections {
+                        target: bar
+                        function onIntroTokenChanged() {
+                            rIntroSlide.y = bar.introSlideStart
+                            rModuleLoader.opacity = 0
+                            rModuleLoader.scale = bar.introModuleStartScale
+                            rIntroAnim.restart()
+                        }
+                    }
                 }
             }
         }
@@ -339,17 +482,65 @@ PanelWindow {
             height: Math.max(leftIsle.implicitHeight, rightIsle.implicitHeight)
             pad: 0
             padH: bar.chWidth * Config.Appearance.space2
-            
+
             readonly property real maxContentWidth: Math.max(0,
             bar.width - 2 * (bar.islandMargin
             + Math.max(leftIsle.width, rightIsle.width) + bar.islandGap))
-            
+
             Loader {
                 id: centerLoader
                 sourceComponent: bar.centerModules.length > 0
                 ? bar.componentFor(bar.centerModules[0].type) : null
                 width: Math.max(0, Math.min(implicitWidth, centerIsle.maxContentWidth))
                 height: implicitHeight
+
+                // Intro phase 2: the one centre module, so there is nothing
+                // to order against — it simply builds in alongside the first
+                // side-isle modules, same beats as every other Loader above.
+                // Defaults are the resting state — see the left isle's
+                // Loader for why.
+                opacity: 1
+                scale: 1
+                transform: Translate { id: cIntroSlide; y: 0 }
+
+                SequentialAnimation {
+                    id: cIntroAnim
+                    PauseAnimation { duration: bar.introHandoff }
+                    ParallelAnimation {
+                        NumberAnimation { target: cIntroSlide; property: "y"; to: 0; duration: bar.introBuildDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                        NumberAnimation { target: centerLoader; property: "opacity"; to: 1; duration: bar.introBuildDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                        NumberAnimation { target: centerLoader; property: "scale"; to: bar.introOvershootScale; duration: bar.introBuildDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                    }
+                    NumberAnimation { target: centerLoader; property: "scale"; to: 1; duration: bar.introSettleDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+                }
+                Connections {
+                    target: bar
+                    function onIntroTokenChanged() {
+                        cIntroSlide.y = bar.introSlideStart
+                        centerLoader.opacity = 0
+                        centerLoader.scale = bar.introModuleStartScale
+                        cIntroAnim.restart()
+                    }
+                }
+            }
+        }
+
+        // Intro phase 1: the one shared surface builds as soon as
+        // `playIntro()` fires. The three isles paint nothing of their own
+        // (see BarIsle's header), so there is nothing else to animate here —
+        // "growing from the inner edge" for each isle's content is carried
+        // entirely by phase 2's per-module stagger direction below.
+        ParallelAnimation {
+            id: introSurfaceAnim
+            NumberAnimation { target: introSurfaceScale; property: "yScale"; to: 1; duration: bar.introSurfaceDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+            NumberAnimation { target: barBackground; property: "opacity"; to: 1; duration: bar.introSurfaceDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
+        }
+        Connections {
+            target: bar
+            function onIntroTokenChanged() {
+                introSurfaceScale.yScale = bar.introSurfaceStartScale
+                barBackground.opacity = 0
+                introSurfaceAnim.restart()
             }
         }
     } // barContent
