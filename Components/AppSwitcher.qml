@@ -185,19 +185,21 @@ PanelWindow {
         return -1
     }
 
-    // The workspace the selected window is on — kept as the single source used
-    // both to seed viewedWorkspaceId below and (unchanged from before) as part
-    // of window-focus bookkeeping.
+    // The workspace the selected window is on, computed independently of
+    // viewedWorkspaceId. onSelectedAddressChanged below does not read this —
+    // see that handler for why.
     readonly property int selectedWorkspaceId: {
         const i = root.selectedFlatIndex
         return (i >= 0) ? root.flat[i].wsId : -1
     }
 
-    // The workspace whose windows the grid shows. Two writers:
+    // The workspace whose windows the grid shows. Three writers:
     //
+    //   - _open(), which seeds this from activeWorkspaceId immediately so the
+    //     grid shows the current workspace before the async snapshot lands;
     //   - every Alt+Tab cycle and the open-time selection, through
-    //     onSelectedAddressChanged, reusing selectedWorkspaceId rather than a
-    //     second way to find the selected window's workspace;
+    //     onSelectedAddressChanged, which looks the newly selected address up
+    //     directly rather than through a derived property;
     //   - a workspace-card click through _panTo(), which sets this directly and
     //     leaves selectedAddress alone.
     //
@@ -206,9 +208,15 @@ PanelWindow {
     // not a bug.
     property int viewedWorkspaceId: -1
 
+    // selectedWorkspaceId and selectedFlatIndex are themselves bindings
+    // derived from selectedAddress, and QML gives no ordering guarantee
+    // between a property-change handler and another binding's re-evaluation
+    // in response to the same change — reading either here could still see
+    // the previous selection's workspace instead of the one just set. Look
+    // the new address up directly in root.windows instead.
     onSelectedAddressChanged: {
-        if (root.selectedWorkspaceId >= 0)
-            root.viewedWorkspaceId = root.selectedWorkspaceId
+        const w = root.windows.find(x => x.address === root.selectedAddress)
+        if (w) root.viewedWorkspaceId = w.wsId
     }
 
     // The real Hyprland-active workspace, independent of what is being viewed.
@@ -273,6 +281,10 @@ PanelWindow {
     function _open(held) {
         root.heldOpen = held
         root.shown = true
+        // Seeds the grid on the real current workspace right away; the
+        // snapshot and the start-selection lookup below are both async and
+        // would otherwise leave it wherever the previous close left it.
+        if (root.activeWorkspaceId > 0) root.viewedWorkspaceId = root.activeWorkspaceId
         root._snapshotSeq++
         root._userMoved = false
         clientsProc.forSeq = root._snapshotSeq
@@ -289,13 +301,25 @@ PanelWindow {
     }
 
     function _selectStartWindow() {
-        // Snapshot just arrived. Ask Hyprland which window is active so we can
-        // land on "the next one" (Alt+Tab convention); if the query is slow,
-        // _applyStartSelection still runs with "" and picks index 0.
+        // Snapshot just arrived. The pick below is provisional — shown while
+        // activeProc's hyprctl round-trip is in flight — so it uses
+        // Quickshell's own idea of the active window rather than waiting;
+        // it agrees with _applyStartSelection's eventual hyprctl-sourced
+        // answer so the surface never visibly flashes a different item.
         if (root.flat.length === 0) { root.selectedAddress = ""; return }
-        // Provisional pick so the surface never opens with nothing selected.
-        if (root.selectedFlatIndex < 0)
-            root.selectedAddress = root.flat[0].address
+        if (root.selectedFlatIndex < 0) {
+            let match = null
+            const t = Services.HyprlandBridge.activeToplevel
+            if (t) {
+                // Same address-format fix as _followSystemFocus: Quickshell's
+                // toplevel address omits the `0x` hyprctl's JSON carries.
+                const addr = String(t.address || "").replace(/^0x/, "")
+                match = root.flat.find(w => w.address.replace(/^0x/, "") === addr) || null
+            }
+            if (!match)
+                match = root.flat.find(w => w.wsId === root.activeWorkspaceId) || null
+            root.selectedAddress = match ? match.address : root.flat[0].address
+        }
         activeProc.forSeq = root._snapshotSeq
         activeProc.running = true
     }
@@ -305,16 +329,15 @@ PanelWindow {
         // applying it now would revert their input to wherever activewindow
         // was when _open() ran.
         if (!root.shown || root.flat.length === 0 || root._userMoved) return
-        let start = 0
-        if (root.flat.length > 1 && activeAddr.length > 0) {
-            for (let i = 0; i < root.flat.length; i++) {
-                if (root.flat[i].address === activeAddr) {
-                    start = (i + 1) % root.flat.length
-                    break
-                }
-            }
-        }
-        root.selectedAddress = root.flat[start].address
+        // Opens on the focused window itself, not the one after it — Tab
+        // moves off it from there. Falls back to the first window on the
+        // active workspace, then to the first window in cycle order.
+        let match = null
+        if (activeAddr.length > 0)
+            match = root.flat.find(w => w.address === activeAddr) || null
+        if (!match)
+            match = root.flat.find(w => w.wsId === root.activeWorkspaceId) || null
+        root.selectedAddress = match ? match.address : root.flat[0].address
     }
 
     function _cycle(delta) {
