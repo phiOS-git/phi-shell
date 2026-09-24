@@ -276,16 +276,19 @@ Item {
                     width: column.width
                     height: activeLayout.implicitHeight + padding * 2
 
-                    TapHandler {
+                    // Right-click, or a touchscreen long press: the card's
+                    // context menu. A plain finger tap opens the notification
+                    // like the mouse left taps below.
+                    Widgets.SecondaryTap {
                         id: activeCardMenuTap
-                        acceptedButtons: Qt.RightButton
                         // atItem is this handler's own real parent (Widgets.Panel
                         // reparents a plain child into its padded inner item via
-                        // its default alias), so eventPoint.position lands in the
-                        // same coordinate space the menu anchors against.
-                        onTapped: (eventPoint, button) => root._cardMenu(activeCardMenuTap.parent, activeCard.modelData.appName, () => {
+                        // its default alias), so the position lands in the same
+                        // coordinate space the menu anchors against.
+                        onTriggered: (x, y) => root._cardMenu(activeCardMenuTap.parent, activeCard.modelData.appName, () => {
                             try { activeCard.modelData.dismiss() } catch (e) { activeCard.modelData.tracked = false }
-                        }, eventPoint.position.x, eventPoint.position.y)
+                        }, x, y)
+                        onTouchTapped: root._openActive(activeCard.modelData)
                     }
 
                     Column {
@@ -304,7 +307,13 @@ Item {
                                 wrapMode: Text.Wrap
                                 text: modelData.appName + " — " + modelData.summary
                                 HoverHandler { cursorShape: Qt.PointingHandCursor }
-                                TapHandler { onTapped: root._openActive(modelData) }
+                                // Mouse/trackpad/stylus only: a touch tap runs
+                                // the same action through the card-level
+                                // SecondaryTap.touchTapped above.
+                                TapHandler {
+                                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad | PointerDevice.Stylus
+                                    onTapped: root._openActive(modelData)
+                                }
                             }
                             Widgets.SmallButton {
                                 id: dismissActive
@@ -322,7 +331,11 @@ Item {
                             visible: modelData.body.length > 0
                             text: modelData.body
                             HoverHandler { cursorShape: Qt.PointingHandCursor }
-                            TapHandler { onTapped: root._openActive(modelData) }
+                            // Mouse/trackpad/stylus only — see activeHead above.
+                            TapHandler {
+                                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad | PointerDevice.Stylus
+                                onTapped: root._openActive(modelData)
+                            }
                         }
                         Row {
                             spacing: root.chWidth * Config.Appearance.space2
@@ -552,11 +565,14 @@ Item {
                                                     width: parent.width
                                                     implicitHeight: Math.max(itemSummary.implicitHeight, itemClear.implicitHeight) + root.gap
 
-                                                    TapHandler {
-                                                        acceptedButtons: Qt.RightButton
-                                                        onTapped: (eventPoint, button) => root._cardMenu(histRow, histRow.modelData.appName,
-                                                            () => Services.Notifications.clearEntry(histRow.modelData),
-                                                            eventPoint.position.x, eventPoint.position.y)
+                                                    // Right-click, or a touchscreen
+                                                    // long press: the entry's context
+                                                    // menu. A plain finger tap opens it
+                                                    // like the mouse left tap below.
+                                                    Widgets.SecondaryTap {
+                                                        onTriggered: (x, y) => root._cardMenu(histRow, histRow.modelData.appName,
+                                                            () => Services.Notifications.clearEntry(histRow.modelData), x, y)
+                                                        onTouchTapped: root._openHistory(histRow.modelData)
                                                     }
 
                                                     Widgets.StyledText {
@@ -569,7 +585,11 @@ Item {
                                                         elide: Text.ElideRight
                                                         text: histRow.modelData.summary
                                                         HoverHandler { cursorShape: Qt.PointingHandCursor }
-                                                        TapHandler { onTapped: root._openHistory(histRow.modelData) }
+                                                        // Mouse/trackpad/stylus only — see activeHead above.
+                                                        TapHandler {
+                                                            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad | PointerDevice.Stylus
+                                                            onTapped: root._openHistory(histRow.modelData)
+                                                        }
                                                     }
                                                     Widgets.StyledText {
                                                         id: itemTime

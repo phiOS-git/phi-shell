@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Config as Config
+import qs.Services as Services
 import "WidgetStates.js" as WidgetStates
 
 // The bar's level-1 clickable unit: mute by default, changing state only on a
@@ -71,13 +72,28 @@ Item {
     property bool accentWhenActive: false
 
     readonly property bool hovered: hoverHandler.hovered
-    readonly property bool pressed: tapHandler.pressed || touchHandler.pressed
+    readonly property bool pressed: tapHandler.pressed || secondaryTap.pressed
     readonly property bool keyboardFocus: activeFocus
 
     signal activated()
     // Right-click, or a touchscreen long press: a module's quick toggle,
     // never its popout.
     signal secondaryActivated()
+
+    // Every input path that ends up emitting activated()/secondaryActivated()
+    // goes through one of these instead of the signal directly. Bars stay
+    // permanently whitelisted with Services.OverlayGrab's own click-outside
+    // dismissal (see that file's header), so a bar click alone never closes
+    // an open context menu — this is what does, before the click's own
+    // action runs.
+    function _activate() {
+        Services.OverlayGrab.closeMenus()
+        root.activated()
+    }
+    function _secondaryActivate() {
+        Services.OverlayGrab.closeMenus()
+        root.secondaryActivated()
+    }
 
     // Screen x of this button's RIGHT edge, so a popout can hang directly
     // under it instead of in the corner. Guarded: mapToItem(null) can throw
@@ -343,41 +359,30 @@ Item {
         // adjacent buttons. Not gated on touchscreen capability — a forgiving
         // release tolerance is correct for a mouse too.
         margin: root.paddingV
-        // Touch is `touchHandler` below: TapHandler ignores `acceptedButtons`
+        // Touch is `secondaryTap` below: TapHandler ignores `acceptedButtons`
         // for a touch tap, so without this a finger would fire this left
         // activation too.
         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad | PointerDevice.Stylus
-        onTapped: root.activated()
+        onTapped: root._activate()
     }
 
-    TapHandler {
+    // Right-click, a touchpad two-finger tap, or a touchscreen long press:
+    // root._secondaryActivate(). A plain finger tap activates like the mouse
+    // left tap above.
+    SecondaryTap {
+        id: secondaryTap
         enabled: root.enabled && !root.loading
-        acceptedButtons: Qt.RightButton
-        // Same touch exclusion as `tapHandler` above.
-        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad | PointerDevice.Stylus
         gesturePolicy: TapHandler.ReleaseWithinBounds
         margin: root.paddingV
-        onTapped: root.secondaryActivated()
-    }
-
-    // Touch's own right-click equivalent: a tap activates as usual, a long
-    // press does what a right-click does elsewhere. TapHandler never emits
-    // `tapped` after `longPressed`, so the two cannot both fire.
-    TapHandler {
-        id: touchHandler
-        enabled: root.enabled && !root.loading
-        acceptedDevices: PointerDevice.TouchScreen
-        gesturePolicy: TapHandler.ReleaseWithinBounds
-        margin: root.paddingV
-        onTapped: root.activated()
-        onLongPressed: root.secondaryActivated()
+        onTouchTapped: root._activate()
+        onTriggered: root._secondaryActivate()
     }
 
     // Same keyboard-activation fix as Widgets/StyledButton.qml. Every consumer
     // of this widget (bar buttons, settings tabs, workspace pills, firewall
     // presets, …) inherits this for free.
-    Keys.onReturnPressed: if (root.enabled && !root.loading) root.activated()
-    Keys.onSpacePressed: if (root.enabled && !root.loading) root.activated()
+    Keys.onReturnPressed: if (root.enabled && !root.loading) root._activate()
+    Keys.onSpacePressed: if (root.enabled && !root.loading) root._activate()
 
     Behavior on opacity {
         NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }

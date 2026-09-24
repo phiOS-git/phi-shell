@@ -192,15 +192,13 @@ Item {
         value: titleHover.hovered
     }
 
-    // Right-click a resettable row for "Reset to default". The menu window is
-    // created on first use, not once per row.
-    TapHandler {
-        acceptedButtons: Qt.RightButton
+    // Right-click, or a touchscreen long press, on a resettable row: "Reset
+    // to default". The menu window is created on first use, not once per row.
+    Widgets.SecondaryTap {
         enabled: root.resettable
-        onTapped: (eventPoint, button) => {
+        onTriggered: (x, y) => {
             rowMenu.active = true
-            rowMenu.item.open(root, [{ label: "Reset to default", onActivated: () => root.reset() }],
-                eventPoint.position.x, eventPoint.position.y)
+            rowMenu.item.open(root, [{ label: "Reset to default", onActivated: () => root.reset() }], x, y)
         }
     }
     Loader {

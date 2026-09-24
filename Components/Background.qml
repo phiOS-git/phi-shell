@@ -30,12 +30,11 @@ PanelWindow {
         anchors.fill: parent
         clip: true
 
-        // Right-click on empty desktop: run mirrors launcher IPC; terminal/files/
-        // browser use execDetached (kitty/thunar/librewolf); settings calls
-        // SettingsPanel.show().
-        TapHandler {
-            acceptedButtons: Qt.RightButton
-            onTapped: (eventPoint, button) => desktopContextMenu.open(content, [
+        // Right-click, or a touchscreen long press, on empty desktop: run
+        // mirrors launcher IPC; terminal/files/browser use execDetached
+        // (kitty/thunar/librewolf); settings calls SettingsPanel.show().
+        Widgets.SecondaryTap {
+            onTriggered: (x, y) => desktopContextMenu.open(content, [
                 { label: "Run", onActivated: () => {
                     Quickshell.execDetached(["qs", "-p", Quickshell.configDir, "ipc", "call", "launcher", "toggle"])
                 } },
@@ -51,7 +50,7 @@ PanelWindow {
                 { label: "Settings", onActivated: () => {
                     Services.SettingsPanel.show()
                 } },
-            ], eventPoint.position.x, eventPoint.position.y)
+            ], x, y)
         }
 
         // Layer 2: procedural texture, tiled. Alpha baked in, plain compositing.

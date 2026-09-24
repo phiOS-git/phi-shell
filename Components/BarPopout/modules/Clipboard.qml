@@ -716,25 +716,31 @@ Item {
                 }
             }
 
-            TapHandler {
-                onTapped: {
-                    root.highlightedIndex = card.flatIndex
-                    Services.Clipboard.restore(card.modelData.id, card.modelData.mime)
-                    Services.BarPopout.hide()
-                }
+            // Shared by the mouse left tap and the touch tap below, so both
+            // devices run the exact same restore.
+            function _activate() {
+                root.highlightedIndex = card.flatIndex
+                Services.Clipboard.restore(card.modelData.id, card.modelData.mime)
+                Services.BarPopout.hide()
             }
 
-            // A second, independent TapHandler rather than branching inside the
-            // first: PointerHandler's default acceptedButtons is Qt.LeftButton,
-            // so the restore handler never sees a right-click. This one adds
-            // the button the other never claimed.
+            // Mouse/trackpad/stylus only: a touch tap runs the same action
+            // through SecondaryTap.touchTapped below, so a long press (which
+            // also lands here on touch without the restriction) can't also
+            // fire this.
             TapHandler {
-                acceptedButtons: Qt.RightButton
-                onTapped: (eventPoint, button) => {
+                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad | PointerDevice.Stylus
+                onTapped: card._activate()
+            }
+
+            // Right-click, or a touchscreen long press: the entry's context
+            // menu. A plain finger tap restores like the mouse left tap above.
+            Widgets.SecondaryTap {
+                onTriggered: (x, y) => {
                     root.highlightedIndex = card.flatIndex
-                    clipboardContextMenu.open(card, root._clipboardMenuItems(card.modelData),
-                        eventPoint.position.x, eventPoint.position.y)
+                    clipboardContextMenu.open(card, root._clipboardMenuItems(card.modelData), x, y)
                 }
+                onTouchTapped: card._activate()
             }
 
             // Drives root.hoverTargetId for the preview overlay (see the top

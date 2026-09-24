@@ -15,6 +15,9 @@ import qs.Services as Services
 // entirely outside both windows, plus a MouseArea spawned into the anchor
 // item's own window for a click that lands inside that window: it closes the
 // menu and rejects the press so the click still reaches whatever is under it.
+// A status bar is permanently whitelisted with that same grab, so open()
+// also registers itself in OverlayGrab's own menu registry — see that
+// file's header — so a click on a bar item can close this menu too.
 //
 // open(atItem, menuItems, x, y) anchors at the pointer (x, y, in atItem's
 // coordinate space) when given, otherwise at atItem's bottom-left corner.
@@ -111,6 +114,12 @@ PopupWindow {
         root._host = atItem && atItem.QsWindow ? atItem.QsWindow.window : null
         Services.OverlayGrab.open(root, function () { root.close() })
         if (root._host) Services.OverlayGrab.include(root._host)
+        // Bars stay permanently whitelisted with the grab above, so a click
+        // there alone would never reach this menu's dismiss — this registers
+        // the menu so Widgets/Segment.qml can close it explicitly
+        // (Services/OverlayGrab.qml's closeMenus()) before running its own
+        // action.
+        Services.OverlayGrab.registerMenu(root)
         root._spawnCatcher()
 
         openAnim.start()
@@ -136,6 +145,7 @@ PopupWindow {
 
     function _teardownGrab() {
         Services.OverlayGrab.close(root)
+        Services.OverlayGrab.unregisterMenu(root)
         if (root._host) Services.OverlayGrab.exclude(root._host)
         root._destroyCatcher()
         root._host = null

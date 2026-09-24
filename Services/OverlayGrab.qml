@@ -14,6 +14,14 @@ import Quickshell.Hyprland
 // shell holds exactly one grab object, wrapped here so `Quickshell.Hyprland`
 // stays fenced inside Services/, the rule Services/LayerFocus.qml follows for
 // `Quickshell.Wayland`.
+//
+// A status bar is permanently whitelisted (registerBar, above), so a click
+// landing on one is delivered to the bar normally and never clears the grab
+// — an open Widgets/ContextMenu.qml would otherwise survive a bar click.
+// registerMenu/unregisterMenu/closeMenus is the explicit path for that case:
+// every ContextMenu registers itself while open, and
+// Widgets/Segment.qml calls closeMenus() itself before running its own
+// action, so a bar item click still closes an open menu.
 Singleton {
     id: root
 
@@ -59,6 +67,34 @@ Singleton {
 
     function exclude(win) {
         root._extra = root._extra.filter(w => w !== win)
+    }
+
+    // Open ContextMenu instances — see the header. The menu objects, not
+    // their close() methods: QML hands out a new method wrapper on every
+    // access, so a stored function would never compare equal on unregister.
+    property var _menus: []
+
+    function registerMenu(menu) {
+        if (!menu) return
+        root._menus = root._menus.filter(m => m !== menu).concat([menu])
+    }
+
+    function unregisterMenu(menu) {
+        root._menus = root._menus.filter(m => m !== menu)
+    }
+
+    // Closes every currently-open menu, same as a click outside all of them
+    // would.
+    function closeMenus() {
+        const snapshot = root._menus
+        root._menus = []
+        for (const menu of snapshot) {
+            try {
+                menu.close()
+            } catch (e) {
+                console.warn("phi-shell: OverlayGrab closeMenus threw: " + e)
+            }
+        }
     }
 
     // De-duplicated union of every whitelisted window, recomputed whenever
