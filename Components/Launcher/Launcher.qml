@@ -123,6 +123,9 @@ PanelWindow {
         if (v) {
             searchField.forceActiveFocus()
             Services.OverlayGrab.open(root, function () { root.setShown(false) })
+            // The field opens empty, so onQueryTextChanged never fires: query
+            // once here so the list is filled the moment the runner appears.
+            root._runQuery()
         } else {
             Services.OverlayGrab.close(root)
             searchField.text = ""
@@ -157,47 +160,16 @@ PanelWindow {
 
     onQueryTextChanged: queryDebounce.restart()
 
-    // Unlocked and empty means nothing to query (bare `phi query ""` returns
-    // no results by design); locked and empty still queries, with an empty
-    // remainder, so a freshly-locked tag shows that keyword's own results
-    // right away instead of waiting for the user to type.
+    // Always asks phi, empty text included: an empty unlocked field and a
+    // locked tag with nothing typed both have suggestions phi decides.
     function _runQuery() {
-        if (root.queryText.length === 0 && root.lockedPrefix.length === 0) {
-            root.results = []
-            root.highlightedIndex = 0
-            return
-        }
         queryComponent.createObject(root, { queryArg: root.queryText, prefixArg: root.lockedPrefix })
     }
 
-    // With nothing typed, browse DesktopEntries instead of `phi query ""` (no
-    // results by design). A typed query goes to phi query for real ranking.
-    readonly property var browseResults: {
-        var apps = (DesktopEntries.applications && DesktopEntries.applications.values) || []
-        var out = []
-        for (var i = 0; i < apps.length; i++) {
-            var e = apps[i]
-            if (!e || e.noDisplay) continue
-            out.push({
-                id: "app:" + (e.id || e.name),
-                title: e.name || "",
-                subtitle: e.genericName || e.comment || "",
-                action: { kind: "desktopEntry", data: { entry: e } }
-            })
-        }
-        out.sort(function (a, b) {
-            return a.title.toLowerCase().localeCompare(b.title.toLowerCase())
-        })
-        return out
-    }
-
-    // Browse list when empty and unlocked, and also when empty and locked to
-    // "app" — DesktopEntries browsing IS the "app" tag's own empty-remainder
-    // list. Any other locked tag with an empty remainder shows whatever phi
-    // returned for the bare keyword, which may legitimately be empty.
-    readonly property var displayResults: (root.queryText.trim().length === 0
-            && (root.lockedPrefix.length === 0 || root.lockedPrefix === "app"))
-        ? root.browseResults : root.results
+    // Everything shown comes from `phi query`, including the empty field
+    // (phi returns the app list) and a freshly locked tag (phi returns that
+    // tag's suggestions): the runner renders, it never ranks.
+    readonly property var displayResults: root.results
 
     // Rich payload of the highlighted result, if any. Drives the side card.
     readonly property var highlightedRich: {
@@ -250,7 +222,13 @@ PanelWindow {
         // ActionLoading is not a real result: selecting one does nothing until
         // the retry timer replaces it or the user types more.
         if (result.action && result.action.kind === "loading") return
-        recordComponent.createObject(root, { resultId: result.id })
+        // The snapshot lets phi offer this pick again as a suggestion under
+        // its tag before anything is typed; `rich` is display-only.
+        recordComponent.createObject(root, {
+            resultId: result.id,
+            resultJson: JSON.stringify({ id: result.id, provider: result.provider,
+                title: result.title, subtitle: result.subtitle, action: result.action })
+        })
         root._performAction(result.action)
         root.setShown(false)
     }
@@ -259,7 +237,8 @@ PanelWindow {
         Process {
             id: recordProc
             property string resultId: ""
-            command: ["phi", "query", "record", resultId]
+            property string resultJson: ""
+            command: ["phi", "query", "record", resultId, resultJson]
             running: true
             onExited: { recordProc.running = false; recordProc.destroy() }
         }
@@ -272,14 +251,6 @@ PanelWindow {
         case "exec":
             Quickshell.execDetached(["sh", "-c", action.data.command])
             break
-        case "desktopEntry": {
-            // Browse result: prefer DesktopEntry.execute(), fall back to exec.
-            var ent = action.data.entry
-            if (!ent) break
-            if (typeof ent.execute === "function") ent.execute()
-            else if (ent.execString) Quickshell.execDetached(["sh", "-c", ent.execString])
-            break
-        }
         case "execTerminal":
             Quickshell.execDetached(["kitty", "--hold", "-e", "sh", "-c", action.data.command])
             break
@@ -423,7 +394,14 @@ PanelWindow {
                     text: " " + root.inputPrefix.slice(1)
                 }
 
-                // Φ, or the locked tag's glyph in its colour, crossfading.
+                // Φ, or the locked tag's glyph in its colour, crossfading. The
+                // icon comes from a different font than Φ's mono glyph, so
+                // matching box centres (plain anchors.centerIn) leaves its ink
+                // visibly off Φ's own optical centre, and an oversized glyph
+                // spills past the slot. Both TextMetrics below read ink
+                // (tightBoundingRect, baseline-relative) rather than the
+                // font's loose line box: the icon is scaled to fit the room
+                // around Φ's ink centre and placed on that exact point.
                 Item {
                     id: prefixGlyph
                     readonly property string tagGlyph: Prefixes.glyph(root.lockedPrefix)
@@ -439,7 +417,37 @@ PanelWindow {
                         font.pixelSize: Config.Appearance.fontSize2
                         text: root.inputPrefix.charAt(0)
                     }
+                    // font: tagIcon.font, not a size literal, so this always
+                    // matches whatever pixel size StyledIcon actually renders
+                    // the glyph at for this sizeStep.
+                    TextMetrics {
+                        id: tagIconMetrics
+                        font: tagIcon.font
+                        text: prefixGlyph.shownTagGlyph
+                    }
+
+                    // Φ's ink centre, in this Item's own coordinates: phiText's
+                    // live position plus its ink's offset from its own
+                    // top-left (tightBoundingRect.y is baseline-relative, so
+                    // it needs phiText's baselineOffset to land in item space).
+                    readonly property real _phiInkCx: phiText.x + glyphMetrics.tightBoundingRect.x
+                        + glyphMetrics.tightBoundingRect.width / 2
+                    readonly property real _phiInkCy: phiText.y + phiText.baselineOffset
+                        + glyphMetrics.tightBoundingRect.y + glyphMetrics.tightBoundingRect.height / 2
+                    // Room around that centre, not the whole slot: the centre
+                    // need not sit at the slot's own geometric middle.
+                    readonly property real _halfW: Math.min(prefixGlyph._phiInkCx, prefixGlyph.width - prefixGlyph._phiInkCx)
+                    readonly property real _halfH: Math.min(prefixGlyph._phiInkCy, prefixGlyph.height - prefixGlyph._phiInkCy)
+                    // Scaled down only when the icon's own ink would not fit
+                    // that room; never scaled up.
+                    readonly property real _iconScale: Math.min(1,
+                        tagIconMetrics.tightBoundingRect.width > 0
+                            ? (2 * prefixGlyph._halfW) / tagIconMetrics.tightBoundingRect.width : 1,
+                        tagIconMetrics.tightBoundingRect.height > 0
+                            ? (2 * prefixGlyph._halfH) / tagIconMetrics.tightBoundingRect.height : 1)
+
                     Widgets.StyledText {
+                        id: phiText
                         anchors.centerIn: parent
                         mono: true
                         sizeStep: 2
@@ -450,7 +458,17 @@ PanelWindow {
                         }
                     }
                     Widgets.StyledIcon {
-                        anchors.centerIn: parent
+                        id: tagIcon
+                        // Positioned by hand, not anchors.centerIn: x/y place
+                        // the unscaled top-left, then scale (pivoting on that
+                        // same top-left) lands the ink centre on
+                        // _phiInkCx/_phiInkCy.
+                        transformOrigin: Item.TopLeft
+                        scale: prefixGlyph._iconScale
+                        x: prefixGlyph._phiInkCx - prefixGlyph._iconScale
+                            * (tagIconMetrics.tightBoundingRect.x + tagIconMetrics.tightBoundingRect.width / 2)
+                        y: prefixGlyph._phiInkCy - prefixGlyph._iconScale
+                            * (tagIcon.baselineOffset + tagIconMetrics.tightBoundingRect.y + tagIconMetrics.tightBoundingRect.height / 2)
                         sizeStep: 2
                         glyph: prefixGlyph.shownTagGlyph
                         color: Prefixes.color(Config.Appearance, root.lockedPrefix)
@@ -466,8 +484,12 @@ PanelWindow {
                 Item {
                     id: prefixChip
                     visible: root.lockedPrefix.length > 0
-                    anchors.left: prefixLabel.right
-                    anchors.leftMargin: visible ? root.chWidth * Config.Appearance.space2 : 0
+                    // Sits exactly where typed text starts when unlocked —
+                    // prefixLabel's text ends in the prompt's trailing
+                    // spaces, so anchoring to its right would float the chip
+                    // past that point instead of starting at it.
+                    anchors.left: parent.left
+                    anchors.leftMargin: root.inputPrefixWidth
                     anchors.verticalCenter: firstLine.verticalCenter
                     width: visible ? chipBg.width : 0
                     height: chipBg.height
@@ -542,7 +564,7 @@ PanelWindow {
                 TextInput {
                     id: searchField
                     anchors.left: parent.left
-                    anchors.leftMargin: root.inputPrefixWidth + (prefixChip.visible ? prefixChip.width + prefixChip.anchors.leftMargin : 0)
+                    anchors.leftMargin: root.inputPrefixWidth + (prefixChip.visible ? prefixChip.width + root.chWidth * Config.Appearance.space1 : 0)
                     anchors.right: clearGlyph.visible ? clearGlyph.left : parent.right
                     anchors.rightMargin: clearGlyph.visible ? root.chWidth * Config.Appearance.space1 : 0
                     anchors.verticalCenter: root._askMode ? undefined : parent.verticalCenter

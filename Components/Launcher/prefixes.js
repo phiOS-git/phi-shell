@@ -32,6 +32,11 @@ var PREFIXES = [
     { key: "app",     label: "App",       tone: "success", glyph: 0xF003B },
     { key: "run",     label: "Run",       tone: "success", glyph: 0xF018D },
     { key: "phi",     label: "phi",       tone: "warn", glyph: 0 },
+    // Clipboard history: three spellings, one category (Go routes all three
+    // to the clipboard provider).
+    { key: "copy",    label: "Clipboard", tone: "success", glyph: 0xF0147 },
+    { key: "clip",    label: "Clipboard", tone: "success", glyph: 0xF0147 },
+    { key: "cp",      label: "Clipboard", tone: "success", glyph: 0xF0147 },
 ]
 
 // The runner's Φ becomes the locked tag's glyph (Nerd Font codepoints; 0
