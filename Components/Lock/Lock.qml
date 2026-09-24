@@ -224,10 +224,9 @@ WlSessionLock {
 
         color: Config.Appearance.background
 
-        // Set by the first key press, click or pointer movement; reveals the
-        // password field (see passwordGate).
+        // Set by the first key press, click or touch; reveals the password
+        // field (see passwordGate).
         property bool inputSeen: false
-        property point _pointerStart: Qt.point(-1, -1)
 
         // passwordField is always enabled, so it can take focus as soon as the
         // surface exists. One per screen; only one is input-focused at a time.
@@ -321,17 +320,6 @@ WlSessionLock {
             id: transition
             anchors.fill: parent
 
-            // The first hover point is where the pointer already was when the
-            // surface mapped; only movement past a small tolerance counts.
-            HoverHandler {
-                onPointChanged: {
-                    const p = point.position
-                    if (surface._pointerStart.x < 0) { surface._pointerStart = p; return }
-                    if (Math.abs(p.x - surface._pointerStart.x) + Math.abs(p.y - surface._pointerStart.y)
-                            > Config.Appearance.fontSize1)
-                        surface.inputSeen = true
-                }
-            }
             PointHandler { onActiveChanged: if (active) surface.inputSeen = true }
             // Blocks of the centred column in reveal order; each owns an
             // opacity and small-rise cascade on category B over the envelope.
@@ -690,6 +678,12 @@ WlSessionLock {
 
                             Keys.onPressed: (event) => { surface.inputSeen = true; event.accepted = false }
                             Keys.onReturnPressed: {
+                                // QML dispatches a key-specific handler like
+                                // this one BEFORE the generic onPressed above,
+                                // so the pre-input gate has to be checked here
+                                // too: the first Enter only reveals the field,
+                                // never submitting the still-hidden input.
+                                if (!surface.inputSeen) { surface.inputSeen = true; return }
                                 if (!root.lockedOut && root.pam.responseRequired) {
                                     root.pam.respond(text)
                                     // Starts the validating state — the field
@@ -698,6 +692,18 @@ WlSessionLock {
                                     root.validating = true
                                 }
                                 text = ""
+                            }
+                            // Same pre-input gate on Tab/Shift+Tab: the first
+                            // press only reveals the field and keeps focus
+                            // there, rather than immediately cycling to the
+                            // power pills; later presses tab normally.
+                            Keys.onTabPressed: (event) => {
+                                if (!surface.inputSeen) { surface.inputSeen = true; event.accepted = true }
+                                else event.accepted = false
+                            }
+                            Keys.onBacktabPressed: (event) => {
+                                if (!surface.inputSeen) { surface.inputSeen = true; event.accepted = true }
+                                else event.accepted = false
                             }
                         }
                     }
@@ -753,6 +759,19 @@ WlSessionLock {
                     id: powerBlock
                     width: parent.width
                     height: powerRow.implicitHeight
+
+                    // Typing should reach the password field even while a
+                    // power pill holds focus. PowerActionsRow's pills accept
+                    // only Return/Space, so an ordinary printable key bubbles
+                    // up unhandled and is redirected into the field here.
+                    Keys.onPressed: (event) => {
+                        if (event.text.length > 0 && event.text.charCodeAt(0) >= 32 && !passwordField.readOnly) {
+                            surface.inputSeen = true
+                            passwordField.forceActiveFocus()
+                            passwordField.insert(passwordField.cursorPosition, event.text)
+                            event.accepted = true
+                        }
+                    }
 
                     Dialogs.PowerActionsRow {
                         id: powerRow
