@@ -15,6 +15,10 @@ PanelWindow {
     property bool shown: false
     property string queryText: ""
     property var results: []
+    // Set when the last matching `phi query` response was a parse error,
+    // empty stdout or a non-zero exit — distinct from a valid "no results"
+    // (null or []). Drives the failed-state label in place of "no results".
+    property bool queryFailed: false
     property int highlightedIndex: 0
 
     // Tab "locks" the leading keyword: locking strips it, leaving only the
@@ -42,8 +46,9 @@ PanelWindow {
     anchors { top: true; bottom: true; left: true; right: true }
     exclusiveZone: -1
     color: "transparent"
-    // The rich-result card sits beside the box, outside `panel`, so it joins
-    // the input region while it is shown.
+    // The rich-result / file-preview card sits beside the box, outside
+    // `panel`, so it joins the input region while it is shown — both cards
+    // live inside richWrap, so its one visible flag covers either.
     mask: Region {
         item: panel
         Region { item: richWrap.visible ? richWrap : null }
@@ -131,6 +136,7 @@ PanelWindow {
             searchField.text = ""
             root.queryText = ""
             root.results = []
+            root.queryFailed = false
             root.views = []
             root.highlightedIndex = 0
             root.lockedPrefix = ""
@@ -177,6 +183,15 @@ PanelWindow {
         return (r && r.rich) ? r.rich : null
     }
 
+    // File path of the highlighted result, if any — drives the file-preview
+    // card. "" whenever a `rich` payload is present: the two cards share one
+    // side slot (richWrap) and a `rich` result always keeps its rich card.
+    readonly property string highlightedPreviewPath: {
+        if (root.highlightedRich !== null) return ""
+        var r = root.displayResults[root.highlightedIndex]
+        return (r && r.action && r.action.data && r.action.data.path) ? r.action.data.path : ""
+    }
+
     property Component queryComponent: Component {
         Process {
             id: queryProc
@@ -189,27 +204,79 @@ PanelWindow {
                 ? ["phi", "query", "--prefix", prefixArg, prefixArg + " " + queryArg]
                 : ["phi", "query", queryArg]
             running: true
-            onExited: queryProc.running = false
+
+            // onExited and stdout.onStreamFinished can land in either order;
+            // each records its half here and _finish() applies once both are
+            // in, so the outcome never depends on which arrives first, and
+            // destroy() below still runs exactly once.
+            property bool _exited: false
+            property bool _streamDone: false
+            property int _exitCode: 0
+            property string _stdout: ""
+
+            onExited: (exitCode) => {
+                queryProc.running = false
+                queryProc._exitCode = exitCode
+                queryProc._exited = true
+                queryProc._finish()
+            }
             stdout: StdioCollector {
                 onStreamFinished: {
-                    try {
-                        const parsed = JSON.parse(this.text)
-                        if (Array.isArray(parsed)) {
-                            // Stale guard: user may have typed or locked/unlocked
-                            // a prefix since. Both must match current state to
-                            // avoid rendering a stale-locked or stale-unlocked
-                            // response.
-                            if (queryProc.queryArg === root.queryText && queryProc.prefixArg === root.lockedPrefix) {
-                                root.results = parsed
-                                root.highlightedIndex = 0
-                                const stillLoading = parsed.some((r) => r.action && r.action.kind === "loading")
-                                if (stillLoading) loadingRetryTimer.restart()
-                            }
-                        }
-                    } catch (e) {
-                        console.warn("phi-shell: phi query output failed to parse: " + e)
+                    queryProc._stdout = this.text
+                    queryProc._streamDone = true
+                    queryProc._finish()
+                }
+            }
+
+            function _finish() {
+                if (!queryProc._exited || !queryProc._streamDone) return
+                // Stale guard: user may have typed or locked/unlocked a
+                // prefix since. Both must match current state to avoid
+                // rendering a stale-locked or stale-unlocked response.
+                if (queryProc.queryArg === root.queryText && queryProc.prefixArg === root.lockedPrefix)
+                    queryProc._apply()
+                queryProc.destroy()
+            }
+
+            function _apply() {
+                // A non-zero exit or empty stdout is a failed run, not "no
+                // results" — the list clears and the failed state shows,
+                // rather than leaving whatever the previous keystroke
+                // rendered on screen.
+                if (queryProc._exitCode !== 0 || queryProc._stdout.trim().length === 0) {
+                    root.results = []
+                    root.queryFailed = true
+                    root.highlightedIndex = 0
+                    return
+                }
+                try {
+                    const parsed = JSON.parse(queryProc._stdout)
+                    // phi prints JSON null for "no results" — a valid answer,
+                    // not a failure.
+                    if (parsed === null) {
+                        root.results = []
+                        root.queryFailed = false
+                        root.highlightedIndex = 0
+                        return
                     }
-                    queryProc.destroy()
+                    if (Array.isArray(parsed)) {
+                        root.results = parsed
+                        root.queryFailed = false
+                        root.highlightedIndex = 0
+                        const stillLoading = parsed.some((r) => r.action && r.action.kind === "loading")
+                        if (stillLoading) loadingRetryTimer.restart()
+                        return
+                    }
+                    // Neither array nor null: not a shape phi is meant to
+                    // produce, treated the same as a parse error.
+                    root.results = []
+                    root.queryFailed = true
+                    root.highlightedIndex = 0
+                } catch (e) {
+                    console.warn("phi-shell: phi query output failed to parse: " + e)
+                    root.results = []
+                    root.queryFailed = true
+                    root.highlightedIndex = 0
                 }
             }
         }
@@ -724,15 +791,40 @@ PanelWindow {
                         }
                     }
 
+                    // Three mutually exclusive under-input states, in priority
+                    // order: a failed query outranks everything; a locked tag
+                    // with nothing typed yet shows its own hint instead of the
+                    // generic "no results"; typed text with zero results falls
+                    // through to that generic label. An unlocked, empty field
+                    // shows none of these — phi's own suggestions fill the
+                    // list in that case, so nothing here is ever invented.
+                    Widgets.StyledText {
+                        id: failedLabel
+                        x: root.inputPrefixWidth
+                        topPadding: root.chWidth * Config.Appearance.space1
+                        kind: "label"
+                        tone: "error"
+                        text: "query failed"
+                        visible: root.queryFailed && root.results.length === 0
+                    }
+
+                    Widgets.StyledText {
+                        id: tagHint
+                        x: root.inputPrefixWidth
+                        topPadding: root.chWidth * Config.Appearance.space1
+                        kind: "label"
+                        text: Prefixes.hint(root.lockedPrefix)
+                        visible: !root.queryFailed && root.lockedPrefix.length > 0
+                            && root.queryText.length === 0 && root.results.length === 0
+                    }
+
                     Widgets.StyledText {
                         id: noResults
                         x: root.inputPrefixWidth
                         topPadding: root.chWidth * Config.Appearance.space1
                         kind: "label"
                         text: "no results"
-                        // Show when typed or locked (locked alone would show chip
-                        // and border over blank list with no explanation).
-                        visible: (root.queryText.length > 0 || root.lockedPrefix.length > 0) && root.results.length === 0
+                        visible: !root.queryFailed && root.queryText.length > 0 && root.results.length === 0
                     }
                 }
             }
@@ -857,14 +949,18 @@ PanelWindow {
     }
     } // panelWrap
 
-    // Rich-result card: right of runner (or below on narrow screens) when
-    // highlighted result has `rich` payload. Navigation unchanged.
+    // Side card: right of runner (or below on narrow screens) when the
+    // highlighted result has a `rich` payload or an image/video path.
+    // RichResult and FilePreview each hide themselves when they have nothing
+    // to show (own `hasContent`), and highlightedPreviewPath is already ""
+    // whenever `rich` is present, so the two never show together. Navigation
+    // unchanged.
     Item {
         id: richWrap
         readonly property bool narrow: root.screen && root.screen.width < (root.launcherWidth + width + root.chWidth * 8)
         width: Math.min(root.chWidth * 46, (root.screen ? root.screen.width : 900) * 0.30)
-        height: richCard.implicitHeight
-        visible: root.atRoot && root.highlightedRich !== null
+        height: root.highlightedRich !== null ? richCard.implicitHeight : previewCard.implicitHeight
+        visible: root.atRoot && (root.highlightedRich !== null || previewCard.hasContent)
 
         anchors.left: narrow ? panelWrap.left : panelWrap.right
         anchors.leftMargin: narrow ? 0 : root.chWidth * Config.Appearance.space3
@@ -879,6 +975,13 @@ PanelWindow {
             id: richCard
             width: parent.width
             rich: root.highlightedRich
+            chWidth: root.chWidth
+        }
+
+        Local.FilePreview {
+            id: previewCard
+            width: parent.width
+            path: root.highlightedPreviewPath
             chWidth: root.chWidth
         }
     }

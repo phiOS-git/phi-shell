@@ -53,6 +53,9 @@ Singleton {
     readonly property string dynamicWallpaperCacheDir: root.dataDir + "/dynamic-heic-cache"
     // Cached `phi wallpaper texture` output.
     readonly property string texturesDir: root.dataDir + "/textures"
+    // ffmpeg-generated video-thumbnail cache for the launcher's file-preview
+    // card. Owned by Components/Launcher/FilePreview.qml.
+    readonly property string launcherPreviewCacheDir: root.dataDir + "/launcher-previews"
 
     // Theme token overrides. Owned by Config/ThemeOverrides.qml.
     readonly property string themeOverridesFile: root.stateDir + "/theme-overrides.json"

@@ -19,24 +19,27 @@
 // directly instead of going through that resolver, which is a separate,
 // narrower rule about what StyledText's own `tone` property accepts, not
 // a ban on using the accent token elsewhere.
+// hint is what the empty-input, locked-tag result list shows under the input
+// (Launcher.qml's per-tag hint state) — phi still decides what to DO with
+// whatever gets typed, this is only the shell's own placeholder prompt.
 var PREFIXES = [
-    { key: "web",     label: "Web",       tone: "info", glyph: 0xF059F },
-    { key: "wiki",    label: "Wikipedia", tone: "info", glyph: 0xF05AC },
-    { key: "yt",      label: "YouTube",   tone: "info", glyph: 0xF05C3 },
-    { key: "arch",    label: "Arch Wiki", tone: "info", glyph: 0xF303 },
-    { key: "rddt",    label: "Reddit",    tone: "info", glyph: 0xF044D },
-    { key: "ask",     label: "Ask AI",    tone: "accent", glyph: 0xF167A },
-    { key: "math",    label: "Math",      tone: "accent", glyph: 0xF00EC },
-    { key: "convert", label: "Convert",   tone: "accent", glyph: 0xF04E1 },
-    { key: "file",    label: "File",      tone: "success", glyph: 0xF0224 },
-    { key: "app",     label: "App",       tone: "success", glyph: 0xF003B },
-    { key: "run",     label: "Run",       tone: "success", glyph: 0xF018D },
-    { key: "phi",     label: "phi",       tone: "warn", glyph: 0 },
+    { key: "web",     label: "Web",       tone: "info", glyph: 0xF059F, hint: "Type to search the web" },
+    { key: "wiki",    label: "Wikipedia", tone: "info", glyph: 0xF05AC, hint: "Type to search Wikipedia" },
+    { key: "yt",      label: "YouTube",   tone: "info", glyph: 0xF05C3, hint: "Type to search YouTube" },
+    { key: "arch",    label: "Arch Wiki", tone: "info", glyph: 0xF303, hint: "Type to search the Arch Wiki" },
+    { key: "rddt",    label: "Reddit",    tone: "info", glyph: 0xF044D, hint: "Type to search Reddit" },
+    { key: "ask",     label: "Ask AI",    tone: "accent", glyph: 0xF167A, hint: "Type a question for the agent" },
+    { key: "math",    label: "Math",      tone: "accent", glyph: 0xF00EC, hint: "Type an expression" },
+    { key: "convert", label: "Convert",   tone: "accent", glyph: 0xF04E1, hint: "Type a conversion, e.g. 5 km to mi" },
+    { key: "file",    label: "File",      tone: "success", glyph: 0xF0224, hint: "Type a file name" },
+    { key: "app",     label: "App",       tone: "success", glyph: 0xF003B, hint: "Type an app name" },
+    { key: "run",     label: "Run",       tone: "success", glyph: 0xF018D, hint: "Type a command to run" },
+    { key: "phi",     label: "phi",       tone: "warn", glyph: 0, hint: "Type a phi command" },
     // Clipboard history: three spellings, one category (Go routes all three
     // to the clipboard provider).
-    { key: "copy",    label: "Clipboard", tone: "success", glyph: 0xF0147 },
-    { key: "clip",    label: "Clipboard", tone: "success", glyph: 0xF0147 },
-    { key: "cp",      label: "Clipboard", tone: "success", glyph: 0xF0147 },
+    { key: "copy",    label: "Clipboard", tone: "success", glyph: 0xF0147, hint: "Clipboard history is empty" },
+    { key: "clip",    label: "Clipboard", tone: "success", glyph: 0xF0147, hint: "Clipboard history is empty" },
+    { key: "cp",      label: "Clipboard", tone: "success", glyph: 0xF0147, hint: "Clipboard history is empty" },
 ]
 
 // The runner's Φ becomes the locked tag's glyph (Nerd Font codepoints; 0
@@ -51,6 +54,13 @@ function find(key) {
         if (PREFIXES[i].key === key) return PREFIXES[i]
     }
     return null
+}
+
+// The empty-input hint for a locked tag; "" for an unknown key (Launcher.qml
+// only ever locks a key detect() found, so this is just a safe fallback).
+function hint(key) {
+    var p = find(key)
+    return p ? p.hint : ""
 }
 
 // detect reports the known prefix keyword leading text, case-insensitively.
