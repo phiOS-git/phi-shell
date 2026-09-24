@@ -371,6 +371,7 @@ WlSessionLock {
             Component { id: lavaFx; Screensavers.LavaLamp {
                 speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("lava")
                 blobCount: Config.LockPrefs.paramFor("lava", "blobCount", 9)
+                blobSize: Config.LockPrefs.paramFor("lava", "blobSize", 0.09)
                 wobble: Config.LockPrefs.paramFor("lava", "wobble", 1.0)
                 validating: root.validating; validationProgress: validationPulse
                 lockedOut: root.lockedOut; lockoutProgress: root.lockoutProgress
@@ -378,18 +379,24 @@ WlSessionLock {
             Component { id: matrixFx; Screensavers.MatrixRain {
                 speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("matrix")
                 density: Config.LockPrefs.paramFor("matrix", "density", 1.0)
+                trailLength: Config.LockPrefs.paramFor("matrix", "trailLength", 1.0)
+                glyphSet: Config.LockPrefs.paramFor("matrix", "glyphSet", "mixed")
                 validating: root.validating; validationProgress: validationPulse
                 lockedOut: root.lockedOut; lockoutProgress: root.lockoutProgress
             } }
             Component { id: starFx; Screensavers.Starfield {
                 speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("starfield")
                 starCount: Config.LockPrefs.paramFor("starfield", "starCount", 140)
+                depth: Config.LockPrefs.paramFor("starfield", "depth", 0.15)
+                twinkle: Config.LockPrefs.paramFor("starfield", "twinkle", true)
                 validating: root.validating; validationProgress: validationPulse
                 lockedOut: root.lockedOut; lockoutProgress: root.lockoutProgress
             } }
             Component { id: plasmaFx; Screensavers.Plasma {
                 speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("plasma")
                 resolution: Config.LockPrefs.paramFor("plasma", "resolution", 1.0)
+                patternScale: Config.LockPrefs.paramFor("plasma", "patternScale", 1.0)
+                complexity: Config.LockPrefs.paramFor("plasma", "complexity", 3)
                 validating: root.validating; validationProgress: validationPulse
                 lockedOut: root.lockedOut; lockoutProgress: root.lockoutProgress
             } }
@@ -397,12 +404,16 @@ WlSessionLock {
                 speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("life")
                 resolution: Config.LockPrefs.paramFor("life", "resolution", 1.0)
                 seedDensity: Config.LockPrefs.paramFor("life", "seedDensity", 0.28)
+                rulePreset: Config.LockPrefs.paramFor("life", "rulePreset", "conway")
                 validating: root.validating; validationProgress: validationPulse
                 lockedOut: root.lockedOut; lockoutProgress: root.lockoutProgress
             } }
             Component { id: boidsFx; Screensavers.Boids {
                 speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("boids")
                 boidCount: Config.LockPrefs.paramFor("boids", "boidCount", 40)
+                separationWeight: Config.LockPrefs.paramFor("boids", "separationWeight", 1.6)
+                alignmentWeight: Config.LockPrefs.paramFor("boids", "alignmentWeight", 0.06)
+                cohesionWeight: Config.LockPrefs.paramFor("boids", "cohesionWeight", 0.0025)
                 validating: root.validating; validationProgress: validationPulse
                 lockedOut: root.lockedOut; lockoutProgress: root.lockoutProgress
             } }

@@ -38,17 +38,34 @@ Item {
     // Multiplier on the column density, inverse on the cell size (>1 = smaller
     // cells = more columns = denser rain; <1 = sparser).
     property real density: 1.0
+    // Multiplier on a column's trail length range (see reseed() below).
+    property real trailLength: 1.0
 
-    readonly property string glyphs:
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789" +
-        "<>[]{}()/\\|=+-*#%&$@?!;:~^" +
-        "αβγδεζηθλμνξπρστφχψωΦΛΣΠΩ"
+    // Clamped shadows of the two above. lock.json is hand-editable and both
+    // feed the cell size / column count, so an unclamped huge density would
+    // seed thousands of columns and an unclamped trailLength would grow
+    // every trail past the visible board.
+    readonly property real _density: Math.max(0.4, Math.min(2.0, root.density))
+    readonly property real _trailLength: Math.max(0.4, Math.min(2.0, root.trailLength))
+
+    // Named glyph pools a column draws from. No katakana — this repo commits
+    // to a symbol-only font with a targeted Noto fallback, never a patched
+    // font, and katakana would render as tofu without one.
+    readonly property var _glyphSets: ({
+        mixed: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789" +
+            "<>[]{}()/\\|=+-*#%&$@?!;:~^" +
+            "αβγδεζηθλμνξπρστφχψωΦΛΣΠΩ",
+        binary: "01",
+        hex: "0123456789ABCDEF"
+    })
+    property string glyphSet: "mixed"
+    readonly property string glyphs: root._glyphSets[root.glyphSet] !== undefined
+        ? root._glyphSets[root.glyphSet] : root._glyphSets.mixed
 
     // Deliberately looser than one text cell — a touch of air between columns
     // keeps the glyph count (and the fill cost) sane on a large display
-    // without the rain reading as sparse. `density` scales this inversely,
-    // clamped so it can never collapse to (or below) zero.
-    readonly property real cell: Math.round(Config.Appearance.fontSize3 * 1.2 / Math.max(0.35, root.density))
+    // without the rain reading as sparse. `density` scales this inversely.
+    readonly property real cell: Math.round(Config.Appearance.fontSize3 * 1.2 / root._density)
     readonly property int columnCount: Math.max(1, Math.floor(width / cell))
     readonly property int rowCount: Math.max(1, Math.ceil(height / cell) + 2)
 
@@ -59,13 +76,19 @@ Item {
 
     function _rand(a, b) { return a + Math.random() * (b - a) }
 
+    // A column's trail length as a random fraction of the visible rows,
+    // scaled by `trailLength`.
+    function _randLen() {
+        return Math.round(root._rand(rowCount * 0.20 * root._trailLength, rowCount * 0.60 * root._trailLength))
+    }
+
     function reseed() {
         var out = []
         for (var i = 0; i < columnCount; i++) {
             out.push({
                 head: root._rand(-rowCount, rowCount * 0.4),
                 speed: root._rand(0.20, 0.62),
-                len: Math.round(root._rand(rowCount * 0.20, rowCount * 0.60)),
+                len: root._randLen(),
                 cells: []
             })
         }
@@ -73,8 +96,21 @@ Item {
         root.band = root._rand(0, rowCount)
     }
 
+    // Glyph set alone doesn't need a full reseed (positions/speeds are
+    // unrelated) — clearing each column's cached cells is enough for the new
+    // pool to take over as the fall continues.
+    function _clearGlyphs() {
+        var cols = root.columns
+        for (var i = 0; i < cols.length; i++) cols[i].cells = []
+    }
+
     onColumnCountChanged: reseed()
     onRowCountChanged: reseed()
+    // Deferred: reseed() reads the _trailLength clamp shadow, which is not
+    // guaranteed to have settled yet on the same tick trailLength itself
+    // changed (see LavaLamp.qml's onBlobCountChanged for the full reasoning).
+    onTrailLengthChanged: Qt.callLater(root.reseed)
+    onGlyphSetChanged: _clearGlyphs()
     Component.onCompleted: reseed()
 
     Timer {
@@ -96,7 +132,7 @@ Item {
                 if (c.head - c.len > root.rowCount) {
                     c.head = root._rand(-rowCount * 0.6, 0)
                     c.speed = root._rand(0.20, 0.62)
-                    c.len = Math.round(root._rand(rowCount * 0.20, rowCount * 0.60))
+                    c.len = root._randLen()
                     c.cells = []
                 }
             }

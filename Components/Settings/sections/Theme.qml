@@ -1137,8 +1137,8 @@ Column {
             description: "Wobble spreads the blob sizes."
             // The default compact layout right-aligns a content-sized slot
             // sized for ONE small control. This row's slot holds a whole
-            // Column of label+field pairs (Blob count, Wobble), so it needs
-            // the full-width `wide` layout or it overflows the dialog's edge.
+            // Column of label+field pairs, so it needs the full-width `wide`
+            // layout or it overflows the dialog's edge.
             wide: true
             Column {
                 width: parent.width
@@ -1150,6 +1150,15 @@ Column {
                         value: Config.LockPrefs.paramFor("lava", "blobCount", 9)
                         from: 3; to: 18; step: 1
                         onCommitted: (v) => Config.LockPrefs.setParam("lava", "blobCount", Math.round(v))
+                    }
+                }
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Blob size" }
+                    Widgets.NumberField {
+                        value: Config.LockPrefs.paramFor("lava", "blobSize", 0.09)
+                        from: 0.04; to: 0.18; step: 0.01; decimals: 2
+                        onCommitted: (v) => Config.LockPrefs.setParam("lava", "blobSize", v)
                     }
                 }
                 Row {
@@ -1166,29 +1175,121 @@ Column {
         Modules.SettingsRow {
             visible: Config.LockPrefs.effect === "matrix"
             title: "Matrix"
-            Widgets.NumberField {
-                value: Config.LockPrefs.paramFor("matrix", "density", 1.0)
-                from: 0.4; to: 2.0; step: 0.2; decimals: 1; suffix: "×"
-                onCommitted: (v) => Config.LockPrefs.setParam("matrix", "density", v)
+            wide: true
+            Column {
+                width: parent.width
+                spacing: root.gap
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Density" }
+                    Widgets.NumberField {
+                        value: Config.LockPrefs.paramFor("matrix", "density", 1.0)
+                        from: 0.4; to: 2.0; step: 0.2; decimals: 1; suffix: "×"
+                        onCommitted: (v) => Config.LockPrefs.setParam("matrix", "density", v)
+                    }
+                }
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Trail length" }
+                    Widgets.NumberField {
+                        value: Config.LockPrefs.paramFor("matrix", "trailLength", 1.0)
+                        from: 0.4; to: 2.0; step: 0.2; decimals: 1; suffix: "×"
+                        onCommitted: (v) => Config.LockPrefs.setParam("matrix", "trailLength", v)
+                    }
+                }
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Glyphs" }
+                    Repeater {
+                        model: [
+                            { key: "mixed", label: "Mixed" },
+                            { key: "binary", label: "Binary" },
+                            { key: "hex", label: "Hex" }
+                        ]
+                        Widgets.StyledButton {
+                            required property var modelData
+                            anchors.verticalCenter: parent.verticalCenter
+                            label: modelData.label
+                            active: Config.LockPrefs.paramFor("matrix", "glyphSet", "mixed") === modelData.key
+                            onClicked: Config.LockPrefs.setParam("matrix", "glyphSet", modelData.key)
+                        }
+                    }
+                }
             }
         }
         Modules.SettingsRow {
             visible: Config.LockPrefs.effect === "starfield"
             title: "Starfield"
-            Widgets.NumberField {
-                value: Config.LockPrefs.paramFor("starfield", "starCount", 140)
-                from: 30; to: 400; step: 10
-                onCommitted: (v) => Config.LockPrefs.setParam("starfield", "starCount", Math.round(v))
+            wide: true
+            Column {
+                width: parent.width
+                spacing: root.gap
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Star count" }
+                    Widgets.NumberField {
+                        value: Config.LockPrefs.paramFor("starfield", "starCount", 140)
+                        from: 30; to: 400; step: 10
+                        onCommitted: (v) => Config.LockPrefs.setParam("starfield", "starCount", Math.round(v))
+                    }
+                }
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Min depth" }
+                    Widgets.NumberField {
+                        // Lower spreads near and far stars further apart —
+                        // more parallax, a deeper field. Higher flattens it.
+                        value: Config.LockPrefs.paramFor("starfield", "depth", 0.15)
+                        from: 0.05; to: 0.5; step: 0.05; decimals: 2
+                        onCommitted: (v) => Config.LockPrefs.setParam("starfield", "depth", v)
+                    }
+                }
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Twinkle" }
+                    Widgets.Toggle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        checked: Config.LockPrefs.paramFor("starfield", "twinkle", true)
+                        onToggled: (v) => Config.LockPrefs.setParam("starfield", "twinkle", v)
+                    }
+                }
             }
         }
         Modules.SettingsRow {
             visible: Config.LockPrefs.effect === "plasma"
             title: "Plasma"
-            description: "Higher is finer and costs more to draw."
-            Widgets.NumberField {
-                value: Config.LockPrefs.paramFor("plasma", "resolution", 1.0)
-                from: 0.5; to: 2.0; step: 0.25; decimals: 2; suffix: "×"
-                onCommitted: (v) => Config.LockPrefs.setParam("plasma", "resolution", v)
+            description: "Higher resolution is finer and costs more to draw."
+            wide: true
+            Column {
+                width: parent.width
+                spacing: root.gap
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Grid resolution" }
+                    Widgets.NumberField {
+                        value: Config.LockPrefs.paramFor("plasma", "resolution", 1.0)
+                        from: 0.5; to: 2.0; step: 0.25; decimals: 2; suffix: "×"
+                        onCommitted: (v) => Config.LockPrefs.setParam("plasma", "resolution", v)
+                    }
+                }
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Pattern scale" }
+                    Widgets.NumberField {
+                        value: Config.LockPrefs.paramFor("plasma", "patternScale", 1.0)
+                        from: 0.4; to: 2.5; step: 0.1; decimals: 1; suffix: "×"
+                        onCommitted: (v) => Config.LockPrefs.setParam("plasma", "patternScale", v)
+                    }
+                }
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Wave terms" }
+                    Widgets.NumberField {
+                        value: Config.LockPrefs.paramFor("plasma", "complexity", 3)
+                        from: 2; to: 5; step: 1
+                        onCommitted: (v) => Config.LockPrefs.setParam("plasma", "complexity", Math.round(v))
+                    }
+                }
             }
         }
         Modules.SettingsRow {
@@ -1218,15 +1319,70 @@ Column {
                         onCommitted: (v) => Config.LockPrefs.setParam("life", "seedDensity", v)
                     }
                 }
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Rule" }
+                    Repeater {
+                        model: [
+                            { key: "conway", label: "Conway" },
+                            { key: "highlife", label: "HighLife" },
+                            { key: "seeds", label: "Seeds" }
+                        ]
+                        Widgets.StyledButton {
+                            required property var modelData
+                            anchors.verticalCenter: parent.verticalCenter
+                            label: modelData.label
+                            active: Config.LockPrefs.paramFor("life", "rulePreset", "conway") === modelData.key
+                            onClicked: Config.LockPrefs.setParam("life", "rulePreset", modelData.key)
+                        }
+                    }
+                }
             }
         }
         Modules.SettingsRow {
             visible: Config.LockPrefs.effect === "boids"
             title: "Boids"
-            Widgets.NumberField {
-                value: Config.LockPrefs.paramFor("boids", "boidCount", 40)
-                from: 10; to: 120; step: 5
-                onCommitted: (v) => Config.LockPrefs.setParam("boids", "boidCount", Math.round(v))
+            description: "Separation, alignment and cohesion are the three flocking rule weights."
+            wide: true
+            Column {
+                width: parent.width
+                spacing: root.gap
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Flock size" }
+                    Widgets.NumberField {
+                        value: Config.LockPrefs.paramFor("boids", "boidCount", 40)
+                        from: 10; to: 120; step: 5
+                        onCommitted: (v) => Config.LockPrefs.setParam("boids", "boidCount", Math.round(v))
+                    }
+                }
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Separation" }
+                    Widgets.NumberField {
+                        value: Config.LockPrefs.paramFor("boids", "separationWeight", 1.6)
+                        from: 0; to: 4.0; step: 0.2; decimals: 1
+                        onCommitted: (v) => Config.LockPrefs.setParam("boids", "separationWeight", v)
+                    }
+                }
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Alignment" }
+                    Widgets.NumberField {
+                        value: Config.LockPrefs.paramFor("boids", "alignmentWeight", 0.06)
+                        from: 0; to: 0.3; step: 0.01; decimals: 2
+                        onCommitted: (v) => Config.LockPrefs.setParam("boids", "alignmentWeight", v)
+                    }
+                }
+                Row {
+                    spacing: root.gap
+                    Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "label"; text: "Cohesion" }
+                    Widgets.NumberField {
+                        value: Config.LockPrefs.paramFor("boids", "cohesionWeight", 0.0025)
+                        from: 0; to: 0.01; step: 0.0005; decimals: 4
+                        onCommitted: (v) => Config.LockPrefs.setParam("boids", "cohesionWeight", v)
+                    }
+                }
             }
         }
     }
@@ -1457,6 +1613,7 @@ Column {
                     Component { id: lavaPreview; LockFx.LavaLamp {
                         running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("lava")
                         blobCount: Config.LockPrefs.paramFor("lava", "blobCount", 9)
+                        blobSize: Config.LockPrefs.paramFor("lava", "blobSize", 0.09)
                         wobble: Config.LockPrefs.paramFor("lava", "wobble", 1.0)
                         validating: screensaverPreviewGroup.fxValidating
                         validationProgress: screensaverPreviewGroup.fxValidationPulse
@@ -1466,6 +1623,8 @@ Column {
                     Component { id: matrixPreview; LockFx.MatrixRain {
                         running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("matrix")
                         density: Config.LockPrefs.paramFor("matrix", "density", 1.0)
+                        trailLength: Config.LockPrefs.paramFor("matrix", "trailLength", 1.0)
+                        glyphSet: Config.LockPrefs.paramFor("matrix", "glyphSet", "mixed")
                         validating: screensaverPreviewGroup.fxValidating
                         validationProgress: screensaverPreviewGroup.fxValidationPulse
                         lockedOut: screensaverPreviewGroup.fxLockedOut
@@ -1474,6 +1633,8 @@ Column {
                     Component { id: starPreview; LockFx.Starfield {
                         running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("starfield")
                         starCount: Config.LockPrefs.paramFor("starfield", "starCount", 140)
+                        depth: Config.LockPrefs.paramFor("starfield", "depth", 0.15)
+                        twinkle: Config.LockPrefs.paramFor("starfield", "twinkle", true)
                         validating: screensaverPreviewGroup.fxValidating
                         validationProgress: screensaverPreviewGroup.fxValidationPulse
                         lockedOut: screensaverPreviewGroup.fxLockedOut
@@ -1482,6 +1643,8 @@ Column {
                     Component { id: plasmaPreview; LockFx.Plasma {
                         running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("plasma")
                         resolution: Config.LockPrefs.paramFor("plasma", "resolution", 1.0)
+                        patternScale: Config.LockPrefs.paramFor("plasma", "patternScale", 1.0)
+                        complexity: Config.LockPrefs.paramFor("plasma", "complexity", 3)
                         validating: screensaverPreviewGroup.fxValidating
                         validationProgress: screensaverPreviewGroup.fxValidationPulse
                         lockedOut: screensaverPreviewGroup.fxLockedOut
@@ -1491,6 +1654,7 @@ Column {
                         running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("life")
                         resolution: Config.LockPrefs.paramFor("life", "resolution", 1.0)
                         seedDensity: Config.LockPrefs.paramFor("life", "seedDensity", 0.28)
+                        rulePreset: Config.LockPrefs.paramFor("life", "rulePreset", "conway")
                         validating: screensaverPreviewGroup.fxValidating
                         validationProgress: screensaverPreviewGroup.fxValidationPulse
                         lockedOut: screensaverPreviewGroup.fxLockedOut
@@ -1499,6 +1663,9 @@ Column {
                     Component { id: boidsPreview; LockFx.Boids {
                         running: true; speed: Config.LockPrefs.speed; intensity: Config.LockPrefs.intensityFor("boids")
                         boidCount: Config.LockPrefs.paramFor("boids", "boidCount", 40)
+                        separationWeight: Config.LockPrefs.paramFor("boids", "separationWeight", 1.6)
+                        alignmentWeight: Config.LockPrefs.paramFor("boids", "alignmentWeight", 0.06)
+                        cohesionWeight: Config.LockPrefs.paramFor("boids", "cohesionWeight", 0.0025)
                         validating: screensaverPreviewGroup.fxValidating
                         validationProgress: screensaverPreviewGroup.fxValidationPulse
                         lockedOut: screensaverPreviewGroup.fxLockedOut

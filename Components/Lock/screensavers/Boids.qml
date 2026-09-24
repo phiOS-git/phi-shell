@@ -26,8 +26,23 @@ Item {
     // Auth reactions for settings gallery test buttons.
     readonly property var features: ["verification", "lockout"]
 
-    // One exposed knob; Reynolds weights are tuned constants (like LavaLamp's wobble).
     property int boidCount: 40
+    // The three Reynolds rule weights — how strongly a boid avoids near
+    // neighbors, matches their heading, and drifts toward the local group's
+    // centre. Read directly in _step() each tick, so a change applies live.
+    property real separationWeight: 1.6
+    property real alignmentWeight: 0.06
+    property real cohesionWeight: 0.0025
+
+    // Clamped shadows. lock.json is hand-editable and _step() is an O(n²)
+    // pass per tick — an unclamped boidCount turns a hand-edited "5000" into
+    // 25 million pair checks a tick, so this must hold at seed(), not just
+    // in the settings field. The weights are cheap regardless of magnitude
+    // but are still bounded for a sane-looking flock.
+    readonly property int _boidCount: Math.max(10, Math.min(120, Math.round(root.boidCount)))
+    readonly property real _separationWeight: Math.max(0, Math.min(4.0, root.separationWeight))
+    readonly property real _alignmentWeight: Math.max(0, Math.min(0.3, root.alignmentWeight))
+    readonly property real _cohesionWeight: Math.max(0, Math.min(0.01, root.cohesionWeight))
 
     property var boids: []
 
@@ -43,7 +58,7 @@ Item {
     property bool _seededWithRealSize: false
     function seed() {
         var out = []
-        for (var i = 0; i < root.boidCount; i++) {
+        for (var i = 0; i < root._boidCount; i++) {
             var ang = root._rand(0, Math.PI * 2)
             out.push({
                 x: root._rand(0, Math.max(1, root.width)),
@@ -58,7 +73,10 @@ Item {
 
     onWidthChanged: if (!_seededWithRealSize && width > 0) seed()
     onHeightChanged: if (!_seededWithRealSize && height > 0) seed()
-    onBoidCountChanged: seed()
+    // Deferred: seed() reads the _boidCount clamp shadow, which is not
+    // guaranteed to have settled yet on the same tick boidCount itself
+    // changed (see LavaLamp.qml's onBlobCountChanged for the full reasoning).
+    onBoidCountChanged: Qt.callLater(root.seed)
     Component.onCompleted: seed()
 
     // One O(n²) pass per tick — boidCount defaults to 40 (1,600 pair checks),
@@ -92,10 +110,10 @@ Item {
                 }
             }
 
-            var ax = sepX * 1.6
-            var ay = sepY * 1.6
-            if (aliN > 0) { ax += (aliX / aliN) * 0.06; ay += (aliY / aliN) * 0.06 }
-            if (cohN > 0) { ax += (cohX / cohN) * 0.0025; ay += (cohY / cohN) * 0.0025 }
+            var ax = sepX * root._separationWeight
+            var ay = sepY * root._separationWeight
+            if (aliN > 0) { ax += (aliX / aliN) * root._alignmentWeight; ay += (aliY / aliN) * root._alignmentWeight }
+            if (cohN > 0) { ax += (cohX / cohN) * root._cohesionWeight; ay += (cohY / cohN) * root._cohesionWeight }
 
             self.vx = (self.vx + ax * root.speed) * 0.98
             self.vy = (self.vy + ay * root.speed) * 0.98

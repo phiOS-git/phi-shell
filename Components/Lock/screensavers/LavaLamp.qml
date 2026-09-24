@@ -29,6 +29,13 @@ Item {
     // Spread of ball sizes around the mean: 0 makes every ball the same size.
     property real wobble: 1.0
 
+    // Clamped shadows of the params above. lock.json is hand-editable, and
+    // these feed loop bounds and geometry, so a garbage value (a huge
+    // blobCount) must not reach seed() unclamped — the range matches what
+    // the settings field itself allows.
+    readonly property int _blobCount: Math.max(3, Math.min(18, Math.round(root.blobCount)))
+    readonly property real _wobble: Math.max(0.25, Math.min(3.0, root.wobble))
+
     // Grid cell: two mono character widths, coarse enough to read as a
     // terminal grid and to keep the per-tick field evaluation cheap.
     TextMetrics {
@@ -41,10 +48,13 @@ Item {
     readonly property int cols: Math.max(8, Math.floor(root.width / root.cell))
     readonly property int rows: Math.max(6, Math.floor(root.height / root.cell))
 
-    // Mean ball radius as a fraction of the grid's shorter side, the field
-    // level where the dim rim starts, and the lit fraction of a cell (the
-    // rest is the gap between cells).
-    readonly property real _radiusRatio: 0.09
+    // Mean ball radius as a fraction of the grid's shorter side. Bigger
+    // blobs merge into one another more readily; smaller ones stay separate
+    // and scattered.
+    property real blobSize: 0.09
+    readonly property real _blobSize: Math.max(0.04, Math.min(0.18, root.blobSize))
+    // Field level where the dim rim starts, and the lit fraction of a cell
+    // (the rest is the gap between cells).
     readonly property real _rimLevel: 0.7
     readonly property real _fill: 0.8
     // Per-tick drift, in cells, at speed 1.
@@ -54,9 +64,9 @@ Item {
 
     function seed() {
         const out = []
-        const mean = Math.min(root.cols, root.rows) * root._radiusRatio
-        for (let i = 0; i < Math.max(1, root.blobCount); i++) {
-            const r = Math.max(1, mean * (1 + root.wobble * (Math.random() - 0.5)))
+        const mean = Math.min(root.cols, root.rows) * root._blobSize
+        for (let i = 0; i < root._blobCount; i++) {
+            const r = Math.max(1, mean * (1 + root._wobble * (Math.random() - 0.5)))
             const a = Math.random() * Math.PI * 2
             out.push({ x: r + Math.random() * Math.max(1, root.cols - 2 * r),
                        y: r + Math.random() * Math.max(1, root.rows - 2 * r),
@@ -87,8 +97,15 @@ Item {
         return Config.Appearance.accent
     }
 
-    onBlobCountChanged: root.seed()
-    onWobbleChanged: root.seed()
+    // Deferred: seed() reads the _blobCount/_wobble/_blobSize clamp shadows,
+    // and QML does not guarantee those bindings have settled before this
+    // handler runs on the same tick their source changed (the same trap
+    // Widgets/Segment.qml documents for two dependents of one signal).
+    // Qt.callLater also coalesces several params changed in one tick into a
+    // single reseed.
+    onBlobCountChanged: Qt.callLater(root.seed)
+    onWobbleChanged: Qt.callLater(root.seed)
+    onBlobSizeChanged: Qt.callLater(root.seed)
     onColsChanged: root.seed()
     onRowsChanged: root.seed()
     Component.onCompleted: root.seed()

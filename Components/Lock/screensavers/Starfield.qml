@@ -35,17 +35,30 @@ Item {
     readonly property var features: ["verification", "lockout"]
 
     property int starCount: 140
+    // Nearest depth a star can be seeded at — the field's own field-of-view:
+    // lower spreads near and far stars further apart (more parallax, a
+    // deeper-reading field), higher keeps the field closer to one plane.
+    property real depth: 0.15
+    // Off freezes each star's alpha at its depth-scaled brightness — steady
+    // points rather than a flickering field.
+    property bool twinkle: true
     property var stars: []
+
+    // Clamped shadows. lock.json is hand-editable and starCount feeds a
+    // per-tick loop, so an unclamped huge value would seed and redraw far
+    // more points than the field was ever meant to hold.
+    readonly property int _starCount: Math.max(30, Math.min(400, Math.round(root.starCount)))
+    readonly property real _depth: Math.max(0.05, Math.min(0.5, root.depth))
 
     function _rand(a, b) { return a + Math.random() * (b - a) }
 
     function seed() {
         var out = []
-        for (var i = 0; i < root.starCount; i++) {
+        for (var i = 0; i < root._starCount; i++) {
             out.push({
                 x: Math.random(),
                 y: Math.random(),
-                z: root._rand(0.15, 1),               // depth: 1 = nearest
+                z: root._rand(root._depth, 1),          // depth: 1 = nearest
                 tw: root._rand(0, Math.PI * 2),
                 twRate: root._rand(0.01, 0.04)
             })
@@ -54,7 +67,11 @@ Item {
     }
 
     onWidthChanged: if (stars.length === 0) seed()
-    onStarCountChanged: seed()
+    // Deferred: seed() reads the _starCount/_depth clamp shadows, which are
+    // not guaranteed to have settled yet on the same tick the source
+    // changed (see LavaLamp.qml's onBlobCountChanged for the full reasoning).
+    onStarCountChanged: Qt.callLater(root.seed)
+    onDepthChanged: Qt.callLater(root.seed)
     Component.onCompleted: seed()
 
     Timer {
@@ -99,8 +116,8 @@ Item {
                 var size = 0.6 + st.z * 1.8
                 var colour = root._mix(far, near, st.z)
                 if (st.z > 0.82) colour = root._mix(colour, hot, (st.z - 0.82) / 0.18 * 0.6)
-                var twinkle = 0.55 + 0.45 * Math.sin(st.tw)
-                ctx.globalAlpha = Math.max(0, Math.min(1, st.z * twinkle * root.intensity))
+                var flicker = root.twinkle ? (0.55 + 0.45 * Math.sin(st.tw)) : 1.0
+                ctx.globalAlpha = Math.max(0, Math.min(1, st.z * flicker * root.intensity))
                 ctx.fillStyle = colour
                 ctx.fillRect(st.x * width, st.y * height, size, size)
             }

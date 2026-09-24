@@ -14,6 +14,19 @@ Item {
     property real speed: 1.0
     // Grid resolution multiplier (>1 finer/costlier, <1 coarser/cheaper).
     property real resolution: 1.0
+    // lock.json is hand-editable and this drives the cell count directly —
+    // an unclamped resolution could ask for a grid several orders of
+    // magnitude past what the settings field itself allows.
+    readonly property real _resolution: Math.max(0.5, Math.min(2.0, root.resolution))
+    // Spatial frequency multiplier on every wave term below — higher zooms
+    // into a tighter, busier field; lower reads as broader, smoother blobs.
+    // Not named `scale` — Item already owns that property for its visual
+    // transform, and shadowing it would fight this canvas's own sizing.
+    property real patternScale: 1.0
+    readonly property real _patternScale: Math.max(0.4, Math.min(2.5, root.patternScale))
+    // How many of _waveTerms are summed — more terms read as a more chaotic,
+    // layered field. 3 (the original fixed count) is the default.
+    property int complexity: 3
     // --- lock/auth state (bound by Lock.qml) -------
     // Read-only from lock surface: validating/validationProgress pulse with
     // verification; lockedOut/lockoutProgress drain with cooldown.
@@ -44,9 +57,21 @@ Item {
         canvas.requestPaint()
     }
 
-    readonly property int cols: Math.max(4, Math.round(32 * root.resolution))
-    readonly property int rows: Math.max(3, Math.round(18 * root.resolution))
+    readonly property int cols: Math.max(4, Math.round(32 * root._resolution))
+    readonly property int rows: Math.max(3, Math.round(18 * root._resolution))
     property real t: 0
+
+    // Each term is one sine wave: sin(xi*fx + yi*fy + t*pt). The first three
+    // are the original fixed recipe; the rest extend it at `complexity` > 3,
+    // in the same frequency/phase range as the originals so an added term
+    // reads as more of the same field, not a different pattern.
+    readonly property var _waveTerms: [
+        { fx: 0.35, fy: 0,    pt: 1.0 },
+        { fx: 0,    fy: 0.35, pt: 0.8 },
+        { fx: 0.25, fy: 0.25, pt: 1.3 },
+        { fx: 0.15, fy: -0.20, pt: 1.6 },
+        { fx: -0.30, fy: 0.10, pt: 0.5 }
+    ]
 
     Timer {
         interval: Config.Appearance.motionCTypeStep
@@ -88,15 +113,22 @@ Item {
             var ch = height / root.rows
             ctx.globalAlpha = root.intensity
 
+            var terms = root._waveTerms
+            var n = Math.max(1, Math.min(terms.length, root.complexity))
+
             for (var yi = 0; yi < root.rows; yi++) {
                 for (var xi = 0; xi < root.cols; xi++) {
-                    // Three overlaid sine waves, phase-shifted per axis and
-                    // per diagonal — the standard plasma recipe. Normalised
-                    // from [-3, 3] to [0, 1].
-                    var v = Math.sin(xi * 0.35 + root.t)
-                        + Math.sin(yi * 0.35 + root.t * 0.8)
-                        + Math.sin((xi + yi) * 0.25 + root.t * 1.3)
-                    v = (v + 3) / 6
+                    // `complexity` overlaid sine waves, phase-shifted per axis
+                    // and per diagonal — the standard plasma recipe.
+                    // `patternScale` zooms the spatial frequency; summing N
+                    // terms in [-1, 1] gives a [-N, N] range, normalised to
+                    // [0, 1].
+                    var v = 0
+                    for (var k = 0; k < n; k++) {
+                        var term = terms[k]
+                        v += Math.sin(xi * term.fx * root._patternScale + yi * term.fy * root._patternScale + root.t * term.pt)
+                    }
+                    v = (v + n) / (2 * n)
 
                     var colour = v < 0.5
                         ? root._mix(low, mid, v * 2)

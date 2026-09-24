@@ -35,8 +35,29 @@ Item {
     // stable still-lifes quickly.
     property real seedDensity: 0.28
 
-    readonly property int cols: Math.max(8, Math.round(48 * root.resolution))
-    readonly property int rows: Math.max(6, Math.round(27 * root.resolution))
+    // Clamped shadows of resolution/seedDensity above. lock.json is
+    // hand-editable and resolution drives cols*rows directly — step()'s
+    // neighbor scan is O(cells), so an unclamped resolution would scale a
+    // generation's cost by its square.
+    readonly property real _resolution: Math.max(0.5, Math.min(2.0, root.resolution))
+    readonly property real _seedDensity: Math.max(0.1, Math.min(0.5, root.seedDensity))
+    // Which birth/survival rule step() applies — was a hardcoded B3/S23
+    // (Conway). "highlife" (B36/S23) is Conway plus a second birth count and
+    // reads busier/more replicator-prone; "seeds" (B2/S) has no survival at
+    // all, so nothing lives past one generation and the board reads as a
+    // constant sparkle rather than settling into still-lifes.
+    property string rulePreset: "conway"
+
+    function _willLive(alive, n) {
+        switch (root.rulePreset) {
+        case "highlife": return alive ? (n === 2 || n === 3) : (n === 3 || n === 6)
+        case "seeds": return !alive && n === 2
+        default: return alive ? (n === 2 || n === 3) : (n === 3) // Conway B3/S23
+        }
+    }
+
+    readonly property int cols: Math.max(8, Math.round(48 * root._resolution))
+    readonly property int rows: Math.max(6, Math.round(27 * root._resolution))
     // ~240ms/generation at the 24ms shared tick, at the default speed 1.0.
     readonly property int stepEveryTicks: Math.max(1, Math.round(10 / root.speed))
 
@@ -50,7 +71,7 @@ Item {
         var c = new Array(root.cols * root.rows)
         var b = new Array(root.cols * root.rows)
         for (var i = 0; i < c.length; i++) {
-            c[i] = Math.random() < root.seedDensity
+            c[i] = Math.random() < root._seedDensity
             b[i] = c[i] ? 1 : 0
         }
         root.cells = c
@@ -77,7 +98,7 @@ Item {
             for (var x = 0; x < root.cols; x++) {
                 var i = root._idx(x, y)
                 var n = root._neighbors(x, y)
-                var willLive = root.cells[i] ? (n === 2 || n === 3) : (n === 3)
+                var willLive = root._willLive(root.cells[i], n)
                 next[i] = willLive
                 if (willLive) alive++
             }
@@ -103,8 +124,14 @@ Item {
     }
 
     onWidthChanged: if (cells.length === 0) seed()
-    onResolutionChanged: seed()
-    onSeedDensityChanged: seed()
+    // Deferred: seed() reads the _resolution/_seedDensity clamp shadows,
+    // which are not guaranteed to have settled yet on the same tick the
+    // source changed (see LavaLamp.qml's onBlobCountChanged for the full
+    // reasoning) — resolution is the worse case, since cols/rows derive from
+    // it too and a stale seed would leave cells[] sized for the old grid.
+    onResolutionChanged: Qt.callLater(root.seed)
+    onSeedDensityChanged: Qt.callLater(root.seed)
+    onRulePresetChanged: seed()
     Component.onCompleted: seed()
 
     Timer {
