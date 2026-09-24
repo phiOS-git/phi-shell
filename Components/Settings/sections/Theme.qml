@@ -1965,7 +1965,7 @@ Column {
     function _dynamicStatus() {
         const s = Services.DynamicWallpaper
         if (s.activeName.length === 0) return "No entry picked."
-        if (s.pausedByLowPower) return "Paused by battery saver — static image showing."
+        if (s.pausedByLowPower) return "Paused by battery saver — current image held."
         if (s.solarFile.length > 0) {
             const fr = s.solarFrame < 0 ? "…" : String(s.solarFrame)
             const what = s.solarKind === "h24" ? "Timeline" : "Solar"

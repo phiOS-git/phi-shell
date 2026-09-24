@@ -71,8 +71,9 @@ import qs.Services as Services
 // quarters; there is no location source for an astronomical season.
 //
 // While Services/PowerBridge.qml reports battery saver, the dynamic wallpaper
-// is suppressed and the static image is painted. Read-side only — nothing is
-// written back to the user's settings.
+// freezes: every timer stops and the frame already on screen stays, rather
+// than falling back to the static image. Read-side only — nothing is written
+// back to the user's settings.
 //
 // The four settings (enabled, activeName, dawnHour, duskHour) live in one flat
 // JSON file, rewritten whole on change, following the ClockPrefs/LockPrefs
@@ -135,11 +136,14 @@ Singleton {
     readonly property bool activeNow: root.enabled
         && root.activeName.length > 0
         && !Services.PowerBridge.batterySaverActive
-    // True when the feature is armed but battery saver is hiding it — lets the
-    // settings panel distinguish "off" from "paused, will resume".
+    // True when the feature is armed but battery saver has frozen it — lets
+    // the settings panel distinguish "off" from "paused, will resume".
     readonly property bool pausedByLowPower: root.enabled
         && root.activeName.length > 0
         && Services.PowerBridge.batterySaverActive
+    // Dynamic owns the wallpaper, running or frozen: Services/Background.qml
+    // keeps painting currentImage through a battery-saver pause.
+    readonly property bool painting: root.enabled && root.activeName.length > 0
 
     // --- vocabularies ----------------------------------------------------
     readonly property var _daytimes: ["dawn", "day", "dusk", "night"]
@@ -688,6 +692,15 @@ Singleton {
 
     // --- evaluation ----------------------------------------------------------
     function _evaluate() {
+        // Frozen under battery saver: no timer, no new frame, the current one
+        // stays on screen. Turning the feature off still clears below, and
+        // picking another folder or starting the shell under battery saver
+        // still resolves a frame for it.
+        if (root.painting && Services.PowerBridge.batterySaverActive
+                && root.currentImage.length > 0 && root._paintedName === root.activeName) {
+            boundaryTimer.stop()
+            return
+        }
         // Always re-arm first: on/off, hour changes and solar map picks shift
         // the next event even when the current image doesn't change.
         if (!root.enabled || root.activeName.length === 0 || Services.PowerBridge.batterySaverActive) {
@@ -726,9 +739,12 @@ Singleton {
             if (root.currentImage !== "") root.currentImage = ""
             return
         }
+        root._paintedName = root.activeName
         root._probeActiveFolder()
     }
     property string _lastKey: ""
+    // The folder the current frame was resolved from; see the freeze above.
+    property string _paintedName: ""
 
     // The single-shot boundary timer — the "precise check" of the spec.
     Timer {
@@ -750,7 +766,7 @@ Singleton {
     Timer {
         id: safetyTimer
         interval: 60000
-        running: true
+        running: !Services.PowerBridge.batterySaverActive
         repeat: true
         onTriggered: root._evaluate()
     }

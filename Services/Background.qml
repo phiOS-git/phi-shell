@@ -37,8 +37,9 @@ Singleton {
     }
 
     // Image shown: dynamic wallpaper's current entry, else static pick. One
-    // source of truth; falls back to static when dynamic empty or missing.
-    readonly property string displayImage: Services.DynamicWallpaper.activeNow
+    // source of truth; falls back to static when dynamic empty or missing,
+    // but not while battery saver has only frozen it.
+    readonly property string displayImage: Services.DynamicWallpaper.painting
             && Services.DynamicWallpaper.currentImage.length > 0
         ? Services.DynamicWallpaper.currentImage
         : root.image
