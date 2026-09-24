@@ -11,8 +11,10 @@ import qs.Config as Config
 Singleton {
     id: root
 
-    // { id, kind: "timer"|"alarm", label, targetMs, repeatDays: [] }
-    // repeatDays: weekday numbers (0=Sun..6=Sat); empty = fire once.
+    // { id, kind: "timer"|"alarm", label, targetMs, repeatDays: [], startMs }
+    // repeatDays: weekday numbers (0=Sun..6=Sat); empty = fire once. startMs
+    // is timer-only — the bar clock's progress line reads it against
+    // targetMs for elapsed/duration.
     property var items: []
 
     // Ringtone (default "message", verified present to avoid silent alarm).
@@ -35,11 +37,14 @@ Singleton {
     }
 
     function add(seconds, label) {
-        const id = "t" + Date.now() + "-" + Math.floor(Math.random() * 100000)
+        const now = Date.now()
+        const id = "t" + now + "-" + Math.floor(Math.random() * 100000)
         const item = {
             id: id, kind: "timer",
             label: String(label || "").trim() || "Timer",
-            targetMs: Date.now() + Math.max(1, Math.round(seconds)) * 1000,
+            targetMs: now + Math.max(1, Math.round(seconds)) * 1000,
+            // Drives the bar clock's progress line (elapsed / duration).
+            startMs: now,
             repeatDays: []
         }
         root.items = root.items.concat([item])
@@ -248,7 +253,16 @@ Singleton {
             try {
                 const p = JSON.parse(timersFile.text())
                 if (p && typeof p === "object") {
-                    if (Array.isArray(p.items)) root.items = p.items
+                    if (Array.isArray(p.items)) {
+                        // Any timer lacking startMs gets the load time, so
+                        // the bar clock's progress line starts full instead
+                        // of reading a NaN or jumped fraction.
+                        const loadMs = Date.now()
+                        root.items = p.items.map((it) =>
+                            (it.kind === "timer" && typeof it.startMs !== "number")
+                                ? Object.assign({}, it, { startMs: loadMs })
+                                : it)
+                    }
                     if (typeof p.soundName === "string") root.soundName = p.soundName
                     if (typeof p.soundVolume === "number") root.soundVolume = p.soundVolume
                 }
