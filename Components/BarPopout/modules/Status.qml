@@ -40,31 +40,49 @@ Widgets.StaggerReveal {
     // --- profile row --------------------------------------------------
     Widgets.OverlaySection {
         width: parent.width
-        Row {
+        Item {
             width: parent.width
-            spacing: root.chWidth * Config.Appearance.space2
+            implicitHeight: Math.max(profileRow.implicitHeight, profileSettingsBtn.implicitHeight)
 
-            Rectangle {
-                anchors.verticalCenter: parent.verticalCenter
-                width: root.chWidth * 4
-                height: width
-                radius: width / 2
-                color: Config.Appearance.colorOpposite
-                Widgets.StyledText {
-                    anchors.centerIn: parent
-                    mono: true
-                    sizeStep: 3
-                    color: Config.Appearance.colorMain
-                    text: root._profileName.length > 0 ? root._profileName.charAt(0).toUpperCase() : "?"
+            Row {
+                id: profileRow
+                width: parent.width
+                spacing: root.chWidth * Config.Appearance.space2
+
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: root.chWidth * 4
+                    height: width
+                    radius: width / 2
+                    color: Config.Appearance.colorOpposite
+                    Widgets.StyledText {
+                        anchors.centerIn: parent
+                        mono: true
+                        sizeStep: 3
+                        color: Config.Appearance.colorMain
+                        text: root._profileName.length > 0 ? root._profileName.charAt(0).toUpperCase() : "?"
+                    }
+                }
+                Column {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: root.chWidth * Config.Appearance.space1 * 0.5
+                    Widgets.StyledText { kind: "title"; text: root._profileName }
+                    Widgets.StyledText {
+                        kind: "label"; sizeStep: 0
+                        text: "Uptime " + (Services.SystemInfo.uptime.length > 0 ? Services.SystemInfo.uptime : "—")
+                    }
                 }
             }
-            Column {
+
+            Widgets.IconButton {
+                id: profileSettingsBtn
+                anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: root.chWidth * Config.Appearance.space1 * 0.5
-                Widgets.StyledText { kind: "title"; text: root._profileName }
-                Widgets.StyledText {
-                    kind: "label"; sizeStep: 0
-                    text: "Uptime " + (Services.SystemInfo.uptime.length > 0 ? Services.SystemInfo.uptime : "—")
+                sizeStep: 1
+                glyph: Glyphs.settings
+                onActivated: {
+                    Services.SettingsPanel.openSection("general")
+                    Services.BarPopout.hide()
                 }
             }
         }
