@@ -197,9 +197,10 @@ Item {
     TapHandler {
         acceptedButtons: Qt.RightButton
         enabled: root.resettable
-        onTapped: {
+        onTapped: (eventPoint, button) => {
             rowMenu.active = true
-            rowMenu.item.open(root, [{ label: "Reset to default", onActivated: () => root.reset() }])
+            rowMenu.item.open(root, [{ label: "Reset to default", onActivated: () => root.reset() }],
+                eventPoint.position.x, eventPoint.position.y)
         }
     }
     Loader {

@@ -35,7 +35,7 @@ PanelWindow {
         // SettingsPanel.show().
         TapHandler {
             acceptedButtons: Qt.RightButton
-            onTapped: desktopContextMenu.open(content, [
+            onTapped: (eventPoint, button) => desktopContextMenu.open(content, [
                 { label: "Run", onActivated: () => {
                     Quickshell.execDetached(["qs", "-p", Quickshell.configDir, "ipc", "call", "launcher", "toggle"])
                 } },
@@ -51,7 +51,7 @@ PanelWindow {
                 { label: "Settings", onActivated: () => {
                     Services.SettingsPanel.show()
                 } },
-            ])
+            ], eventPoint.position.x, eventPoint.position.y)
         }
 
         // Layer 2: procedural texture, tiled. Alpha baked in, plain compositing.

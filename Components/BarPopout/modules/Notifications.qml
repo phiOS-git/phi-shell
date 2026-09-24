@@ -117,14 +117,14 @@ Item {
         Services.BarPopout.hide()
     }
     // Right-click menu on a notification: delete it, or mute its app.
-    function _cardMenu(atItem, appName, remove) {
+    function _cardMenu(atItem, appName, remove, x, y) {
         const muted = Services.Notifications.ruleFor(appName).mute
         const app = appName && appName.length > 0 ? appName : "this app"
         cardMenu.open(atItem, [
             { label: "Delete", onActivated: remove },
             { label: (muted ? "Unmute " : "Mute ") + app,
               onActivated: () => Services.Notifications.setRule(appName, "mute", !muted) },
-        ])
+        ], x, y)
     }
     Widgets.ContextMenu { id: cardMenu }
 
@@ -277,10 +277,15 @@ Item {
                     height: activeLayout.implicitHeight + padding * 2
 
                     TapHandler {
+                        id: activeCardMenuTap
                         acceptedButtons: Qt.RightButton
-                        onTapped: root._cardMenu(activeLayout, activeCard.modelData.appName, () => {
+                        // atItem is this handler's own real parent (Widgets.Panel
+                        // reparents a plain child into its padded inner item via
+                        // its default alias), so eventPoint.position lands in the
+                        // same coordinate space the menu anchors against.
+                        onTapped: (eventPoint, button) => root._cardMenu(activeCardMenuTap.parent, activeCard.modelData.appName, () => {
                             try { activeCard.modelData.dismiss() } catch (e) { activeCard.modelData.tracked = false }
-                        })
+                        }, eventPoint.position.x, eventPoint.position.y)
                     }
 
                     Column {
@@ -549,8 +554,9 @@ Item {
 
                                                     TapHandler {
                                                         acceptedButtons: Qt.RightButton
-                                                        onTapped: root._cardMenu(histRow, histRow.modelData.appName,
-                                                            () => Services.Notifications.clearEntry(histRow.modelData))
+                                                        onTapped: (eventPoint, button) => root._cardMenu(histRow, histRow.modelData.appName,
+                                                            () => Services.Notifications.clearEntry(histRow.modelData),
+                                                            eventPoint.position.x, eventPoint.position.y)
                                                     }
 
                                                     Widgets.StyledText {

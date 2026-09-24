@@ -730,9 +730,10 @@ Item {
             // the button the other never claimed.
             TapHandler {
                 acceptedButtons: Qt.RightButton
-                onTapped: {
+                onTapped: (eventPoint, button) => {
                     root.highlightedIndex = card.flatIndex
-                    clipboardContextMenu.open(card, root._clipboardMenuItems(card.modelData))
+                    clipboardContextMenu.open(card, root._clipboardMenuItems(card.modelData),
+                        eventPoint.position.x, eventPoint.position.y)
                 }
             }
 
