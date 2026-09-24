@@ -22,6 +22,9 @@ Column {
         interval: 1000
         running: root.active
         repeat: true
+        // Ticks on start too, so a card opening after a while never shows
+        // the value left over from its last tick for the first second.
+        triggeredOnStart: true
         onTriggered: root._now = Date.now()
     }
 
