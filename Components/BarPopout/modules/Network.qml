@@ -87,7 +87,7 @@ Widgets.StaggerReveal {
             }
         }
 
-        // Throughput and speed test, for whichever link is up.
+        // Throughput, for whichever link is up.
         Column {
             width: parent.width
             spacing: root.chWidth * Config.Appearance.space1
@@ -106,32 +106,6 @@ Widgets.StaggerReveal {
                     text: "↑ " + Format.rate(Services.NetStats.upKbps) }
                 Widgets.StyledText { kind: "label"; sizeStep: 0
                     text: "ping " + (Services.NetStats.pingMs >= 0 ? Services.NetStats.pingMs + " ms" : "—") }
-            }
-            // Active speed test (on-demand, not polled; saturates link).
-            Row {
-                width: parent.width
-                spacing: root.chWidth * Config.Appearance.space2
-                Widgets.SmallButton {
-                    label: Services.SpeedTest.running ? "Testing…" : "Speed test"
-                    enabled: !Services.SpeedTest.running
-                    onClicked: Services.SpeedTest.run()
-                }
-                Widgets.StyledText {
-                    anchors.verticalCenter: parent.verticalCenter
-                    visible: !Services.SpeedTest.running && Services.SpeedTest.error.length === 0 && Services.SpeedTest.downloadMbps >= 0
-                    kind: "label"; sizeStep: 0; mono: true
-                    text: "↓ " + Services.SpeedTest.downloadMbps.toFixed(1) + " Mb/s  ↑ "
-                        + Services.SpeedTest.uploadMbps.toFixed(1) + " Mb/s  "
-                        + Services.SpeedTest.pingMs.toFixed(0) + " ms"
-                }
-            }
-            Widgets.StyledText {
-                width: parent.width
-                visible: Services.SpeedTest.error.length > 0
-                kind: "label"; sizeStep: 0
-                tone: "error"
-                text: Services.SpeedTest.error
-                wrapMode: Text.WordWrap
             }
         }
 
