@@ -519,7 +519,7 @@ Column {
                         width: parent.width
                         wrapMode: Text.WordWrap
                         kind: "label"; sizeStep: 0
-                        text: "Driven by ~/.config/nvim/lua/phi_chroma.lua (shipped in the dotfiles), which calls `qs ipc call chroma nvimMode` on every mode change. Nothing to configure here."
+                        text: "Driven by ~/.config/nvim-common/lua/phi_chroma.lua (shipped in the dotfiles, shared by nvim, nvim-code and nvim-notes), which calls `qs ipc call chroma nvimMode` on every mode change. Nothing to configure here."
                     }
                 }
             }
