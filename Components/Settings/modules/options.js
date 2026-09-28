@@ -29,7 +29,7 @@ var SECTIONS = [
     { id: "keybindings",   title: "Keybindings",   keywords: "shortcuts binds hotkeys hyprland keys reference cheatsheet context" },
     { id: "notifications", title: "Notifications", keywords: "do not disturb dnd rules per app toast sound chroma blink priority" },
     { id: "security",      title: "Security",      keywords: "clamav antivirus scan quarantine signatures face unlock howdy secrets keepass vault" },
-    { id: "aiAgent",       title: "AI Agent",      keywords: "phi agent activation project personality broker opencode model provider key egress whitelist systemd units memory proposals" },
+    { id: "aiAgent",       title: "AI Agent",      keywords: "phi agent activation project pi profile broker model provider key egress whitelist systemd units memory proposals" },
     { id: "updates",       title: "Updates",       keywords: "system state version check upgrade" },
     { id: "packages",      title: "Packages",      keywords: "pacman aur npm flatpak appimage phi-packages external tc t2 t3 t4 container audit findings drift leak integrity checksum fingerprint accept tier status declare" }
 ];

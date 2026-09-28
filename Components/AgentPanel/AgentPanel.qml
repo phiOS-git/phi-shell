@@ -57,9 +57,9 @@ PanelWindow {
     // Keyboard focus, needed by the chat input and the search fields.
     Services.LayerFocus { target: root }
 
-    // `chats` loads asynchronously, so the landing chat cannot be read
+    // `sessions` loads asynchronously, so the landing chat cannot be read
     // synchronously in onShownChanged: this arms here and resolves in
-    // onChatsChanged. Fires at most once per opening, so a later refresh
+    // onSessionsChanged. Fires at most once per opening, so a later refresh
     // (pinning, renaming) never yanks a browsing user into a conversation.
     property bool _autoOpenArmed: false
 
@@ -74,7 +74,7 @@ PanelWindow {
             if (root.agent.currentSessionId.length === 0) root._autoOpenArmed = true
             root.agent.refreshHealth()
             root.agent.refreshProject()
-            root.agent.refreshChats()
+            root.agent.refreshSessions()
             root.agent.refreshAllProposals()
             Services.AgentInfra.refresh()
             if (root.section === "code") root.agent.refreshCodingSessions()
@@ -88,17 +88,13 @@ PanelWindow {
     // empty list just disarms — the Chat section's own empty state is correct.
     Connections {
         target: root.agent
-        function onChatsChanged() {
+        function onSessionsChanged() {
             if (!root._autoOpenArmed) return
             root._autoOpenArmed = false
-            const chats = root.agent.chats || []
-            if (chats.length === 0) return
-            // The wire format is Go-JSON-capitalised (`ID`, `Updated`, …) with
-            // a lowercase fallback, matched here the same way every other
-            // reader in this panel does.
-            const updatedOf = (c) => c.Updated || c.updated || ""
-            const mostRecent = chats.reduce((a, b) => (updatedOf(b) > updatedOf(a) ? b : a))
-            root.agent.openSession(mostRecent.ID || mostRecent.id)
+            const sessions = root.agent.sessions || []
+            if (sessions.length === 0) return
+            const mostRecent = sessions.reduce((a, b) => ((b.updated || "") > (a.updated || "") ? b : a))
+            root.agent.openSession(mostRecent.id)
         }
     }
     // Section tabs take no keyboard focus on click (TapHandler never moves
@@ -217,7 +213,7 @@ PanelWindow {
                                         root.agent.refreshHealth()
                                         Services.AgentInfra.refresh()
                                     }
-                                    if (modelData.key === "chat") root.agent.refreshChats()
+                                    if (modelData.key === "chat") root.agent.refreshSessions()
                                 }
                             }
                         }

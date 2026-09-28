@@ -6,8 +6,8 @@ import Quickshell.Io
 
 // Host facts about AI agent subsystem (systemd units, config files) for
 // Settings/AiAgent.qml. Kept out of Services/Agent.qml: this is systemctl
-// and file reads, not opencode calls. Config surfaced READ-ONLY (no edit
-// control, would fight `git pull`).
+// and file reads, not `phi agent` or `phi agent serve` calls. Config
+// surfaced READ-ONLY (no edit control, would fight `git pull`).
 
 Singleton {
     id: root
@@ -21,7 +21,15 @@ Singleton {
     property string brokerListen: ""
     property string brokerRateLimit: ""
     property string brokerAuthHeader: ""
-    property string modelIdA1: ""
+    // Read-only readout of each profile's LOCAL models.json (never the
+    // example, never edited here — see Settings/sections/AiAgent.qml's
+    // "Edit models" buttons). [{name, baseUrl}]; empty when the file is
+    // missing or unparsable — `modelsGeneralPresent`/`modelsCodingPresent`
+    // distinguish "missing" from "present but empty".
+    property var modelsGeneral: []
+    property bool modelsGeneralPresent: false
+    property var modelsCoding: []
+    property bool modelsCodingPresent: false
     property int whitelistEntries: -1    // -1 = file unreadable
     property bool loaded: false
     // Last broker-meter.jsonl line: {status, model, time} or null.
@@ -78,6 +86,15 @@ Singleton {
         if (status >= 400) return "client error"
         return ""
     }
+    // models.json's providers map -> [{name, baseUrl}], key (apiKey) never read.
+    function _providersOf(buf) {
+        let m = null
+        try { m = JSON.parse(buf.join("\n")) } catch (e) { m = null }
+        const providers = (m && m.providers) || {}
+        const out = []
+        for (const name in providers) out.push({ name: name, baseUrl: providers[name].baseUrl || "" })
+        return out
+    }
     function _parseLastRequest(buf) {
         const line = buf.join("\n").trim()
         if (line.length === 0) return null
@@ -91,12 +108,9 @@ Singleton {
     Component.onCompleted: refresh()
 
     readonly property var _unitNames: [
-        "phi-agent-a1.service",
+        "phi-agent.service",
         "phi-agent-broker@a1.service",
         "phi-agent-broker@a2.service",
-        "phi-agent-a2.service",
-        "phi-agent-a2-remote-engine.service",
-        "phi-agent-a2-remote.service",
         "phi-agent-proxy.service",
         "phi-agent-net-bridge.service",
     ]
@@ -115,7 +129,10 @@ Singleton {
         'printf "LASTREQ_A1_BEGIN\\n"; tail -n1 "$S/a1/broker-meter.jsonl" 2>/dev/null; printf "\\nLASTREQ_A1_END\\n"',
         'printf "LASTREQ_A2_BEGIN\\n"; tail -n1 "$S/a2/broker-meter.jsonl" 2>/dev/null; printf "\\nLASTREQ_A2_END\\n"',
         'printf "BROKER_A1_BEGIN\\n"; cat "$D/a1/broker.json" 2>/dev/null; printf "\\nBROKER_A1_END\\n"',
-        'printf "OPENCODE_A1_BEGIN\\n"; cat "$D/a1/opencode/opencode.json" 2>/dev/null; printf "\\nOPENCODE_A1_END\\n"',
+        'printf "MODELS_GENERAL_PRESENT\\t%s\\n" "$([ -s "$D/pi/profiles/general/models.json" ] && echo yes || echo no)"',
+        'printf "MODELS_GENERAL_BEGIN\\n"; cat "$D/pi/profiles/general/models.json" 2>/dev/null; printf "\\nMODELS_GENERAL_END\\n"',
+        'printf "MODELS_CODING_PRESENT\\t%s\\n" "$([ -s "$D/pi/profiles/coding/models.json" ] && echo yes || echo no)"',
+        'printf "MODELS_CODING_BEGIN\\n"; cat "$D/pi/profiles/coding/models.json" 2>/dev/null; printf "\\nMODELS_CODING_END\\n"',
         'printf "WHITELIST_BEGIN\\n"; grep -Ev "^[[:space:]]*(#|$)" "$D/tinyproxy/whitelist" 2>/dev/null; printf "\\nWHITELIST_END\\n"',
     ].join("\n")
 
@@ -130,15 +147,19 @@ Singleton {
                 let keyA1 = false, keyA2 = false
                 let meter = -1, whitelist = -1
                 let section = ""
-                const brokerBuf = [], opencodeBuf = []
+                const brokerBuf = []
+                const modelsGeneralBuf = [], modelsCodingBuf = []
                 const lastReqA1Buf = [], lastReqA2Buf = []
                 let whitelistCount = 0
+                let modelsGeneralPresent = false, modelsCodingPresent = false
 
                 for (const raw of lines) {
                     if (raw === "BROKER_A1_BEGIN") { section = "broker"; continue }
                     if (raw === "BROKER_A1_END") { section = ""; continue }
-                    if (raw === "OPENCODE_A1_BEGIN") { section = "opencode"; continue }
-                    if (raw === "OPENCODE_A1_END") { section = ""; continue }
+                    if (raw === "MODELS_GENERAL_BEGIN") { section = "models_general"; continue }
+                    if (raw === "MODELS_GENERAL_END") { section = ""; continue }
+                    if (raw === "MODELS_CODING_BEGIN") { section = "models_coding"; continue }
+                    if (raw === "MODELS_CODING_END") { section = ""; continue }
                     if (raw === "LASTREQ_A1_BEGIN") { section = "lastreq_a1"; continue }
                     if (raw === "LASTREQ_A1_END") { section = ""; continue }
                     if (raw === "LASTREQ_A2_BEGIN") { section = "lastreq_a2"; continue }
@@ -147,7 +168,8 @@ Singleton {
                     if (raw === "WHITELIST_END") { section = ""; whitelist = whitelistCount; continue }
 
                     if (section === "broker") { brokerBuf.push(raw); continue }
-                    if (section === "opencode") { opencodeBuf.push(raw); continue }
+                    if (section === "models_general") { modelsGeneralBuf.push(raw); continue }
+                    if (section === "models_coding") { modelsCodingBuf.push(raw); continue }
                     if (section === "lastreq_a1") { lastReqA1Buf.push(raw); continue }
                     if (section === "lastreq_a2") { lastReqA2Buf.push(raw); continue }
                     if (section === "whitelist") { if (raw.trim().length > 0) whitelistCount++; continue }
@@ -162,6 +184,10 @@ Singleton {
                     } else if (parts[0] === "METER_A1") {
                         const n = parseInt(parts[1])
                         meter = isNaN(n) ? -1 : n
+                    } else if (parts[0] === "MODELS_GENERAL_PRESENT") {
+                        modelsGeneralPresent = (parts[1] === "yes")
+                    } else if (parts[0] === "MODELS_CODING_PRESENT") {
+                        modelsCodingPresent = (parts[1] === "yes")
                     }
                 }
 
@@ -186,10 +212,11 @@ Singleton {
                     root.brokerAuthHeader = ""; root.brokerRateLimit = ""
                 }
 
-                // opencode.json — model id only.
-                let opencode = null
-                try { opencode = JSON.parse(opencodeBuf.join("\n")) } catch (e) { opencode = null }
-                root.modelIdA1 = (opencode && opencode.model) ? opencode.model : ""
+                // models.json — provider name + baseUrl only (never the key).
+                root.modelsGeneralPresent = modelsGeneralPresent
+                root.modelsGeneral = modelsGeneralPresent ? root._providersOf(modelsGeneralBuf) : []
+                root.modelsCodingPresent = modelsCodingPresent
+                root.modelsCoding = modelsCodingPresent ? root._providersOf(modelsCodingBuf) : []
 
                 root.lastRequestA1 = root._parseLastRequest(lastReqA1Buf)
                 root.lastRequestA2 = root._parseLastRequest(lastReqA2Buf)

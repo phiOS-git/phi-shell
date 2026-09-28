@@ -14,29 +14,31 @@ Item {
     // Escape signal; re-emitted from sidebar and Chat/ProjectView fields.
     signal blurred()
 
-    property string selectedProject: ""
+    // Which project's settings are open in the main pane (ProjectView), not
+    // to be confused with agent.selectedProject — the client-side scope that
+    // filters the session list below and defaults new sessions. Picking a
+    // project row sets the scope; "Manage" opens this.
+    property string managingProject: ""
     // Session-only toggle: collapses sidebar width to zero (preserves scroll).
     property bool sidebarCollapsed: false
-    readonly property bool hasBack: root.selectedProject.length > 0
-    function goBack() {
-        if (projectViewLoader.item && projectViewLoader.item.hasBack) projectViewLoader.item.goBack()
-        else root.selectedProject = ""
-    }
+    readonly property bool hasBack: root.managingProject.length > 0
+    function goBack() { root.managingProject = "" }
 
     TextMetrics { id: ch; font.family: Config.Appearance.fontMono; font.pixelSize: Config.Appearance.fontSize1; text: "0" }
     readonly property real chWidth: ch.width
     readonly property real gap: chWidth * Config.Appearance.space2
     readonly property real tightGap: Math.round(chWidth * Config.Appearance.space1 * 0.5)
 
-    Component.onCompleted: { agent.refreshProject(); agent.refreshChats() }
+    Component.onCompleted: { agent.refreshProject(); agent.refreshSessions() }
 
     // --- recency grouping (excludes pinned — already shown above) -----
-    readonly property var _sortedChats: (agent.chats || []).slice().sort(
-        (a, b) => (b.Updated || b.updated || "") < (a.Updated || a.updated || "") ? -1 : 1)
-    readonly property var _unpinnedChats: root._sortedChats.filter(c => !(c.Pinned || c.pinned))
-    readonly property var todayChats: root._unpinnedChats.filter(c => agent.relativeDay(c.Updated || c.updated) === "Today")
-    readonly property var yesterdayChats: root._unpinnedChats.filter(c => agent.relativeDay(c.Updated || c.updated) === "Yesterday")
-    readonly property var earlierChats: root._unpinnedChats.filter(c => agent.relativeDay(c.Updated || c.updated) === "Earlier")
+    readonly property var _sortedChats: (agent.sessions || []).slice().sort(
+        (a, b) => (b.updated || "") < (a.updated || "") ? -1 : 1)
+    readonly property var _unpinnedChats: root._sortedChats.filter(c => !c.pinned)
+    readonly property var pinnedChats: root._sortedChats.filter(c => c.pinned)
+    readonly property var todayChats: root._unpinnedChats.filter(c => agent.relativeDay(c.updated) === "Today")
+    readonly property var yesterdayChats: root._unpinnedChats.filter(c => agent.relativeDay(c.updated) === "Yesterday")
+    readonly property var earlierChats: root._unpinnedChats.filter(c => agent.relativeDay(c.updated) === "Earlier")
 
     Row {
         anchors.fill: parent
@@ -72,11 +74,9 @@ Item {
                         Widgets.StyledButton {
                             width: (parent.width - parent.spacing) / 2
                             label: "New chat"
-                            // leaveProject() clears stale project scope; no-op if none active.
                             onClicked: {
-                                root.selectedProject = ""
-                                if (root.agent.activeProject.length > 0) root.agent.leaveProject()
-                                else root.agent.newSession()
+                                root.managingProject = ""
+                                root.agent.newSession(root.agent.defaultChatProfile, root.agent.selectedProject)
                             }
                         }
                         Widgets.StyledButton {
@@ -152,7 +152,7 @@ Item {
                                         label: modelData.Title
                                         value: modelData.InTitle && modelData.InBody ? "title+body" : modelData.InTitle ? "title" : "body"
                                         onActivated: {
-                                            if (modelData.Kind === "conversation") { root.selectedProject = ""; root.agent.openSession(modelData.ID) }
+                                            if (modelData.Kind === "conversation") { root.managingProject = ""; root.agent.openSession(modelData.ID) }
                                         }
                                     }
                                 }
@@ -166,18 +166,40 @@ Item {
                         spacing: root.gap
                         visible: searchInput.text.length === 0
 
+                        // scope: which sessions the list below shows, and the
+                        // default project for a new one.
+                        Widgets.StyledText { kind: "title"; sizeStep: 1; text: "Chats" }
+                        Column {
+                            width: parent.width
+                            spacing: root.tightGap
+                            Widgets.ListRow {
+                                interactive: true
+                                width: parent.width
+                                label: "All chats"
+                                active: root.agent.selectedProject === ""
+                                onActivated: root.agent.selectedProject = ""
+                            }
+                            Widgets.ListRow {
+                                interactive: true
+                                width: parent.width
+                                label: "Unfiled"
+                                active: root.agent.selectedProject === "_unfiled"
+                                onActivated: root.agent.selectedProject = "_unfiled"
+                            }
+                        }
+
                         // pinned
-                        Widgets.StyledText { kind: "title"; sizeStep: 1; text: "Pinned"; visible: (root.agent.pinnedChats || []).length > 0 }
+                        Widgets.StyledText { kind: "title"; sizeStep: 1; text: "Pinned"; visible: root.pinnedChats.length > 0 }
                         Column {
                             width: parent.width
                             spacing: root.tightGap
                             Repeater {
-                                model: root.agent.pinnedChats || []
+                                model: root.pinnedChats
                                 delegate: ChatRow { required property var modelData; width: sideCol.width; rec: modelData }
                             }
                         }
 
-                        // projects
+                        // projects — a row selects the scope; "Manage" opens ProjectView.
                         Widgets.StyledText { kind: "title"; sizeStep: 1; text: "Projects" }
                         Widgets.StyledText { visible: (root.agent.projects || []).length === 0; kind: "label"; sizeStep: 0; text: "No projects yet." }
                         Column {
@@ -185,24 +207,35 @@ Item {
                             spacing: root.tightGap
                             Repeater {
                                 model: root.agent.projects || []
-                                delegate: Widgets.ListRow {
-                                    interactive: true
+                                delegate: Row {
+                                    id: projRow
                                     required property var modelData
                                     width: sideCol.width
-                                    label: modelData
-                                    active: modelData === root.selectedProject
-                                    value: modelData === root.agent.activeProject ? "active" : ""
-                                    onActivated: root.selectedProject = modelData
+                                    spacing: root.tightGap
+                                    Widgets.ListRow {
+                                        interactive: true
+                                        width: projRow.width - manageBtn.implicitWidth - projRow.spacing
+                                        label: projRow.modelData.title || projRow.modelData.name
+                                        active: projRow.modelData.name === root.agent.selectedProject
+                                        value: projRow.modelData.default_profile || ""
+                                        onActivated: root.agent.selectedProject = projRow.modelData.name
+                                    }
+                                    Widgets.SmallButton {
+                                        id: manageBtn
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        label: "Manage"
+                                        onClicked: root.managingProject = projRow.modelData.name
+                                    }
                                 }
                             }
                         }
 
                         // chats, grouped by recency
-                        Widgets.StyledText { visible: root.agent.chatsLoading; kind: "label"; sizeStep: 0; text: "loading…" }
+                        Widgets.StyledText { visible: root.agent.sessionsLoading; kind: "label"; sizeStep: 0; text: "loading…" }
                         Widgets.StyledText {
-                            visible: !root.agent.chatsLoading && root.todayChats.length === 0
+                            visible: !root.agent.sessionsLoading && root.todayChats.length === 0
                                 && root.yesterdayChats.length === 0 && root.earlierChats.length === 0
-                                && (root.agent.pinnedChats || []).length === 0
+                                && root.pinnedChats.length === 0
                             kind: "label"; sizeStep: 0; text: "No chats yet — start one above."
                         }
                         Repeater {
@@ -239,11 +272,11 @@ Item {
                 id: projectViewLoader
                 anchors.fill: parent
                 anchors.leftMargin: root.gap
-                active: root.selectedProject.length > 0
+                active: root.managingProject.length > 0
                 sourceComponent: Local.ProjectView {
-                    projectName: root.selectedProject
-                    onBack: root.selectedProject = ""
-                    onStartChat: { root.agent.useProject(root.selectedProject) }
+                    projectName: root.managingProject
+                    onBack: root.managingProject = ""
+                    onStartChat: root.managingProject = ""
                     onBlurred: root.blurred()
                 }
             }
@@ -251,7 +284,7 @@ Item {
             Local.Chat {
                 anchors.fill: parent
                 anchors.leftMargin: root.gap
-                visible: root.selectedProject.length === 0
+                visible: root.managingProject.length === 0
                 onRequestSection: (s) => root.requestSection(s)
                 onBlurred: root.blurred()
             }
@@ -281,34 +314,32 @@ Item {
         id: chatRow
         property var rec
         spacing: root.gap
-        readonly property bool pinned: !!(chatRow.rec.Pinned || chatRow.rec.pinned)
-        readonly property string chatId: chatRow.rec.ID || chatRow.rec.id
-        readonly property bool isCurrent: chatRow.chatId === root.agent.currentSessionId && root.selectedProject.length === 0
+        readonly property bool isCurrent: chatRow.rec.id === root.agent.currentSessionId && root.managingProject.length === 0
 
         Widgets.ListRow {
             interactive: true
             width: chatRow.width - pinBtn.implicitWidth - closeBtn.implicitWidth - chatRow.spacing * 2
-            label: root.agent.formatSessionTitle(chatRow.rec.Title || chatRow.rec.title || chatRow.chatId)
-            value: (chatRow.rec.Project && chatRow.rec.Project !== "_unfiled") ? chatRow.rec.Project : ""
-            glyph: chatRow.pinned ? "★" : ""
+            label: chatRow.rec.title || chatRow.rec.id
+            value: (chatRow.rec.project && chatRow.rec.project.length > 0) ? chatRow.rec.project : ""
+            glyph: chatRow.rec.pinned ? "★" : ""
             active: chatRow.isCurrent
-            onActivated: { root.selectedProject = ""; root.agent.openSession(chatRow.chatId) }
+            onActivated: { root.managingProject = ""; root.agent.openSession(chatRow.rec.id) }
         }
         Widgets.SmallButton {
             id: pinBtn
             anchors.verticalCenter: parent.verticalCenter
-            label: chatRow.pinned ? "Unpin" : "Pin"
-            onClicked: root.agent.setChatPinned(chatRow.chatId, !chatRow.pinned)
+            label: chatRow.rec.pinned ? "Unpin" : "Pin"
+            onClicked: root.agent.setChatPinned(chatRow.rec.id, !chatRow.rec.pinned)
         }
         Widgets.SmallButton {
             id: closeBtn
             anchors.verticalCenter: parent.verticalCenter
             label: "Close"
             onClicked: Services.ConfirmDialog.open({
-                title: "Close “" + (chatRow.rec.Title || chatRow.rec.title || chatRow.chatId) + "”",
-                message: "Summarises and archives the conversation, then deletes the live session. The full transcript is not kept.",
+                title: "Close “" + (chatRow.rec.title || chatRow.rec.id) + "”",
+                message: "Stops the live session. The transcript stays saved.",
                 confirmLabel: "Close",
-                onConfirm: () => root.agent.closeSession(chatRow.chatId)
+                onConfirm: () => root.agent.closeSession(chatRow.rec.id)
             })
         }
     }

@@ -33,8 +33,8 @@ Item {
               text: "Agent " + (agentOk ? "online" : "offline") },
             { glyph: "●", tone: !root.infra.loaded ? "" : (infraOk ? "success" : "warn"),
               text: "Infra " + (root.infra.loaded ? (upCount + "/" + units.length + " active") : "checking…") },
-            { glyph: "●", tone: root.agent.activeProject.length > 0 ? "info" : "",
-              text: "Project " + (root.agent.activeProject.length > 0 ? root.agent.activeProject : "none") }
+            { glyph: "●", tone: root.agent.selectedProject.length > 0 ? "info" : "",
+              text: "Project " + (root.agent.selectedProject.length > 0 ? root.agent.selectedProject : "none") }
         ]
     }
 
@@ -56,7 +56,7 @@ Item {
     function levelLabel(level) {
         var p = level.split(":")
         if (p[0] === "system") return "System"
-        if (p[0] === "personality") return "Personality — " + p[1]
+        if (p[0] === "profile") return "Profile — " + p[1]
         return "Project — " + p[1]
     }
 

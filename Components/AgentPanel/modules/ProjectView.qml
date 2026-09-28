@@ -2,10 +2,10 @@ import QtQuick
 import qs.Config as Config
 import qs.Services as Services
 import qs.Widgets as Widgets
-import "." as Local
 
-// Project detail: name, description, instructions, context files, personality,
-// chats. Section headers as kind:"title". Add-a-path rows use TextField.
+// Project detail: name, description, instructions, context files, folders,
+// default profile, conversations. Section headers as kind:"title". Add-a-path
+// rows use TextField.
 
 Item {
     id: root
@@ -13,21 +13,17 @@ Item {
     property string projectName: ""
 
     signal back()
+    // Emitted when the user picks this project to chat in; the panel closes
+    // this view and returns to Chat scoped to it (Chat itself reads
+    // agent.selectedProject, set below).
     signal startChat()
     // Escape signal; re-emitted up to AgentPanel's keyScope.
     signal blurred()
 
-    // AgentPanel.qml's own keyScope contract. Always true while this view is
-    // the active section (Dashboard delegates to it whenever a project is
-    // open) — goBack() itself picks which of the two nested levels (the
-    // personality editor, or this view itself) to step back out of, the same
-    // shape PersonalityEditor's own "‹" button already uses for ITS two
-    // levels.
+    // AgentPanel.qml's own keyScope contract: true while this view is the
+    // active section.
     readonly property bool hasBack: true
-    function goBack() {
-        if (personalityEditor.active && personalityEditor.item) personalityEditor.item.goBack()
-        else root.back()
-    }
+    function goBack() { root.back() }
 
     TextMetrics { id: ch; font.family: Config.Appearance.fontMono; font.pixelSize: Config.Appearance.fontSize1; text: "0" }
     readonly property real chWidth: ch.width
@@ -36,6 +32,11 @@ Item {
     // micro-gap Local.SettingsGroup uses, never a literal.
     readonly property real tightGap: Math.round(chWidth * Config.Appearance.space1 * 0.5)
 
+    // Project default_profile can be "coding" (never chat-servable), so this
+    // is its own fixed list — not agent.profiles, which is only the two
+    // profiles the chat picker offers.
+    readonly property var defaultProfileChoices: ["general", "academic", "coding"]
+
     property var meta: ({})
     Component.onCompleted: { agent.refreshProjectMeta(projectName); agent.refreshMaterials(projectName) }
     Connections {
@@ -43,21 +44,9 @@ Item {
         function onProjectMetaReady() { root.meta = agent.projectMeta }
     }
 
-    Loader {
-        id: personalityEditor
-        anchors.fill: parent
-        active: false
-        sourceComponent: Local.PersonalityEditor {
-            preselect: root.meta.default_personality || ""
-            onClosed: personalityEditor.active = false
-            onBlurred: root.blurred()
-        }
-    }
-
     Flickable {
         anchors.fill: parent
         anchors.margins: root.gap
-        visible: !personalityEditor.active
         contentWidth: width
         contentHeight: col.implicitHeight
         clip: true
@@ -74,22 +63,16 @@ Item {
                 Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "title"; text: root.projectName }
                 Item { width: parent.width - x; height: 1 }
                 Widgets.StyledButton {
-                    label: root.projectName === root.agent.activeProject ? "Active" : "Use + chat"
-                    onClicked: root.startChat()
+                    label: root.projectName === root.agent.selectedProject ? "Selected for chat" : "Select for chat"
+                    onClicked: { root.agent.selectedProject = root.projectName; root.startChat() }
                 }
             }
 
-            // (reported directly: "managing projects is a generic form of
-            // fields with no hierarchy and grammar"). Every section below the
-            // exact same shape — a plain `kind: "title"` heading followed by
-            // rows — with nothing to tell them apart at a glance or let a user
-            // collapse the ones they are not touching right now. Wrapped each
-            // in Widgets/Accordion (the same disclosure Settings/
-            // sections/Devices.qml already uses for a comparable "several
+            // Every section below is a plain `kind: "title"` heading followed
+            // by rows, wrapped in Widgets/Accordion (the same disclosure
+            // Settings/sections/Devices.qml uses for a comparable "several
             // grouped sub-settings" shape), `expanded: true` by default so
-            // opening a project loses no information and needs no extra click
-            // — the win here is the grouping/hierarchy itself (a titled,
-            // bordered region per concern), not hiding anything.
+            // opening a project loses no information and needs no extra click.
 
             // description
             Widgets.Accordion {
@@ -139,14 +122,14 @@ Item {
                 }
             }
 
-            // context files (materiali/) — static copies
+            // context files (allegati/) — static copies
             Widgets.Accordion {
                 width: parent.width
                 title: "Context files"
                 expanded: true
                 Widgets.StyledText {
                     kind: "label"; sizeStep: 0; width: parent.width; wrapMode: Text.WordWrap
-                    text: "Static copies in the project folder. Add a path below; it is copied, not linked."
+                    text: "Static copies in the project's allegati/. Add a path below; it is copied, not linked."
                 }
                 Repeater {
                     model: root.agent.materials || []
@@ -176,24 +159,40 @@ Item {
                 }
             }
 
-            // folders of interest — read-only real directories
+            // folders of interest — real directories, named, ro or rw
             Widgets.Accordion {
                 width: parent.width
-                title: "Folders of interest (read-only)"
+                title: "Folders of interest"
                 expanded: true
                 Widgets.StyledText {
                     kind: "label"; sizeStep: 0; width: parent.width; wrapMode: Text.WordWrap
-                    text: "Real directories the agent can read but not modify. Not copied. Blocked paths are refused."
+                    text: "Real directories the agent can reach, per host. Not copied. `rw` is only honoured for the coding profile — every other profile mounts it read-only regardless. Blocked paths are refused."
                 }
                 Repeater {
                     model: root.meta.folders || []
-                    delegate: Widgets.ListRow {
-                        interactive: true
+                    delegate: Row {
+                        id: folderRow
                         required property var modelData
                         width: parent.width
-                        label: modelData
-                        value: "remove"
-                        onActivated: root.agent.projectFolder("remove", root.projectName, modelData)
+                        spacing: root.gap
+                        Widgets.ListRow {
+                            width: folderRow.width - modeBtn.implicitWidth - removeBtn.implicitWidth - folderRow.spacing * 2
+                            label: folderRow.modelData.name + (folderRow.modelData.here ? " — " + folderRow.modelData.here : " — (not on this host)")
+                            value: folderRow.modelData.mode
+                        }
+                        Widgets.SmallButton {
+                            id: modeBtn
+                            anchors.verticalCenter: parent.verticalCenter
+                            label: folderRow.modelData.mode === "rw" ? "Make ro" : "Make rw"
+                            onClicked: root.agent.setProjectFolderMode(root.projectName, folderRow.modelData.name,
+                                folderRow.modelData.mode === "rw" ? "ro" : "rw")
+                        }
+                        Widgets.SmallButton {
+                            id: removeBtn
+                            anchors.verticalCenter: parent.verticalCenter
+                            label: "Remove"
+                            onClicked: root.agent.removeProjectFolder(root.projectName, folderRow.modelData.name)
+                        }
                     }
                 }
                 Row {
@@ -201,81 +200,92 @@ Item {
                     spacing: root.gap
                     Widgets.TextField {
                         id: folderInput
-                        width: parent.width - folderAdd.implicitWidth - parent.spacing
+                        width: (parent.width - modeSelect.implicitWidth - folderAdd.implicitWidth - parent.spacing * 3) * 0.65
                         anchors.verticalCenter: parent.verticalCenter
                         placeholder: "/path/to/directory…"
                         onEscaped: root.blurred()
                     }
+                    Widgets.TextField {
+                        id: folderNameInput
+                        width: (parent.width - modeSelect.implicitWidth - folderAdd.implicitWidth - parent.spacing * 3) * 0.35
+                        anchors.verticalCenter: parent.verticalCenter
+                        placeholder: "name (optional)…"
+                        onEscaped: root.blurred()
+                    }
+                    Widgets.Select {
+                        id: modeSelect
+                        anchors.verticalCenter: parent.verticalCenter
+                        options: ["ro", "rw"]
+                        value: "ro"
+                        onActivated: (v) => modeSelect.value = v
+                    }
                     Widgets.StyledButton {
                         id: folderAdd; label: "Add folder"
-                        onClicked: { if (folderInput.text.trim().length > 0) { root.agent.projectFolder("add", root.projectName, folderInput.text.trim()); folderInput.text = "" } }
+                        onClicked: {
+                            if (folderInput.text.trim().length === 0) return
+                            root.agent.addProjectFolder(root.projectName, folderInput.text.trim(),
+                                modeSelect.value, folderNameInput.text.trim())
+                            folderInput.text = ""; folderNameInput.text = ""; modeSelect.value = "ro"
+                        }
                     }
                 }
             }
 
-            // default personality
+            // default profile
             Widgets.Accordion {
                 width: parent.width
-                title: "Default personality"
+                title: "Default profile"
                 expanded: true
                 Row {
                     width: parent.width
                     spacing: root.gap
                     Repeater {
-                        model: root.agent.personalities || []
+                        model: root.defaultProfileChoices
                         delegate: Widgets.StyledButton {
                             required property var modelData
                             label: modelData
-                            active: modelData === (root.meta.default_personality || "general")
-                            onClicked: root.agent.setProjectPersonality(root.projectName, modelData)
+                            active: modelData === (root.meta.default_profile || "general")
+                            onClicked: root.agent.setProjectProfile(root.projectName, modelData)
                         }
                     }
-                    Widgets.StyledButton { label: "Edit / new…"; onClicked: personalityEditor.active = true }
                 }
             }
 
-            // project chats — : same gap as Panels/tabs/agent/Dashboard.qml's
-            // own ChatRow had (see its comment) — the star only ever displayed
-            // pin state, nothing here called the real
-            // Services.Agent.setChatPinned(). Same fix.
+            // project chats
             Widgets.Accordion {
                 width: parent.width
                 title: "Conversations"
                 expanded: true
                 Repeater {
-                    model: (root.agent.chats || []).filter(function (c) { return (c.Project || c.project) === root.projectName })
+                    model: (root.agent.sessions || []).filter(function (c) { return c.project === root.projectName })
                     delegate: Row {
                         id: chatRow
                         required property var modelData
                         width: parent.width
                         spacing: root.gap
-                        readonly property bool pinned: !!(chatRow.modelData.Pinned || chatRow.modelData.pinned)
-                        readonly property string chatId: chatRow.modelData.ID || chatRow.modelData.id
 
                         Widgets.ListRow {
                             interactive: true
                             width: chatRow.width - pinBtn.implicitWidth - closeBtn.implicitWidth - chatRow.spacing * 2
-                            label: root.agent.formatSessionTitle(chatRow.modelData.Title || chatRow.modelData.title || chatRow.chatId)
-                            glyph: chatRow.pinned ? "★" : ""
-                            onActivated: { root.agent.openSession(chatRow.chatId); root.startChat() }
+                            label: chatRow.modelData.title || chatRow.modelData.id
+                            glyph: chatRow.modelData.pinned ? "★" : ""
+                            onActivated: { root.agent.openSession(chatRow.modelData.id); root.startChat() }
                         }
                         Widgets.SmallButton {
                             id: pinBtn
                             anchors.verticalCenter: parent.verticalCenter
-                            label: chatRow.pinned ? "Unpin" : "Pin"
-                            onClicked: root.agent.setChatPinned(chatRow.chatId, !chatRow.pinned)
+                            label: chatRow.modelData.pinned ? "Unpin" : "Pin"
+                            onClicked: root.agent.setChatPinned(chatRow.modelData.id, !chatRow.modelData.pinned)
                         }
-                        // same Services.Agent.closeSession() gap as
-                        // Dashboard.qml's own ChatRow — see its comment.
                         Widgets.SmallButton {
                             id: closeBtn
                             anchors.verticalCenter: parent.verticalCenter
                             label: "Close"
                             onClicked: Services.ConfirmDialog.open({
-                                title: "Close “" + (chatRow.modelData.Title || chatRow.modelData.title || chatRow.chatId) + "”",
-                                message: "Summarises and archives the conversation, then deletes the live session. The full transcript is not kept.",
+                                title: "Close “" + (chatRow.modelData.title || chatRow.modelData.id) + "”",
+                                message: "Stops the live session. The transcript stays saved.",
                                 confirmLabel: "Close",
-                                onConfirm: () => root.agent.closeSession(chatRow.chatId)
+                                onConfirm: () => root.agent.closeSession(chatRow.modelData.id)
                             })
                         }
                     }

@@ -89,8 +89,9 @@ context menu.
 - **Motion categories** from the style tokens are binding. A heavy effect on a
   frequent event is a bug.
 - Scrolling screen capture is permanently out of scope.
-- The AI-agent panel talks only to `phi agent` and the local opencode HTTP
-  API, never to opencode's on-disk files.
+- The AI-agent panel talks only to `phi agent serve`'s local HTTP API and the
+  `--json` forms of the `phi agent` CLI, never to pi's or a session's
+  on-disk files directly.
 
 ## Comments
 

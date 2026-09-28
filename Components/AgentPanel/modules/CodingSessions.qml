@@ -64,7 +64,7 @@ Item {
             spacing: root.gap
             Widgets.StyledButton { label: "‹ Back"; onClicked: { root.openRec = null; root.openTranscript = "" } }
             Widgets.StyledText { anchors.verticalCenter: parent.verticalCenter; kind: "title"
-                text: root.openRec ? (root.openRec.dir || root.openRec.Dir || "") : "" }
+                text: root.openRec ? (root.openRec.dir || "") : "" }
         }
         Widgets.Panel {
             width: parent.width
@@ -145,26 +145,26 @@ Item {
                         Row {
                             width: parent.width
                             spacing: root.gap
-                            Widgets.StyledText { kind: "value"; text: modelData.dir || modelData.Dir || "(unknown dir)"; elide: Text.ElideMiddle; width: parent.width - stat.implicitWidth - parent.spacing }
+                            Widgets.StyledText { kind: "value"; text: modelData.dir || "(unknown dir)"; elide: Text.ElideMiddle; width: parent.width - stat.implicitWidth - parent.spacing }
                             Widgets.StyledText { id: stat; kind: "label"; sizeStep: 0
-                                tone: (modelData.status || modelData.Status) === "active" ? "success" : ""
-                                text: modelData.status || modelData.Status || "" }
+                                tone: modelData.status === "active" ? "success" : ""
+                                text: modelData.status || "" }
                         }
                         Widgets.StyledText { kind: "label"; sizeStep: 0
-                            text: "started " + String(modelData.started || modelData.Started || "").slice(0, 16).replace("T", " ") }
+                            text: (modelData.project ? modelData.project + " · " : "") + (modelData.profile || "coding")
+                                + " · started " + String(modelData.started || "").slice(0, 16).replace("T", " ") }
                         Row {
                             spacing: root.gap
-                            // was "Open chat view" this opens the mirrored
-                            // TRANSCRIPT (read-only per this file's own
-                            // header), not a live chat; the old label read as
-                            // if it opened something interactive.
+                            // Opens the TRANSCRIPT (read-only per this file's
+                            // own header), not a live chat — `phi agent chat
+                            // show` reads the session's own .jsonl directly.
                             Widgets.StyledButton { label: "View transcript"; onClicked: { root.openRec = modelData; root.openTranscript = ""; root.agent.loadCodingTranscript(modelData) } }
                             Widgets.StyledButton {
                                 label: "Focus terminal"
-                                enabled: (modelData.status || modelData.Status) === "active" && (modelData.window_addr || modelData.WindowAddr || "").length > 0
-                                onClicked: root.agent.focusCodingWindow(modelData.window_addr || modelData.WindowAddr)
+                                enabled: modelData.status === "active" && (modelData.window_addr || "").length > 0
+                                onClicked: root.agent.focusCodingWindow(modelData.window_addr)
                             }
-                            Widgets.StyledButton { label: "Open in a panel"; onClicked: root.agent.openCodingSessionInTerminal(modelData.dir || modelData.Dir) }
+                            Widgets.StyledButton { label: "Open in a panel"; onClicked: root.agent.openCodingSessionInTerminal(modelData.dir) }
                         }
                     }
                 }

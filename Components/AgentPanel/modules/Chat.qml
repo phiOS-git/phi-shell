@@ -9,7 +9,9 @@ Item {
     id: root
     readonly property var agent: Services.Agent
     readonly property var infra: Services.AgentInfra
-    property string personality: ""
+    // "" = follow the selected project's default profile (agent.defaultChatProfile);
+    // an explicit pick from the popover overrides it until "New chat" resets it.
+    property string profile: ""
 
     // Out-of-plan: one sentence covering five causes. AgentInfra polls all;
     function _unit(name) {
@@ -17,19 +19,19 @@ Item {
         return null
     }
     function offlineDiagnosis() {
-        if (!root.infra.loaded) return ["Checking phi-agent-a1.service…"]
+        if (!root.infra.loaded) return ["Checking phi-agent.service…"]
         const lines = []
         if (!root.infra.keyA1Present)
             lines.push("No provider key configured for a1 (~/.config/phi-agent/a1/provider-key) — see Settings › AI Agent.")
         const broker = root._unit("phi-agent-broker@a1.service")
         if (broker && broker.active !== "active")
             lines.push("Credential broker not running: phi-agent-broker@a1.service is " + broker.active + ".")
-        const engine = root._unit("phi-agent-a1.service")
+        const engine = root._unit("phi-agent.service")
         if (engine && engine.active !== "active")
-            lines.push("AI engine not running: phi-agent-a1.service is " + engine.active + ".")
+            lines.push("AI engine not running: phi-agent.service is " + engine.active + ".")
         if (lines.length === 0 && root.infra.keyA1Present
             && (!broker || broker.active === "active") && (!engine || engine.active === "active"))
-            lines.push("Both services report active but the engine isn't answering health checks yet — it may still be starting. Try again in a few seconds, or check `journalctl --user -u phi-agent-a1.service`.")
+            lines.push("Both services report active but the engine isn't answering health checks yet — it may still be starting. Try again in a few seconds, or check `journalctl --user -u phi-agent.service`.")
         return lines
     }
 
@@ -41,26 +43,40 @@ Item {
     readonly property real chWidth: ch.width
     readonly property real gap: chWidth * Config.Appearance.space2
 
-    property bool personaOpen: false
-    // setChatTitle() never had UI. Session-only view state (like personaOpen).
+    property bool profileOpen: false
+    // setChatTitle() never had UI. Session-only view state (like profileOpen).
     property bool renamingTitle: false
 
     Component.onCompleted: { agent.refreshSessions(); agent.refreshAllProposals() }
 
-    // Mirror transcript on turn finish for dashboard and search.
+    // doSend() clears before send() result; restore if it failed.
     Connections {
         target: agent
-        function onProcessingChanged() { if (!agent.processing) agent.syncCurrentTranscript() }
-        // doSend() clears before send() result; restore if it failed.
         function onSendFailed(text) { field.text = text }
     }
 
-    // raw=true: stored title; default reformats for display.
-    function currentTitle(raw) {
-        for (var i = 0; i < agent.sessions.length; i++)
-            if (agent.sessions[i].id === agent.currentSessionId)
-                return raw ? agent.sessions[i].title : agent.formatSessionTitle(agent.sessions[i].title)
-        return agent.currentSessionId
+    function currentRecord() {
+        for (const s of root.agent.sessions) if (s.id === root.agent.currentSessionId) return s
+        return null
+    }
+    function currentTitle() {
+        const r = root.currentRecord()
+        return (r && (r.title || r.id)) || root.agent.currentSessionId
+    }
+    function currentProjectLabel() {
+        const r = root.currentRecord()
+        if (r) return r.project || ""
+        return (root.agent.selectedProject !== "_unfiled") ? root.agent.selectedProject : ""
+    }
+    // The profile a NEW session (not yet created) would use: an explicit
+    // pick from the popover, else the selected project's default.
+    function pendingProfile() { return root.profile.length > 0 ? root.profile : root.agent.defaultChatProfile }
+    // What the profile control shows: the CURRENT session's own profile
+    // (fixed once it exists — a session's profile can't change), else the
+    // pending default/pick.
+    function displayedProfile() {
+        const r = root.currentRecord()
+        return (r && r.profile) || root.pendingProfile()
     }
 
     // ---- service unavailable -------------------------------------
@@ -120,8 +136,8 @@ Item {
                     elide: Text.ElideRight
                     visible: !root.renamingTitle
                     width: parent.width - renameBtn.width - newBtn.implicitWidth - parent.spacing * 2
-                    text: (root.agent.activeProject.length > 0 ? root.agent.activeProject + " › " : "")
-                        + (root.currentTitle().length > 0 ? root.currentTitle() : "new chat")
+                    text: (root.currentProjectLabel().length > 0 ? root.currentProjectLabel() + " › " : "")
+                        + (root.agent.currentSessionId.length > 0 ? root.currentTitle() : "new chat")
                 }
                 Widgets.TextField {
                     id: renameField
@@ -142,47 +158,23 @@ Item {
                     label: root.renamingTitle ? "Cancel" : "Rename"
                     onClicked: {
                         if (root.renamingTitle) { root.renamingTitle = false; return }
-                        // Use raw title (not synthetic). Empty if raw timestamp.
-                        const raw = root.currentTitle(true)
-                        renameField.text = /^New session - /.test(raw) ? "" : raw
+                        renameField.text = root.currentTitle()
                         root.renamingTitle = true
                         renameField.forceEditFocus()
                     }
                 }
-                // Full chat-panel rework : the header's own "Settings" button
+                // Full chat-panel rework: the header's own "Settings" button
                 // is gone — Panels/AgentPanel.qml's nav rail already grew a
                 // Settings icon reachable from every section, so this second
                 // way to reach the identical destination, always visible on
                 // screen at the same time as the rail's own icon. "New"
-                // demoted to a SmallButton: Panels/tabs/agent/ ChatShell.qml's
-                // sidebar now has its own, more prominent "New chat" button as
-                // the PRIMARY way to start one — this is a quiet secondary
-                // convenience for "start fresh without moving to the sidebar",
-                // not the main action.
+                // demoted to a SmallButton: ChatShell.qml's sidebar has its
+                // own, more prominent "New chat" button as the PRIMARY way to
+                // start one — this is a quiet secondary convenience, not the
+                // main action.
                 Widgets.SmallButton {
                     id: newBtn; label: "New"
-                    // Same leaveProject()-first guard as ChatShell.qml's own
-                    // "New chat" button this is a second way to reach the same
-                    // action, so it needs the same fix or the project stays
-                    // silently active whichever button is clicked.
-                    onClicked: root.agent.activeProject.length > 0 ? root.agent.leaveProject() : root.agent.newSession()
-                }
-            }
-
-            // project-switch loading state
-            Widgets.Panel {
-                width: parent.width
-                visible: root.agent.switching
-                height: switchRow.implicitHeight + padding * 2
-                Row {
-                    id: switchRow
-                    spacing: root.chWidth * Config.Appearance.space1
-                    // agent.switchTarget is the DESTINATION of an in-flight
-                    // switch, not agent.activeProject — that still holds the
-                    // OLD value until the switch lands which would show "new
-                    // project" even while leaving one.
-                    Widgets.StyledText { kind: "label"; text: "Rebuilding the containment for the " + (root.agent.switchTarget.length > 0 ? "new project" : "unfiled chat") }
-                    Widgets.Dots {}
+                    onClicked: { root.profile = ""; root.agent.newSession(root.pendingProfile(), root.agent.selectedProject) }
                 }
             }
 
@@ -213,17 +205,20 @@ Item {
                     width: parent.width
                     spacing: root.chWidth * Config.Appearance.space2
                     Widgets.StyledButton {
-                        id: personaBtn
-                        label: root.personality.length > 0 ? root.personality : "default"
-                        active: root.personaOpen
-                        onClicked: root.personaOpen = !root.personaOpen
+                        id: profileBtn
+                        label: root.displayedProfile()
+                        // Fixed once a session exists — a session's profile
+                        // cannot change after creation (§4).
+                        enabled: root.agent.currentSessionId.length === 0
+                        active: root.profileOpen
+                        onClicked: root.profileOpen = !root.profileOpen
                     }
                     // TextInput cannot wrap. TextEdit grows with content.
                     Flickable {
                         id: fieldScroll
                         readonly property real _lineHeight: Config.Appearance.fontSize1 * 1.4
                         readonly property real _maxLines: 6
-                        width: parent.width - personaBtn.implicitWidth - sendBtn.implicitWidth - parent.spacing * 2
+                        width: parent.width - profileBtn.implicitWidth - sendBtn.implicitWidth - parent.spacing * 2
                         height: Math.min(field.implicitHeight, _lineHeight * _maxLines)
                         anchors.verticalCenter: parent.verticalCenter
                         contentWidth: width
@@ -303,28 +298,6 @@ Item {
                     Widgets.Dots {}
                 }
 
-                Widgets.Panel {
-                    width: parent.width
-                    visible: root.agent.pendingPermission !== null
-                    height: permCol.implicitHeight + padding * 2
-                    Column {
-                        id: permCol
-                        width: parent.width
-                        spacing: root.chWidth * Config.Appearance.space1
-                        Widgets.StyledText { kind: "label"; text: root.agent.pendingPermission ? root.agent.pendingPermission.title : "" }
-                        Widgets.StyledText {
-                            mono: true; width: parent.width; wrapMode: Text.Wrap
-                            visible: root.agent.pendingPermission && root.agent.pendingPermission.detail.length > 0
-                            text: root.agent.pendingPermission ? root.agent.pendingPermission.detail : ""
-                        }
-                        Row {
-                            spacing: root.chWidth * Config.Appearance.space2
-                            Widgets.StyledButton { label: "Allow"; onClicked: root.agent.respondPermission(true) }
-                            Widgets.StyledButton { label: "Deny"; onClicked: root.agent.respondPermission(false) }
-                        }
-                    }
-                }
-
                 Widgets.StyledText {
                     width: parent.width; wrapMode: Text.WordWrap; invalid: true
                     visible: root.agent.lastError.length > 0
@@ -333,51 +306,46 @@ Item {
             }
         }
 
-        // Persona picker popover (in main space, not PopupWindow).
+        // Profile picker popover (in main space, not PopupWindow). Only ever
+        // meaningful before a session exists — see profileBtn's `enabled`.
         Widgets.Panel {
-            id: personaCard
-            visible: root.personaOpen
-            readonly property point _anchor: personaBtn.mapToItem(main, 0, 0)
+            id: profileCard
+            visible: root.profileOpen && root.agent.currentSessionId.length === 0
+            readonly property point _anchor: profileBtn.mapToItem(main, 0, 0)
             x: _anchor.x
             y: _anchor.y - height - root.chWidth * Config.Appearance.space1
-            width: personaCol.implicitWidth + padding * 2
-            height: personaCol.implicitHeight + padding * 2
+            width: profileCol.implicitWidth + padding * 2
+            height: profileCol.implicitHeight + padding * 2
             z: 10
 
             Column {
-                id: personaCol
+                id: profileCol
                 spacing: root.chWidth * Config.Appearance.space1
-                Widgets.StyledButton {
-                    label: "default"
-                    active: root.personality === ""
-                    onClicked: { root.personality = ""; root.personaOpen = false }
-                }
                 Repeater {
-                    model: root.agent.personalities || []
+                    model: root.agent.profiles || []
                     delegate: Widgets.StyledButton {
                         required property var modelData
                         label: modelData
-                        active: root.personality === modelData
-                        onClicked: { root.personality = modelData; root.personaOpen = false }
+                        active: root.displayedProfile() === modelData
+                        onClicked: { root.profile = modelData; root.profileOpen = false }
                     }
                 }
-                // Rework: dashboard gone, edit via sidebar instead.
             }
         }
 
         // Click-outside-closes (like PowerMenu). Below popover, intercepts when open.
         MouseArea {
             anchors.fill: parent
-            visible: root.personaOpen
+            visible: root.profileOpen
             z: 9
-            onClicked: root.personaOpen = false
+            onClicked: root.profileOpen = false
         }
     }
 
     // doSend() guard prevents data loss (was erasing text silently).
     function doSend() {
         if (root.agent.processing || field.text.trim().length === 0) return
-        root.agent.send(field.text, root.personality)
+        root.agent.send(field.text, root.pendingProfile())
         field.text = ""
     }
 }

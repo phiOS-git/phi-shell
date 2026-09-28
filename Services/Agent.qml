@@ -13,29 +13,24 @@ Singleton {
     readonly property string phi: "phi"
 
     // --- surfaced state -----------------------------------------------------
-    property bool available: false          // A1 health OK (service-unavailable indication)
+    property bool available: false          // phi-agent.service health OK
     property bool healthChecked: false      // false until the first health result lands — "unknown", not "down"
-    property bool processing: false         // a turn is in flight — drives the bar Φ segment (Role B)
-    property bool switching: false          // project switch in progress — panel shows a loading state
-    property string switchTarget: ""        // "" = unfiled chat — the DESTINATION of the switch above, since
-                                             // activeProject itself still
-                                             // holds the OLD value until it
-                                             // lands
-    property string activeProject: ""
-    property var personalities: []
-    property var projects: []
-    property var sessions: []               // [{id, title}]
+    property bool processing: false         // the CURRENT session has a turn in flight — drives the bar Φ segment
+    // Client-side only — a project is a per-session parameter now, never
+    // server-side state, so selecting one here rebuilds nothing. "" = no
+    // filter, "_unfiled" = sessions with no project, else a project name.
+    // Also the default project for a session created from here.
+    property string selectedProject: ""
+    property var profiles: []               // ["general","academic"] — the profiles `phi agent serve` serves
+    property var projects: []               // [{name,title,description,default_profile}]
+    property var sessions: []               // [{id,title,profile,project,pinned,updated,live,busy}]
+    property bool sessionsLoading: false
     property string currentSessionId: ""
-    property var messages: []               // [{role, text}] for the current session
-    property var pendingPermission: null    // {id, sessionID, title, metadata} or null
-    property var pendingProposals: []       // proposte/ file names for the active project
-    property var outputs: []                // output/ file names for the active project
+    property var messages: []               // [{role,text}] for the current session; a failed turn is {role:"error",text}
     property string lastError: ""
 
     // Emitted when queued send() fails (session creation): composer restores.
     signal sendFailed(string text)
-
-    signal proposalTextReady(string name, string currentMemory, string proposalText)
 
     // --- lifecycle --------------------------------------------------------
 
@@ -48,27 +43,14 @@ Singleton {
         interval: 5000
         running: true
         repeat: true
-        onTriggered: {
-            root.refreshHealth()
-            if (root.available && root.activeProject.length > 0)
-                root.refreshProposals()
-        }
-    }
-
-    // Poll transcript while running; /event tells when to stop (safety net).
-    Timer {
-        id: turnPoll
-        interval: 700
-        repeat: true
-        running: root.processing && root.currentSessionId.length > 0
-        onTriggered: root.refreshMessages()
+        onTriggered: root.refreshHealth()
     }
 
     // --- health ----------------------------------------------------------
 
     Process {
         id: healthProc
-        command: ["curl", "-sf", "-m", "3", root.base + "/global/health"]
+        command: ["curl", "-sf", "-m", "3", root.base + "/health"]
         onExited: (code) => { root.available = (code === 0); root.healthChecked = true; healthProc.running = false }
     }
     function refreshHealth() { if (!healthProc.running) healthProc.running = true }
@@ -85,98 +67,175 @@ Singleton {
         }
     }
 
-    // --- project / personalities (via `phi agent`, not opencode) ---------
+    // --- projects / profiles (via `phi agent`) ----------------------------
 
     Process {
         id: projListProc
-        command: [root.phi, "agent", "project", "list"]
+        command: [root.phi, "agent", "project", "list", "--json"]
         stdout: StdioCollector {
             onStreamFinished: {
-                // Output: "personalities: a, b\nprojects:\n* active\n other\n"
-                const lines = this.text.split("\n")
-                const ps = [], prj = []
-                let active = ""
-                for (const raw of lines) {
-                    const line = raw.trim()
-                    if (line.startsWith("personalities:")) {
-                        const rest = line.slice("personalities:".length).trim()
-                        if (rest && rest !== "(none)")
-                            for (const p of rest.split(",")) ps.push(p.trim())
-                    } else if (line.startsWith("* ")) {
-                        active = line.slice(2).trim(); prj.push(active)
-                    } else if (line.length > 0 && !line.startsWith("projects:") && !line.startsWith("(none")) {
-                        prj.push(line)
-                    }
-                }
-                root.personalities = ps
-                root.projects = prj
-                root.activeProject = active
+                try {
+                    const r = JSON.parse(this.text) || {}
+                    root.projects = r.projects || []
+                    root.profiles = (r.profiles && r.profiles.length > 0) ? r.profiles : ["general", "academic"]
+                } catch (e) { root.projects = []; root.profiles = ["general", "academic"] }
             }
         }
         onExited: projListProc.running = false
     }
     function refreshProject() { if (!projListProc.running) projListProc.running = true }
 
-    Process {
-        id: useProc
-        onExited: (code) => {
-            useProc.running = false
-            root.switching = false
-            root.currentSessionId = ""
-            root.messages = []
-            root.refreshProject()
-            root.refreshSessions()
-            root.refreshHealth()
-        }
-    }
-    function useProject(name) {
-        if (useProc.running) return
-        root.switching = true
-        root.switchTarget = name
-        useProc.command = [root.phi, "agent", "project", "use", name]
-        useProc.running = true
-    }
-    // Counterpart to useProject(): clears active marker. ChatShell calls this.
-    function leaveProject() {
-        if (useProc.running || root.activeProject.length === 0) return
-        root.switching = true
-        root.switchTarget = ""
-        useProc.command = [root.phi, "agent", "project", "use", "--none"]
-        useProc.running = true
-    }
-
-    Process {
-        id: newProjProc
-        onExited: { newProjProc.running = false; root.refreshProject() }
-    }
+    Process { id: newProjProc; onExited: { newProjProc.running = false; root.refreshProject() } }
     function newProject(name) {
         if (newProjProc.running || name.length === 0) return
         newProjProc.command = [root.phi, "agent", "project", "new", name]
         newProjProc.running = true
     }
 
-    // --- sessions (opencode) --------------------------------------------
+    // --- sessions (GET /sessions, filtered by selectedProject) -----------
 
     Process {
-        id: sessProc
-        command: ["curl", "-sf", "-m", "5", root.base + "/session"]
+        id: sessListProc
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try { root.sessions = JSON.parse(this.text) || [] }
+                catch (e) { root.sessions = [] }
+                root.sessionsLoading = false
+            }
+        }
+        onExited: sessListProc.running = false
+    }
+    function refreshSessions() {
+        if (!root.available || sessListProc.running) return
+        root.sessionsLoading = true
+        let url = root.base + "/sessions"
+        if (root.selectedProject === "_unfiled") url += "?unfiled=1"
+        else if (root.selectedProject.length > 0) url += "?project=" + encodeURIComponent(root.selectedProject)
+        sessListProc.command = ["curl", "-sf", "-m", "5", url]
+        sessListProc.running = true
+    }
+    onSelectedProjectChanged: if (root.available) root.refreshSessions()
+
+    // Group session timestamps for ChatShell (Today/Yesterday/Earlier).
+    function relativeDay(updated) {
+        const d = new Date(updated || "")
+        if (isNaN(d.getTime())) return "Earlier"
+        const now = new Date()
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+        const t = d.getTime()
+        if (t >= startOfToday) return "Today"
+        if (t >= startOfToday - 86400000) return "Yesterday"
+        return "Earlier"
+    }
+    function openSession(id) {
+        root.currentSessionId = id
+        root.messages = []
+        root.refreshMessages()
+    }
+
+    // The chat-servable default profile for the current scope: the selected
+    // project's default_profile when it's general/academic (never "coding",
+    // which isn't served); "general" with no project selected, "_unfiled",
+    // an unresolved project, or a "coding" default.
+    readonly property string defaultChatProfile: {
+        if (root.selectedProject.length > 0 && root.selectedProject !== "_unfiled") {
+            for (const p of root.projects)
+                if (p.name === root.selectedProject && (p.default_profile === "general" || p.default_profile === "academic"))
+                    return p.default_profile
+        }
+        return "general"
+    }
+
+    Process { id: chatPinProc; onExited: { chatPinProc.running = false; root.refreshSessions() } }
+    function setChatPinned(id, pinned) {
+        if (chatPinProc.running || !id) return
+        chatPinProc.command = ["curl", "-sf", "-m", "5", "-X", "POST",
+            "-H", "content-type: application/json", "-d", JSON.stringify({ pinned: pinned }),
+            root.base + "/sessions/" + id + "/pin"]
+        chatPinProc.running = true
+    }
+    Process { id: chatTitleProc; onExited: { chatTitleProc.running = false; root.refreshSessions() } }
+    function setChatTitle(id, title) {
+        if (chatTitleProc.running || !id) return
+        chatTitleProc.command = ["curl", "-sf", "-m", "5", "-X", "POST",
+            "-H", "content-type: application/json", "-d", JSON.stringify({ title: title }),
+            root.base + "/sessions/" + id + "/title"]
+        chatTitleProc.running = true
+    }
+
+    // --- transcript --------------------------------------------------
+
+    Process {
+        id: msgProc
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
-                    const arr = JSON.parse(this.text)
+                    const arr = JSON.parse(this.text) || []
                     const out = []
-                    for (const s of arr) {
-                        // Filter defensively for mid-flight sessions.
-                        if (s.title === "inline (ephemeral)") continue
-                        out.push({ id: s.id, title: s.title || "(untitled)" })
+                    for (const m of arr) {
+                        if (m.error) { out.push({ role: "error", text: m.error }); continue }
+                        out.push({ role: m.role, text: m.text })
                     }
-                    root.sessions = out
-                } catch (e) { root.sessions = [] }
+                    root.messages = out
+                } catch (e) {}
             }
         }
-        onExited: sessProc.running = false
+        onExited: msgProc.running = false
     }
-    function refreshSessions() { if (root.available && !sessProc.running) sessProc.running = true }
+    function refreshMessages() {
+        if (!root.available || root.currentSessionId.length === 0 || msgProc.running) return
+        msgProc.command = ["curl", "-sf", "-m", "10", root.base + "/sessions/" + root.currentSessionId + "/messages"]
+        msgProc.running = true
+    }
+
+    // --- sending a turn -----------------------------------------------
+
+    Process {
+        id: sendProc
+        onExited: (code) => {
+            sendProc.running = false
+            if (code !== 0) { root.processing = false; root.lastError = "send failed" }
+        }
+    }
+    function send(text, profile) {
+        if (sendProc.running || text.trim().length === 0) return
+        if (root.currentSessionId.length === 0) {
+            // Create a session first, then retry once it lands. `processing`
+            // is set too because Chat.qml's doSend() only guards on
+            // `agent.processing` — without this, hitting Send twice before a
+            // just-created session's id lands would silently overwrite
+            // `pendingSend` with the second message, losing the first.
+            if (pendingSend.armed) return
+            root.processing = true
+            root.newSession(profile, root.selectedProject)
+            pendingSend.text = text
+            pendingSend.armed = true
+            return
+        }
+        root.processing = true
+        root.lastError = ""
+        // Optimistically show the user's message.
+        const m = root.messages.slice()
+        m.push({ role: "user", text: text.trim() })
+        root.messages = m
+
+        sendProc.command = ["curl", "-sf", "-m", "10", "-X", "POST",
+            "-H", "content-type: application/json",
+            "-d", JSON.stringify({ text: text }),
+            root.base + "/sessions/" + root.currentSessionId + "/prompt"]
+        sendProc.running = true
+    }
+    QtObject {
+        id: pendingSend
+        property bool armed: false
+        property string text: ""
+    }
+    onCurrentSessionIdChanged: {
+        if (pendingSend.armed && currentSessionId.length > 0) {
+            pendingSend.armed = false
+            send(pendingSend.text)
+        }
+    }
 
     Process {
         id: newSessProc
@@ -202,147 +261,21 @@ Singleton {
             root.refreshSessions()
         }
     }
-    function newSession() {
+    function newSession(profile, project) {
         if (newSessProc.running) return
+        const body = { profile: (profile && profile.length > 0) ? profile : "general" }
+        if (project && project.length > 0 && project !== "_unfiled") body.project = project
         newSessProc.command = ["curl", "-sf", "-m", "5", "-X", "POST",
-            "-H", "content-type: application/json", "-d", "{}",
-            root.base + "/session"]
+            "-H", "content-type: application/json", "-d", JSON.stringify(body),
+            root.base + "/sessions"]
         newSessProc.running = true
     }
-    // opencode default: millisecond-precision timestamp. Reformatted for
-    // DISPLAY only; stored title untouched.
-    function formatSessionTitle(title) {
-        const m = /^New session - (.+)$/.exec(title || "")
-        if (!m) return title
-        const d = new Date(m[1])
-        if (isNaN(d.getTime())) return title
-        // Same 24-hour, no-AM/PM convention Lock/Lock.qml's own clock uses.
-        return "New chat · " + Qt.formatDateTime(d, "d MMM, hh:mm")
-    }
-    // Group chat timestamps for ChatShell (Today/Yesterday/Earlier).
-    function relativeDay(updated) {
-        const d = new Date(updated || "")
-        if (isNaN(d.getTime())) return "Earlier"
-        const now = new Date()
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-        const t = d.getTime()
-        if (t >= startOfToday) return "Today"
-        if (t >= startOfToday - 86400000) return "Yesterday"
-        return "Earlier"
-    }
-    function openSession(id) {
-        root.currentSessionId = id
-        root.messages = []
-        root.refreshMessages()
-    }
 
-    // --- transcript -----------------------------------------------------
-
-    Process {
-        id: msgProc
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    const arr = JSON.parse(this.text)
-                    const out = []
-                    let sawError = false
-                    for (const entry of arr) {
-                        const info = entry.info || {}
-                        const parts = entry.parts || []
-                        let text = ""
-                        for (const p of parts) if (p.type === "text" && p.text) text += p.text
-                        if (text.length > 0) {
-                            out.push({ role: info.role || "assistant", text: text.trim() })
-                            continue
-                        }
-                        // Failed turn: empty parts + info.error. Show as bubble.
-                        if (info.error) {
-                            out.push({ role: "error", text: root._describeOpencodeError(info.error) })
-                            sawError = true
-                        }
-                    }
-                    root.messages = out
-                    // Defensive: errored turn clears spinner (not just /event).
-                    if (sawError) root.processing = false
-                } catch (e) {}
-            }
-        }
-        onExited: msgProc.running = false
-    }
-    // Like phi internal/agent.extractAssistantError: CLI and panel match.
-    function _describeOpencodeError(err) {
-        const msg = err && err.data && err.data.message
-        if (msg && String(msg).trim().length > 0) return String(msg).trim()
-        const name = err && err.name
-        if (name && String(name).trim().length > 0) return String(name).trim()
-        return "the agent's reply failed"
-    }
-    function refreshMessages() {
-        if (!root.available || root.currentSessionId.length === 0 || msgProc.running) return
-        msgProc.command = ["curl", "-sf", "-m", "10",
-            root.base + "/session/" + root.currentSessionId + "/message"]
-        msgProc.running = true
-    }
-
-    // --- sending a turn -----------------------------------------------
-
-    Process {
-        id: sendProc
-        onExited: (code) => {
-            sendProc.running = false
-            if (code !== 0) { root.processing = false; root.lastError = "send failed" }
-            root.refreshMessages()
-        }
-    }
-    function send(text, personality) {
-        if (sendProc.running || text.trim().length === 0) return
-        if (root.currentSessionId.length === 0) {
-            // Create a session first, then retry once it lands. `processing`
-            // is set too because Chat.qml's doSend() only guards on
-            // `agent.processing` — without this, hitting Send twice before a
-            // just-created session's id lands would silently overwrite
-            // `pendingSend` with the second message, losing the first.
-            if (pendingSend.armed) return
-            root.processing = true
-            root.newSession()
-            pendingSend.text = text
-            pendingSend.personality = personality || ""
-            pendingSend.armed = true
-            return
-        }
-        root.processing = true
-        root.lastError = ""
-        // Optimistically show the user's message.
-        const m = root.messages.slice()
-        m.push({ role: "user", text: text.trim() })
-        root.messages = m
-
-        const body = { parts: [{ type: "text", text: text }] }
-        if (personality && personality.length > 0) body.agent = personality
-        sendProc.command = ["curl", "-sN", "-m", "600", "-X", "POST",
-            "-H", "content-type: application/json",
-            "-d", JSON.stringify(body),
-            root.base + "/session/" + root.currentSessionId + "/prompt_async"]
-        sendProc.running = true
-    }
-    QtObject {
-        id: pendingSend
-        property bool armed: false
-        property string text: ""
-        property string personality: ""
-    }
-    onCurrentSessionIdChanged: {
-        if (pendingSend.armed && currentSessionId.length > 0) {
-            pendingSend.armed = false
-            send(pendingSend.text, pendingSend.personality)
-        }
-    }
-
-    // --- the /event stream: permissions + "when to re-read" -------------
+    // --- the /events stream: session state + streamed text ---------------
 
     Process {
         id: eventProc
-        command: ["curl", "-sN", "--no-buffer", root.base + "/event"]
+        command: ["curl", "-sN", root.base + "/events"]
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: (line) => root.onEventLine(line)
@@ -362,176 +295,81 @@ Singleton {
     }
 
     function onEventLine(line) {
+        // Every real event is "data: {...}"; this also skips blank lines
+        // and the "': ping'" keepalive.
         if (!line.startsWith("data:")) return
         let ev
         try { ev = JSON.parse(line.slice(5).trim()) } catch (e) { return }
         const type = ev.type || ""
-        const props = ev.properties || ev
+        const sid = ev.session || ""
 
-        if (type.indexOf("permission") === 0) {
-            // Tool approval needed.
-            const p = props.permission || props
-            if (type.indexOf("replied") >= 0 || type.indexOf("responded") >= 0) {
-                root.pendingPermission = null
-            } else if (p && (p.id || props.permissionID)) {
-                root.pendingPermission = {
-                    id: p.id || props.permissionID,
-                    sessionID: p.sessionID || props.sessionID || root.currentSessionId,
-                    title: p.title || p.metadata && p.metadata.title || "Agent wants to run a tool",
-                    detail: p.metadata && (p.metadata.command || p.metadata.filePath) || ""
-                }
-            }
+        if (type === "session.busy") {
+            if (sid === root.currentSessionId) root.processing = true
             return
         }
-        if (type.indexOf("message") === 0 || type.indexOf("session.idle") === 0
-            || type.indexOf("session.updated") === 0) {
-            root.refreshMessages()
-            if (type.indexOf("idle") >= 0 || type.indexOf("completed") >= 0)
-                root.processing = false
+        if (type === "message.delta") {
+            if (sid === root.currentSessionId) root._appendDelta(ev.text || "")
             return
         }
-        if (type.indexOf("session.error") === 0) {
-            root.processing = false
-            root.lastError = (props.error && (props.error.message || props.error.name)) || "session error"
+        if (type === "message.done") {
+            if (sid === root.currentSessionId) root.refreshMessages()
+            return
+        }
+        if (type === "session.idle") {
+            if (sid === root.currentSessionId) { root.processing = false; root.refreshMessages() }
+            return
+        }
+        if (type === "session.error") {
+            if (sid === root.currentSessionId) { root.processing = false; root.lastError = ev.error || "session error" }
+            return
+        }
+        if (type === "session.exited" || type === "session.title" || type === "session.created") {
+            root.refreshSessions()
+            return
         }
     }
 
-    // --- tool approval -------------------------------------------------
-
-    Process { id: permProc; onExited: permProc.running = false }
-    function respondPermission(allow) {
-        if (!root.pendingPermission || permProc.running) return
-        const p = root.pendingPermission
-        const body = { response: allow ? "once" : "reject" }
-        permProc.command = ["curl", "-sf", "-m", "5", "-X", "POST",
-            "-H", "content-type: application/json", "-d", JSON.stringify(body),
-            root.base + "/session/" + p.sessionID + "/permissions/" + p.id]
-        root.pendingPermission = null
-        permProc.running = true
+    // Appends to a trailing streaming assistant bubble; the authoritative
+    // refetch on message.done/session.idle replaces `messages` wholesale, so
+    // the `_streaming` marker never needs clearing on its own.
+    function _appendDelta(text) {
+        const m = root.messages.slice()
+        const last = m.length > 0 ? m[m.length - 1] : null
+        if (last && last.role === "assistant" && last._streaming)
+            m[m.length - 1] = { role: "assistant", text: last.text + text, _streaming: true }
+        else
+            m.push({ role: "assistant", text: text, _streaming: true })
+        root.messages = m
     }
 
-    // --- memory proposals (via `phi agent memory`) --------------------
-
-    Process {
-        id: propListProc
-        command: [root.phi, "agent", "memory", "list"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                // Not TTY: one file per line. Names panel drops never reviewed.
-                const out = []
-                for (const raw of this.text.split("\n")) {
-                    const line = raw.trim()
-                    if (line.length > 0) out.push(line)
-                }
-                root.pendingProposals = out
-            }
-        }
-        onExited: propListProc.running = false
-    }
-    function refreshProposals() { if (!propListProc.running) propListProc.running = true }
-
-    Process {
-        id: propShowProc
-        property string name: ""
-        stdout: StdioCollector {
-            onStreamFinished: {
-                // `phi agent memory show` prints the current file and the
-                // literal "+"-prefixed lines it would append. Split them —
-                // panel can render the literal diff never a summary.
-                const cur = [], add = []
-                let phase = ""
-                for (const raw of this.text.split("\n")) {
-                    if (raw.startsWith("current memoria.md:")) { phase = "cur"; continue }
-                    if (raw.startsWith("would append")) { phase = "add"; continue }
-                    if (phase === "cur" && raw.startsWith("  ")) cur.push(raw.slice(2))
-                    else if (phase === "add" && raw.startsWith("+ ")) add.push(raw.slice(2))
-                }
-                root.proposalTextReady(propShowProc.name, cur.join("\n"), add.join("\n"))
-            }
-        }
-        onExited: propShowProc.running = false
-    }
-    function requestProposalText(name) {
-        if (propShowProc.running) return
-        propShowProc.name = name
-        propShowProc.command = [root.phi, "agent", "memory", "show", name]
-        propShowProc.running = true
-    }
-
-    Process { id: propActProc; onExited: { propActProc.running = false; root.refreshProposals() } }
-    function acceptProposal(name) {
-        if (propActProc.running) return
-        propActProc.command = [root.phi, "agent", "memory", "accept", name]
-        propActProc.running = true
-    }
-    function rejectProposal(name) {
-        if (propActProc.running) return
-        propActProc.command = [root.phi, "agent", "memory", "reject", name]
-        propActProc.running = true
-    }
-
-    // --- outputs (list the active project's output/ dir) --------------
-
-    Process {
-        id: outProc
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const out = []
-                for (const raw of this.text.split("\n")) {
-                    const n = raw.trim()
-                    if (n.length > 0) out.push(n)
-                }
-                root.outputs = out
-            }
-        }
-        onExited: outProc.running = false
-    }
-    function refreshOutputs() {
-        if (root.activeProject.length === 0 || outProc.running) return
-        const dir = Quickshell.env("HOME") + "/.local/share/phi-agent/a1/projects/"
-            + root.activeProject + "/output"
-        outProc.command = ["sh", "-c", "ls -1 " + JSON.stringify(dir) + " 2>/dev/null"]
-        outProc.running = true
-    }
-
-    // --- close: summarize + archive + delete -------------------------
+    // --- close: stop the live process (transcript stays) ----------------
 
     Process { id: closeProc; onExited: { closeProc.running = false; root.refreshSessions() } }
     function closeSession(id) {
         if (closeProc.running || id.length === 0) return
-        // opencode writes summary; phi files under archivio/ then deletes.
-        const arch = Quickshell.env("HOME") + "/.local/share/phi-agent/a1/projects/"
-            + root.activeProject + "/archivio"
-        const script =
-            'set -e; d=' + JSON.stringify(arch) + '; mkdir -p "$d"; ' +
-            'curl -sf -m 120 -X POST -H "content-type: application/json" -d "{}" ' +
-            root.base + '/session/' + id + '/summarize >/dev/null 2>&1 || true; ' +
-            'curl -sf -m 20 ' + root.base + '/session/' + id + '/message > "$d/' +
-            new Date().toISOString().slice(0, 10) + '-' + id + '.json"; ' +
-            'curl -sf -m 10 -X DELETE ' + root.base + '/session/' + id
-        closeProc.command = ["sh", "-c", script]
+        closeProc.command = ["curl", "-sf", "-m", "20", "-X", "DELETE", root.base + "/sessions/" + id]
         if (root.currentSessionId === id) { root.currentSessionId = ""; root.messages = [] }
         closeProc.running = true
     }
 
-    // --- activation (enable/disable the A1 unit) ---------------------
+    // --- activation (enable/disable phi-agent.service) ------------------
 
     Process { id: unitProc; onExited: { unitProc.running = false; root.refreshHealth() } }
     function setActivated(on) {
         if (unitProc.running) return
-        unitProc.command = ["systemctl", "--user", on ? "start" : "stop", "phi-agent-a1.service"]
+        unitProc.command = ["systemctl", "--user", on ? "start" : "stop", "phi-agent.service"]
         unitProc.running = true
     }
     // Loading signal for Start button (not health recheck).
     readonly property bool activating: unitProc.running
 
     // ===================================================================== The four-section panel's data.
-    // Still the one client point: every `phi agent` call and every opencode call is.
+    // Still the one client point: every `phi agent` call and every phi-agent-serve call is.
     // =====================================================================
 
     // --- structured project metadata --------------------------------
 
-    property var projectMeta: ({})   // {title, description, instructions[], default_personality, folders[], pins[]}
+    property var projectMeta: ({})   // {name,dir,title,description,instructions[],default_profile,folders[]}
     signal projectMetaReady()
 
     Process {
@@ -549,7 +387,7 @@ Singleton {
     function refreshProjectMeta(name) {
         if (projMetaProc.running || !name) return
         projMetaProc.name = name
-        projMetaProc.command = [root.phi, "agent", "project", "show", name]
+        projMetaProc.command = [root.phi, "agent", "project", "show", name, "--json"]
         projMetaProc.running = true
     }
 
@@ -561,22 +399,38 @@ Singleton {
         projSetProc.running = true
     }
     function setProjectDescription(name, text) { projectSet(name, ["--description", text]) }
-    function setProjectPersonality(name, p) { projectSet(name, ["--personality", p]) }
+    function setProjectProfile(name, p) { projectSet(name, ["--profile", p]) }
     function addProjectInstruction(name, text) { projectSet(name, ["--instruction-add", text]) }
     function removeProjectInstruction(name, text) { projectSet(name, ["--instruction-remove", text]) }
 
+    // Folders have a name, a mode (ro|rw) and per-host paths (§4).
     Process { id: projFolderProc; property string name: ""; onExited: { projFolderProc.running = false; root.refreshProjectMeta(projFolderProc.name) } }
-    function projectFolder(op, name, path) {
+    function addProjectFolder(name, path, mode, as_) {
         if (projFolderProc.running || !name || !path) return
         projFolderProc.name = name
-        projFolderProc.command = [root.phi, "agent", "project", "folder", op, name, path]
+        const c = [root.phi, "agent", "project", "folder", "add", name, path]
+        if (mode) c.push("--mode", mode)
+        if (as_) c.push("--as", as_)
+        projFolderProc.command = c
+        projFolderProc.running = true
+    }
+    function removeProjectFolder(name, folder) {
+        if (projFolderProc.running || !name || !folder) return
+        projFolderProc.name = name
+        projFolderProc.command = [root.phi, "agent", "project", "folder", "remove", name, folder]
+        projFolderProc.running = true
+    }
+    function setProjectFolderMode(name, folder, mode) {
+        if (projFolderProc.running || !name || !folder || !mode) return
+        projFolderProc.name = name
+        projFolderProc.command = [root.phi, "agent", "project", "folder", "mode", name, folder, mode]
         projFolderProc.running = true
     }
 
-    // Context files copied to materiali/ (agent never sees source).
+    // Attachments: static copies under the project's allegati/ (agent never sees the source).
     property var materials: []
     function _projectDir(name) {
-        return Quickshell.env("HOME") + "/.local/share/phi-agent/a1/projects/" + name
+        return Quickshell.env("HOME") + "/.local/share/phi-agent/projects/" + name
     }
     Process {
         id: matListProc
@@ -592,7 +446,7 @@ Singleton {
     }
     function refreshMaterials(name) {
         if (matListProc.running || !name) return
-        matListProc.command = ["sh", "-c", "ls -1 " + JSON.stringify(root._projectDir(name) + "/materiali") + " 2>/dev/null"]
+        matListProc.command = ["sh", "-c", "ls -1 " + JSON.stringify(root._projectDir(name) + "/allegati") + " 2>/dev/null"]
         matListProc.running = true
     }
     Process { id: matCpProc; property string name: ""; onExited: { matCpProc.running = false; root.refreshMaterials(matCpProc.name) } }
@@ -600,7 +454,7 @@ Singleton {
         if (matCpProc.running || !name || !path) return
         matCpProc.name = name
         matCpProc.command = ["sh", "-c",
-            "d=" + JSON.stringify(root._projectDir(name) + "/materiali") + "; mkdir -p \"$d\" && cp -R -- \"$1\" \"$d/\"",
+            "d=" + JSON.stringify(root._projectDir(name) + "/allegati") + "; mkdir -p \"$d\" && cp -R -- \"$1\" \"$d/\"",
             "sh", path]
         matCpProc.running = true
     }
@@ -608,118 +462,19 @@ Singleton {
         if (matCpProc.running || !name || !fileName) return
         matCpProc.name = name
         matCpProc.command = ["sh", "-c",
-            "rm -rf -- " + JSON.stringify(root._projectDir(name) + "/materiali") + "/\"$1\"",
+            "rm -rf -- " + JSON.stringify(root._projectDir(name) + "/allegati") + "/\"$1\"",
             "sh", fileName]
         matCpProc.running = true
     }
 
     Process { id: newProj2Proc; onExited: { newProj2Proc.running = false; root.refreshProject() } }
-    function createProject(name, description, personality) {
+    function createProject(name, description, profile) {
         if (newProj2Proc.running || !name) return
         var c = [root.phi, "agent", "project", "new", name]
         if (description) c = c.concat(["--description", description])
-        if (personality) c = c.concat(["--personality", personality])
+        if (profile) c = c.concat(["--profile", profile])
         newProj2Proc.command = c
         newProj2Proc.running = true
-    }
-
-    // --- personalities: create / edit / delete --------------------------
-
-    signal personalityPromptReady(string name, string text)
-
-    Process {
-        id: persShowProc
-        property string name: ""
-        stdout: StdioCollector { onStreamFinished: root.personalityPromptReady(persShowProc.name, this.text) }
-        onExited: persShowProc.running = false
-    }
-    function personalityShow(name) {
-        if (persShowProc.running || !name) return
-        persShowProc.name = name
-        persShowProc.command = [root.phi, "agent", "personality", "show", name]
-        persShowProc.running = true
-    }
-
-    Process { id: persWriteProc; onExited: { persWriteProc.running = false; root.refreshProject() } }
-    function personalityWrite(name, text) {
-        if (persWriteProc.running || !name) return
-        // base64 through argv (bounded, safe, prompt not secret).
-        persWriteProc.command = ["sh", "-c",
-            'printf %s "$0" | base64 -d | ' + root.phi + ' agent personality write "$1" --from-file -',
-            Qt.btoa(text), name]
-        persWriteProc.running = true
-    }
-    Process { id: persMiscProc; onExited: { persMiscProc.running = false; root.refreshProject() } }
-    function personalityDelete(name) {
-        if (persMiscProc.running || !name) return
-        persMiscProc.command = [root.phi, "agent", "personality", "delete", name]
-        persMiscProc.running = true
-    }
-    function personalityRename(oldName, newName) {
-        if (persMiscProc.running || !oldName || !newName) return
-        persMiscProc.command = [root.phi, "agent", "personality", "rename", oldName, newName]
-        persMiscProc.running = true
-    }
-
-    // --- transcript mirror + chat list -----------------------------
-
-    property var chats: []           // [{id,title,project,pinned,updated}]
-    property var pinnedChats: []
-    property bool chatsLoading: false
-
-    Process {
-        id: chatListProc
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    var arr = JSON.parse(this.text) || []
-                    root.chats = arr
-                    root.pinnedChats = arr.filter(function (c) { return c.Pinned || c.pinned })
-                } catch (e) { root.chats = []; root.pinnedChats = [] }
-                root.chatsLoading = false
-            }
-        }
-        onExited: chatListProc.running = false
-    }
-    function refreshChats() {
-        if (chatListProc.running) return
-        root.chatsLoading = true
-        chatListProc.command = [root.phi, "agent", "chat", "list"]
-        chatListProc.running = true
-    }
-
-    Process { id: chatPinProc; onExited: { chatPinProc.running = false; root.refreshChats() } }
-    function setChatPinned(id, pinned) {
-        if (chatPinProc.running || !id) return
-        chatPinProc.command = [root.phi, "agent", "chat", pinned ? "pin" : "unpin", id]
-        chatPinProc.running = true
-    }
-    Process { id: chatTitleProc; onExited: { chatTitleProc.running = false; root.refreshChats() } }
-    function setChatTitle(id, title) {
-        if (chatTitleProc.running || !id) return
-        chatTitleProc.command = [root.phi, "agent", "chat", "title", id, title]
-        chatTitleProc.running = true
-    }
-
-    // Mirror transcript on each idle turn.
-    Process { id: chatSyncProc; onExited: chatSyncProc.running = false }
-    function syncCurrentTranscript() {
-        if (chatSyncProc.running || root.currentSessionId.length === 0) return
-        if (!root.messages || root.messages.length === 0) return
-        var title = ""
-        for (var i = 0; i < root.sessions.length; i++)
-            if (root.sessions[i].id === root.currentSessionId) title = root.sessions[i].title
-        var md = ""
-        for (var j = 0; j < root.messages.length; j++) {
-            var m = root.messages[j]
-            md += "## " + (m.role === "user" ? "you" : "agent") + "\n\n" + m.text + "\n\n"
-        }
-        var c = ["sh", "-c",
-            'printf %s "$0" | base64 -d | ' + root.phi + ' agent chat sync "$1" --title "$2" --from-file -',
-            Qt.btoa(md), root.currentSessionId, title || root.currentSessionId]
-        if (root.activeProject.length > 0) c = c.concat(["--project", root.activeProject])
-        chatSyncProc.command = c
-        chatSyncProc.running = true
     }
 
     // --- history search ---------------------------------------------
@@ -746,13 +501,13 @@ Singleton {
         searchProc.running = true
     }
 
-    // --- A2 coding sessions, from phi-owned metadata -----------------
+    // --- coding sessions, from phi-owned metadata (state/terminal/*.json) --
 
     property var codingSessions: []
     property bool codingSessionsLoading: false
 
     Process {
-        id: sessListProc
+        id: codeSessListProc
         stdout: StdioCollector {
             onStreamFinished: {
                 try { root.codingSessions = JSON.parse(this.text) || [] }
@@ -760,13 +515,13 @@ Singleton {
                 root.codingSessionsLoading = false
             }
         }
-        onExited: sessListProc.running = false
+        onExited: codeSessListProc.running = false
     }
     function refreshCodingSessions() {
-        if (sessListProc.running) return
+        if (codeSessListProc.running) return
         root.codingSessionsLoading = true
-        sessListProc.command = [root.phi, "agent", "session", "list", "--json"]
-        sessListProc.running = true
+        codeSessListProc.command = [root.phi, "agent", "session", "list", "--json"]
+        codeSessListProc.running = true
     }
 
     // Dispatched via Services.HyprlandBridge (not hyprctl).
@@ -783,26 +538,40 @@ Singleton {
         openSessProc.running = true
     }
 
-    // Mirrored coding session transcript (read-only).
+    // Transcript preview, read via the CLI (works for a coding session even
+    // though it is never live/served): `phi agent chat show` reads the
+    // session's own .jsonl + sidecar directly.
     signal codingTranscriptReady(string id, string markdown)
     Process {
         id: codeTxProc
         property string id: ""
-        stdout: StdioCollector { onStreamFinished: root.codingTranscriptReady(codeTxProc.id, this.text) }
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let out = "(transcript unreadable)"
+                try {
+                    const d = JSON.parse(this.text)
+                    const msgs = (d && d.messages) || []
+                    let md = ""
+                    for (const m of msgs)
+                        md += "## " + (m.role === "user" ? "you" : "agent") + "\n\n" + (m.text || "")
+                            + (m.error ? "\n\n_error: " + m.error + "_" : "") + "\n\n"
+                    out = md.length > 0 ? md : "_(no messages)_"
+                } catch (e) {}
+                root.codingTranscriptReady(codeTxProc.id, out)
+            }
+        }
         onExited: codeTxProc.running = false
     }
     function loadCodingTranscript(rec) {
-        if (codeTxProc.running || !rec) return
-        codeTxProc.id = rec.id || rec.ID || ""
-        var p = rec.transcript_path || rec.TranscriptPath || ""
-        if (p.length === 0) { root.codingTranscriptReady(codeTxProc.id, "_(no transcript mirrored for this session yet)_"); return }
-        codeTxProc.command = ["sh", "-c", "cat " + JSON.stringify(p) + " 2>/dev/null || echo '(transcript unreadable)'"]
+        if (codeTxProc.running || !rec || !rec.id) return
+        codeTxProc.id = rec.id
+        codeTxProc.command = [root.phi, "agent", "chat", "show", rec.id, "--json"]
         codeTxProc.running = true
     }
 
     // --- multi-level memory proposals ---------------------------------
 
-    property var proposalsByLevel: ({})   // {"system": [...], "personality:notes": [...], "project:x": [...]}
+    property var proposalsByLevel: ({})   // {"system":[...], "profile:general":[...], "profile:coding":[...], "project:x":[...]}
 
     Process {
         id: allPropProc
@@ -816,8 +585,7 @@ Singleton {
     }
     function refreshAllProposals() {
         if (allPropProc.running) return
-        // `phi agent memory list-all` prints {level: [names]} as JSON.
-        allPropProc.command = [root.phi, "agent", "memory", "list-all", "--level", "system"]
+        allPropProc.command = [root.phi, "agent", "memory", "list-all", "--json"]
         allPropProc.running = true
     }
 
@@ -828,36 +596,29 @@ Singleton {
         property string name: ""
         stdout: StdioCollector {
             onStreamFinished: {
-                var cur = [], add = []
-                var phase = ""
-                var lines = this.text.split("\n")
-                for (var i = 0; i < lines.length; i++) {
-                    var raw = lines[i]
-                    if (raw.indexOf("current memoria.md:") === 0) { phase = "cur"; continue }
-                    if (raw.indexOf("would append") === 0) { phase = "add"; continue }
-                    if (phase === "cur" && raw.indexOf("  ") === 0) cur.push(raw.slice(2))
-                    else if (phase === "add" && raw.indexOf("+ ") === 0) add.push(raw.slice(2))
-                }
-                root.levelProposalTextReady(lvlShowProc.level, lvlShowProc.name, cur.join("\n"), add.join("\n"))
+                let d = null
+                try { d = JSON.parse(this.text) } catch (e) { d = null }
+                root.levelProposalTextReady(lvlShowProc.level, lvlShowProc.name,
+                    (d && d.current) || "", (d && d.proposal) || "")
             }
         }
         onExited: lvlShowProc.running = false
     }
     function _levelArgs(level) {
-        // level is "system" | "personality:<name>" | "project:<name>"
+        // level is "system" | "profile:<name>" | "project:<name>"
         var parts = level.split(":")
         if (parts[0] === "system") return ["--level", "system"]
-        if (parts[0] === "personality") return ["--level", "personality", "--personality", parts[1]]
+        if (parts[0] === "profile") return ["--level", "profile", "--profile", parts[1]]
         return ["--level", "project", "--project", parts[1]]
     }
     function requestLevelProposalText(level, name) {
         if (lvlShowProc.running) return
         lvlShowProc.level = level
         lvlShowProc.name = name
-        lvlShowProc.command = [root.phi, "agent", "memory", "show", name].concat(_levelArgs(level))
+        lvlShowProc.command = [root.phi, "agent", "memory", "show", name, "--json"].concat(_levelArgs(level))
         lvlShowProc.running = true
     }
-    Process { id: lvlActProc; onExited: { lvlActProc.running = false; root.refreshAllProposals(); root.refreshProposals() } }
+    Process { id: lvlActProc; onExited: { lvlActProc.running = false; root.refreshAllProposals() } }
     function acceptLevelProposal(level, name) {
         if (lvlActProc.running) return
         lvlActProc.command = [root.phi, "agent", "memory", "accept", name].concat(_levelArgs(level))

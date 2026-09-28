@@ -5,16 +5,16 @@ import qs.Services as Services
 import qs.Widgets as Widgets
 import "../modules" as Modules
 
-// Activation (toggle, connection status, active project, pending memory
-// proposals), plus everything else scoped to genuinely runtime state:
-// - Real runtime CONTROLS: A1 activation, open panel, refresh.
+// Activation (toggle, connection status, pending memory proposals), plus
+// everything else scoped to genuinely runtime state:
+// - Real runtime CONTROLS: activation, open panel, refresh.
 // - Read-only RUNTIME status: systemd unit state, broker request meter.
-// - Read-only CONFIG readout: broker.json / opencode.json / the egress
-// whitelist — shown with intent, never an edit control (those files
-// are dotfiles-tracked; editing them here would fight `git pull`).
-// Deliberately NOT here: a start/stop control for the A2 remote surface
-// and a default-personality control (both need a config write, not
-// runtime state).
+// - Read-only CONFIG readout: broker.json / the per-profile models.json /
+// the egress whitelist — shown with intent, never an edit control (those
+// files are dotfiles-tracked or host-local, and editing them here would
+// fight `git pull`).
+// Deliberately NOT here: a default-profile control for a project (that's a
+// project-level setting, in the agent panel's Chat › project view).
 
 Column {
     id: root
@@ -37,19 +37,18 @@ Column {
 
     Component.onCompleted: {
         agent.refreshProject()
-        agent.refreshProposals()
-        agent.refreshOutputs()
+        agent.refreshAllProposals()
         infra.refresh()
     }
 
     // ---- activation / connection -----------------------------------
     Modules.SettingsGroup {
         title: "AI Agent"
-        caption: "Projects, personalities, conversations, tool approval and the literal memory-proposal diffs live in the agent panel — the Φ bar segment or Super+P. This section keeps only runtime status and the A2 working-directory blocklist."
+        caption: "Projects, conversations and the literal memory-proposal diffs live in the agent panel — the Φ bar segment or Super+P. This section keeps only runtime status and the A2 working-directory blocklist."
 
         Modules.SettingsRow {
             title: "Activation"
-            description: "phi-agent-a1.service"
+            description: "phi-agent.service"
             Widgets.Toggle {
                 checked: root.agent.available
                 onToggled: (v) => root.agent.setActivated(v)
@@ -62,13 +61,8 @@ Column {
         }
         Widgets.ListRow {
             width: parent ? parent.width : 0
-            label: "Active project"
-            value: root.agent.activeProject.length > 0 ? root.agent.activeProject : "(none)"
-        }
-        Widgets.ListRow {
-            width: parent ? parent.width : 0
             label: "Pending memory proposals"
-            value: String(root.agent.pendingProposals.length)
+            value: String(root.agent.totalPendingProposals)
         }
         Modules.SettingsRow {
             title: "Agent panel"
@@ -82,8 +76,7 @@ Column {
                     label: "Refresh"
                     onClicked: {
                         root.agent.refreshProject()
-                        root.agent.refreshProposals()
-                        root.agent.refreshOutputs()
+                        root.agent.refreshAllProposals()
                         root.infra.refresh()
                     }
                 }
@@ -148,7 +141,7 @@ Column {
     Modules.SettingsGroup {
         advanced: true
         title: "Services"
-        caption: "All phi-agent units are declared and never auto-enabled. Start/stop and enable them with `systemctl --user`. The A2 remote surface is status-only here — starting phi-agent-a2-remote* is how a session is declared remote."
+        caption: "All phi-agent units are declared and never auto-enabled. Start/stop and enable them with `systemctl --user`."
 
         Modules.SettingsRow {
             title: "A2 support services"
@@ -178,11 +171,12 @@ Column {
     Modules.SettingsGroup {
         advanced: true
         title: "Broker & engine"
-        caption: "The values below are read-only — broker.json / opencode.json / the egress whitelist are versioned config, and editing them from this panel would fight `git pull` (the exact problem a past round hit doing exactly that). The buttons open the real files in a terminal editor instead. The provider key is a separate mode-600 file, never shown here at all."
+        caption: "The values below are read-only — broker.json / the per-profile models.json / the egress whitelist are versioned or host-local config, and editing them from this panel would fight `git pull` (the exact problem a past round hit doing exactly that). The buttons open the real files in a terminal editor instead. The provider key is a separate mode-600 file, never shown here at all."
 
         // The two facts anyone opening this group wants FIRST — is a key
-        // configured, and which model — lead it, ahead of the lower-level
-        // broker networking readout (upstream/listen/rate-limit/auth-header).
+        // configured, and which providers a chat can reach — lead it, ahead
+        // of the lower-level broker networking readout (upstream/listen/
+        // rate-limit/auth-header).
         Widgets.ListRow {
             width: parent ? parent.width : 0
             label: "Provider key (a1)"
@@ -196,9 +190,21 @@ Column {
         }
         Widgets.ListRow {
             width: parent ? parent.width : 0
-            label: "Model id (a1)"
-            value: root.infra.modelIdA1.length > 0 ? root.infra.modelIdA1 : "(not configured)"
-            invalid: root.infra.modelIdA1.indexOf("REPLACE-WITH") >= 0
+            label: "Models (general)"
+            value: !root.infra.modelsGeneralPresent ? "missing"
+                : (root.infra.modelsGeneral.length > 0
+                    ? root.infra.modelsGeneral.map((p) => p.name + " · " + p.baseUrl).join(", ")
+                    : "(no providers)")
+            invalid: !root.infra.modelsGeneralPresent
+        }
+        Widgets.ListRow {
+            width: parent ? parent.width : 0
+            label: "Models (coding)"
+            value: !root.infra.modelsCodingPresent ? "missing"
+                : (root.infra.modelsCoding.length > 0
+                    ? root.infra.modelsCoding.map((p) => p.name + " · " + p.baseUrl).join(", ")
+                    : "(no providers)")
+            invalid: !root.infra.modelsCodingPresent
         }
 
         // Edits real files through a terminal editor rather than a control on
@@ -207,13 +213,18 @@ Column {
         // but a user's own `$EDITOR` still wins when set.
         Modules.SettingsRow {
             title: "Edit configuration"
-            description: "Opens the real files — model id, provider key, broker settings, the A2 egress whitelist — in a terminal editor. Restart the engine below afterwards for a change to take effect."
+            description: "Opens the real files — provider, base URL, model ids — in a terminal editor. Restart the service below afterwards for a change to take effect."
             Row {
                 spacing: root.gap
                 Widgets.StyledButton {
-                    label: "Edit model/provider (a1)…"
+                    label: "Edit models (general)…"
                     onClicked: Quickshell.execDetached(["kitty", "-e", "sh", "-c",
-                        '${EDITOR:-nvim} "$1"', "sh", root.infra.configRoot + "/a1/opencode/opencode.json"])
+                        '${EDITOR:-nvim} "$1"', "sh", root.infra.configRoot + "/pi/profiles/general/models.json"])
+                }
+                Widgets.StyledButton {
+                    label: "Edit models (coding)…"
+                    onClicked: Quickshell.execDetached(["kitty", "-e", "sh", "-c",
+                        '${EDITOR:-nvim} "$1"', "sh", root.infra.configRoot + "/pi/profiles/coding/models.json"])
                 }
                 Widgets.StyledButton {
                     // Same "Open folder…" convention as Settings/sections/
@@ -226,11 +237,11 @@ Column {
         }
         Modules.SettingsRow {
             title: "Apply a configuration change"
-            description: "Restarts phi-agent-a1.service and its credential broker — required after editing the files above, since a running engine does not re-read them on its own."
+            description: "Restarts phi-agent.service — required after editing the files above, since a running engine does not re-read them on its own."
             Widgets.StyledButton {
-                label: "Restart A1 engine"
+                label: "Restart agent service"
                 loading: root.infra.starting
-                onClicked: root.infra.restartUnits(["phi-agent-broker@a1.service", "phi-agent-a1.service"])
+                onClicked: root.infra.restartUnits(["phi-agent.service"])
             }
         }
 
