@@ -29,7 +29,7 @@ var SECTIONS = [
     { id: "keybindings",   title: "Keybindings",   keywords: "shortcuts binds hotkeys hyprland keys reference cheatsheet context" },
     { id: "notifications", title: "Notifications", keywords: "do not disturb dnd rules per app toast sound chroma blink priority" },
     { id: "security",      title: "Security",      keywords: "clamav antivirus scan quarantine signatures face unlock howdy secrets keepass vault" },
-    { id: "aiAgent",       title: "AI Agent",      keywords: "phi agent activation project pi profile broker model provider key egress whitelist systemd units memory proposals" },
+    { id: "aiAgent",       title: "AI Agent",      keywords: "agent pi model thinking provider key broker usage cost tokens schedule scheduler memory logs journal services units coding blocklist whitelist notifications panel" },
     { id: "updates",       title: "Updates",       keywords: "system state version check upgrade" },
     { id: "packages",      title: "Packages",      keywords: "pacman aur npm flatpak appimage phi-packages external tc t2 t3 t4 container audit findings drift leak integrity checksum fingerprint accept tier status declare" }
 ];
@@ -120,6 +120,19 @@ var OPTIONS = [
 
     // --- Security -------------------------------------------
     { id: "security.clipboard",        title: "Clipboard history rules", keywords: "clipboard history exclude rule password secret sensitive image don't save" },
+
+    // --- AI Agent ---------------------------------------------
+    { id: "aiAgent.engine",      title: "Engine",               keywords: "activation start stop login autostart phi-agent service restart status version api live sessions outdated" },
+    { id: "aiAgent.defaults",    title: "Defaults",             keywords: "default profile model thinking level idle close dialog timeout general academic coding" },
+    { id: "aiAgent.panel",       title: "Panel behaviour",      keywords: "enter busy queue follow-up steer thinking display folded tool calls compact expanded notify notification open last chat cost warning" },
+    { id: "aiAgent.providers",   title: "Providers and models", keywords: "provider base url models.json broker key a1 a2 upstream listen rate limit auth header edit configuration" },
+    { id: "aiAgent.usage",       title: "Usage",                keywords: "cost tokens turns today week month profile model project" },
+    { id: "aiAgent.scheduler",   title: "Scheduler",            keywords: "schedule scheduled prompts daily cap enabled jobs" },
+    { id: "aiAgent.coding",      title: "Coding",               keywords: "a2 broker proxy net bridge egress whitelist blocklist folder directory glob" },
+    { id: "aiAgent.memory",      title: "Memory",               keywords: "system profile memory proposals accept reject review" },
+    { id: "aiAgent.services",    title: "Services",             keywords: "systemd units active enabled restart journal" },
+    { id: "aiAgent.logs",        title: "Logs",                 keywords: "engine log level filter follow journal broker requests status model duration copy" },
+    { id: "aiAgent.maintenance", title: "Maintenance",          keywords: "init initialise data folders prune session records" },
 
     // --- Updates --------------------------------------------
     { id: "updates.system",           title: "System state",           keywords: "version phios phi phi-packages" },

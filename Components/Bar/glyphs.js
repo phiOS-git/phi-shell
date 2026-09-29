@@ -123,12 +123,10 @@ var tilingCenter    = _c(0xF0F4F)   // nf-md-focus_field — a camera-style focu
 var tilingFair      = _c(0xF05D1)   // nf-md-scale_balance — a balance scale for "fair" (even) distribution
 var tilingFloating  = _c(0xF05B2)   // nf-md-window_restore — an overlapping-windows pictogram
 
-// Agent ChatShell's dashboard toggle (Components/AgentPanel/modules/
-// ChatShell.qml, 2026-09-19): MDI "page layout sidebar left" — a page with
-// a sidebar on its left, exactly the sidebar-plus-conversation layout the
-// chat panel uses. The one glyph serves both toggle states (the sidebar's
-// own presence is the state cue; the button recolours accent/muted instead
-// of swapping pictograms). Codepoint checked against nerd-fonts'
+// The agent panel's inspector toggle: MDI "page layout sidebar left" — a
+// page with a side column, the layout the chat panel uses. The one glyph
+// serves both states; the button recolours accent/muted instead of swapping
+// pictograms. Codepoint checked against nerd-fonts'
 // glyphnames.json 3.5.1 — the MDI set has no `view_sidebar` entry in that
 // release, this is the closest-name exact match.
 var dashboard       = _c(0xF06FD)   // nf-md-page_layout_sidebar_left

@@ -69,6 +69,8 @@ Singleton {
     readonly property string lockPrefsFile: root.stateDir + "/lock.json"
     // Bar clock format prefs.
     readonly property string clockPrefsFile: root.stateDir + "/clock.json"
+    // Agent panel layout and behaviour prefs. Owned by Config/AgentPrefs.qml.
+    readonly property string agentPrefsFile: root.stateDir + "/agent.json"
     // Chroma per-key overrides and integration settings.
     readonly property string chromaConfigFile: root.stateDir + "/chroma.json"
     // Battery sound prefs. Owned by Services/PowerBridge.qml.

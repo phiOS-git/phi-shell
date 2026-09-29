@@ -8,15 +8,16 @@ import qs.Widgets as Widgets
 import "modules" as Modules
 import "../Bar/glyphs.js" as Glyphs
 
-// The shell-summoned phi agent surface: a left-edge dock that slides in with
-// three sections — Chat, Coding sessions, Status — on a header tab strip, plus
-// a settings deep link at the strip's right end. A dedicated surface, not a
-// registry instance; the surface type is code written once. Chat is one
-// persistent sidebar-plus-conversation layout (Modules.ChatShell) not a
-// separate list and conversation destination. Every call goes through
-// Services/Modules.qml, the one client point. Entry points, all via
-// Services/AgentPanel.qml: the bar Φ segment Super+P (hyprland.lua.tmpl `ipc
-// call agent toggle`), and Settings › AI Agent › Open agent panel.
+// The shell-summoned agent surface: a left-edge dock with four sections —
+// Chat, Code, Projects, Overview — on a header tab strip, a status pill
+// (engine state, running turns, today's cost) and a settings deep link. The
+// layout, sections and keyboard map are workspace docs/agent-panel-plan.md
+// §2–§4. Entry points all go through Services/AgentPanel.qml: the bar Φ
+// segment, Super+P (`qs ipc call agent toggle`), Settings › AI Agent.
+//
+// Every section is a component with the same small contract: signals
+// requestSection(name) and blurred(), and optionally hasBack/goBack() so
+// Escape backs out one level before it closes the panel.
 
 PanelWindow {
     id: root
@@ -24,10 +25,14 @@ PanelWindow {
     readonly property bool shown: Services.AgentPanel.shown
     readonly property var agent: Services.Agent
 
-    // section: "chat" | "code" | "status". Chat is the landing section;
-    // `_autoOpenArmed` below then opens whichever conversation was touched last
-    // so a returning user lands in it rather than an empty composer.
+    // "chat" | "code" | "projects" | "overview"
     property string section: "chat"
+    readonly property var sections: [
+        { key: "chat", glyph: "▷", label: "Chat" },
+        { key: "code", glyph: "⌘", label: "Code" },
+        { key: "projects", glyph: "▤", label: "Projects" },
+        { key: "overview", glyph: "◎", label: "Overview" }
+    ]
 
     property bool _animReady: false
     Component.onCompleted: {
@@ -46,79 +51,98 @@ PanelWindow {
         function toggle(): void { Services.AgentPanel.toggle() }
         function open(): void { Services.AgentPanel.show() }
         function close(): void { Services.AgentPanel.hide() }
-        function status(): void { root.section = "status"; Services.AgentPanel.show() }
-        // "memory" is a kept alias for "status". No bound caller uses it, but
-        // an IPC verb is a public surface this repo cannot fully account for,
-        // so the old name keeps working at zero cost.
-        function memory(): void { status() }
+        function chat(): void { root.section = "chat"; Services.AgentPanel.show() }
         function code(): void { root.section = "code"; Services.AgentPanel.show() }
+        function projects(): void { root.section = "projects"; Services.AgentPanel.show() }
+        function overview(): void { root.section = "overview"; Services.AgentPanel.show() }
+        // "status" and "memory" are older verbs for the overview; an IPC
+        // verb is a public surface, so they keep working.
+        function status(): void { overview() }
+        function memory(): void { overview() }
     }
 
-    // Keyboard focus, needed by the chat input and the search fields.
     Services.LayerFocus { target: root }
 
-    // `sessions` loads asynchronously, so the landing chat cannot be read
-    // synchronously in onShownChanged: this arms here and resolves in
-    // onSessionsChanged. Fires at most once per opening, so a later refresh
-    // (pinning, renaming) never yanks a browsing user into a conversation.
+    // Sessions load asynchronously: arm on open, resolve once the list lands,
+    // at most once per opening so a later refresh never yanks the user away.
     property bool _autoOpenArmed: false
 
     onShownChanged: {
         if (root.shown) {
             Services.OverlayGrab.open(root, function () { Services.AgentPanel.hide() })
-            // Imperative, not `focus: root.shown`: the focus system sets
-            // `keyScope.focus = false` when anything else takes focus and
-            // never restores the binding. Without this, closing the panel
-            // while a field had focus would leave Escape dead on reopen.
             keyScope.forceActiveFocus()
-            if (root.agent.currentSessionId.length === 0) root._autoOpenArmed = true
+            if (root.agent.currentSessionId.length === 0 && Config.AgentPrefs.openLastChat) root._autoOpenArmed = true
             root.agent.refreshHealth()
-            root.agent.refreshProject()
+            root.agent.refreshProjects()
             root.agent.refreshSessions()
             root.agent.refreshAllProposals()
+            root.agent.refreshOverview()
             Services.AgentInfra.refresh()
-            if (root.section === "code") root.agent.refreshCodingSessions()
+            if (root.section === "chat") Qt.callLater(root._focusComposer)
         } else {
             Services.OverlayGrab.close(root)
         }
     }
     Component.onDestruction: Services.OverlayGrab.close(root)
-    // Resolves `_autoOpenArmed` once real chat data exists. Sorts by `updated`
-    // the one field every entry carries, rather than trusting list order. An
-    // empty list just disarms — the Chat section's own empty state is correct.
+
     Connections {
         target: root.agent
         function onSessionsChanged() {
             if (!root._autoOpenArmed) return
             root._autoOpenArmed = false
+            if (root.agent.currentSessionId.length > 0) return
             const sessions = root.agent.sessions || []
             if (sessions.length === 0) return
             const mostRecent = sessions.reduce((a, b) => ((b.updated || "") > (a.updated || "") ? b : a))
             root.agent.openSession(mostRecent.id)
         }
     }
-    // Section tabs take no keyboard focus on click (TapHandler never moves
-    // active focus), so switching sections destroys a focused field with
-    // nothing left to reclaim focus — same hazard as above.
-    onSectionChanged: keyScope.forceActiveFocus()
+
+    onSectionChanged: {
+        keyScope.forceActiveFocus()
+        if (root.section === "chat") Qt.callLater(root._focusComposer)
+    }
+
+    function _focusComposer() {
+        const item = sectionLoader.item
+        if (item && item.focusComposer) item.focusComposer()
+    }
+    function _call(name, arg) {
+        const item = sectionLoader.item
+        if (item && typeof item[name] === "function") item[name](arg)
+    }
 
     TextMetrics {
-        id: chMetrics
+        id: ch
         font.family: Config.Appearance.fontMono
         font.pixelSize: Config.Appearance.fontSize1
         text: "0"
     }
-    readonly property real chWidth: chMetrics.width
-    readonly property real gap: chWidth * Config.Appearance.space3
+    readonly property real chWidth: ch.width
+    readonly property real gap: chWidth * Config.Appearance.space2
 
-    // The dock widens for Status so literal diffs have room, capped. Sized off
-    // `root.width`, not `parent.width`: a PanelWindow has no parent, so the
-    // dock would collapse to zero. The cap suits Chat too, whose sidebar
-    // shares the same width.
-    readonly property real baseWidth: Math.min(root.width * 0.62, chWidth * 92)
-    readonly property real wideWidth: Math.min(root.width * 0.62, chWidth * 92)
-    readonly property real targetWidth:
-        (root.section === "status" && root.agent.totalPendingProposals > 0) ? wideWidth : baseWidth
+    // Width modes (plan §2.1), each capped by a share of the screen.
+    readonly property real targetWidth: {
+        switch (Config.AgentPrefs.dockWidth) {
+        case "compact": return Math.min(root.width * 0.46, chWidth * 72)
+        case "wide": return Math.min(root.width * 0.86, chWidth * 170)
+        default: return Math.min(root.width * 0.62, chWidth * 110)
+        }
+    }
+
+    readonly property string pillText: {
+        if (!root.agent.healthChecked) return "checking"
+        if (!root.agent.available) return "offline"
+        const parts = []
+        if (root.agent.busyCount > 0) parts.push(root.agent.busyCount + " running")
+        if (root.agent.needsInputCount > 0) parts.push(root.agent.needsInputCount + " asking")
+        parts.push(root.agent.fmtCost(root.agent.todayCost) + " today")
+        return parts.join(" · ")
+    }
+    readonly property color pillDot: !root.agent.available ? Config.Appearance.error
+        : root.agent.outdated ? Config.Appearance.warn
+        : root.agent.needsInputCount > 0 ? Config.Appearance.warn
+        : Config.Appearance.success
 
     Item {
         id: fadeRoot
@@ -128,33 +152,61 @@ PanelWindow {
             NumberAnimation { duration: Config.Appearance.motionBDuration; easing.type: Easing.Bezier; easing.bezierCurve: Config.Appearance.motionBCurve }
         }
 
-        // Escape closes the panel only when nothing inside holds focus. An
-        // Item with `focus: root.shown` holds active focus by default, so
-        // Escape reaches here. A field that grabs focus outranks it; when that
-        // field blurs itself on Escape the section reclaims focus explicitly —
-        // QML does not hand it back on its own — so the next Escape closes the
-        // panel.
+        // The panel's shortcuts. On the common ancestor of keyScope and the
+        // dock, so they reach here from the composer or any field too: a key
+        // event travels up the focused item's parents until one accepts it.
+        Keys.onPressed: (event) => {
+            const ctrl = event.modifiers & Qt.ControlModifier
+            const alt = event.modifiers & Qt.AltModifier
+            if (ctrl && event.key >= Qt.Key_1 && event.key <= Qt.Key_4) {
+                root.section = root.sections[event.key - Qt.Key_1].key
+            } else if (ctrl && event.key === Qt.Key_N) {
+                root.section = "chat"
+                root.agent.newChat("")
+                Qt.callLater(root._focusComposer)
+            } else if (ctrl && event.key === Qt.Key_F) {
+                root.section = "chat"
+                Qt.callLater(() => root._call("focusSearch"))
+            } else if (ctrl && event.key === Qt.Key_B) {
+                root._call("toggleSidebar")
+            } else if (ctrl && event.key === Qt.Key_I) {
+                root._call("toggleInspector")
+            } else if (ctrl && event.key === Qt.Key_Backslash) {
+                Config.AgentPrefs.cycleDockWidth()
+            } else if (ctrl && event.key === Qt.Key_Period) {
+                root.agent.stop()
+            } else if (alt && (event.key === Qt.Key_Up || event.key === Qt.Key_Down)) {
+                root._call("selectNeighbour", event.key === Qt.Key_Up ? -1 : 1)
+            } else if (!ctrl && !alt && root.section === "chat" && event.text.length > 0 && event.text.trim().length > 0) {
+                // Typing anywhere in the chat goes to the composer,
+                // including the key that started it.
+                const item = sectionLoader.item
+                if (item && item.typeIntoComposer) item.typeIntoComposer(event.text)
+                else root._focusComposer()
+            } else {
+                return
+            }
+            event.accepted = true
+        }
+
+        // Holds focus while no field does, so the panel's shortcuts reach
+        // here. A field that takes focus outranks it; when the field gives it
+        // up on Escape, the section emits blurred() and focus comes back.
         Item {
             id: keyScope
             anchors.fill: parent
             focus: root.shown
-            // `hasBack`/`goBack()` are an opt-in contract (undefined on
-            // sections with no local navigation). Checked before falling
-            // through to closing the panel, so Escape backs out one level at a
-            // time instead of discarding the user's place.
+
             Keys.onEscapePressed: {
-                if (sectionLoader.item && sectionLoader.item.hasBack === true)
-                    sectionLoader.item.goBack()
-                else
-                    Services.AgentPanel.hide()
+                const item = sectionLoader.item
+                if (item && item.hasBack === true) item.goBack()
+                else Services.AgentPanel.hide()
             }
         }
 
         Item {
             id: dock
             anchors.top: parent.top
-            // (item 2): the same small inset (panelGap) on all four sides —
-            // below the bar and off the three screen edges.
             anchors.topMargin: Services.BarMetrics.height + Config.Appearance.panelGap
             anchors.bottom: parent.bottom
             anchors.bottomMargin: Services.BarMetrics.bottomHeight + Config.Appearance.panelGap
@@ -179,12 +231,10 @@ PanelWindow {
                 anchors.fill: parent
                 radius: Config.Appearance.panelRadius
 
-                // Header: horizontal section tabs, glyph + label, with the
-                // shared tab grammar's bottom-edge indicator.
                 Item {
                     id: header
                     anchors { top: parent.top; left: parent.left; right: parent.right }
-                    height: Math.max(tabStrip.implicitHeight, panelSettingsBtn.implicitHeight)
+                    height: Math.max(tabStrip.implicitHeight, headerRight.implicitHeight)
 
                     Row {
                         id: tabStrip
@@ -193,43 +243,87 @@ PanelWindow {
                         spacing: root.chWidth * Config.Appearance.space1
 
                         Repeater {
-                            model: [
-                                { key: "chat", glyph: "▷", label: "Chat" },
-                                { key: "code", glyph: "⌘", label: "Coding sessions" },
-                                { key: "status", glyph: "▤", label: "Status" }
-                            ]
+                            model: root.sections
                             delegate: Widgets.TabButton {
                                 required property var modelData
                                 glyph: modelData.glyph
                                 label: modelData.label
+                                // The labels go when the dock is narrow; the
+                                // glyphs and Ctrl+1…4 still identify them.
+                                iconOnly: Config.AgentPrefs.dockWidth === "compact"
                                 indicatorEdge: "bottom"
-                                badge: modelData.key === "status" ? root.agent.totalPendingProposals : 0
+                                badge: modelData.key === "overview"
+                                    ? root.agent.totalPendingProposals + root.agent.needsInputCount
+                                    : (modelData.key === "code" ? root.agent.codingWorkingCount : 0)
                                 active: root.section === modelData.key
-                                onActivated: {
-                                    root.section = modelData.key
-                                    if (modelData.key === "code") root.agent.refreshCodingSessions()
-                                    if (modelData.key === "status") {
-                                        root.agent.refreshAllProposals()
-                                        root.agent.refreshHealth()
-                                        Services.AgentInfra.refresh()
-                                    }
-                                    if (modelData.key === "chat") root.agent.refreshSessions()
-                                }
+                                onActivated: root.section = modelData.key
                             }
                         }
                     }
 
-                    // Shares the header strip's right end so it stays
-                    // reachable from every section — a section's own header
-                    // content starts below the strip separator. A plain
-                    // Widgets.IconButton (opacity on hover, no background or
-                    // border).
-                    Widgets.IconButton {
-                        id: panelSettingsBtn
+                    Row {
+                        id: headerRight
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        glyph: Glyphs.settings
-                        onActivated: Services.SettingsPanel.openSection("aiAgent")
+                        spacing: root.chWidth * Config.Appearance.space1
+
+                        // Status pill: engine dot, running/asking counts and
+                        // today's cost; opens the overview.
+                        Item {
+                            id: pill
+                            anchors.verticalCenter: parent.verticalCenter
+                            implicitWidth: pillRow.implicitWidth + root.chWidth * 2
+                            implicitHeight: pillRow.implicitHeight + root.chWidth
+                            visible: Config.AgentPrefs.dockWidth !== "compact" || !root.agent.available
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: Config.Appearance.radiusPill
+                                color: pillHover.hovered ? Config.Appearance.panelHover : Config.Appearance.surface1
+                                border.width: Config.Appearance.borderWidth
+                                border.color: Config.Appearance.border
+                            }
+                            Row {
+                                id: pillRow
+                                anchors.centerIn: parent
+                                spacing: root.chWidth * 0.6
+                                Rectangle {
+                                    id: pillDotItem
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: root.chWidth * 0.7
+                                    height: width
+                                    radius: width / 2
+                                    color: root.pillDot
+                                    SequentialAnimation on opacity {
+                                        running: root.agent.anyBusy && root.shown
+                                        loops: Animation.Infinite
+                                        onRunningChanged: if (!running) pillDotItem.opacity = 1
+                                        NumberAnimation { from: 1; to: 0.4; duration: Config.Appearance.motionAPeriod / 2 }
+                                        NumberAnimation { from: 0.4; to: 1; duration: Config.Appearance.motionAPeriod / 2 }
+                                    }
+                                }
+                                Widgets.StyledText {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    kind: "label"
+                                    sizeStep: 0
+                                    mono: true
+                                    text: root.pillText
+                                }
+                            }
+                            HoverHandler { id: pillHover; cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: root.section = "overview" }
+                        }
+
+                        Widgets.IconButton {
+                            anchors.verticalCenter: parent.verticalCenter
+                            glyph: "⇔"
+                            onActivated: Config.AgentPrefs.cycleDockWidth()
+                        }
+                        Widgets.IconButton {
+                            anchors.verticalCenter: parent.verticalCenter
+                            glyph: Glyphs.settings
+                            onActivated: Services.SettingsPanel.openSection("aiAgent")
+                        }
                     }
                 }
 
@@ -239,7 +333,6 @@ PanelWindow {
                     anchors.topMargin: root.gap
                 }
 
-                // --- section body ------------------------------------
                 Item {
                     id: sectionBody
                     anchors { top: headerSep.bottom; bottom: parent.bottom; left: parent.left; right: parent.right }
@@ -252,26 +345,47 @@ PanelWindow {
                         sourceComponent: {
                             switch (root.section) {
                             case "code": return codeComp
-                            case "status": return statusComp
+                            case "projects": return projectsComp
+                            case "overview": return overviewComp
                             default: return chatComp
                             }
                         }
                     }
-                    Component { id: chatComp;   Modules.ChatShell { onRequestSection: (s) => root.section = s; onBlurred: keyScope.forceActiveFocus() } }
-                    Component { id: codeComp;   Modules.CodingSessions {} }
-                    // Still MemoryProposals.qml: only the section key and this
-                    // Component's id changed to "status"; the file opens with
-                    // a status overview above its list.
-                    Component { id: statusComp; Modules.MemoryProposals {} }
+                    Component {
+                        id: chatComp
+                        Modules.ChatSection {
+                            onRequestSection: (s) => root.section = s
+                            onBlurred: keyScope.forceActiveFocus()
+                        }
+                    }
+                    Component {
+                        id: codeComp
+                        Modules.CodeSection {
+                            onRequestSection: (s) => root.section = s
+                            onBlurred: keyScope.forceActiveFocus()
+                        }
+                    }
+                    Component {
+                        id: projectsComp
+                        Modules.ProjectsSection {
+                            onRequestSection: (s) => root.section = s
+                            onBlurred: keyScope.forceActiveFocus()
+                        }
+                    }
+                    Component {
+                        id: overviewComp
+                        Modules.OverviewSection {
+                            onRequestSection: (s) => root.section = s
+                            onBlurred: keyScope.forceActiveFocus()
+                        }
+                    }
                 }
             }
         }
 
-        // `dock`'s own geometry never changes — it stays anchored at its
-        // resting slot and only slides via `transform`, which the window's
-        // input mask does not track. Anchoring to `dock` instead of masking
-        // it directly gives the mask that untransformed resting slot, which
-        // is exactly where the dock sits on screen whenever it is open.
+        // The dock slides via `transform`, which the input mask does not
+        // track; anchoring the mask item to the untransformed dock gives it
+        // the resting slot, which is where the dock sits whenever it is open.
         Item {
             id: dockHitArea
             anchors.fill: dock

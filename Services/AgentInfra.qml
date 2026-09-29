@@ -3,49 +3,39 @@ import QtQml
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.Services as Services
 
-// Host facts about AI agent subsystem (systemd units, config files) for
-// Settings/AiAgent.qml. Kept out of Services/Agent.qml: this is systemctl
-// and file reads, not `phi agent` or `phi agent serve` calls. Config
-// surfaced READ-ONLY (no edit control, would fight `git pull`).
+// Host facts about the AI agent subsystem for Settings/AiAgent.qml: unit
+// state, prefs, usage, logs and maintenance. Everything is read through
+// `phi agent … --json` (plan §5.6, §8) rather than reading config files or
+// probing systemd with a shell script — `phi agent status` now reports
+// units, broker and per-profile provider config in one call, so this file
+// owns no parsing of models.json/broker.json/the meter itself. Kept out of
+// Services/Agent.qml: this is prefs/status/log plumbing for Settings, not
+// the `phi agent serve` HTTP+SSE API the panel itself uses.
 
 Singleton {
     id: root
 
-    // --- surfaced state ---------------------------------------------------
-    property var units: []               // [{name, active, enabled}]
-    property bool keyA1Present: false
-    property bool keyA2Present: false
-    property int meterRequests: -1       // -1 = unknown / no meter file yet
-    property string brokerUpstream: ""
-    property string brokerListen: ""
-    property string brokerRateLimit: ""
-    property string brokerAuthHeader: ""
-    // Read-only readout of each profile's LOCAL models.json (never the
-    // example, never edited here — see Settings/sections/AiAgent.qml's
-    // "Edit models" buttons). [{name, baseUrl}]; empty when the file is
-    // missing or unparsable — `modelsGeneralPresent`/`modelsCodingPresent`
-    // distinguish "missing" from "present but empty".
-    property var modelsGeneral: []
-    property bool modelsGeneralPresent: false
-    property var modelsCoding: []
-    property bool modelsCodingPresent: false
-    property int whitelistEntries: -1    // -1 = file unreadable
+    // --- status -------------------------------------------------------
+    property var status: ({ units: [], profiles: ({}), brokers: ({}), whitelistEntries: -1, configRoot: "", stateRoot: "" })
     property bool loaded: false
-    // Last broker-meter.jsonl line: {status, model, time} or null.
-    // Status-code only (no response body; broker never buffers, V-09).
-    property var lastRequestA1: null
-    property var lastRequestA2: null
 
-    // Host-side config/state roots, for the "path" hint the panel shows.
-    readonly property string configRoot: Quickshell.env("HOME") + "/.config/phi-agent"
-    readonly property string stateRoot: Quickshell.env("HOME") + "/.local/state/phi-agent"
+    // --- prefs (phi agent prefs) ---------------------------------------
+    property var prefs: ({ defaultProfile: "general", models: ({}), thinking: ({}), idleMinutes: 15, dialogTimeoutSeconds: 600, scheduler: ({ enabled: false, dailyCap: 1 }) })
 
-    // A2/folder blocklist: runtime config (real file), so editable here.
+    property var brokerRequests: []
+    property var usage: ({})         // from `phi agent usage`, works while the engine is down
+
+    // A2/folder blocklist: a real, editable runtime config file (not a
+    // versioned dotfile), so it is the one piece of config this section
+    // still writes directly rather than through `phi`.
     property string codeBlocklistText: ""
+    readonly property string _fallbackConfigRoot: Quickshell.env("HOME") + "/.config/phi-agent"
+    readonly property string _configRoot: root.status.configRoot.length > 0 ? root.status.configRoot : root._fallbackConfigRoot
     FileView {
         id: blocklistFile
-        path: root.configRoot + "/code-blocklist"
+        path: root._configRoot + "/code-blocklist"
         onLoaded: root.codeBlocklistText = blocklistFile.text()
         onLoadFailed: (error) => { root.codeBlocklistText = "" }
     }
@@ -54,175 +44,165 @@ Singleton {
         root.codeBlocklistText = text
     }
 
-    function refresh() { if (!probe.running) probe.running = true }
-
-    // Bulk-start units (same systemctl --user shape as Services/Agent.qml).
-    property bool starting: false
-    Process {
-        id: startProc
-        onExited: { startProc.running = false; root.starting = false; root.refresh() }
-    }
-    function startUnits(names) {
-        if (startProc.running || !names || names.length === 0) return
-        root.starting = true
-        startProc.command = ["systemctl", "--user", "start"].concat(names)
-        startProc.running = true
-    }
-
-    // Restart units to pick up config changes; exclusive with startUnits.
-    function restartUnits(names) {
-        if (startProc.running || !names || names.length === 0) return
-        root.starting = true
-        startProc.command = ["systemctl", "--user", "restart"].concat(names)
-        startProc.running = true
-    }
-
-    // Status-code categorization (no body read; broker never buffers, V-09).
-    function _statusHint(status) {
-        if (status >= 200 && status < 300) return "ok"
-        if (status === 401 || status === 403) return "auth / billing"
-        if (status === 429) return "rate limited"
-        if (status >= 500) return "upstream error"
-        if (status >= 400) return "client error"
-        return ""
-    }
-    // models.json's providers map -> [{name, baseUrl}], key (apiKey) never read.
-    function _providersOf(buf) {
-        let m = null
-        try { m = JSON.parse(buf.join("\n")) } catch (e) { m = null }
-        const providers = (m && m.providers) || {}
-        const out = []
-        for (const name in providers) out.push({ name: name, baseUrl: providers[name].baseUrl || "" })
-        return out
-    }
-    function _parseLastRequest(buf) {
-        const line = buf.join("\n").trim()
-        if (line.length === 0) return null
-        let rec = null
-        try { rec = JSON.parse(line) } catch (e) { return null }
-        if (!rec || typeof rec.status !== "number") return null
-        return { status: rec.status, model: rec.model || "", time: rec.time || "",
-            hint: root._statusHint(rec.status) }
-    }
+    property bool busy: false        // a systemctl action is running
 
     Component.onCompleted: refresh()
 
-    readonly property var _unitNames: [
-        "phi-agent.service",
-        "phi-agent-broker@a1.service",
-        "phi-agent-broker@a2.service",
-        "phi-agent-proxy.service",
-        "phi-agent-net-bridge.service",
-    ]
-
-    readonly property string _script: [
-        'D="$HOME/.config/phi-agent"',
-        'S="$HOME/.local/state/phi-agent"',
-        'for u in ' + _unitNames.join(" ") + '; do',
-        '  a=$(systemctl --user is-active "$u" 2>/dev/null); [ -n "$a" ] || a=unknown',
-        '  e=$(systemctl --user is-enabled "$u" 2>/dev/null); [ -n "$e" ] || e=unknown',
-        '  printf "UNIT\\t%s\\t%s\\t%s\\n" "$u" "$a" "$e"',
-        'done',
-        'printf "KEY_A1\\t%s\\n" "$([ -s "$D/a1/provider-key" ] && echo present || echo absent)"',
-        'printf "KEY_A2\\t%s\\n" "$([ -s "$D/a2/provider-key" ] && echo present || echo absent)"',
-        'printf "METER_A1\\t%s\\n" "$(wc -l < "$S/a1/broker-meter.jsonl" 2>/dev/null | tr -dc "0-9")"',
-        'printf "LASTREQ_A1_BEGIN\\n"; tail -n1 "$S/a1/broker-meter.jsonl" 2>/dev/null; printf "\\nLASTREQ_A1_END\\n"',
-        'printf "LASTREQ_A2_BEGIN\\n"; tail -n1 "$S/a2/broker-meter.jsonl" 2>/dev/null; printf "\\nLASTREQ_A2_END\\n"',
-        'printf "BROKER_A1_BEGIN\\n"; cat "$D/a1/broker.json" 2>/dev/null; printf "\\nBROKER_A1_END\\n"',
-        'printf "MODELS_GENERAL_PRESENT\\t%s\\n" "$([ -s "$D/pi/profiles/general/models.json" ] && echo yes || echo no)"',
-        'printf "MODELS_GENERAL_BEGIN\\n"; cat "$D/pi/profiles/general/models.json" 2>/dev/null; printf "\\nMODELS_GENERAL_END\\n"',
-        'printf "MODELS_CODING_PRESENT\\t%s\\n" "$([ -s "$D/pi/profiles/coding/models.json" ] && echo yes || echo no)"',
-        'printf "MODELS_CODING_BEGIN\\n"; cat "$D/pi/profiles/coding/models.json" 2>/dev/null; printf "\\nMODELS_CODING_END\\n"',
-        'printf "WHITELIST_BEGIN\\n"; grep -Ev "^[[:space:]]*(#|$)" "$D/tinyproxy/whitelist" 2>/dev/null; printf "\\nWHITELIST_END\\n"',
-    ].join("\n")
-
-    Process {
-        id: probe
-        onExited: probe.running = false
-        command: ["sh", "-c", root._script]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const lines = this.text.split("\n")
-                const nextUnits = []
-                let keyA1 = false, keyA2 = false
-                let meter = -1, whitelist = -1
-                let section = ""
-                const brokerBuf = []
-                const modelsGeneralBuf = [], modelsCodingBuf = []
-                const lastReqA1Buf = [], lastReqA2Buf = []
-                let whitelistCount = 0
-                let modelsGeneralPresent = false, modelsCodingPresent = false
-
-                for (const raw of lines) {
-                    if (raw === "BROKER_A1_BEGIN") { section = "broker"; continue }
-                    if (raw === "BROKER_A1_END") { section = ""; continue }
-                    if (raw === "MODELS_GENERAL_BEGIN") { section = "models_general"; continue }
-                    if (raw === "MODELS_GENERAL_END") { section = ""; continue }
-                    if (raw === "MODELS_CODING_BEGIN") { section = "models_coding"; continue }
-                    if (raw === "MODELS_CODING_END") { section = ""; continue }
-                    if (raw === "LASTREQ_A1_BEGIN") { section = "lastreq_a1"; continue }
-                    if (raw === "LASTREQ_A1_END") { section = ""; continue }
-                    if (raw === "LASTREQ_A2_BEGIN") { section = "lastreq_a2"; continue }
-                    if (raw === "LASTREQ_A2_END") { section = ""; continue }
-                    if (raw === "WHITELIST_BEGIN") { section = "whitelist"; whitelist = 0; continue }
-                    if (raw === "WHITELIST_END") { section = ""; whitelist = whitelistCount; continue }
-
-                    if (section === "broker") { brokerBuf.push(raw); continue }
-                    if (section === "models_general") { modelsGeneralBuf.push(raw); continue }
-                    if (section === "models_coding") { modelsCodingBuf.push(raw); continue }
-                    if (section === "lastreq_a1") { lastReqA1Buf.push(raw); continue }
-                    if (section === "lastreq_a2") { lastReqA2Buf.push(raw); continue }
-                    if (section === "whitelist") { if (raw.trim().length > 0) whitelistCount++; continue }
-
-                    const parts = raw.split("\t")
-                    if (parts[0] === "UNIT" && parts.length >= 4) {
-                        nextUnits.push({ name: parts[1], active: parts[2], enabled: parts[3] })
-                    } else if (parts[0] === "KEY_A1") {
-                        keyA1 = (parts[1] === "present")
-                    } else if (parts[0] === "KEY_A2") {
-                        keyA2 = (parts[1] === "present")
-                    } else if (parts[0] === "METER_A1") {
-                        const n = parseInt(parts[1])
-                        meter = isNaN(n) ? -1 : n
-                    } else if (parts[0] === "MODELS_GENERAL_PRESENT") {
-                        modelsGeneralPresent = (parts[1] === "yes")
-                    } else if (parts[0] === "MODELS_CODING_PRESENT") {
-                        modelsCodingPresent = (parts[1] === "yes")
-                    }
-                }
-
-                root.units = nextUnits
-                root.keyA1Present = keyA1
-                root.keyA2Present = keyA2
-                root.meterRequests = meter
-                root.whitelistEntries = whitelist
-
-                // broker.json — versioned config, read-only readout.
-                let broker = null
-                try { broker = JSON.parse(brokerBuf.join("\n")) } catch (e) { broker = null }
-                if (broker) {
-                    root.brokerUpstream = broker.upstream || ""
-                    root.brokerListen = broker.listen || ""
-                    root.brokerAuthHeader = broker.auth_header || ""
-                    const rl = broker.rate_limit || {}
-                    root.brokerRateLimit = (rl.requests !== undefined && rl.window_seconds !== undefined)
-                        ? (rl.requests + " req / " + rl.window_seconds + "s") : ""
-                } else {
-                    root.brokerUpstream = ""; root.brokerListen = ""
-                    root.brokerAuthHeader = ""; root.brokerRateLimit = ""
-                }
-
-                // models.json — provider name + baseUrl only (never the key).
-                root.modelsGeneralPresent = modelsGeneralPresent
-                root.modelsGeneral = modelsGeneralPresent ? root._providersOf(modelsGeneralBuf) : []
-                root.modelsCodingPresent = modelsCodingPresent
-                root.modelsCoding = modelsCodingPresent ? root._providersOf(modelsCodingBuf) : []
-
-                root.lastRequestA1 = root._parseLastRequest(lastReqA1Buf)
-                root.lastRequestA2 = root._parseLastRequest(lastReqA2Buf)
-
-                root.loaded = true
+    // One `phi agent …` invocation — same shape as Services/Agent.qml's own
+    // _cli(): a short-lived Process per call, so two calls in flight at once
+    // (e.g. a status refresh and a pref write) never race each other out.
+    Component {
+        id: cliComp
+        Process {
+            id: p
+            property var done: null
+            property int exitCode: -1
+            property bool exitedFlag: false
+            property bool outDone: false
+            property string outText: ""
+            property string errText: ""
+            function finish() {
+                if (!p.exitedFlag || !p.outDone || p.done === null) return
+                var cb = p.done
+                p.done = null
+                var data = p.outText
+                try { data = JSON.parse(p.outText) } catch (e) {}
+                cb(p.exitCode === 0, data, p.errText.trim())
+                p.destroy()
             }
+            stdout: StdioCollector { onStreamFinished: { p.outText = this.text; p.outDone = true; p.finish() } }
+            stderr: StdioCollector { onStreamFinished: p.errText = this.text }
+            onExited: (code) => { p.exitCode = code; p.exitedFlag = true; grace.start(); p.finish() }
+            // A process that never opened stdout (failed to start) still
+            // completes, instead of leaving its caller waiting.
+            property Timer grace: Timer { interval: 1500; onTriggered: { p.outDone = true; p.finish() } }
         }
+    }
+    function _cli(args, done) {
+        var proc = cliComp.createObject(root, { command: ["phi", "agent"].concat(args), done: done || null })
+        proc.running = true
+    }
+
+    function _loadStatus() {
+        root._cli(["status", "--json"], function (ok, d) {
+            if (ok && d && typeof d === "object") {
+                root.status = {
+                    units: d.units || [],
+                    profiles: d.profiles || {},
+                    brokers: d.brokers || {},
+                    whitelistEntries: (typeof d.whitelistEntries === "number") ? d.whitelistEntries : -1,
+                    configRoot: d.configRoot || root.status.configRoot,
+                    stateRoot: d.stateRoot || root.status.stateRoot
+                }
+            }
+            root.loaded = true
+        })
+    }
+    function _loadPrefs() {
+        root._cli(["prefs", "get", "--json"], function (ok, d) {
+            if (!ok || !d || typeof d !== "object") return
+            root.prefs = {
+                defaultProfile: d.defaultProfile || "general",
+                models: d.models || {},
+                thinking: d.thinking || {},
+                idleMinutes: (typeof d.idleMinutes === "number") ? d.idleMinutes : 15,
+                dialogTimeoutSeconds: (typeof d.dialogTimeoutSeconds === "number") ? d.dialogTimeoutSeconds : 600,
+                scheduler: d.scheduler || { enabled: false, dailyCap: 1 }
+            }
+            // The panel's "next prompt" default follows the same pref, so it
+            // never disagrees with what Settings shows.
+            Services.Agent.agentDefaultProfile = root.prefs.defaultProfile
+        })
+    }
+    function refresh() {
+        root._loadStatus()
+        root._loadPrefs()
+    }
+
+    function unitActive(name) {
+        for (var i = 0; i < root.status.units.length; i++)
+            if (root.status.units[i].name === name) return root.status.units[i].active || "unknown"
+        return "unknown"
+    }
+    function unitEnabled(name) {
+        for (var i = 0; i < root.status.units.length; i++)
+            if (root.status.units[i].name === name) return root.status.units[i].enabled || "unknown"
+        return "unknown"
+    }
+
+    function setPref(key, value) {
+        root._cli(["prefs", "set", key, String(value), "--json"], function (ok, d, err) {
+            if (!ok) { console.warn("phi-shell: agent prefs set " + key + " failed: " + err); return }
+            root._loadPrefs()
+        })
+    }
+
+    // --- unit control: plain systemctl --user, one Process per call so a
+    // second click (a different unit, or enable right after start) is never
+    // dropped by a single reused, guarded Process. ----------------------
+    property int _systemctlRunning: 0
+    function _bumpBusy(n) { root._systemctlRunning = Math.max(0, root._systemctlRunning + n); root.busy = root._systemctlRunning > 0 }
+    Component {
+        id: systemctlComp
+        Process {
+            id: sp
+            onExited: { root._bumpBusy(-1); root.refresh(); sp.destroy() }
+        }
+    }
+    function _systemctl(action, names) {
+        if (!names || names.length === 0) return
+        var proc = systemctlComp.createObject(root, { command: ["systemctl", "--user", action].concat(names) })
+        root._bumpBusy(1)
+        proc.running = true
+    }
+    function startUnits(names) { root._systemctl("start", names) }
+    function stopUnits(names) { root._systemctl("stop", names) }
+    function restartUnits(names) { root._systemctl("restart", names) }
+    function setUnitEnabled(name, on) { root._systemctl(on ? "enable" : "disable", [name]) }
+
+    function openJournal(unit) {
+        Quickshell.execDetached(["kitty", "-e", "journalctl", "--user", "-fu", unit])
+    }
+    // Same `$EDITOR` with an `nvim` fallback as every other "edit the real
+    // file in a terminal" action in this repo.
+    function editFile(path) {
+        Quickshell.execDetached(["kitty", "-e", "sh", "-c", '${EDITOR:-nvim} "$1"', "sh", path])
+    }
+
+    function refreshBrokerRequests(instance) {
+        root._cli(["broker-requests", "--instance", instance, "--limit", "50", "--json"], function (ok, d) {
+            root.brokerRequests = (ok && Array.isArray(d)) ? d : []
+        })
+    }
+
+    function refreshUsage() {
+        root._cli(["usage", "--days", "30", "--json"], function (ok, d) {
+            root.usage = (ok && d && typeof d === "object") ? d : {}
+        })
+    }
+
+    function readMemory(level, profile, done) {
+        var args = ["memory-read", "--level", level]
+        if (profile) args = args.concat(["--profile", profile])
+        args.push("--json")
+        root._cli(args, function (ok, d) {
+            if (!done) return
+            if (ok && d && typeof d === "object") done(d.text || "", d.path || "")
+            else done("", "")
+        })
+    }
+
+    function pruneSessions(days, done) {
+        root._cli(["session-prune", "--older-than", String(days), "--json"], function (ok, d) {
+            if (done) done(ok && d && typeof d.removed === "number" ? d.removed : 0)
+        })
+    }
+
+    // `phi agent init` prints plain text, not JSON — no --json flag.
+    function runInit(done) {
+        root._cli(["init"], function (ok, d, err) {
+            var out = (typeof d === "string") ? d : JSON.stringify(d)
+            if (done) done(ok, ok ? out : (err.length > 0 ? err : out))
+        })
     }
 }
